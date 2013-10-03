@@ -2,22 +2,19 @@ set -e
 DIR=`dirname $0`
 REPOS=svn+ssh://secsvn@svn-sem.cl.cam.ac.uk/WeakMemory
 TMP=/var/tmp
-. $DIR/version.sh
+. $DIR/version.herd.sh
 . $DIR/funs.sh
-EXPORT=$TMP/exp.$$
-mkdir $EXPORT
-( cd $EXPORT && svn export -N $REPOS/mem.new && \
-  svn export -N $REPOS/litmus.new/plumbing && \
-  mkdir litmus.new && mv plumbing litmus.new )
 NAME=litmus-$V
-FINAL=$TMP/$NAME
-/bin/rm -rf $FINAL && mkdir $FINAL
-( cd $EXPORT/litmus.new/plumbing && tar chf - . ) | \
-( cd $FINAL && tar xmf - . ) && \
-/bin/rm -rf $EXPORT
-TMPF=/tmp/$$.txt
-( cd $FINAL && sed -e 's|MCYCLES=.*|MCYCLES=|' Makefile > $TMPF && mv $TMPF Makefile )
+EXPORT=$TMP/export.$$
+FINAL=$EXPORT/$NAME
+mkdir -p $EXPORT
+( cd $EXPORT &&
+  svn export -N $REPOS/litmus.herd $NAME && \
+  svn export -N $REPOS/diy/LICENSE.txt && \
+  ( cd $NAME && /bin/rm lib &&  svn export -N $REPOS/lib && svn export -N $REPOS/litmus.herd/generated ) && \
+  true )
+#TMPF=/tmp/$$.txt
+#( cd $FINAL && sed -e 's|MCYCLES=.*|MCYCLES=|' Makefile > $TMPF && mv $TMPF Makefile )
 ( cleandir $FINAL )
-
-( cd $TMP && tar zcf $NAME.tar.gz $NAME )
-( mv $TMP/$NAME.tar.gz . && /bin/rm -rf $FINAL )
+( cd $EXPORT && tar zcf $NAME.tar.gz $NAME )
+( mv $EXPORT/$NAME.tar.gz . && /bin/rm -rf $EXPORT )
