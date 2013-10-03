@@ -25,8 +25,6 @@ end
 
 module Make(O:Config)(Tar:Tar.S) (T:Test.S) =
   struct
-    module A = T.A
-    module C = T.C
     module RU = RunUtils.Make(O)
 
     let gcc =

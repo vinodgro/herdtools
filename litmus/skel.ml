@@ -1567,6 +1567,7 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
             (fun (loc,t) k -> match loc with
             | A.Location_reg (p,reg) -> if p = proc then (reg,t)::k else k
             | A.Location_global _ -> k) env [] in     
+(* Dump real code now *)
         A.Out.dump O.out (Indent.as_string iloop) myenv proc out ;
         if do_verbose_barrier && have_timebase  then begin
           if do_timebase then begin
