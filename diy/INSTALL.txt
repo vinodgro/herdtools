@@ -19,8 +19,9 @@ Just type
   % make all
   % make install (you may have to gain root privilege for this step)
 
-This will install binaries litmus, diy, diyone, diycross, readRelax, mcyles,
-classify and dont in $(PREFIX)/bin; and some files in  $(PREFIX)/bib/litmus.
+This will install binaries herd, litmus, diy, diyone, diycross,
+and some other tools in $(PREFIX)/bin; and some files in
+$(PREFIX)/lib/herd  and $(PREFIX)/lib/litmus.
   
 You can now get rid of the sources.
 
