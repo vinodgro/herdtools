@@ -5,5 +5,5 @@ default: all
 
 all install clean:
 	for d in $(DIRS) ; \
-	do ( cd $$d && $(MAKE) $(MFLAGS) PREFIX=$(PREFIX) $@ ) ; done
+	do $(MAKE) $(MFLAGS) PREFIX=$(PREFIX) -C ../$$d $@ ; done
 
