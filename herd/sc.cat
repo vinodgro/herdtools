@@ -1,0 +1,3 @@
+SC
+(* Sequential consistency *)
+acyclic po | fr | rf | co

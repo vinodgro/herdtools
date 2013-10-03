@@ -1,0 +1,211 @@
+(*********************************************************************)
+(*                         Diy                                       *)
+(*                                                                   *)
+(*   Jade Alglave, Luc Maranget INRIA Paris-Rocquencourt, France.    *)
+(*                                                                   *)
+(*  Copyright 2010 Institut National de Recherche en Informatique et *)
+(*  en Automatique. All rights reserved. This file is distributed    *)
+(*  under the terms of the Lesser GNU General Public License.        *)
+(*********************************************************************)
+
+open Misc
+open Printf
+
+(* Configuration *)
+let rfi = ref false
+let varatom = ref false
+let varreserve = ref false
+let use_eieio = ref true
+let norm = ref false
+
+let () = Config.addnum := false
+let () = Config.numeric := false
+let () = Config.nprocs := 1000
+
+let opts =
+  Config.common_specs @
+  ("-num", Arg.Bool (fun b -> Config.numeric := b),
+   sprintf "<bool> use numeric names, default %b" !Config.numeric)::
+  ("-varatom", Arg.Set varatom,
+   " include atomic load and store variations")::
+  ("-varreserve", Arg.Set varreserve,
+   " include load with reservation variations")::
+  ("-var", Arg.Unit (fun () ->  varatom := true ; varreserve := true),
+   " include all variations")::
+  ("-noeieio", Arg.Clear use_eieio,
+   " ignore eieio fence (backward compatibility)")::[]
+
+
+
+
+module type Config = sig  
+  include DumpAll.Config
+  val varatom : bool
+  val varreserve : bool
+  val sta : bool
+  val unrollatomic : int option
+end
+
+module Make (Config:Config) (C:XXXCompile.S) =
+  struct
+    module M = Top.Make(Config)(C)
+    module D = DumpAll.Make (Config) (C)
+    open C.E
+
+    let norm = match Config.family with
+    | None -> true
+    | Some _ -> false
+
+    module Name = Namer.Make(C.A)(C.E)
+    module Norm = Normaliser.Make(Config)(C.E)
+
+    let gen ess kont r =
+      Misc.fold_cross ess
+        (fun es r -> kont (List.flatten es) D.no_info D.no_name r)
+        r
+
+    open Code
+
+    let er e = C.R.ERS [plain_edge e]
+
+    let all_fences sd d1 d2 =
+      C.A.fold_all_fences
+        (fun f k -> er (C.E.Fenced (f,sd,Dir d1,Dir d2))::k)
+
+    let some_fences sd d1 d2 =
+      C.A.fold_some_fences
+        (fun f k -> er (C.E.Fenced (f,sd,Dir d1,Dir d2))::k)
+        
+(* Limited variations *)
+    let app_def_dp o f r = match o with
+    | None -> r
+    | Some dp -> f dp r
+
+    let someR sd d =
+      er (Po (sd,Dir R,Dir d))::
+      app_def_dp
+        (match d with R -> C.A.ddr_default | W -> C.A.ddw_default)
+        (fun dp k -> er (Dp (dp,sd,Dir d))::k)
+        (some_fences sd R d [])      
+
+    let someW sd d =
+      er (Po (sd,Dir W,Dir d))::
+      (some_fences sd W d [])      
+
+        
+(* ALL *)
+    let allR sd d =
+      er (Po (sd,Dir R,Dir d))::
+      (match d with R -> C.A.fold_dpr | W -> C.A.fold_dpw)
+        (fun dp k -> er (Dp (dp,sd,Dir d))::k)
+        (all_fences sd R d [])      
+
+    let allW sd d =
+      er (Po (sd,Dir W,Dir d))::
+      (all_fences sd W d [])      
+
+    let parse_relaxs s = match s with
+    | "allRR" -> allR Diff R
+    | "allRW" -> allR Diff W
+    | "allWR" -> allW Diff R
+    | "allWW" -> allW Diff W
+    | "someRR" -> someR Diff R
+    | "someRW" -> someR Diff W
+    | "someWR" -> someW Diff R
+    | "someWW" -> someW Diff W
+    | _ -> 
+        let es = LexUtil.split s in
+        List.map C.R.parse_relax es
+
+    let parse_edges s =
+      let rs = parse_relaxs s in
+      List.fold_right (fun r k -> C.R.edges_of r :: k) rs []
+
+    module V = VarAtomic.Make(Config)(C.E) 
+
+    let varatom_ess ess = List.map V.varatom_es ess
+
+    let expand_edge es = C.E.expand_edges es Misc.cons
+    let expand_edges ess =
+      List.flatten (List.map (fun e -> expand_edge e []) ess)
+
+    let zyva pp_rs =
+      try
+        let ess = List.map parse_edges pp_rs in
+        let ess = List.map expand_edges ess in
+        let ess = varatom_ess ess in
+        D.all (gen ess)
+      with Fatal msg ->
+        eprintf "Fatal error: %s\n" msg ;
+        exit 2
+  end
+
+let pp_es = ref []
+
+let () =
+  Util.parse_cmdline
+    opts
+    (fun x -> pp_es := x :: !pp_es)
+
+let pp_es = List.rev !pp_es
+
+let () =
+  try
+    let module C = struct
+(* Dump all *)
+      let verbose = !Config.verbose
+      let hout = match !Config.hout with
+      | None -> Hint.none
+      | Some n -> Hint.open_out n
+      let family = !Config.name
+      let canonical_only = !Config.canonical_only
+      let fmt = !Config.fmt
+      let no = match !Config.no with
+      | None -> []
+      | Some fname -> Config.read_no fname
+      let cond = !Config.cond
+      let tarfile = !Config.tarfile
+      let addnum = !Config.addnum
+      let numeric = !Config.numeric
+      let lowercase = !Config.lowercase
+(* Specific *)
+      let varatom = !varatom
+      let varreserve = !varreserve
+      let coherence_decreasing = !Config.coherence_decreasing
+      let same_loc =
+         !Config.same_loc ||
+         (match cond with
+         | Config.Unicond -> true
+         | _ -> false)
+      let sta = !Config.sta
+      let unrollatomic = !Config.unrollatomic
+      let list_edges = !Config.list_edges
+      let overload = !Config.overload
+      let poll = !Config.poll
+      let optcoherence = !Config.optcoherence
+      let optcond = !Config.optcond
+      let fno = !Config.fno
+      let obs_type = !Config.obs_type
+      let do_observers = !Config.do_observers
+      let eprocs = !Config.eprocs
+      let nprocs = !Config.nprocs
+      let neg = !Config.neg
+    end in
+    let module V = SymbConstant in
+    let open Archs in
+    begin match !Config.arch with
+    | X86 ->
+        let module M = Make(C)(X86Compile.Make(V)(C)) in
+        M.zyva
+    | PPC -> 
+        let module PPCConf = struct let eieio = !use_eieio end in
+        let module M = Make(C)(PPCCompile.Make(V)(C)(PPCConf)) in
+        M.zyva
+    | ARM ->
+        let module M = Make(C)(ARMCompile.Make(V)(C)) in
+        M.zyva
+    end pp_es
+        with
+        | Misc.Exit -> ()
+        | (Misc.Fatal msg|Misc.UserError msg) -> eprintf "Fatal error: %s\n" msg
+

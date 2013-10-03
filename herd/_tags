@@ -1,0 +1,6 @@
+true: dtypes
+true: -traverse
+<lib>: include
+<*.cmo>: debug
+<*.byte>:debug
+<herd.{d.byte,byte,native}>:use_str

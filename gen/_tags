@@ -1,0 +1,8 @@
+true: dtypes
+true: -traverse
+<lib>:include
+<*.cmo>: debug
+<*.byte>:debug
+<diy.{d.byte,byte,native}>:use_unix
+<dont.{d.byte,byte,native}>:use_unix
+

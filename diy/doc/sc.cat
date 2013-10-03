@@ -1,0 +1,10 @@
+"Sequential consistency"
+
+(* Communication relations *)
+let com = rf | co | fr
+
+(* SC global-happens-before *)
+let ghb = po | com
+acyclic ghb
+show ghb
+

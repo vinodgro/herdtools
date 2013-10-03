@@ -1,0 +1,9 @@
+LL
+let chapo = fr | rf | co | (co;rf) | (fr;rf)
+let poi = WW(po-loc) | RW(po-loc) | WR(po-loc)
+irreflexive poi ; chapo
+(* Show things... *)
+let dmbst=WW(dmbst)
+let dsbst=WW(dsbst)
+show dmb dsb dmbst dsbst
+show addr data ctrl ctrlisb
