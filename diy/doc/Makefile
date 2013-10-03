@@ -126,9 +126,8 @@ CAT=sc.cat tso-00.cat tso-01.cat  tso-02.cat
 GENCAT=herd.cat x86tso.cat minimal.cat uniproc.cat
 TXT=rename.txt cond.txt
 DONT=x86.sc x86.explo x86-log.txt
-LITMUSDIR=../../litmus.herd/
+LITMUSDIR=../../litmus/
 HERDDIR=../../herd
-MEMDIR=../../mem.new
 
 #tar of x86 configuration
 x86.tar: x86.txt $(X86)
