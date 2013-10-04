@@ -11,7 +11,8 @@
 (*********************************************************************)
 
 {
-open Printf
+open Lexing
+open LexMisc
 
 let fconcat d1 d2 = match d1 with
 | "." -> d2
@@ -23,13 +24,22 @@ let fconcat d1 d2 = match d1 with
 
 let do_include lex fname =
   Misc.input_protect 
-    (fun chan -> lex (Lexing.from_channel chan))
+    (fun chan ->
+      try
+        let lexbuf = Lexing.from_channel chan in
+        lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname=fname;};
+        lex lexbuf
+      with Error (msg,pos) ->
+        Printf.eprintf
+	"%a: Lex error %s (in %s)\n" Pos.pp_pos pos msg fname ;
+      raise Misc.Exit)
     fname
 
 }
 
 let space = [' ''\t']
 let non_space = [^' ''\t''\n']
+let non_space_eq = [^'='' ''\t''\n']
 
 rule main dir get acc = parse
 | "#include" space+ (non_space+ as fname) '\n'
@@ -38,20 +48,21 @@ rule main dir get acc = parse
      let d = fconcat dir dir0 in
      let n = fconcat dir fname in
      let acc = do_include (main d get acc) n in
+     incr_lineno lexbuf;
      main dir get acc lexbuf
    }
 | '#' [^'\n']* '\n'
-   { main dir get acc lexbuf }
+   { incr_lineno lexbuf; main dir get acc lexbuf }
   
-| (non_space+ as name) space+
-  (non_space+ as key) space+
-  ("" | (non_space [^'\n']+) as v)
+| (non_space_eq+ as name) space+
+  (non_space_eq+ as key) (space+|(space* '=' space*))
+  ("" | (non_space_eq [^'\n']+) as v)
   '\n'
-{ main dir get (get acc name key v) lexbuf }
+{ incr_lineno lexbuf; main dir get (get acc name key v) lexbuf }
 
 | eof { acc }
 
-| [^'\n']* as lxm '\n' { failwith (sprintf "LexHint: %s" lxm) }
+| "" { error "lexHint" lexbuf }
 
 {
  let read fname get acc =

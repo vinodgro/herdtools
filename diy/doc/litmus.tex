@@ -1211,9 +1211,14 @@ Prefetch=0:x=F,0:y=T,1:y=F,1:z=T,2:z=F,2:a=T,3:a=F,3:b=T,4:b=F,4:c=T,5:c=F,5:x=T
 \end{verbatim}
 That is, each thread flushes the location it stores to and touches
 each location it reads from.
+Notice that each thread starts with a memory location access
+(here a store) and ends with another (here a load).
+The idea simply is to accelerate the exit access (with a cache touch)
+while delaying the entry access (with a cache flush).
 
-When prefetch metadata is available it sets the
-default of prefetch directives:
+
+When prefetch metadata is available, it acts as the default of
+prefetch directives:
 \begin{verbatim}
 % litmus -mem indirect -preload custom -o R 6.SB+Prefetch.litmus
 % cd R
@@ -1232,6 +1237,18 @@ Prefetch=0:y=T,0:x=F,1:z=T,1:y=F,2:z=F,2:a=T,3:b=T,3:a=F,4:c=T,4:b=F,5:x=T,5:c=F
 One may notice that the prefetch directives from the source file
 medata found its way to the test executable.
 
+As with any kind of metadata,
+one can change the prefetch metadata by editing the litmus source file,
+or better by using the \opt{-hints} command line option.
+The  \opt{-hints} command line option takes a filename as  argument.
+This file is a \ahrefloc{defmapping}{mapping} that associates
+new metadata to test names.
+As an example, we reverse \prog{diy} scheme for cache management directives:
+to accelerating entry accesses and delaying exit accesses.
+\begin{verbatim}
+% cat map.txt
+6.SB Prefetch=0:y=W,0:x=F,1:z=W,1:y=F,2:z=F,2:a=W,3:b=F,3:a=F,4:c=W,4:b=F,5:x=W,5:c=F
+\end{verbatim}
 
 
 \section{Usage of \prog{litmus}}
@@ -1466,7 +1483,8 @@ to~\texttt{gcc}.
 \paragraph*{Change\label{change:input} input}
 Some items in
 the source of tests can be changed at the very last moment.
-The new items are defined in mapping files whose names are arguments to
+\aname{defmapping}{The}
+new items are defined in mapping files whose names are arguments to
 the appropriate command line options.
 Mapping files simply are lists of pairs, with one line starting with a test
 name, and the rest of line defining the changed item.
