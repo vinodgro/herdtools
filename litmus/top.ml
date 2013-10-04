@@ -298,16 +298,16 @@ end = struct
       Absent arch
     end
 
-      let from_file
-          hint avoid_cycles fst cycles hash_env
-          name out_chan =
-        Misc.input_protect
-          (fun in_chan ->
-            from_chan hint avoid_cycles fst cycles hash_env
-              name in_chan out_chan) name
+  let from_file
+      hint avoid_cycles fst cycles hash_env
+      name out_chan =
+    Misc.input_protect
+      (fun in_chan ->
+        from_chan hint avoid_cycles fst cycles hash_env
+          name in_chan out_chan) name
 
 (* Call generic tar builder/runner *)
-      module DF = DumpRun.Make (OT)(Tar) (struct let from_file = from_file end)
+  module DF = DumpRun.Make (OT)(Tar) (struct let from_file = from_file end)
 
-      let from_files = DF.from_files        
-    end
+  let from_files = DF.from_files        
+end

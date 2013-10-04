@@ -263,8 +263,8 @@ let () =
     if not (Option.is_out ()) then MySys.rmdir outname ;
     exit 0
   with
-    | LexRename.Error -> exit 2
-    |Misc.Fatal msg ->
-    eprintf "Fatal error: %s\n%!" msg ;
-    exit 2
+    | LexRename.Error|Misc.Exit -> exit 2
+    | Misc.Fatal msg ->
+      eprintf "Fatal error: %s\n%!" msg ;
+      exit 2
 
