@@ -141,34 +141,37 @@ void ints_dump(FILE *fp, ints_t *p) {
 /***********************/
 /* Prefetch directives */
 /***********************/
-
 void prefetch_dump(FILE *fp, prfdirs_t *p) {
-  prfdir_t *q = p->t ;
+  prfproc_t *q = p->t ;
   int some = 0 ;
   for (int _p = 0 ; _p < p->nthreads ; _p++) {
-    for (int _v = 0 ; _v < p->nvars ; _v++) {
-      prfdir_t v = *q++ ;
-      if (v != none) {
+    int nvars = q[_p].nvars ;
+    prfone_t *r = q[_p].t ;
+    for (int _v = 0 ; _v < nvars ; _v++) {
+      prfdir_t dir = r[_v].dir ;
+      if (dir != none) {
         char c = 'I' ;
-        if (v == flush) c = 'F' ;
-        else if (v == touch) c = 'T' ;
-        else if (v == touch_store) c = 'W' ;
+        if (dir == flush) c = 'F' ;
+        else if (dir == touch) c = 'T' ;
+        else if (dir == touch_store) c = 'W' ;
         if (some) {
           fprintf(fp,",") ;
         } else {
           some = 1 ;
         }
-        fprintf(fp,"%i:%s=%c",_p,p->names[_v],c) ;
+        fprintf(fp,"%i:%s=%c",_p,r[_v].name,c) ;
       }
     }
   }
 }
 
 static void set_prefetch(prfdirs_t *p, prfdir_t d) {
-  prfdir_t *q = p->t ;
+  prfproc_t *q = p->t ;
   for (int _p = 0 ; _p < p->nthreads ; _p++) {
-    for (int _v = 0 ; _v < p->nvars ; _v++) {
-      *q++ = d ;
+    int nvars = q[_p].nvars ;
+    prfone_t *r = q[_p].t ;
+    for (int _v = 0 ; _v < nvars ; _v++) {
+      r[_v].dir = d ;
     }
   }
 }
@@ -537,14 +540,13 @@ static void argints(char *prog,cmd_t *d, char *p,ints_t *r) {
   }
 }
 
-static int get_name_idx(prfdirs_t *r,char *name) {
-  char **env = r->names ;
-  for (int k = 0 ; k < r->nvars ; k++) {
-    if (strcmp(name,env[k]) == 0) return k ;
+static prfone_t *get_name_slot(prfproc_t *p,char *name) {
+  int nvars = p->nvars ;
+  prfone_t *q = p->t ;
+  for (int _v = 0 ; _v < nvars ; _v++) {
+    if (strcmp(name,q[_v].name) == 0) return &q[_v] ;
   }
-  fprintf(stderr,"Bad location name: %s\n",name) ;
-  fatal("Bad input") ;
-  return -1 ;
+  return NULL ; /* Name not found */
 }
 
 
@@ -563,7 +565,6 @@ static void argoneprefetch(char *prog,cmd_t *d, char *p, prfdirs_t *r) {
   }
   set_prefetch(r,dir) ;
 }
-
 int parse_prefetch(char *p, prfdirs_t *r) {
   if (!*p) return 1 ;
   for ( ;; ) {
@@ -578,7 +579,12 @@ int parse_prefetch(char *p, prfdirs_t *r) {
       p++ ;
     }
     *p = '\0' ;
-    int loc_idx = get_name_idx(r,p0) ;
+    prfone_t *loc_slot = get_name_slot(&r->t[proc],p0) ;
+    if (loc_slot == NULL) { 
+      fprintf(stderr,"Proc %i does not access variable %s\n",proc,p0) ;
+      *p = '=' ;
+      return 0 ;
+    }
     *p = '=' ;
     char c = *++p;
     prfdir_t dir = none ;
@@ -593,7 +599,7 @@ int parse_prefetch(char *p, prfdirs_t *r) {
       dir = touch_store ;
       break ;
     }
-    r->t[proc*r->nvars+loc_idx] = dir ;
+    loc_slot->dir = dir ;
     c = *++p ;
     if (c == '\0') return 1 ;
     else if (c == ',') p++ ;

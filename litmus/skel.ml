@@ -189,6 +189,13 @@ end = struct
 
 (* Location utilities *)
   let get_global_names t = List.map fst t.T.globals
+  let find_index  v =
+    let rec find_rec k = function
+      | [] -> assert false
+      | w::ws ->          
+          if String.compare v w = 0 then k
+          else find_rec (k+1) ws in
+    find_rec 0
 
   let get_final_locs t =
     LocSet.elements
@@ -242,20 +249,20 @@ end = struct
   | Direct -> sprintf "_a->%s[_i]" a
   | Indirect -> sprintf "*(_a->%s[_i])" a
 
-    
+        
 (* Right value *)
   let dump_a_addr = match memory with
   | Direct -> sprintf "&(_a->%s[_i])"
   | Indirect -> sprintf "_a->%s[_i]"
 
   let dump_a_v = function
-  | Concrete i ->  sprintf "%i" i
-  | Symbolic s -> dump_a_addr s
+    | Concrete i ->  sprintf "%i" i
+    | Symbolic s -> dump_a_addr s
 
 (* Right value, casted if pointer *)
   let dump_a_v_casted = function
-  | Concrete i ->  sprintf "%i" i
-  | Symbolic s -> sprintf "((int *)%s)" (dump_a_addr s)
+    | Concrete i ->  sprintf "%i" i
+    | Symbolic s -> sprintf "((int *)%s)" (dump_a_addr s)
 
 (* Dump left & right values when context is available *)
 
@@ -264,7 +271,7 @@ end = struct
   | Direct -> sprintf "%s"
   | Indirect -> sprintf "mem_%s"
 
-    
+        
 (* Right value from ctx *)
   let dump_ctx_addr = match memory with
   | Direct -> sprintf "&(ctx.%s[_i])"
@@ -326,7 +333,7 @@ end = struct
     | Implies (p1,p2) ->
         fprintf chan "!(%a) || (%a)" dump_prop p1 dump_prop p2 in      
 
-  let dump_def p = O.fi "cond = %a;" dump_prop p in
+    let dump_def p = O.fi "cond = %a;" dump_prop p in
     match c with
     | ForallStates p
     | ExistsState p
@@ -404,22 +411,22 @@ end = struct
   This barrier is very sensitive to machine load.
 
   1- With unlimited spinning running time becomes huge when
-     there are more threads than processors.
-     test on conti (2 procs..)
+  there are more threads than processors.
+  test on conti (2 procs..)
   2- with settings 1000 * 200 for instance on conti, running
-     times become erratic. Maybe because a daemon running literally
-     stops the test: one proc is runnable while the other is spinning.
-     With higher sizes, running times are less variable from one
-     run to the other.
+  times become erratic. Maybe because a daemon running literally
+  stops the test: one proc is runnable while the other is spinning.
+  With higher sizes, running times are less variable from one
+  run to the other.
 
-     Running the test under low priority (nice) also demonstrates the effect:
-     running time doubles.
+  Running the test under low priority (nice) also demonstrates the effect:
+  running time doubles.
 
- However this is the best barrier we have, in normal conditions,
- especially with high SIZE_OF_TEST parameter. A benefit of
- such a high setting resides in pthread costs (lauch/join/fst_barrier) being
- amortized over a larger number of tests. It also often increases outcome
- variety, maybe by introduction of capacity cache misses.
+  However this is the best barrier we have, in normal conditions,
+  especially with high SIZE_OF_TEST parameter. A benefit of
+  such a high setting resides in pthread costs (lauch/join/fst_barrier) being
+  amortized over a larger number of tests. It also often increases outcome
+  variety, maybe by introduction of capacity cache misses.
 
   Limiting spinning is a BAD idea, it hinders outcome variety, even in
   normal load conditions.
@@ -1378,7 +1385,7 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
     if do_affinity then O.fi "int *cpu; /* On this cpu */" ;
     if do_timebase && have_timebase then
       O.fi "int delay; /* time base delay */" ;
-    if do_custom then O.fi "prfdir_t *prefetch;" ;
+    if do_custom then O.fi "prfproc_t *prefetch;" ;
     if do_verbose_barrier_local then O.fi "pm_t *p_mutex;" ;
     O.fi "ctx_t *_a;   /* In this context */" ;
     O.f "} parg_t;" ;
@@ -1449,11 +1456,12 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
           begin match addrs with
           | [] -> ()
           | _::_ ->
+              O.fx i "prfone_t *_prft = _b->prefetch->t;" ;
               O.fx i "prfdir_t _dir;" ;
               Misc.iteri
                 (fun k loc ->
                   let addr = dump_a_addr loc in
-                  O.fx i "_dir = _b->prefetch[%i];" k ;
+                  O.fx i "_dir = _prft[%i].dir;" k ;
                   O.fx i "if (_dir == flush) cache_flush(%s);" addr ;
                   O.fx i "else if (_dir == touch) cache_touch(%s);" addr ;
                   O.fx i "else if (_dir == touch_store) cache_touch_store(%s);" addr ;
@@ -1685,7 +1693,7 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
     if do_affinity then O.oii "parg[_p].cpu = &(_a->cpus[0]);" ;
     if do_timebase && have_timebase then O.oii "parg[_p].delay = _b->delays[_p];" ;
     if do_custom then
-      O.oii "parg[_p].prefetch = &_b->prefetch->t[_b->prefetch->nvars*_p];" ;
+      O.oii "parg[_p].prefetch = &_b->prefetch->t[_p];" ;
     if do_verbose_barrier_local then
       O.oii "parg[_p].p_mutex = _a->p_mutex;" ;
     loop_proc_postlude indent ;
@@ -2312,12 +2320,28 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
            (List.map (fun _ -> "DELTA_TB") test.T.code)) ;
       O.oi "ints_t delta_tb = { N, delta_t };" ;
     end ;
-    let nvars = List.length test.T.globals
+    let vars = get_global_names test
     and nprocs = List.length test.T.code in
     if do_custom then begin
-      O.fi "prfdir_t _prf[] = {%s};"
-        (String.concat "," (Misc.replicate (nvars*nprocs) "none"));
-      O.fi "prfdirs_t _prefetch = { N, %i, global_names, _prf };" nvars ;
+      List.iter
+        (fun (i,(out,_)) ->
+          let addrs = A.Out.get_addrs out in
+          O.fi "prfone_t _prf_t_%i[] = { %s };" i
+            (String.concat ", "
+               (List.map
+                  (fun loc ->
+                    sprintf "{ global_names[%i], none, }"
+                      (find_index loc vars))
+               addrs)) ;            
+          O.fi "prfproc_t _prf_%i = { %i, _prf_t_%i}; "
+            i (List.length addrs) i)
+        test.T.code ;
+      O.fi "prfproc_t _prf_procs_t[] = { %s };"
+        (String.concat ", "
+           (List.map
+              (fun k -> sprintf "_prf_%i" k)
+              (Misc.interval 0 nprocs))) ;
+      O.fi "prfdirs_t _prefetch = { %i, _prf_procs_t }; " nprocs ;
       begin
         try
           let prf = List.assoc "Prefetch" test.T.info in
