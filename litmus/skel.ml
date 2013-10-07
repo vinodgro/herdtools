@@ -1423,11 +1423,12 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
         | None -> ()
         | Some _ -> O.fi "int _stride = _a->_p->stride;"
         end ;
+        let addrs = A.Out.get_addrs out in
         List.iter
           (fun a ->
             let t = find_global_type a env in
             O.fi "%s *%s = _a->%s;" (dump_global_type t) a a)
-          (A.Out.get_addrs out) ;
+          addrs ;
         List.iter
           (fun (r,t) ->
             let name = A.Out.dump_out_reg  proc r in
@@ -1445,8 +1446,7 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
               indent2 in
         if do_custom then begin
           let i = iloop in
-          let vars = get_global_names test in
-          begin match vars with
+          begin match addrs with
           | [] -> ()
           | _::_ ->
               O.fx i "prfdir_t _dir;" ;
@@ -1458,7 +1458,7 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
                   O.fx i "else if (_dir == touch) cache_touch(%s);" addr ;
                   O.fx i "else if (_dir == touch_store) cache_touch_store(%s);" addr ;
                   ())
-                vars
+                addrs
           end
         end else begin
           let vars = get_global_names test in
