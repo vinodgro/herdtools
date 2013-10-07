@@ -59,6 +59,7 @@ val last : 'a list -> 'a
 val pp_list :
   out_channel -> string -> (out_channel -> 'a -> unit) -> 'a list -> unit
 val rev_iter : ('a -> unit) -> 'a list -> unit
+val interval : int -> int -> int list
 val replicate : int -> 'a -> 'a list
 val iteri : (int -> 'a -> unit) -> 'a list -> unit
 val mapi : (int -> 'a -> 'b) -> 'a list -> 'b list

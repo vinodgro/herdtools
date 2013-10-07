@@ -127,6 +127,7 @@ let rec rev_iter f  = function
   | [] -> ()
   | x::xs -> rev_iter f xs ; f x
 
+let rec interval n m = if n < m then n::interval (n+1) m else []
 let rec replicate n x =
   if n <= 0 then [] else x::replicate (n-1) x
 

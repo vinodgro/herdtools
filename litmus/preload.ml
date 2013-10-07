@@ -11,11 +11,11 @@
 (*********************************************************************)
 
 
-
+type c = One | Two
 type t =
   | NoPL|RandomPL|CustomPL
   | StaticPL (* Hardwired prefetch *)
-  | Static2PL
+  | StaticNPL of c
 
 let tags = ["no";"random";"custom";"static";"static2"]
 
@@ -24,7 +24,8 @@ let parse tag = match String.lowercase tag with
 | "true"|"random" -> Some RandomPL
 | "custom" -> Some CustomPL
 | "static" -> Some StaticPL
-| "static2" -> Some Static2PL
+| "static1" -> Some (StaticNPL One)
+| "static2" -> Some (StaticNPL Two)
 | _ -> None
 
 let pp = function
@@ -32,4 +33,5 @@ let pp = function
   | RandomPL -> "random"
   | CustomPL -> "custom"
   | StaticPL -> "static"
-  | Static2PL -> "static2"
+  | StaticNPL One -> "static1"
+  | StaticNPL Two -> "static2"

@@ -89,15 +89,15 @@ end = struct
   open Preload
   let do_randompl =
     match Cfg.preload with RandomPL -> true
-    | NoPL|CustomPL|StaticPL|Static2PL -> false
+    | NoPL|CustomPL|StaticPL|StaticNPL _ -> false
   let do_custom =
     match Cfg.preload with CustomPL -> true 
-    | Static2PL|StaticPL|NoPL|RandomPL -> false
+    | StaticNPL _|StaticPL|NoPL|RandomPL -> false
   let do_staticpl =
     match Cfg.preload with StaticPL -> true
-    | CustomPL|NoPL|RandomPL|Static2PL -> false
-  let do_static2pl =
-    match Cfg.preload with Static2PL -> true
+    | CustomPL|NoPL|RandomPL|StaticNPL _ -> false
+  let do_staticNpl =
+    match Cfg.preload with StaticNPL _ -> true
     | CustomPL|NoPL|RandomPL|StaticPL -> false
 
   let ws = Cfg.word
@@ -651,7 +651,7 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
         O.o "" ; touch_def () ;  O.o "" ;
         O.o "" ; touch_store_def () ;  O.o "" ;
         ()
-  |StaticPL|Static2PL ->
+  |StaticPL|StaticNPL _ ->
       fun test ->
         let prf =
           Prefetch.parse (get_prefetch_info test) in
@@ -1488,9 +1488,17 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
                     Warn.warn_always
                       "Variable %s from prefetch is absent in test" loc
                 end) prf in
-          if do_static2pl then begin
-            iter
-              (fun f loc -> O.fx iloop "if (rand_bit(&(_a->seed))) %s(%s);" f loc)
+          if do_staticNpl then begin
+            match Cfg.preload with
+            | Preload.StaticNPL Preload.One ->
+                iter
+                  (fun f loc ->
+                    O.fx iloop "%s(%s);" f loc)  
+            | Preload.StaticNPL Preload.Two ->
+                iter
+                  (fun f loc ->
+                    O.fx iloop "if (rand_bit(&(_a->seed))) %s(%s);" f loc)
+            | _ -> assert false
           end else if do_staticpl then begin
             O.fx iloop "switch (_static_prefetch) {" ;
             let i = iloop in
@@ -2241,7 +2249,7 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
         O.fi "fprintf(out,\"%s\",\"%s\");" fmt "Prefetch" ;
         O.oi "prefetch_dump(out,cmd->prefetch);" ;
         O.oi "putc('\\n',out);"
-    | StaticPL|Static2PL ->
+    | StaticPL|StaticNPL _ ->
         let fmt = "%s=%s\\n" in
         let prf = get_prefetch_info test in
         O.fi "fprintf(out,\"%s\",\"%s\",\"%s\");" fmt "Prefetch" prf

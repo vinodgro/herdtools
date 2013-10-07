@@ -1103,13 +1103,14 @@ the running logical processors of threads are also shown.
 
 \subsection{Advanced \label{preload:custom}prefetch control}
 Supplying the tags
-\opt{custom},\opt{static} or~\opt{static2} to \prog{litmus} command line
-option \opt{-preload} commands the insertion of cache prefetch or flush
+\opt{custom}, \opt{static}, \opt{static1} or~\opt{static2} to
+\prog{litmus} command line option \opt{-preload}
+commands the insertion of cache prefetch or flush
 instructions before every test instance.
 
 In custom mode the execution of such cache management instruction
-is under total user control, the other two, ``static'' modes offer
-less control to the user.
+is under total user control, the other, ``static'', modes offer
+less control to the user, for the sake of not altering test code proper.
 
 \subsubsection{Custom prefetch}
 Custom prefetch mode offers complete control over
@@ -1150,9 +1151,11 @@ threads and all variables, for instance:
 \begin{verbatim}
 % ./6.SB.exe -pra T
 \end{verbatim}
-will perform a run where every test thread touches all test locations
-(\emph{i.e.} \texttt{x}, \texttt{y}, \texttt{z}, \texttt{a}, \texttt{b},
-\texttt{c}) before loop synchronising and executing test code proper.
+will perform a run where every test thread touches the test locations
+that it refers to
+(\emph{i.e.} \texttt{x} and~\texttt{y} for Thread~0, \texttt{y}
+and \texttt{z} for Thread~1, etc.)
+before executing test code proper.
 Although one may achieve interesting results by using
 this \opt{-pra} option, the more selective
 \opt{-prf} option should prove more useful.
@@ -1176,13 +1179,13 @@ at the \ahref{6.SB.litmus}{test code}
 or at the \ahref{6.SB.png}{diagram} of the target execution.
 Let us have a try:
 \begin{verbatim}
-% ./6.SB.exe -prf 0:y=T,1:z=T,2:a=T,3:b=T,4:c=T,5:x=T
+./6.SB.exe -prf 0:y=T,1:z=T,2:a=T,3:b=T,4:c=T,5:x=T               
 Test 6.SB Allowed
 Histogram (63 states)
-63    *>0:EAX=0; 1:EAX=0; 2:EAX=0; 3:EAX=0; 4:EAX=0; 5:EAX=0;
+10    *>0:EAX=0; 1:EAX=0; 2:EAX=0; 3:EAX=0; 4:EAX=0; 5:EAX=0;
 ...
 Witnesses
-Positive: 63, Negative: 999937
+Positive: 10, Negative: 999990
 ...
 Prefetch=0:y=T,1:z=T,2:a=T,3:b=T,4:c=T,5:x=T
 ...
@@ -1229,9 +1232,12 @@ Then we run the test by:
 % ./6.SB+Prefetch.exe
 Test 6.SB Allowed
 Histogram (63 states)
-500   *>0:EAX=0; 1:EAX=0; 2:EAX=0; 3:EAX=0; 4:EAX=0; 5:EAX=0;
+674   *>0:EAX=0; 1:EAX=0; 2:EAX=0; 3:EAX=0; 4:EAX=0; 5:EAX=0;
 ...
-Prefetch=0:y=T,0:x=F,1:z=T,1:y=F,2:z=F,2:a=T,3:b=T,3:a=F,4:c=T,4:b=F,5:x=T,5:c=F
+Witnesses
+Positive: 674, Negative: 999326
+...
+Prefetch=0:x=F,0:y=T,1:y=F,1:z=T,2:a=T,2:z=F,3:a=F,3:b=T,4:b=F,4:c=T,5:c=F,5:x=T
 ...
 \end{verbatim}
 One may notice that the prefetch directives from the source file
@@ -1244,12 +1250,145 @@ The  \opt{-hints} command line option takes a filename as  argument.
 This file is a \ahrefloc{defmapping}{mapping} that associates
 new metadata to test names.
 As an example, we reverse \prog{diy} scheme for cache management directives:
-to accelerating entry accesses and delaying exit accesses.
+accelerating entry accesses and delaying exit accesses:
 \begin{verbatim}
 % cat map.txt
-6.SB Prefetch=0:y=W,0:x=F,1:z=W,1:y=F,2:z=F,2:a=W,3:b=F,3:a=F,4:c=W,4:b=F,5:x=W,5:c=F
+6.SB Prefetch=0:x=W,0:y=F,1:y=W,1:z=F,2:a=F,2:z=W,3:a=W,3:b=F,4:b=W,4:c=F,5:c=W,5:x=F
+% litmus -mem indirect -preload custom -hints map.txt -o R 6.SB.litmus
+% cd R
+% make 
+...
+% ./6.SB.exe 
+Test 6.SB Allowed
+Histogram (63 states)
+108   *>0:EAX=0; 1:EAX=0; 2:EAX=0; 3:EAX=0; 4:EAX=0; 5:EAX=0;
+...
+Prefetch=0:x=W,0:y=F,1:y=W,1:z=F,2:a=F,2:z=W,3:a=W,3:b=F,4:b=W,4:c=F,5:c=W,5:x=F
+...
 \end{verbatim}
+As we see above, the final condition validates.
+It does so in spite of
+the apparently unfavourable cache management directives.
 
+We can experiment further without recompilation, by
+using the \opt{-pra} and~\opt{-prf} command line options of
+the test executable. Those are parsed left-to-right, so that we can
+(1) cancel any default cache management directive with
+\opt{-pra I} and~(2) enable cache touch for the stores:
+\begin{verbatim}
+% ./6.SB.exe -pra I -prf 0:x=W -prf 1:y=W -prf 2:z=W -prf 3:a=W -prf 4:b=W -prf 5:c=W
+Test 6.SB Allowed
+...
+Witnesses
+Positive: 0, Negative: 1000000
+...
+Prefetch=0:x=W,1:y=W,2:z=W,3:a=W,4:b=W,5:c=W
+\end{verbatim}
+As we see, the final condition does not validate.
+
+By contrast, flushing or touching the locations that the threads load permit to
+repetitively achieve validation:
+\begin{verbatim}
+chi% ./6.SB.exe -pra I -prf 0:y=F -prf 1:z=F -prf 2:a=F -prf 3:b=F -prf 4:c=F -prf 5:x=F
+Test 6.SB Allowed
+Histogram (63 states)
+211   *>0:EAX=0; 1:EAX=0; 2:EAX=0; 3:EAX=0; 4:EAX=0; 5:EAX=0;
+...
+% ./6.SB.exe -pra I -prf 0:y=T -prf 1:z=T -prf 2:a=T -prf 3:b=T -prf 4:c=T -prf 5:x=T
+Test 6.SB Allowed
+Histogram (63 states)
+10    *>0:EAX=0; 1:EAX=0; 2:EAX=0; 3:EAX=0; 4:EAX=0; 5:EAX=0;
+...
+\end{verbatim}
+As a conclusion, interpreting the impact of cache management
+directives is not easy. However, custom preload mode
+(litmus command line option \opt{-preload custom}) and test executable
+options \opt{-pra} and~\opt{-prf} allow experimentation on specific tests.
+
+
+\subsubsection{``Static'' prefetch control}
+Custom prefetch mode comes handy when one wants to tailor cache management
+directives for a particular test.
+In practice, we run batches of tests using source metadata for
+prefetch directives.
+In such a setting, the code that interprets the
+prefetch directives is useless,
+as we do not use the \opt{-prf} option of the test executables.
+As this code get executed before each test thread code, it may impact test
+results.
+It is desirable to supress this code from test executable, still
+performing cache management instructions.
+To that aim, \prog{litmus} provides some ``static'' preload modes, enabled
+with command line options \opt{-preload static},
+\opt{-preload static1} and~\opt{-preload static2}.
+
+In the former mode  \opt{-preload static} and without any further user
+intervention, each test thread executes the cache management
+instructions commanded by the \verb+Prefetch+ metadata:
+\begin{verbatim}
+% mkdir -p S
+% litmus -mem indirect -preload static -o R 6.SB+Prefetch.litmus
+% make -C S
+% S/6.SB+Prefetch.exe
+Test 6.SB Allowed
+Histogram (63 states)
+804   *>0:EAX=0; 1:EAX=0; 2:EAX=0; 3:EAX=0; 4:EAX=0; 5:EAX=0;
+...
+Observation 804 999196
+...
+\end{verbatim}
+As we can see above, the effect of the  cache management
+instructions looks more favorable than in custom preload mode.
+
+Users still have a limited control on the
+execution of cache management instructions: produced executable accept
+a new \opt{-prs <n>} option, which take a positive or null integer as argument.
+Then, each test thread executes the cache
+management instructions commanded by source metadata with probability~$1/n$,
+the special value $n=0$ disabling prefetch altogether.
+The default for the \opt{-prs} options is ``\opt{1}'' (always execute
+the cache management instructions).
+Let us try:
+\begin{verbatim}
+% S/6.SB+Prefetch.exe -prs 0 | grep Observation
+Observation 6.SB Never 0 1000000
+% S/6.SB+Prefetch.exe -prs 1 | grep Observation
+Observation 6.SB Sometimes 901 999099
+% S/6.SB+Prefetch.exe -prs 2 | grep Observation
+Observation 6.SB Sometimes 29 999971
+% S/6.SB+Prefetch.exe -prs 3 | grep Observation
+Observation 6.SB Sometimes 16 999984
+\end{verbatim}
+In those experiments we show the ``\verb+Observation+'' field of \prog{litmus}
+output: this field gives the count of outcomes that validate the final
+condition, followed by the count of outcomes that do not validate
+the final condition. The above counts confirm that
+cache management instructions favor validation.
+
+The remaining preload modes \opt{static1} and~\opt{static2} are similar,
+except that they produce executable files that do not accept
+the \opt{-prs} option. Furthermore, in the former
+mode \opt{-preload static1} cache management instructions are always executed,
+while in the latter mode \opt{-preload static2}
+cache management instructions are  executed with probability~$1/2$.
+Those modes thus act as pure static mode
+(\prog{litmus} option \opt{-preload static}),
+with runtime options \opt{-prs 1} and~\opt{-prs 2} respectively.
+Furhermore,
+as the test scaffold includes no code to interpret the \opt{-prs <n>}
+switch, the test code is less perturbed.
+In practice and for the \ltest{6.SB} example, there is little difference:
+\begin{verbatim}
+% mkdoir -p S1 S2
+% litmus -mem indirect -preload static1 -o S1 6.SB+Prefetch.litmus
+% litmus -mem indirect -preload static2 -o S2 6.SB+Prefetch.litmus
+% make -C S1 && make -C S2
+...
+% S1/6.SB+Prefetch.exe | grep Observation
+Observation 6.SB Sometimes 1119 998881
+% S2/6.SB+Prefetch.exe | grep Observation
+Observation 6.SB Sometimes 16 999984
+\end{verbatim}
 
 \section{Usage of \prog{litmus}}
 
@@ -1354,12 +1493,11 @@ Default is \opt{self}.
 \item[{\tt -prealloc <bool>}]
 Enable or disable pre-allocation mode, default disabled.
 In pre-allocation mode, memory is allocated before forking any thread.
-\item[{\tt -preload (no|random|custom|static)}]
+\item[{\tt -preload (no|random|custom|static|static1|static2)}]
 Specify preload mode (see Sec.~\ref{defpreload}), default is \texttt{random}.
-Starting from version 5.0 we provide the additional \texttt{custom}
-and \texttt{static} preload mode,
-for a finer control of pre-fetching and flushing of some memory locations
-by some threads. The feature is experimental and undocumented.
+Starting from version 5.0 we provide additional ``custom'' and ``static''
+modes for a finer control of prefetching and flushing of some memory locations
+by some threads. See Sec~\ref{preload:custom}.
 \item[{\tt -safer (no|all|write)}] Specify safer mode,
 default is \texttt{write}.
 When instructed to do so, executable files perform some consistency checks.

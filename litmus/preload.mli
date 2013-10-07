@@ -11,11 +11,11 @@
 (*********************************************************************)
 
 
-
+type c = One | Two
 type t =
   | NoPL|RandomPL|CustomPL
-  | StaticPL (* Hardwired prefetch *)
-  | Static2PL (* Old static preload *)
+  | StaticPL       (* Hardwired prefetch *)
+  | StaticNPL of c (* Old static preload *)
 
 val tags : string list
 val parse : string -> t option
