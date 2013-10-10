@@ -16,12 +16,12 @@ open Printf
 
 let parse_km opt s =  match Misc.string_of_intkm s with
 | Some x -> x
-| None ->    
+| None ->
     raise
       (Arg.Bad
          (sprintf
             "wrong argument '%s'; option '%s' expects an integer argument, possibly suffixed by k or m" s opt))
-        
+
 let argkm opt r usage =
   opt,Arg.String (fun s -> r := parse_km opt s),
   sprintf "<n[kKmM]?> %s, default %i" usage !r
@@ -59,7 +59,7 @@ let argboolo opt  r msg =
 let verbose = ref 0
 
 (* Special *)
-let tar = ref None 
+let tar = ref None
 let cross = ref false
 
 let set_tar b  = cross := false ; tar := Some b
@@ -135,6 +135,7 @@ let syncmacro = ref (-1)
 let signaling = ref false
 let xy = ref false
 let morearch = ref MoreArch.No
+let carch = ref None
 
 (* Arch dependent options *)
 type opt =
@@ -149,12 +150,15 @@ let ppcopt =
   { delay = 1024; gccopts = "-O2"; word = Word.WXX; }
 let armopt =
   { delay = 1024; gccopts = "-O2"; word = Word.WXX; }
+let copt =
+  { delay = 2048; gccopts = ""; word = Word.WXX; }
 
 let get_default arch = match arch with
-| Archs.X86 -> x86opt
-| Archs.PPCGen
-| Archs.PPC -> ppcopt
-| Archs.ARM -> armopt
+| `X86 -> x86opt
+| `PPCGen
+| `PPC -> ppcopt
+| `ARM -> armopt
+| `C -> copt
 
 let replace_config f =
   let g = !mod_config in
@@ -170,6 +174,8 @@ let get_gccopts opt = opt.gccopts
 
 let set_word w = replace_config (fun o ->  { o with word = w; })
 let get_word opt = opt.word
+
+let set_carch x = carch := Some x
 
 (* More *)
 

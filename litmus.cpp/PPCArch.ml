@@ -63,13 +63,13 @@ module Make (O:Arch.Config)(V:Constant.S) = struct
   include
       ArchExtra.Make(O)
       (struct
-        module V = V 
+        module V = V
 
-	type arch_reg = reg
-        let arch = Archs.PPC
+        type arch_reg = reg
+        let arch = `PPC
         let forbidden_regs = [Ireg GPR0]
-	let pp_reg = pp_reg
-	let reg_compare = reg_compare
+        let pp_reg = pp_reg
+        let reg_compare = reg_compare
         let reg_to_string = reg_to_string
         let internal_init r =
           if reg_compare r base = 0 then Some ("_a->_scratch","int")

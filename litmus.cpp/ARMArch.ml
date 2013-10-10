@@ -34,13 +34,13 @@ module Make(O:Arch.Config)(V:Constant.S) = struct
   include
       ArchExtra.Make(O)
       (struct
-        module V = V 
+        module V = V
 
-	type arch_reg = reg
-        let arch = Archs.ARM
+        type arch_reg = reg
+        let arch = `ARM
         let forbidden_regs = []
-	let pp_reg = pp_reg
-	let reg_compare = reg_compare
+        let pp_reg = pp_reg
+        let reg_compare = reg_compare
         let reg_to_string = reg_to_string
         let internal_init r =
           let some s = Some (s,"int") in

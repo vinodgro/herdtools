@@ -90,11 +90,12 @@ val signaling : bool ref
 val xy : bool ref
 val morearch : MoreArch.t ref
 val pldw : bool ref
+val carch : Archs.System.t option ref
 
 (* Arch dependent option *)
 type opt
 
-val get_default : Archs.t -> opt
+val get_default : [< Archs.t ] -> opt
 val get_dependent : unit -> (opt -> opt)
 
 val set_delay : int -> unit
@@ -105,5 +106,7 @@ val get_word : opt -> Word.t
 
 val set_gccopts : string -> unit
 val get_gccopts : opt -> string
+
+val set_carch : Archs.System.t -> unit
 
 (* *)

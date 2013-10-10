@@ -47,6 +47,7 @@ module type CommonConfig = sig
   val xy : bool
   val pldw : bool
   val morearch : MoreArch.t
+  val carch : Archs.System.t option
   val syncconst : int
   val signaling : bool
   val numeric_labels : bool
@@ -93,7 +94,7 @@ end = struct
 
   module Make
       (O:Config)
-      (A:Arch.S) 
+      (A:Arch.S)
       (L:GenParser.LexParse with type instruction = A.pseudo)
       (XXXComp : XXXCompile.S with module A = A) =
     struct
@@ -117,7 +118,7 @@ end = struct
       let hash_ok env tname hash =
         try
           let ohash = StringMap.find tname env in
-          if String.compare hash.hash ohash.hash <> 0 then begin 
+          if String.compare hash.hash ohash.hash <> 0 then begin
             Warn.user_error "Unconsistent hashes for test %s, previous file %s"
               tname ohash.filename
           end else begin
@@ -130,7 +131,7 @@ end = struct
       let change_hint hint name t =
         try
           let more_info = Hint.get hint name in
-          let info = 
+          let info =
             more_info @
             List.filter
               (fun (k,_) ->
@@ -203,15 +204,15 @@ end = struct
       let check_rename = OT.check_rename
     end
 
-      
+
   module SP = Splitter.Make(LexConfig)
 
   let from_chan hint avoid_cycle fst cycles
-      hash_env name in_chan out_chan =  
+      hash_env name in_chan out_chan =
 (* First split the input file in sections *)
     let { Splitter.arch=arch ; _ } as splitted =
       SP.split name in_chan in
-    let tname = splitted.Splitter.name.Name.name in      
+    let tname = splitted.Splitter.name.Name.name in
     if OT.check_name tname then begin
 (* Then call appropriate compiler, depending upon arch *)
       let module V = SymbConstant in
@@ -235,17 +236,18 @@ end = struct
         include OT
         include ODep
         let debuglexer = debuglexer
+        let carch = lazy (assert false)
       end in
-      match arch with
-      | PPC ->
-	  let module PPC = PPCArch.Make(OC)(V) in
-	  let module PPCLexParse = struct
-	    type instruction = PPC.pseudo
-	    type token = PPCParser.token
+      match arch, OT.carch with
+      | `PPC, _ ->
+          let module PPC = PPCArch.Make(OC)(V) in
+          let module PPCLexParse = struct
+            type instruction = PPC.pseudo
+            type token = PPCParser.token
             module Lexer = PPCLexer.Make(LexConfig)
-	    let lexer = Lexer.token
-	    let parser = PPCParser.main
-	  end in
+            let lexer = Lexer.token
+            let parser = PPCParser.main
+          end in
           let module X =
             Make
               (OX)
@@ -254,45 +256,65 @@ end = struct
               (PPCCompile.Make(V)(OC)) in
           X.compile hint avoid_cycle fst cycles hash_env
             name in_chan out_chan splitted
-      | PPCGen ->
-	  let module PPCGen = PPCGenArch.Make(OC)(V) in
-	  let module PPCGenLexParse = struct
-	    type instruction = PPCGen.pseudo
-	    type token = PPCGenParser.token
+      | `PPCGen, _ ->
+          let module PPCGen = PPCGenArch.Make(OC)(V) in
+          let module PPCGenLexParse = struct
+            type instruction = PPCGen.pseudo
+            type token = PPCGenParser.token
             module Lexer = PPCGenLexer.Make(LexConfig)
-	    let lexer = Lexer.token
-	    let parser = PPCGenParser.main
-	  end in
+            let lexer = Lexer.token
+            let parser = PPCGenParser.main
+          end in
           let module X = Make (OX)
               (PPCGen) (PPCGenLexParse) (PPCGenCompile.Make(V)(OC)) in
           X.compile hint avoid_cycle fst cycles hash_env
             name in_chan out_chan splitted
-      | X86 ->
-	  let module X86 = X86Arch.Make(OC)(V) in
-	  let module X86LexParse = struct
-	    type instruction = X86.pseudo
-	    type token = X86Parser.token
+      | `X86, _ ->
+          let module X86 = X86Arch.Make(OC)(V) in
+          let module X86LexParse = struct
+            type instruction = X86.pseudo
+            type token = X86Parser.token
             module Lexer = X86Lexer.Make(LexConfig)
-	    let lexer = Lexer.token
-	    let parser = X86Parser.main
-	  end in
+            let lexer = Lexer.token
+            let parser = X86Parser.main
+          end in
           let module X = Make
               (OX)(X86) (X86LexParse) (X86Compile.Make(V)(OC)) in
           X.compile hint avoid_cycle fst cycles hash_env
             name in_chan out_chan splitted
-      | ARM ->
-	  let module ARM = ARMArch.Make(OC)(V) in
-	  let module ARMLexParse = struct
-	    type instruction = ARM.pseudo
-	    type token = ARMParser.token
+      | `ARM, _ ->
+          let module ARM = ARMArch.Make(OC)(V) in
+          let module ARMLexParse = struct
+            type instruction = ARM.pseudo
+            type token = ARMParser.token
             module Lexer = ARMLexer.Make(LexConfig)
-	    let lexer = Lexer.token
-	    let parser = ARMParser.main
-	  end in
+            let lexer = Lexer.token
+            let parser = ARMParser.main
+          end in
           let module X = Make (OX)
               (ARM) (ARMLexParse) (ARMCompile.Make(V)(OC)) in
           X.compile hint avoid_cycle fst cycles
             hash_env name in_chan out_chan splitted
+      | `C, Some given_carch ->
+          let module ARM = ARMArch.Make(OC)(V) in
+          let module ARMLexParse = struct
+            type instruction = ARM.pseudo
+            type token = ARMParser.token
+            module Lexer = ARMLexer.Make(LexConfig)
+            let lexer = Lexer.token
+            let parser = ARMParser.main
+          end in
+          let module X = Make
+              (struct
+                include OX
+                let carch = lazy given_carch
+              end)
+              (ARM) (ARMLexParse) (ARMCompile.Make(V)(OC)) in
+          X.compile hint avoid_cycle fst cycles
+            hash_env name in_chan out_chan splitted
+      | `C, None ->
+          W.warn "Test %s not performed because -carch is not given but required while using C arch" tname ;
+          Absent arch
     end else begin
       W.warn "Test %s not performed" tname ;
       Absent arch
@@ -309,5 +331,5 @@ end = struct
 (* Call generic tar builder/runner *)
       module DF = DumpRun.Make (OT)(Tar) (struct let from_file = from_file end)
 
-      let from_files = DF.from_files        
+      let from_files = DF.from_files
     end

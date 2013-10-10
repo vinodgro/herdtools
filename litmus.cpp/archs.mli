@@ -10,12 +10,22 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Current architecture *)
-type t =
-  | X86
-  | PPC
-  | ARM
-  | PPCGen
+module System : sig
+  (* Current architecture *)
+  type t =
+    [ `X86
+    | `PPC
+    | `ARM
+    | `PPCGen
+    ]
+
+  val tags : string list
+  val parse : string -> t option
+  val lex : string -> t
+  val pp : t -> string
+end
+
+type t = [ System.t | `C ]
 
 val tags : string list
 val parse : string -> t option

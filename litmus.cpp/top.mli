@@ -39,6 +39,7 @@ module type CommonConfig = sig
   val xy : bool
   val pldw : bool
   val morearch : MoreArch.t
+  val carch : Archs.System.t option
   val syncconst : int
   val signaling : bool
   val numeric_labels : bool

@@ -133,7 +133,7 @@ end = struct
           if Filename.check_suffix s ".c" then
             let b = Filename.chop_suffix (Filename.basename s) ".c" in
             b :: k
-          else k) utils [] in          
+          else k) utils [] in
     List.iter
       (fun u ->
         let src = u ^ ".c" and obj = u ^ ".o" in
@@ -168,7 +168,7 @@ let run_tests names out_chan =
         | Interrupted (a,e) ->
             let msg =  match e with
             | Misc.Exit -> "None"
-            | Misc.Fatal msg 
+            | Misc.Fatal msg
             | Misc.UserError msg ->
                 Pos.pp_pos0 stderr name ;
                 Printf.eprintf "%s\n%!" msg ;
@@ -176,7 +176,7 @@ let run_tests names out_chan =
             | e -> raise e  in
             report_failure name msg out_chan ;
             a,docs,srcs,fst,cycles,hash_env)
-      names (Archs.X86,[],[],[],StringSet.empty,StringMap.empty) in
+      names (`X86,[],[],[],StringSet.empty,StringMap.empty) in
   begin match exp with
   | None -> ()
   | Some exp -> close_out exp
@@ -224,10 +224,10 @@ let dump_shell names =
           fprintf out_chan "  EXE=$1\n" ;
           fprintf out_chan "  scp -q -P $RPORT $EXE $RHOST: 2> /dev/null\n" ;
           fprintf out_chan "  while [ $? -ne 0 ]\n" ;
-          fprintf out_chan "  do\n" ;    
+          fprintf out_chan "  do\n" ;
           fprintf out_chan "    sleep 30\n" ;
           fprintf out_chan "    scp -q -P $RPORT $EXE $RHOST: 2> /dev/null\n" ;
-          fprintf out_chan "  done\n" ;    
+          fprintf out_chan "  done\n" ;
           fprintf out_chan "  true\n" ;
           fprintf out_chan "}\n" ;
           ()
@@ -247,11 +247,11 @@ let dump_shell names =
       output_line out_chan "head -1 comp.sh" ;
       output_line out_chan "echo \"LITMUSOPTS=$LITMUSOPTS\"" ;
       output_line out_chan "date" ;
-      arch,sources,utils)    
+      arch,sources,utils)
     (Tar.outname (MyName.outname "run" ".sh"))
 
 
-let dump_shell_cont arch sources utils =  
+let dump_shell_cont arch sources utils =
   let sources = List.map Filename.basename  sources in
 (* Shell script for sequential compilation *)
   let module O = struct
@@ -383,7 +383,7 @@ let dump_c xcode names =
           (List.rev docs) ;
         O.oi "end_report(argc,argv,out);" ;
         O.oi "my_date(out);" ;
-        O.o "}" ;        
+        O.o "}" ;
       end else begin
         O.o "static void run(int argc,char **argv,FILE *out) {" ;
         O.oi "my_date(out);" ;
@@ -408,7 +408,7 @@ let dump_c xcode names =
         O.oi "return 0;" ;
         O.o"}"
       end ;
-      arch,srcs,utils)      
+      arch,srcs,utils)
     (Tar.outname (MyName.outname "run" (if xcode then ".m" else ".c")))
 
 
@@ -418,7 +418,7 @@ let dump_c_cont xcode arch sources utils =
   Misc.output_protect
     (fun chan ->
       makefile_vars chan arch sources ;
-(* Various intermediate targets *)      
+(* Various intermediate targets *)
       fprintf chan "T=$(SRC:.c=.t)\n" ;
       fprintf chan "H=$(SRC:.c=.h)\n" ;
       if not xcode then begin
@@ -496,10 +496,10 @@ let dump_cross _arch =
   let dir = Filename.concat top dname in
   MySys.mkdir dir ;
   (* Put this in dir *)
-  Misc.output_protect 
+  Misc.output_protect
     (fun chan -> output_line chan (GD.gen_makefile ()))
     (Filename.concat dir "Makefile") ;
-  Misc.output_protect 
+  Misc.output_protect
     (fun chan -> GD.gen_readme chan)
     (Filename.concat dir "README.txt") ;
 (* Untar sources in src sub-directory *)
@@ -540,6 +540,6 @@ let from_files =
             | _ -> false in
             let arch,sources,utils = dump_c xcode names in
             dump_c_cont xcode arch sources utils ;
-            arch in        
+            arch in
       if Cfg.cross then dump_cross arch
 end

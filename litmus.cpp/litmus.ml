@@ -57,13 +57,15 @@ let opts =
    "-delay", Arg.Int set_delay,
    begin let get_delay a = Option.get_delay (Option.get_default a) in
    sprintf
-     "set timebase delay (default X86=%i, PPC=%i, ARM=%i)"
-     (get_delay X86)
-     (get_delay PPC)
-     (get_delay ARM) end ;
+     "set timebase delay (default X86=%i, PPC=%i, ARM=%i, C=%i)"
+     (get_delay `X86)
+     (get_delay `PPC)
+     (get_delay `ARM)
+     (get_delay `C)
+   end ;
    argbool "-vb" Option.verbose_barrier
      "show time of loop synchronisation" ;
-   argboolo "-vp" Option.verbose_prelude         
+   argboolo "-vp" Option.verbose_prelude
      "show some additional information on test as a prelude to test output" ;
    begin let module P = ParseTag.Make(Driver) in
    P.parse "-driver" Option.driver "select language of driver" end ;
@@ -101,7 +103,7 @@ let opts =
    P.parse "-smtmode" Option.smtmode
    "how logical processors from the same core are numbered" end;
    argint "-smt" Option.smt "specify <n>-ways SMT" ;
-   argbool "-prealloc" Option.prealloc 
+   argbool "-prealloc" Option.prealloc
      "alloc memory before forking any thread" ;
    begin let module P = ParseTag.Make(Speedcheck) in
    P.parse"-speedcheck" Option.speedcheck
@@ -110,12 +112,14 @@ let opts =
    "-ccopts", Arg.String set_gccopts,
    begin let get_gccopts a = Option.get_gccopts (Option.get_default a) in
    sprintf
-     "<flags> set gcc compilation flags (default X86=\"%s\", PPC=\"%s\", ARM=\"%s\")"
-     (get_gccopts X86)
-     (get_gccopts ARM)
-     (get_gccopts PPC) end ;
+     "<flags> set gcc compilation flags (default X86=\"%s\", PPC=\"%s\", ARM=\"%s\", C=\"%s\")"
+     (get_gccopts `X86)
+     (get_gccopts `PPC)
+     (get_gccopts `ARM)
+     (get_gccopts `C)
+   end ;
    argstring "-gcc" Option.gcc "<name> name of gcc" ;
-   argstring "-linkopt" Option.linkopt "<flags> set gcc link option(s)" ;   
+   argstring "-linkopt" Option.linkopt "<flags> set gcc link option(s)" ;
    "-gas",
    Arg.Bool set_gas,
    "<bool> emit Gnu as extensions (default Linux/Mac=true, AIX=false)" ;
@@ -124,14 +128,18 @@ let opts =
    begin let module P = ParseTag.Make(TargetOS) in
    P.parse "-os" Option.targetos "target operating system" end ;
    begin let module P = ParseTag.Make(Word) in
-   P.parse_withfun "-ws" set_word 
+   P.parse_withfun "-ws" set_word
      (let get_word a = Option.get_word (Option.get_default a) in
-      sprintf "word_size (default X86=%s, PPC=%s, ARM=%s"
-        (Word.pp (get_word X86))
-        (Word.pp (get_word PPC))
-        (Word.pp (get_word ARM)))
-        None 
+      sprintf "word_size (default X86=%s, PPC=%s, ARM=%s, C=%s)"
+        (Word.pp (get_word `X86))
+        (Word.pp (get_word `PPC))
+        (Word.pp (get_word `ARM))
+        (Word.pp (get_word `C))
+     )
+     None
    end ;
+   begin let module P = ParseTag.Make(Archs.System) in
+   P.parse_withfun "-carch" Option.set_carch "Target architechture (C arch only)" None end ;
    argbool "-pldw" Option.pldw "use pldw instruction (ARM)" ;
 (********)
 (* Misc *)
@@ -163,7 +171,7 @@ let opts =
 
 let usage = sprintf   "Usage: %s [opts]* filename" pgm
 
-let () = Arg.parse opts (fun s -> sources := s :: !sources) usage 
+let () = Arg.parse opts (fun s -> sources := s :: !sources) usage
 
 let sources = !sources
 let kinds = !Option.kinds
@@ -226,6 +234,7 @@ let () =
       let signaling = !signaling
       let syncconst = syncconst
       let morearch = !morearch
+      let carch = !carch
       let xy = !xy
       let pldw = !pldw
       let gcc = !gcc
@@ -267,4 +276,3 @@ let () =
     |Misc.Fatal msg ->
     eprintf "Fatal error: %s\n%!" msg ;
     exit 2
-

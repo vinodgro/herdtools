@@ -28,18 +28,18 @@ end
 exception Error of string
 
 module type S = sig
-  type arch_reg 
+  type arch_reg
 
   type flow = Next | Branch of string
   type ins =
       { memo:string ; inputs:arch_reg list ;  outputs:arch_reg list;
         (* Jumps *)
         label:string option ;  branch : flow list ;
-        (* A la ARM conditional execution *) 
+        (* A la ARM conditional execution *)
         cond: bool ;
         comment: bool; }
 
-  val empty_ins : ins 
+  val empty_ins : ins
 
   type t = {
       init : (arch_reg * Constant.v) list ;
@@ -101,8 +101,8 @@ struct
                 | Concrete _ -> k)
               [] init)) in
     StringSet.elements set
-  
-  
+
+
   exception Internal of string
   let internal msg = raise (Internal msg)
 
@@ -121,7 +121,7 @@ struct
   let escape_percent s =
     Misc.map_string
       (fun c -> match c with
-      | '%' -> "%%" 
+      | '%' -> "%%"
       | _ -> String.make 1 c)
       s
 
@@ -183,8 +183,8 @@ struct
       let n = c - Char.code '0' in
       if 0 <= n && n <= 2 then n
       else internal (sprintf "bad digit '%i'" n)
-    
-    and substring i j = 
+
+    and substring i j =
       try String.sub t.memo i (j-i)
       with _ -> internal (sprintf "substring %i-%i" i j)
 
@@ -193,13 +193,13 @@ struct
       with
       | Not_found -> raise Not_found
       | _ -> internal (sprintf "look_escape %i" i) in
-      
+
 
     let b = Buffer.create 20 in
     let add = Buffer.add_string b in
     let len = String.length t.memo in
 
-    let rec do_rec i = 
+    let rec do_rec i =
       if i < len then
         try
           let j = look_escape i in
@@ -274,7 +274,7 @@ struct
     | Direct -> ()
     end ;
     ()
-    
+
   let dump_save_copies chan indent proc t =
     List.iter
       (fun reg ->
@@ -330,9 +330,9 @@ struct
     RegSet.diff all_trashed (RegSet.of_list t.final)
 
 
-  let dump_inputs chan t trashed =    
+  let dump_inputs chan t trashed =
     let all = all_regs t in
-    let in_outputs = RegSet.union trashed  (RegSet.of_list t.final) in      
+    let in_outputs = RegSet.union trashed  (RegSet.of_list t.final) in
 (*
     eprintf "Outputs in In: %a\n"
       (fun chan rs -> RegSet.pp chan "," pp_reg rs)
@@ -356,7 +356,7 @@ struct
           sprintf "%s \"r\" (%s)" (tag_reg_def reg) (dump_v v)
       | Some (s,_) ->
           sprintf "%s \"r\" (%s)" (tag_reg_def reg) s in
-          
+
     (* Input from state *)
     let ins =
       List.map
@@ -386,13 +386,13 @@ struct
             ("cc"::"memory"::
              List.map A.reg_to_string A.forbidden_regs)))
 
-      
+
   let dump chan indent env proc t =
     let rec dump_ins k ts = match ts with
     | [] -> ()
     | t::ts ->
         begin match t.label with
-        | Some _ -> 
+        | Some _ ->
             fprintf chan "\"%c_litmus_P%i_%i\\n\"\n"  A.comment proc k
         | None ->
             fprintf chan "\"%c_litmus_P%i_%i\\n%s\"\n"
@@ -433,5 +433,5 @@ struct
       dump_save_copies chan indent proc t
     end ;
     ()
-      
+
 end
