@@ -37,3 +37,6 @@ let pp a = match a with
 | PPC -> "PPC"
 | ARM -> "ARM"
 
+let arm = ARM
+let ppc = PPC
+let x86 = X86

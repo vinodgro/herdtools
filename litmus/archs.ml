@@ -40,3 +40,8 @@ let pp a = match a with
 | PPCGen -> "PPCGen"
 | ARM -> "ARM"
 
+
+let arm = ARM
+let ppc = PPC
+let x86 = X86
+let ppcgen = PPCGen

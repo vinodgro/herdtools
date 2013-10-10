@@ -408,18 +408,29 @@ exception NoObserver
     let open Config in
     function
       | [] -> i,[],[]
-      | (x,vs)::xvs ->
-          let i,c,f = match vs with
-          | []|[[_]] -> i,[],[]
-          | [[_;(v,_)]] ->
-              begin match O.do_observers with
-              | Local -> i,[],add_look_loc x v []
-              | Avoid|Accept -> i,[],[A.Loc x,Ints.singleton v]
+      | (x,vs)::xvs ->          
+          let i,c,f = match O.cond with
+          | Observe ->
+              let vs = List.flatten vs in
+              begin match vs with
+              | [] -> i,[],[]
+              | _::_ ->
+                  let v,_ = Misc.last vs in
+                  i,[],[A.Loc x,Ints.singleton v]
+              end
+          | Unicond -> assert false
+          | Cycle -> begin
+              match vs with
+              | []|[[_]] -> i,[],[]
+              | [[_;(v,_)]] ->
+                  begin match O.do_observers with
+                  | Local -> i,[],add_look_loc x v []
+                  | Avoid|Accept -> i,[],[A.Loc x,Ints.singleton v]
               | Enforce ->  
                   let i,c,f = build_observers p i x vs in
                   i,c,add_look_loc x v f
-              end
-          | _ ->
+                  end
+              | _ ->
               let v =
                 let v,_ = Misc.last (List.flatten vs) in
                 v in
@@ -428,7 +439,8 @@ exception NoObserver
               | _ ->
                   let i,c,f = build_observers p i x vs in
                   i,c,add_look_loc x v f
-              end in
+              end
+          end in
           let i,cs,fs =
             check_rec (p+List.length c) i xvs in
           i,c@cs,f@fs

@@ -59,7 +59,6 @@ module Make(Cfg:Config) (T:Test.S) (O:Indent.S) : sig
 end = struct
   module A = T.A
   module C = T.C
-  open Archs
   open Constant
 
 (* Final Conditions *)

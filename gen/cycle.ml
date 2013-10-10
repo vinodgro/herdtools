@@ -587,13 +587,13 @@ let rec group_rec x ns = function
       
       
 (* find changing location *)
-let find_change n =
-  let rec do_rec m =
-    if m.evt.loc <> m.next.evt.loc then Some m.next
-    else if m.next == n then 
-      None
-    else do_rec m.next in
-  do_rec n
+  let find_change n =
+    let rec do_rec m =
+      if m.evt.loc <> m.next.evt.loc then Some m.next
+      else if m.next == n then 
+        None
+      else do_rec m.next in
+    do_rec n
       
 
   let get_writes n =
@@ -611,16 +611,16 @@ let find_change n =
       | R -> k in
     do_rec n
 
-let get_observers n =
-  let e = n.evt in
-  assert (e.dir = W) ;
-  let k = Ints.empty in
-  let k = if e.proc >= 0 then Ints.add e.proc k else k in
-  let k = match n.edge.E.edge with
-  | E.Rf _ -> Ints.add n.next.evt.proc k
-  | E.Detour (Dir _) when n.detour == nil ->   Ints.add n.next.evt.proc k
-  | _ -> k in
-  k
+  let get_observers n =
+    let e = n.evt in
+    assert (e.dir = W) ;
+    let k = Ints.empty in
+    let k = if e.proc >= 0 then Ints.add e.proc k else k in
+    let k = match n.edge.E.edge with
+    | E.Rf _ -> Ints.add n.next.evt.proc k
+    | E.Detour (Dir _) when n.detour == nil ->   Ints.add n.next.evt.proc k
+    | _ -> k in
+    k
 
   let coherence n =
     let r = match find_change n with

@@ -21,3 +21,8 @@ val tags : string list
 val parse : string -> t option
 val lex : string -> t
 val pp : t -> string
+
+val arm : t
+val ppc : t
+val x86 : t
+val ppcgen : t

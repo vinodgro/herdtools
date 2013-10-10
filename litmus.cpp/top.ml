@@ -16,7 +16,6 @@
 (***********************************************)
 
 open Answer
-open Archs
 
 module type CommonConfig = sig
   val verbose : int

@@ -11,7 +11,7 @@
 (*********************************************************************)
 
 open Printf
-open Archs
+
 let pgm = if Array.length Sys.argv > 0 then Sys.argv.(0) else "litmus"
 
 (* Local options are in Option module *)

@@ -8,8 +8,6 @@
 (*  under the terms of the Lesser GNU General Public License.        *)
 (*********************************************************************)
 open Code
-open Misc
-open Printf
 
 
 exception CannotNormalise
@@ -86,9 +84,9 @@ module Make : functor (C:Config) -> functor (E:Edge.S) ->
           else y::do_rec m in
         do_rec n
 
-      let edges n = map (fun n -> n.edge) n
+      let _edges n = map (fun n -> n.edge) n
 
-      let pp n =
+      let _pp n =
         let xs = map (fun n -> E.pp_edge n.edge) n in
         String.concat " " xs
 

@@ -14,7 +14,7 @@ open Printf
 
 
 (* Who am I ? *)
-let arch = Archs.X86
+let arch = Archs.x86
 
 
 (*************)

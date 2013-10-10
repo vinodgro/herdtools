@@ -13,7 +13,7 @@
 open Printf
 
 (* Who am i ? *)
-let arch = Archs.ARM
+let arch = Archs.arm
 
 (*************)
 (* Registers *)
