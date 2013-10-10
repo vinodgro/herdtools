@@ -1316,7 +1316,7 @@ prefetch directives is useless,
 as we do not use the \opt{-prf} option of the test executables.
 As this code get executed before each test thread code, it may impact test
 results.
-It is desirable to supress this code from test executable, still
+It is desirable to supress this code from test executables, still
 performing cache management instructions.
 To that aim, \prog{litmus} provides some ``static'' preload modes, enabled
 with command line options \opt{-preload static},
@@ -1374,12 +1374,12 @@ cache management instructions are  executed with probability~$1/2$.
 Those modes thus act as pure static mode
 (\prog{litmus} option \opt{-preload static}),
 with runtime options \opt{-prs 1} and~\opt{-prs 2} respectively.
-Furhermore,
+Moreover,
 as the test scaffold includes no code to interpret the \opt{-prs <n>}
 switch, the test code is less perturbed.
 In practice and for the \ltest{6.SB} example, there is little difference:
 \begin{verbatim}
-% mkdoir -p S1 S2
+% mkdir -p S1 S2
 % litmus -mem indirect -preload static1 -o S1 6.SB+Prefetch.litmus
 % litmus -mem indirect -preload static2 -o S2 6.SB+Prefetch.litmus
 % make -C S1 && make -C S2

@@ -1,0 +1,12 @@
+##litmus -mach asus -mem direct -st 1 -driver C -o SRC/ASUS src/@all
+./co.exe -s 5M -r 2 -st 133 > CO.00
+./co.exe -s 5M -r 2 -st 1 > CO.01
+./co.exe -s 5M -r 2 -st 2 > CO.02
+./co.exe -s 5M -r 2 -st 3 > CO.03
+./co.exe -s 5M -r 2 -st 4 > CO.04
+./co.exe -s 5M -r 2 -st 5 > CO.05
+./co.exe -s 5M -r 2 -st 6 > CO.06
+./co.exe -s 5M -r 2 -st 7 > CO.07
+./co.exe -s 5M -r 2 -st 8 > CO.08
+./co.exe -s 5M -r 2 -st 33 > CO.09
+

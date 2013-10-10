@@ -1,0 +1,1309 @@
+Sun Apr 18 02:25:50 1971
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/R+dmbs.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM R+dmbs
+"DMBsWW Wse DMBsWR Fre"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | MOV R0,#3   ;
+ STR R0,[R2] | STR R0,[R2] ;
+ DMB         | DMB         ;
+ MOV R1,#2   | LDR R1,[R2] ;
+ STR R1,[R2] |             ;
+
+locations [x;  1:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	mov r6,#3
+	str r6,[r1]
+	dmb
+	ldr ip,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	dmb
+	mov r3,#2
+	str r3,[r1]
+Test R+dmbs Required
+Histogram (4 states)
+1035  :>1:R1=1; x=2;
+32176 :>1:R1=2; x=2;
+4985904:>1:R1=3; x=2;
+4980885:>1:R1=3; x=3;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=a7861f1ee7d35d7451d4aed6553fcbb2
+Cycle=Fre DMBsWW Wse DMBsWR
+Relax R+dmbs Ok 
+Safe=Fre Wse DMBsWW DMBsWR
+Com=Ws Fr
+Orig=DMBsWW Wse DMBsWR Fre
+Observation R+dmbs Always 10000000 0
+Time R+dmbs 9.98
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/MP+dmbs.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM MP+dmbs
+"DMBsWW Rfe DMBsRR Fre"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | LDR R0,[R2] ;
+ STR R0,[R2] | DMB         ;
+ DMB         | LDR R1,[R2] ;
+ MOV R1,#2   |             ;
+ STR R1,[R2] |             ;
+
+locations [x;  1:R0;  1:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr lr,[r1]
+	dmb
+	ldr ip,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	dmb
+	mov r3,#2
+	str r3,[r1]
+Test MP+dmbs Required
+Histogram (6 states)
+4988594:>1:R0=0; 1:R1=0; x=2;
+4359  :>1:R0=0; 1:R1=1; x=2;
+2722  :>1:R0=1; 1:R1=1; x=2;
+7220  :>1:R0=0; 1:R1=2; x=2;
+221930:>1:R0=1; 1:R1=2; x=2;
+4775175:>1:R0=2; 1:R1=2; x=2;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=7c53e54b407fa627a19d89e4bc945662
+Cycle=Rfe DMBsRR Fre DMBsWW
+Relax MP+dmbs Ok 
+Safe=Rfe Fre DMBsWW DMBsRR
+Com=Rf Fr
+Orig=DMBsWW Rfe DMBsRR Fre
+Observation MP+dmbs Always 10000000 0
+Time MP+dmbs 10.73
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/R+dmb+pos.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM R+dmb+pos
+"DMBsWW Wse PosWR Fre"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | MOV R0,#3   ;
+ STR R0,[R2] | STR R0,[R2] ;
+ DMB         | LDR R1,[R2] ;
+ MOV R1,#2   |             ;
+ STR R1,[R2] |             ;
+
+locations [x;  1:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	mov r6,#3
+	str r6,[r1]
+	ldr ip,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	dmb
+	mov r3,#2
+	str r3,[r1]
+Test R+dmb+pos Required
+Histogram (2 states)
+4781327:>1:R1=3; x=2;
+5218673:>1:R1=3; x=3;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=04f033c19b3f3bb665ec3439210f581f
+Cycle=Fre DMBsWW Wse PosWR
+Relax R+dmb+pos Ok 
+Safe=Fre Wse PosWR DMBsWW
+Com=Ws Fr
+Orig=DMBsWW Wse PosWR Fre
+Observation R+dmb+pos Always 10000000 0
+Time R+dmb+pos 10.74
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/MP+dmb+pos.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM MP+dmb+pos
+"DMBsWW Rfe PosRR Fre"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | LDR R0,[R2] ;
+ STR R0,[R2] | LDR R1,[R2] ;
+ DMB         |             ;
+ MOV R1,#2   |             ;
+ STR R1,[R2] |             ;
+
+locations [x;  1:R0;  1:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr lr,[r1]
+	ldr ip,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	dmb
+	mov r3,#2
+	str r3,[r1]
+Test MP+dmb+pos Required
+Histogram (4 states)
+5000128:>1:R0=0; 1:R1=0; x=2;
+228412:>1:R0=1; 1:R1=1; x=2;
+1     :>1:R0=0; 1:R1=2; x=2;
+4771459:>1:R0=2; 1:R1=2; x=2;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=adf77cf97f7bd9bb8d4d24915fa2313c
+Cycle=Rfe PosRR Fre DMBsWW
+Relax MP+dmb+pos Ok 
+Safe=Rfe Fre PosRR DMBsWW
+Com=Rf Fr
+Orig=DMBsWW Rfe PosRR Fre
+Observation MP+dmb+pos Always 10000000 0
+Time MP+dmb+pos 11.02
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/WW+dmb.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM WW+dmb
+"DMBsWW Wse"
+{0:R2=x;}
+ P0          ;
+ MOV R0,#1   ;
+ STR R0,[R2] ;
+ DMB         ;
+ MOV R1,#2   ;
+ STR R1,[R2] ;
+
+locations [x; ]
+forall (true)
+Generated assembler
+@START _litmus_P0
+	mov r1,#1
+	str r1,[r2]
+	dmb
+	mov r3,#2
+	str r3,[r2]
+Test WW+dmb Required
+Histogram (1 states)
+20000000:>x=2;
+Ok
+
+Witnesses
+Positive: 20000000, Negative: 0
+Condition forall (true) is validated
+Hash=0a9f250ba8b4ce76ae09259e322513f7
+Cycle=Wse DMBsWW
+Relax WW+dmb Ok 
+Safe=Wse DMBsWW
+Com=Ws
+Orig=DMBsWW Wse
+Observation WW+dmb Always 20000000 0
+Time WW+dmb 2.85
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/2+2W+dmbs.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM 2+2W+dmbs
+"DMBsWW Wse DMBsWW Wse"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | MOV R0,#3   ;
+ STR R0,[R2] | STR R0,[R2] ;
+ DMB         | DMB         ;
+ MOV R1,#2   | MOV R1,#4   ;
+ STR R1,[R2] | STR R1,[R2] ;
+
+locations [x; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	mov r2,#3
+	str r2,[r1]
+	dmb
+	mov r3,#4
+	str r3,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	dmb
+	mov r3,#2
+	str r3,[r1]
+Test 2+2W+dmbs Required
+Histogram (2 states)
+5000017:>x=2;
+4999983:>x=4;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=6bdfbad08eba47487643ed341ae49964
+Cycle=Wse DMBsWW Wse DMBsWW
+Relax 2+2W+dmbs Ok 
+Safe=Wse DMBsWW
+Com=Ws Ws
+Orig=DMBsWW Wse DMBsWW Wse
+Observation 2+2W+dmbs Always 10000000 0
+Time 2+2W+dmbs 9.37
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/S+dmbs.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM S+dmbs
+"DMBsWW Rfe DMBsRW Wse"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | LDR R0,[R2] ;
+ STR R0,[R2] | DMB         ;
+ DMB         | MOV R1,#3   ;
+ MOV R1,#2   | STR R1,[R2] ;
+ STR R1,[R2] |             ;
+
+locations [x;  1:R0; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr ip,[r1]
+	dmb
+	mov r6,#3
+	str r6,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	dmb
+	mov r3,#2
+	str r3,[r1]
+Test S+dmbs Required
+Histogram (5 states)
+4997583:>1:R0=0; x=2;
+25    :>1:R0=1; x=2;
+2462  :>1:R0=0; x=3;
+188850:>1:R0=1; x=3;
+4811080:>1:R0=2; x=3;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=9ecbc3078e865d679db454f96a767c1a
+Cycle=Rfe DMBsRW Wse DMBsWW
+Relax S+dmbs Ok 
+Safe=Rfe Wse DMBsWW DMBsRW
+Com=Rf Ws
+Orig=DMBsWW Rfe DMBsRW Wse
+Observation S+dmbs Always 10000000 0
+Time S+dmbs 10.11
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/2+2W+dmb+pos.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM 2+2W+dmb+pos
+"DMBsWW Wse PosWW Wse"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | MOV R0,#3   ;
+ STR R0,[R2] | STR R0,[R2] ;
+ DMB         | MOV R1,#4   ;
+ MOV R1,#2   | STR R1,[R2] ;
+ STR R1,[R2] |             ;
+
+locations [x; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	mov r2,#3
+	str r2,[r1]
+	mov r3,#4
+	str r3,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	dmb
+	mov r3,#2
+	str r3,[r1]
+Test 2+2W+dmb+pos Required
+Histogram (2 states)
+4778966:>x=2;
+5221034:>x=4;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=9562dfce79a928311136edb5fcd9ab87
+Cycle=Wse PosWW Wse DMBsWW
+Relax 2+2W+dmb+pos Ok 
+Safe=Wse PosWW DMBsWW
+Com=Ws Ws
+Orig=DMBsWW Wse PosWW Wse
+Observation 2+2W+dmb+pos Always 10000000 0
+Time 2+2W+dmb+pos 10.49
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/S+dmb+pos.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM S+dmb+pos
+"DMBsWW Rfe PosRW Wse"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | LDR R0,[R2] ;
+ STR R0,[R2] | MOV R1,#3   ;
+ DMB         | STR R1,[R2] ;
+ MOV R1,#2   |             ;
+ STR R1,[R2] |             ;
+
+locations [x;  1:R0; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr ip,[r1]
+	mov r6,#3
+	str r6,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	dmb
+	mov r3,#2
+	str r3,[r1]
+Test S+dmb+pos Required
+Histogram (5 states)
+4762911:>1:R0=0; x=2;
+2248  :>1:R0=1; x=2;
+237745:>1:R0=0; x=3;
+144998:>1:R0=1; x=3;
+4852098:>1:R0=2; x=3;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=6a170644019c2ab6c6b970b7baa62cfc
+Cycle=Rfe PosRW Wse DMBsWW
+Relax S+dmb+pos Ok 
+Safe=Rfe Wse PosRW DMBsWW
+Com=Rf Ws
+Orig=DMBsWW Rfe PosRW Wse
+Observation S+dmb+pos Always 10000000 0
+Time S+dmb+pos 9.95
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/WR+dmb.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM WR+dmb
+"DMBsWR Fre"
+{0:R2=x;}
+ P0          ;
+ MOV R0,#1   ;
+ STR R0,[R2] ;
+ DMB         ;
+ LDR R1,[R2] ;
+
+locations [x;  0:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P0
+	mov r7,#1
+	str r7,[r1]
+	dmb
+	ldr ip,[r1]
+Test WR+dmb Required
+Histogram (1 states)
+20000000:>0:R1=1; x=1;
+Ok
+
+Witnesses
+Positive: 20000000, Negative: 0
+Condition forall (true) is validated
+Hash=48b1c8e9273d79e3e6ca6caa314de740
+Cycle=Fre DMBsWR
+Relax WR+dmb Ok 
+Safe=Fre DMBsWR
+Com=Fr
+Orig=DMBsWR Fre
+Observation WR+dmb Always 20000000 0
+Time WR+dmb 3.22
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/SB+dmbs.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM SB+dmbs
+"DMBsWR Fre DMBsWR Fre"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | MOV R0,#2   ;
+ STR R0,[R2] | STR R0,[R2] ;
+ DMB         | DMB         ;
+ LDR R1,[R2] | LDR R1,[R2] ;
+
+locations [x;  0:R1;  1:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	mov r6,#2
+	str r6,[r1]
+	dmb
+	ldr ip,[r1]
+@START _litmus_P0
+	mov r6,#1
+	str r6,[r1]
+	dmb
+	ldr ip,[r1]
+Test SB+dmbs Required
+Histogram (4 states)
+10572 :>0:R1=1; 1:R1=1; x=1;
+4989484:>0:R1=1; 1:R1=2; x=1;
+4990301:>0:R1=1; 1:R1=2; x=2;
+9643  :>0:R1=2; 1:R1=2; x=2;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=84c974f8e12c69ba6ba0c48da8d6d6a8
+Cycle=Fre DMBsWR Fre DMBsWR
+Relax SB+dmbs Ok 
+Safe=Fre DMBsWR
+Com=Fr Fr
+Orig=DMBsWR Fre DMBsWR Fre
+Observation SB+dmbs Always 10000000 0
+Time SB+dmbs 9.25
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/SB+dmb+pos.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM SB+dmb+pos
+"DMBsWR Fre PosWR Fre"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | MOV R0,#2   ;
+ STR R0,[R2] | STR R0,[R2] ;
+ DMB         | LDR R1,[R2] ;
+ LDR R1,[R2] |             ;
+
+locations [x;  0:R1;  1:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	mov r6,#2
+	str r6,[r1]
+	ldr ip,[r1]
+@START _litmus_P0
+	mov r6,#1
+	str r6,[r1]
+	dmb
+	ldr ip,[r1]
+Test SB+dmb+pos Required
+Histogram (4 states)
+2     :>0:R1=1; 1:R1=1; x=1;
+4601658:>0:R1=1; 1:R1=2; x=1;
+5145411:>0:R1=1; 1:R1=2; x=2;
+252929:>0:R1=2; 1:R1=2; x=2;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=f3a0a66450643475b9155ca92a10d803
+Cycle=Fre PosWR Fre DMBsWR
+Relax SB+dmb+pos Ok 
+Safe=Fre PosWR DMBsWR
+Com=Fr Fr
+Orig=DMBsWR Fre PosWR Fre
+Observation SB+dmb+pos Always 10000000 0
+Time SB+dmb+pos 10.38
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/R+pos+dmb.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM R+pos+dmb
+"PosWW Wse DMBsWR Fre"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | MOV R0,#3   ;
+ STR R0,[R2] | STR R0,[R2] ;
+ MOV R1,#2   | DMB         ;
+ STR R1,[R2] | LDR R1,[R2] ;
+
+locations [x;  1:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	mov r6,#3
+	str r6,[r1]
+	dmb
+	ldr ip,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	mov r3,#2
+	str r3,[r1]
+Test R+pos+dmb Required
+Histogram (3 states)
+375944:>1:R1=2; x=2;
+5265259:>1:R1=3; x=2;
+4358797:>1:R1=3; x=3;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=391ec884102850913c7db50079672773
+Cycle=Fre PosWW Wse DMBsWR
+Relax R+pos+dmb Ok 
+Safe=Fre Wse PosWW DMBsWR
+Com=Ws Fr
+Orig=PosWW Wse DMBsWR Fre
+Observation R+pos+dmb Always 10000000 0
+Time R+pos+dmb 10.17
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/RW+dmb.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM RW+dmb
+"DMBsRW Rfe"
+{0:R2=x;}
+ P0          ;
+ LDR R0,[R2] ;
+ DMB         ;
+ MOV R1,#1   ;
+ STR R1,[R2] ;
+
+locations [x;  0:R0; ]
+forall (true)
+Generated assembler
+@START _litmus_P0
+	ldr ip,[r1]
+	dmb
+	mov r7,#1
+	str r7,[r1]
+Test RW+dmb Required
+Histogram (1 states)
+20000000:>0:R0=0; x=1;
+Ok
+
+Witnesses
+Positive: 20000000, Negative: 0
+Condition forall (true) is validated
+Hash=a84af5a900d9197c7edcb4e472add8e5
+Cycle=Rfe DMBsRW
+Relax RW+dmb Ok 
+Safe=Rfe DMBsRW
+Com=Rf
+Orig=DMBsRW Rfe
+Observation RW+dmb Always 20000000 0
+Time RW+dmb 3.22
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/LB+dmbs.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM LB+dmbs
+"DMBsRW Rfe DMBsRW Rfe"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ LDR R0,[R2] | LDR R0,[R2] ;
+ DMB         | DMB         ;
+ MOV R1,#1   | MOV R1,#2   ;
+ STR R1,[R2] | STR R1,[R2] ;
+
+locations [x;  0:R0;  1:R0; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr ip,[r1]
+	dmb
+	mov r6,#2
+	str r6,[r1]
+@START _litmus_P0
+	ldr ip,[r1]
+	dmb
+	mov r6,#1
+	str r6,[r1]
+Test LB+dmbs Required
+Histogram (4 states)
+85877 :>0:R0=0; 1:R0=0; x=1;
+4914406:>0:R0=2; 1:R0=0; x=1;
+87067 :>0:R0=0; 1:R0=0; x=2;
+4912650:>0:R0=0; 1:R0=1; x=2;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=3cc05340792f4d468fe242f4feaf1a48
+Cycle=Rfe DMBsRW Rfe DMBsRW
+Relax LB+dmbs Ok 
+Safe=Rfe DMBsRW
+Com=Rf Rf
+Orig=DMBsRW Rfe DMBsRW Rfe
+Observation LB+dmbs Always 10000000 0
+Time LB+dmbs 9.85
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/S+pos+dmb.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM S+pos+dmb
+"PosWW Rfe DMBsRW Wse"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | LDR R0,[R2] ;
+ STR R0,[R2] | DMB         ;
+ MOV R1,#2   | MOV R1,#3   ;
+ STR R1,[R2] | STR R1,[R2] ;
+
+locations [x;  1:R0; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr ip,[r1]
+	dmb
+	mov r6,#3
+	str r6,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	mov r3,#2
+	str r3,[r1]
+Test S+pos+dmb Required
+Histogram (3 states)
+5179206:>1:R0=0; x=2;
+702389:>1:R0=0; x=3;
+4118405:>1:R0=2; x=3;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=4aadc1b8c62acbae4e38893a221dcc8f
+Cycle=Rfe DMBsRW Wse PosWW
+Relax S+pos+dmb Ok 
+Safe=Rfe Wse PosWW DMBsRW
+Com=Rf Ws
+Orig=PosWW Rfe DMBsRW Wse
+Observation S+pos+dmb Always 10000000 0
+Time S+pos+dmb 9.05
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/LB+dmb+pos.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM LB+dmb+pos
+"DMBsRW Rfe PosRW Rfe"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ LDR R0,[R2] | LDR R0,[R2] ;
+ DMB         | MOV R1,#2   ;
+ MOV R1,#1   | STR R1,[R2] ;
+ STR R1,[R2] |             ;
+
+locations [x;  0:R0;  1:R0; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr ip,[r1]
+	mov r6,#2
+	str r6,[r1]
+@START _litmus_P0
+	ldr ip,[r1]
+	dmb
+	mov r6,#1
+	str r6,[r1]
+Test LB+dmb+pos Required
+Histogram (4 states)
+524822:>0:R0=0; 1:R0=0; x=1;
+4371842:>0:R0=2; 1:R0=0; x=1;
+180922:>0:R0=0; 1:R0=0; x=2;
+4922414:>0:R0=0; 1:R0=1; x=2;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=1950023ac1c9aa9d9fbc7e6fa52902de
+Cycle=Rfe PosRW Rfe DMBsRW
+Relax LB+dmb+pos Ok 
+Safe=Rfe PosRW DMBsRW
+Com=Rf Rf
+Orig=DMBsRW Rfe PosRW Rfe
+Observation LB+dmb+pos Always 10000000 0
+Time LB+dmb+pos 9.80
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/W+RW+dmb.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM W+RW+dmb
+"Rfe DMBsRW Wse"
+{0:R1=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | LDR R0,[R2] ;
+ STR R0,[R1] | DMB         ;
+             | MOV R1,#2   ;
+             | STR R1,[R2] ;
+
+locations [x;  1:R0; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr ip,[r1]
+	dmb
+	mov r6,#2
+	str r6,[r1]
+@START _litmus_P0
+	mov r3,#1
+	str r3,[r1]
+Test W+RW+dmb Required
+Histogram (3 states)
+5176441:>1:R0=0; x=1;
+662599:>1:R0=0; x=2;
+4160960:>1:R0=1; x=2;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=a7b16ea6439d91e18338cfa56b768d32
+Cycle=Rfe DMBsRW Wse
+Relax W+RW+dmb Ok 
+Safe=Rfe Wse DMBsRW
+Com=Rf Ws
+Orig=Rfe DMBsRW Wse
+Observation W+RW+dmb Always 10000000 0
+Time W+RW+dmb 11.21
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/MP+pos+dmb.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM MP+pos+dmb
+"PosWW Rfe DMBsRR Fre"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | LDR R0,[R2] ;
+ STR R0,[R2] | DMB         ;
+ MOV R1,#2   | LDR R1,[R2] ;
+ STR R1,[R2] |             ;
+
+locations [x;  1:R0;  1:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr lr,[r1]
+	dmb
+	ldr ip,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	mov r3,#2
+	str r3,[r1]
+Test MP+pos+dmb Required
+Histogram (6 states)
+5031054:>1:R0=0; 1:R1=0; x=2;
+55    :>1:R0=0; 1:R1=1; x=2;
+3     :>1:R0=1; 1:R1=1; x=2;
+431925:>1:R0=0; 1:R1=2; x=2;
+3     :>1:R0=1; 1:R1=2; x=2;
+4536960:>1:R0=2; 1:R1=2; x=2;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=52a68c4bc8752ea876ad9407f4e75231
+Cycle=Rfe DMBsRR Fre PosWW
+Relax MP+pos+dmb Ok 
+Safe=Rfe Fre PosWW DMBsRR
+Com=Rf Fr
+Orig=PosWW Rfe DMBsRR Fre
+Observation MP+pos+dmb Always 10000000 0
+Time MP+pos+dmb 9.57
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/W+RR+dmb.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM W+RR+dmb
+"Rfe DMBsRR Fre"
+{0:R1=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | LDR R0,[R2] ;
+ STR R0,[R1] | DMB         ;
+             | LDR R1,[R2] ;
+
+locations [x;  1:R0;  1:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr lr,[r1]
+	dmb
+	ldr ip,[r1]
+@START _litmus_P0
+	mov r3,#1
+	str r3,[r1]
+Test W+RR+dmb Required
+Histogram (3 states)
+5082205:>1:R0=0; 1:R1=0; x=1;
+402126:>1:R0=0; 1:R1=1; x=1;
+4515669:>1:R0=1; 1:R1=1; x=1;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=8154ee8e8b39cebdccca5fa17e2b8e30
+Cycle=Rfe DMBsRR Fre
+Relax W+RR+dmb Ok 
+Safe=Rfe Fre DMBsRR
+Com=Rf Fr
+Orig=Rfe DMBsRR Fre
+Observation W+RR+dmb Always 10000000 0
+Time W+RR+dmb 9.34
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/R+poss.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM R+poss
+"PosWW Wse PosWR Fre"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | MOV R0,#3   ;
+ STR R0,[R2] | STR R0,[R2] ;
+ MOV R1,#2   | LDR R1,[R2] ;
+ STR R1,[R2] |             ;
+
+locations [x;  1:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	mov r6,#3
+	str r6,[r1]
+	ldr ip,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	mov r3,#2
+	str r3,[r1]
+Test R+poss Required
+Histogram (2 states)
+5308904:>1:R1=3; x=2;
+4691096:>1:R1=3; x=3;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=c41913f79f11912755951138c7cfb78a
+Cycle=Fre PosWW Wse PosWR
+Relax R+poss Ok 
+Safe=Fre Wse PosWW PosWR
+Com=Ws Fr
+Orig=PosWW Wse PosWR Fre
+Observation R+poss Always 10000000 0
+Time R+poss 10.43
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/MP+poss.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM MP+poss
+"PosWW Rfe PosRR Fre"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | LDR R0,[R2] ;
+ STR R0,[R2] | LDR R1,[R2] ;
+ MOV R1,#2   |             ;
+ STR R1,[R2] |             ;
+
+locations [x;  1:R0;  1:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr lr,[r1]
+	ldr ip,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	mov r3,#2
+	str r3,[r1]
+Test MP+poss Required
+Histogram (4 states)
+5588482:>1:R0=0; 1:R1=0; x=2;
+3     :>1:R0=1; 1:R1=1; x=2;
+496   :>1:R0=0; 1:R1=2; x=2;
+4411019:>1:R0=2; 1:R1=2; x=2;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=3a31ee4acc87d7f6f4313dc5693886d1
+Cycle=Rfe PosRR Fre PosWW
+Relax MP+poss Ok 
+Safe=Rfe Fre PosWW PosRR
+Com=Rf Fr
+Orig=PosWW Rfe PosRR Fre
+Observation MP+poss Always 10000000 0
+Time MP+poss 10.07
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/WW.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM WW
+"PosWW Wse"
+{0:R2=x;}
+ P0          ;
+ MOV R0,#1   ;
+ STR R0,[R2] ;
+ MOV R1,#2   ;
+ STR R1,[R2] ;
+
+locations [x; ]
+forall (true)
+Generated assembler
+@START _litmus_P0
+	mov r1,#1
+	str r1,[r2]
+	mov r3,#2
+	str r3,[r2]
+Test WW Required
+Histogram (1 states)
+20000000:>x=2;
+Ok
+
+Witnesses
+Positive: 20000000, Negative: 0
+Condition forall (true) is validated
+Hash=f575fac9103fb7ca0f70be4d495d4b52
+Cycle=Wse PosWW
+Relax WW Ok 
+Safe=Wse PosWW
+Com=Ws
+Orig=PosWW Wse
+Observation WW Always 20000000 0
+Time WW 1.96
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/2+2W+poss.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM 2+2W+poss
+"PosWW Wse PosWW Wse"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | MOV R0,#3   ;
+ STR R0,[R2] | STR R0,[R2] ;
+ MOV R1,#2   | MOV R1,#4   ;
+ STR R1,[R2] | STR R1,[R2] ;
+
+locations [x; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	mov r2,#3
+	str r2,[r1]
+	mov r3,#4
+	str r3,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	mov r3,#2
+	str r3,[r1]
+Test 2+2W+poss Required
+Histogram (2 states)
+4985591:>x=2;
+5014409:>x=4;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=e824c39a8731b08b8978dbb6f6b76b42
+Cycle=Wse PosWW Wse PosWW
+Relax 2+2W+poss Ok 
+Safe=Wse PosWW
+Com=Ws Ws
+Orig=PosWW Wse PosWW Wse
+Observation 2+2W+poss Always 10000000 0
+Time 2+2W+poss 13.06
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/S+poss.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM S+poss
+"PosWW Rfe PosRW Wse"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | LDR R0,[R2] ;
+ STR R0,[R2] | MOV R1,#3   ;
+ MOV R1,#2   | STR R1,[R2] ;
+ STR R1,[R2] |             ;
+
+locations [x;  1:R0; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr ip,[r1]
+	mov r6,#3
+	str r6,[r1]
+@START _litmus_P0
+	mov r2,#1
+	str r2,[r1]
+	mov r3,#2
+	str r3,[r1]
+Test S+poss Required
+Histogram (3 states)
+5039232:>1:R0=0; x=2;
+674415:>1:R0=0; x=3;
+4286353:>1:R0=2; x=3;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=7c6d601d8f807d5ee2e484295297dfc2
+Cycle=Rfe PosRW Wse PosWW
+Relax S+poss Ok 
+Safe=Rfe Wse PosWW PosRW
+Com=Rf Ws
+Orig=PosWW Rfe PosRW Wse
+Observation S+poss Always 10000000 0
+Time S+poss 11.24
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/WR.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM WR
+"PosWR Fre"
+{0:R2=x;}
+ P0          ;
+ MOV R0,#1   ;
+ STR R0,[R2] ;
+ LDR R1,[R2] ;
+
+locations [x;  0:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P0
+	mov r7,#1
+	str r7,[r1]
+	ldr ip,[r1]
+Test WR Required
+Histogram (1 states)
+20000000:>0:R1=1; x=1;
+Ok
+
+Witnesses
+Positive: 20000000, Negative: 0
+Condition forall (true) is validated
+Hash=d1a3793941f60778d72cf4610125b2d9
+Cycle=Fre PosWR
+Relax WR Ok 
+Safe=Fre PosWR
+Com=Fr
+Orig=PosWR Fre
+Observation WR Always 20000000 0
+Time WR 2.40
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/SB+poss.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM SB+poss
+"PosWR Fre PosWR Fre"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | MOV R0,#2   ;
+ STR R0,[R2] | STR R0,[R2] ;
+ LDR R1,[R2] | LDR R1,[R2] ;
+
+locations [x;  0:R1;  1:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	mov r6,#2
+	str r6,[r1]
+	ldr ip,[r1]
+@START _litmus_P0
+	mov r6,#1
+	str r6,[r1]
+	ldr ip,[r1]
+Test SB+poss Required
+Histogram (4 states)
+1     :>0:R1=1; 1:R1=1; x=1;
+5003233:>0:R1=1; 1:R1=2; x=1;
+4996765:>0:R1=1; 1:R1=2; x=2;
+1     :>0:R1=2; 1:R1=2; x=2;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=0b32dad9217b808190eeb21abd7f43d2
+Cycle=Fre PosWR Fre PosWR
+Relax SB+poss Ok 
+Safe=Fre PosWR
+Com=Fr Fr
+Orig=PosWR Fre PosWR Fre
+Observation SB+poss Always 10000000 0
+Time SB+poss 9.90
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/RW.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM RW
+"PosRW Rfe"
+{0:R2=x;}
+ P0          ;
+ LDR R0,[R2] ;
+ MOV R1,#1   ;
+ STR R1,[R2] ;
+
+locations [x;  0:R0; ]
+forall (true)
+Generated assembler
+@START _litmus_P0
+	ldr ip,[r1]
+	mov r7,#1
+	str r7,[r1]
+Test RW Required
+Histogram (1 states)
+20000000:>0:R0=0; x=1;
+Ok
+
+Witnesses
+Positive: 20000000, Negative: 0
+Condition forall (true) is validated
+Hash=cce8a2e85af70820c78849d937225337
+Cycle=Rfe PosRW
+Relax RW Ok 
+Safe=Rfe PosRW
+Com=Rf
+Orig=PosRW Rfe
+Observation RW Always 20000000 0
+Time RW 2.38
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/LB+poss.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM LB+poss
+"PosRW Rfe PosRW Rfe"
+{0:R2=x; 1:R2=x;}
+ P0          | P1          ;
+ LDR R0,[R2] | LDR R0,[R2] ;
+ MOV R1,#1   | MOV R1,#2   ;
+ STR R1,[R2] | STR R1,[R2] ;
+
+locations [x;  0:R0;  1:R0; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr ip,[r1]
+	mov r6,#2
+	str r6,[r1]
+@START _litmus_P0
+	ldr ip,[r1]
+	mov r6,#1
+	str r6,[r1]
+Test LB+poss Required
+Histogram (4 states)
+565818:>0:R0=0; 1:R0=0; x=1;
+4457904:>0:R0=2; 1:R0=0; x=1;
+616717:>0:R0=0; 1:R0=0; x=2;
+4359561:>0:R0=0; 1:R0=1; x=2;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=a9de45d64e2bcb718b45775fb6031e63
+Cycle=Rfe PosRW Rfe PosRW
+Relax LB+poss Ok 
+Safe=Rfe PosRW
+Com=Rf Rf
+Orig=PosRW Rfe PosRW Rfe
+Observation LB+poss Always 10000000 0
+Time LB+poss 10.42
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/W+RW.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM W+RW
+"Rfe PosRW Wse"
+{0:R1=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | LDR R0,[R2] ;
+ STR R0,[R1] | MOV R1,#2   ;
+             | STR R1,[R2] ;
+
+locations [x;  1:R0; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr ip,[r1]
+	mov r6,#2
+	str r6,[r1]
+@START _litmus_P0
+	mov r3,#1
+	str r3,[r1]
+Test W+RW Required
+Histogram (3 states)
+5084275:>1:R0=0; x=1;
+697149:>1:R0=0; x=2;
+4218576:>1:R0=1; x=2;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=aae2d078fd4ed0c82629822574da7b41
+Cycle=Rfe PosRW Wse
+Relax W+RW Ok 
+Safe=Rfe Wse PosRW
+Com=Rf Ws
+Orig=Rfe PosRW Wse
+Observation W+RW Always 10000000 0
+Time W+RW 10.93
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Results for src/W+RR.litmus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ARM W+RR
+"Rfe PosRR Fre"
+{0:R1=x; 1:R2=x;}
+ P0          | P1          ;
+ MOV R0,#1   | LDR R0,[R2] ;
+ STR R0,[R1] | LDR R1,[R2] ;
+
+locations [x;  1:R0;  1:R1; ]
+forall (true)
+Generated assembler
+@START _litmus_P1
+	ldr lr,[r1]
+	ldr ip,[r1]
+@START _litmus_P0
+	mov r3,#1
+	str r3,[r1]
+Test W+RR Required
+Histogram (3 states)
+5603767:>1:R0=0; 1:R1=0; x=1;
+337   :>1:R0=0; 1:R1=1; x=1;
+4395896:>1:R0=1; 1:R1=1; x=1;
+Ok
+
+Witnesses
+Positive: 10000000, Negative: 0
+Condition forall (true) is validated
+Hash=21cc7bc2fa2708894bfd1ec0629f6a47
+Cycle=Rfe PosRR Fre
+Relax W+RR Ok 
+Safe=Rfe Fre PosRR
+Com=Rf Fr
+Orig=Rfe PosRR Fre
+Observation W+RR Always 10000000 0
+Time W+RR 9.94
+Revision 15, version 5.99
+Command line: litmus -mach dragon-arm -driver C -mem direct -st 1 -o SRC/DRAGON src/@all
+Parameters
+#define SIZE_OF_TEST 10000
+#define NUMBER_OF_RUN 100
+#define AVAIL 2
+#define STRIDE 1
+#define MAX_LOOP 0
+/* gcc options: -D_GNU_SOURCE -Wall -std=gnu99 -march=armv7-a -marm -O2 -pthread */
+/* gcc link options: -static */
+/* barrier: user */
+/* launch: changing */
+/* affinity: incr0 */
+/* prealloc: false */
+/* memory: direct */
+/* stride: 1 */
+/* safer: write */
+/* preload: random */
+/* speedcheck: no */
+/* proc used: 2 */
+Command: /data/tmp/co.exe -s 5k -r 2k -i 1 -st 133
+Sun Apr 18 02:30:23 1971

@@ -1,0 +1,2 @@
+#scp -C root@128.93.189.119:/data/local/tmp/mydebian/home/user/CO/CO.?? asus2
+cp -v ~/DRAGON-CO/CO.?? dragon
