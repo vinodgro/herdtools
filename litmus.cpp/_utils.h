@@ -71,9 +71,18 @@ void ints_dump(FILE *fp, ints_t *p) ;
 typedef enum {none, flush, touch, touch_store} prfdir_t ;
 
 typedef struct {
-  int nthreads,nvars ;
-  char **names ;
-  prfdir_t *t ;
+  char *name ;
+  prfdir_t dir ;
+} prfone_t ;
+
+typedef struct {
+  int nvars ;
+  prfone_t *t ;
+} prfproc_t ;
+
+typedef struct {
+  int nthreads ;
+  prfproc_t *t ;
 } prfdirs_t ;
 
 void prefetch_dump(FILE *fp, prfdirs_t *p) ;
