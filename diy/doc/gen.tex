@@ -267,7 +267,7 @@ its result to standard output.
 \subsection{Summary of simple candidate relaxations}
 We summarise the candidate relaxations available on all architectures.
 
-\subsubsection{Communication candidate relaxations}
+\subsubsection{Communication\label{communication:cr} candidate relaxations}
 We call communication candidate relaxations the relations between two events
 communicating through memory, though they could belong to the same processor.
 Thus, these events operate on the same memory location.
@@ -293,6 +293,7 @@ Source reads a value from a write that precedes target in coherence order
 \\\hline
 \end{tabular}
 \end{center}
+
 
 \subsubsection{Program order candidate relaxations}
 
@@ -358,6 +359,7 @@ Hence, to yield two reads to different locations
 and separated by the lightweight Power barrier~\texttt{lwsync},
 we specify LwSyncdRR.
 On ARM we have DMB, DSB and ISB.
+
 
 
 \section{Testing\label{diy:intro} candidate relaxations with \diy}
@@ -673,6 +675,35 @@ Safe=Fre
  lwz r3,0(r4) |              | lwz r3,0(r4) |              | lwz r3,0(r4) |              ;
 exists (0:r1=1 /\ 0:r3=0 /\ 2:r1=1 /\ 2:r3=0 /\ 4:r1=1 /\ 4:r3=0)
 \end{verbatim}
+
+\subsection{Detour \label{detour:def}candidate relaxations}
+Detours combine a Pos candidate relaxation and a sequence
+of two \emph{external} communication candidate relaxations.
+More precisely detours are some constrained Pos candidate relaxations:
+the source and target events must be related by a sequence of
+two communication candidate relaxations, whose target and source
+are a common event whose processor is new.
+\begin{center}
+\begin{tabular}{c|c|c|c}
+\prog{diy} syntax  &  Source & Target  & Detour \\ \hline
+\tt DetourR & R & R & Fre; Rfe \\ \hline
+\tt DetourW & W & R & Wse; Rfe  \\ \hline
+\tt DetourRW & R & W & Fre;Wse \\ \hline
+\tt DetourWW & W & W & Wse;Wse \\ \hline
+\end{tabular}
+\end{center}
+DetourRR and DetourWR are accepted as synonyms for
+DetourR and DetourW respectively.
+
+Graphically, we have:
+\begin{center}
+\img{DetourR}\quad
+\img{DetourW}\quad
+\img{DetourRW}\quad
+\img{DetourWW}
+\end{center}
+Finally notice that ``internal'' detours need no special treatement
+as they can be expressed by the sequences ``Fri; Rfi'', ``Wsi;Rfi'', etc.
 
 \section{Test\label{diycross:intro} variations with \diycross{}}
 The tool \diycross{} has an interface similar to \diyone,
@@ -1190,14 +1221,28 @@ Otherwise, \opt{<dest>} is interpreted as the name of an
 existing directory.
 Default is ``\opt{.}'', that is tool output goes into the
 current~directory.
-\item[{\tt -obs <accept|avoid|force|local>}] Management of observers,
+\item[{\tt -obs (accept|avoid|force|local)}] Management of observers,
 default is \opt{avoid}. See Sec.~\ref{sec:obs}.
 \item[{\tt -obstype (fenced|loop|straight)}] 
 Style of observers, default is \opt{fenced}. See Sec.~\ref{sec:obstype}.
+\item[{\tt -cond (cycle|uni|observe)}]
+Control final condition of tests, default is \opt{cycle}.
+In mode \opt{cycle}, the final condition identifies executions
+that correspond to the generating cycle.
+In mode \opt{unicond}, the final condition identifies executions
+that are valid w.r.t. the uniproc model (see Sec.~\ref{defuniproc}).
+In mode  \opt{observe} there is no final condition:
+the \prog{litmus} and \prog{herd} tools will simply list the final
+values of locations.
 \item [{\tt -optcond}] Optimise conditions by disregarding the values
 of loads that are neither the target of~Rf, nor the source of~Fr. This is
 the default.
 \item [{\tt -nooptcond}] Do not optimise conditions.
+\item [{\tt -optcoherence}] Optimise conditions assuming that
+the tested system (at least) follow the uniproc model
+(see Sec.~\ref{defuniproc}).
+\item [{\tt -optcoherence}] Do not optimise conditions assuming that
+the tested system (at least) follow the uniproc model. This is the default.
 \item [{\tt -neg <bool>}] Negate final condition, default is~\texttt{false}.
 \item[{\tt -c <bool>}] Avoid equivalent cycles. Default is~\opt{true}.
 Setting \opt{-c true} is intended for debug.
@@ -1327,10 +1372,11 @@ In mix mode, upper bound on the number of different candidate
 relaxations tested together.
 Default is~$100$
 \item[{\tt -safe <relax-list>}] Set safe list. Default is empty.
-\item[{\tt -mode (critical|sc|free)}]
+\item[{\tt -mode (critical|sc|free|uni)}]
 Control generation  of cycles, default~\opt{sc}.
-Critical mode offers predictive control on cycle generation (see below),
-and is activated when \diy{} is invoked by the automated front-end~\dont.
+Those tags command the activation of some constraints over cycle
+generation, see \ahrefloc{mode:describe}{below}.
+
 \item[{\tt -cumul <bool>}]
 Permit implicit cumulativity,
 \emph{i.e.} authorise building up the sequence Rfe followed by a fence,
@@ -1363,11 +1409,14 @@ where $m$ is specified with option~``\opt{-maxrelax}~$m$''.
 \end{enumerate}
 \end{enumerate}
 
-Generally speaking, \diy{} generates ``some'' cycles and does not generate
+\label{mode:describe}Generally
+speaking, \diy{} generates ``some'' cycles and does not generate
 ``all'' cycles (up to a certain size \emph{e.g.}).
 In (default) sc mode, \diy{} performs some optimisation,
 most of which we leave unspecified.
-As an exception to this non-specification, \diy{} is guaranteed not to
+\label{compose:com}As an exception to
+this non-specification, \diy{} in \opt{sc} (default) mode
+is guaranteed not to
 generate redundant elementary communication relaxation in the following sense:
 let us call Com the union of Ws, Rf and Fr (the e\vbar{}i specification
 is irrelevant here).
@@ -1397,6 +1446,7 @@ accesses are by the same processor.} candidate relaxations follow one another.
 the sequence of~Rfe followed by a fence (or B-cumulativity) candidate
 relaxation or
 of a fence (or A-cumulativity) candidate relaxation followed by Rfe.
+\item Cycles that access one single memory location are rejected.
 \item None of the rules above applies to the internal sequences of
 composite candidate relaxations. For instance, if [Rfi,PodRR]
 is given as a candidate relaxation, the sequence ``Rfi,PodRR'' appears
@@ -1405,13 +1455,24 @@ in cycles.
 The cycles described above are the \emph{critical} cycles of~\cite{ss88}.
 
 \label{free:def}%
-In free mode (\opt{-mode free}),  cycles are strictly specified as
+In free mode (\opt{-mode free}), cycles are strictly specified as
 follows:
 \begin{enumerate}
 \item Communication candidate relaxations sequences are
-limited to Rf,Fr,Ws,[Ws,Rf] and~[Fr,Rf], as in sc and critical mode.
+limited to Rf,Fr,Ws,[Ws,Rf] and~[Fr,Rf]. However, arbitrary sequences
+of communication candidates are accepted when they are internal and external
+or external and internal.
+\item Cycles that access one single memory location are rejected.
 \end{enumerate}
 
+\label{uni:def}Finally, the \opt{uni} mode enforces the following constraints
+on cycles:
+\begin{enumerate}
+\item Sequences of communication  candidate relaxations
+are restricted in the same manner as for
+\opt{free} mode (see \ahrefloc{free:def}{above}).
+\item Sequences of Po candidate relaxation are rejected.
+\end{enumerate}
 
 \subsection{\aname{readRelax}{Usage} of \prog{readRelax}}
 \prog{readRelax} is a simple tool to extract relevant information

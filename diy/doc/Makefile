@@ -97,6 +97,7 @@ clean::
 
 DOTS=classic.dot classic-sc.dot ws-sc.dot iriw.dot iriw-internal.dot \
  IRIW.dot 2+2WLocal.dot LB.dot LB-kinds.dot \
+ DetourR.dot DetourW.dot DetourRW.dot DetourWW.dot \
  $(GENDOTS)
 
 X86=x86-safe.conf x86-rfi.conf x86-podwr.conf
@@ -151,8 +152,13 @@ tst-ppc.tar:
 tst-arm.tar:
 	tar --exclude-vcs -cf tst-arm.tar tst-arm
 
+tst-co.tar:
+	/bin/rm -rf /tmp/tst-co && \
+	cp -r tst-co/src /tmp/tst-co  && \
+	(cd /tmp && tar --exclude-vcs -cf - tst-co ) > $@
+
 clean::
-	/bin/rm -f tst-ppc.tar tst-x86.tar tst-arm.tar
+	/bin/rm -f tst-ppc.tar tst-x86.tar tst-arm.tar tst-co.tar
 
 #version
 VERSION= $(HERDDIR)/lib/VERSION.txt
@@ -183,8 +189,9 @@ hva:
 TSTX86=html/tst-x86.tar html/tst-x86 html/x86-64.cfg
 TSTPPC=html/tst-ppc.tar html/tst-ppc html/power7.cfg
 TSTARM=html/tst-arm.tar html/tst-arm html/tegra3.cfg
+TSTCO=html/tst-co.tar html/tst-co
 
-html/index.html: html/diy.html $(TSTX86) $(TSTPPC) $(TSTARM)
+html/index.html: html/diy.html $(TSTX86) $(TSTPPC) $(TSTARM) $(TSTCO)
 	$(HACHA) $(HACHAOPTS) -o $@ $<
 
 html/tst-x86.tar: tst-x86.tar
@@ -213,6 +220,12 @@ html/tst-arm: tst-arm.tar
 
 html/tegra3.cfg: tegra3.cfg
 	cp tegra3.cfg $@
+
+html/tst-co.tar: tst-co.tar
+	cp tst-co.tar html/tst-co.tar
+
+html/tst-co: tst-co.tar
+	( cd html && tar xf ../tst-co.tar )
 
 cleanhtml:
 	/bin/rm -f html/diy.html \
@@ -338,6 +351,18 @@ SB+rfi-pos+TER.png: SB+rfi-pos+TER.dot
 LB-kinds.png: LB-kinds.dot
 	dot -Gsize=8,8 -Tpng LB-kinds.dot > $@
 
+DetourR.png: DetourR.dot
+	neato -Tpng  $< > $@
+
+DetourW.png: DetourW.dot
+	neato -Tpng  $< > $@
+
+DetourRW.png: DetourRW.dot
+	neato -Tpng  $< > $@
+
+DetourWW.png: DetourWW.dot
+	neato -Tpng  $< > $@
+
 %.png: %.dot
 	dot -Tpng -o $@ $<
 
@@ -388,6 +413,20 @@ SB-03.pstex_t: SB-03.dot
 
 6.SB.pstex_t: 6.SB.dot
 	sh mkpstex.sh 6.SB 22 neato
+
+DetourR.pstex_t: DetourR.dot
+	sh mkpstex.sh DetourR 22 neato
+
+DetourW.pstex_t: DetourW.dot
+	sh mkpstex.sh DetourW 22 neato
+
+
+DetourRW.pstex_t: DetourRW.dot
+	sh mkpstex.sh DetourRW 22 neato
+
+DetourWW.pstex_t: DetourWW.dot
+	sh mkpstex.sh DetourWW 22 neato
+
 
 %.pstex_t: %.dot
 	sh mkpstex.sh $* 22 dot

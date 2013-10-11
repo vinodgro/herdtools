@@ -50,8 +50,8 @@ Hash=7dbd6b8e6dd4abc2ef3d48b0376fb2e3
 The output of \herd{} mainly consists in
 the list of final states that are allowed by the simulated model.
 Additional output relates to the test condition.
-On sees that the test condition does not validate on top of SC,
-as the ``\texttt{No}'' appears just after the list of final states
+One sees that the test condition does not validate on top of SC,
+as ``\texttt{No}'' appears just after the list of final states
 and as there is no ``Positive'' witness.
 Namely, the condition ``\verb+exists (0:EAX=0 /\ 1:EAX=0)+''
 reflects a non-SC behaviour, see Sec.~\ref{candidate:intro}.
@@ -220,7 +220,7 @@ The following test \atest{CoRWR} illustrates the issue:
 \verbatiminput{CoRWR.litmus}
 \begin{center}\img{CoRWR}\end{center}
 The TSO check ``\verb+acyclic po-tso|com-tso+'' does not suffice to reject
-two absurd behaviours prictured in the execution diagram above:
+two absurd behaviours pictured in the execution diagram above:
 (1) the read~$a$ is allowed to
 read from the \textrel{po}-after write~$b$, as \textrel{rfi} is not included
 in \textrel{com-tso}; and~(2)
@@ -229,7 +229,8 @@ although
 this (unpictured) write is \textrel{co}-before the write~$b$,
 as \verb+WR(po)+ is not in \textrel{po-tso}.
 
-For any model, we rule out those very untimely behaviours by the so-called
+\label{defuniproc}For any model, we rule out those very
+untimely behaviours by the so-called
 \textsc{uniproc}
 check that states that executions projected on events that access one variable
 only are SC.
@@ -342,7 +343,7 @@ look exactly like Fig.~\ref{fig:sb}. For instance the
 There are many parameters to control \prog{neato} (and~\prog{dot}),
 many of which are accessible to \herd{} users by the means of appropriate
 options. We do not intend to describe them all.
-However, users can reproduce the style of teh diagram of this manual using
+However, users can reproduce the style of the diagram of this manual using
 yet another feature of \herd: \ahrefloc{herd:configfile}{configuration files}
 that contains settings for \herd{} options and that are loaded with the
 \opt{-conf~}\textit{name} option.
@@ -678,7 +679,7 @@ until one instruction stops, or until the end of the instruction list.
 In that latter case, the model accepts the execution.
 The accepted execution is then passed over to the rest of \herd{}
 engine, in order to collect final states of locations
-and to display pitcures.
+and to display pictures.
 
 \section{Usage of \herd}
 \subsection*{Arguments}
@@ -799,7 +800,7 @@ executions that fail the uniproc test. The default is ``\opt{true}''
 for internal models (except the minimal model), and ``\opt{false}'' for
 text file models. Notice that \opt{-model uniproc}
 and \opt{-model minimal -optpace true} should yield identical results,
-teh second being faster.
+the second being faster.
 Setting \opt{-optace true} can lower the execution time significantly,
 but one should pay attention not to design models that forget the uniproc
 condition.

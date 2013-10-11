@@ -431,6 +431,20 @@ In the graph above, a red node means an observation of the non-SC behaviour.
 \fi
 
 \section{Finding\label{example:invalid} and showing invalid executions}
-We now describe a complete experience that will use some of
+We now describe a complete experiment that will use some of
 the additional tools we distribute.
-In ``programmer advice notice'' ARM Inc. 
+The experiment aims at comparing ARM machines with the uniproc model.
+The uniproc model is a very relaxed memory model that only enforces
+single-thread correctness --- See Sec.~\ref{defuniproc}.
+Single thread correctness can be defined as accesses to same
+location by the same thread do not contradict communication candidate
+relaxations --- See Sec.~\ref{communication:cr}.
+
+To that aim we first produce a few simple tests that access one memory location
+only. We use the \prog{diy} test generator with configuration
+file~\ahref{tst-co/CO.conf}{\texttt{CO.conf}}:
+\verbatiminput{tst-co/src/CO.conf}
+
+
+
+

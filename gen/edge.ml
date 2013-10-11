@@ -235,6 +235,8 @@ let () =
       fill_opt "Dp" F.ddw_default sd (Dir W) ;
       fill_opt "Ctrl" F.ctrlw_default sd (Dir W) ;
       ()) () ;
+  add_lxm "DetourRR" (plain_edge (Detour (Dir R))) ;
+  add_lxm "DetourWR" (plain_edge (Detour (Dir W))) ;
   ()
 
 
