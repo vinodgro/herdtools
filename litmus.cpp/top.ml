@@ -95,7 +95,8 @@ end = struct
       (O:Config)
       (A:Arch.S)
       (L:GenParser.LexParse with type instruction = A.pseudo)
-      (XXXComp : XXXCompile.S with module A = A) =
+      (XXXComp : XXXCompile.S with module A = A)
+      (Lang : Language.S) =
     struct
       module P = GenParser.Make(O)(A) (L)
       module T = Test.Make(A)
@@ -175,7 +176,7 @@ end = struct
                 (fun chan ->
                   let module Out =
                     Indent.Make(struct let out = chan end) in
-                  let module S = MS(Out) in
+                  let module S = MS(Out)(Lang) in
                   S.dump doc compiled)
                 (Tar.outname source) in
             let utils =
@@ -252,7 +253,9 @@ end = struct
               (OX)
               (PPC)
               (PPCLexParse)
-              (PPCCompile.Make(V)(OC)) in
+              (PPCCompile.Make(V)(OC))
+              (ASMLang.Make)
+          in
           X.compile hint avoid_cycle fst cycles hash_env
             name in_chan out_chan splitted
       | `PPCGen, _ ->
@@ -265,7 +268,9 @@ end = struct
             let parser = PPCGenParser.main
           end in
           let module X = Make (OX)
-              (PPCGen) (PPCGenLexParse) (PPCGenCompile.Make(V)(OC)) in
+              (PPCGen) (PPCGenLexParse) (PPCGenCompile.Make(V)(OC))
+              (ASMLang.Make)
+          in
           X.compile hint avoid_cycle fst cycles hash_env
             name in_chan out_chan splitted
       | `X86, _ ->
@@ -278,7 +283,9 @@ end = struct
             let parser = X86Parser.main
           end in
           let module X = Make
-              (OX)(X86) (X86LexParse) (X86Compile.Make(V)(OC)) in
+              (OX)(X86) (X86LexParse) (X86Compile.Make(V)(OC))
+              (ASMLang.Make)
+          in
           X.compile hint avoid_cycle fst cycles hash_env
             name in_chan out_chan splitted
       | `ARM, _ ->
@@ -291,7 +298,9 @@ end = struct
             let parser = ARMParser.main
           end in
           let module X = Make (OX)
-              (ARM) (ARMLexParse) (ARMCompile.Make(V)(OC)) in
+              (ARM) (ARMLexParse) (ARMCompile.Make(V)(OC))
+              (ASMLang.Make)
+          in
           X.compile hint avoid_cycle fst cycles
             hash_env name in_chan out_chan splitted
       | `C, Some given_carch ->
@@ -308,7 +317,9 @@ end = struct
                 include OX
                 let carch = lazy given_carch
               end)
-              (ARM) (ARMLexParse) (ARMCompile.Make(V)(OC)) in
+              (ARM) (ARMLexParse) (ARMCompile.Make(V)(OC))
+              (ASMLang.Make)
+          in
           X.compile hint avoid_cycle fst cycles
             hash_env name in_chan out_chan splitted
       | `C, None ->
@@ -330,6 +341,5 @@ end = struct
 (* Call generic tar builder/runner *)
   module DF = DumpRun.Make (OT)(Tar) (struct let from_file = from_file end)
 
-  let from_files = DF.from_files        
+  let from_files = DF.from_files
 end
-
