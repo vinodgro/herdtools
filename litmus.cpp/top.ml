@@ -313,10 +313,7 @@ end = struct
           | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
           in
           let get_lang = function
-          | `PPC -> (module ASMLang.Make : Language.S)
-          | `PPCGen -> (module ASMLang.Make : Language.S)
-          | `X86 -> (module ASMLang.Make : Language.S)
-          | `ARM -> (module ASMLang.Make : Language.S)
+          | `PPC | `PPCGen | `X86 | `ARM -> (module ASMLang.Make : Language.S)
           | `C -> assert false (* HERE IS THE JOB *)
           in
           let module Make = (val (aux arch) : TOP_MAKE) in
