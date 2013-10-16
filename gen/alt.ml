@@ -445,10 +445,8 @@ module Make(C:XXXCompile.S)
             with Normaliser.CannotNormalise -> k
           else k
 
-    let max_ins = !Config.max_ins 
-
     let last_minute ess =
-      not (List.exists (fun es -> List.length es > max_ins) ess)
+      not (List.exists (fun es -> List.length es > O.max_ins) ess)
 
     let rec zyva_prefix prefixes aset relax safe n f k =
       match prefixes with

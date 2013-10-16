@@ -11,7 +11,8 @@ CFG=conti.cfg saumur.cfg saumur.close.cfg doko.cfg squale.cfg hpcx.cfg \
  trimslice.cfg\
  tst.cfg auto.cfg power7.smt.cfg power6.smt.cfg \
  mp.cfg ipad.cfg asus.cfg asus-debian.cfg asus-debian-thumb.cfg cortexA15.cfg \
- mike.cfg youpla.cfg hopla.cfg corei7.cfg x86.cfg nexus10.cfg odroid-xu.cfg
+ mike.cfg youpla.cfg hopla.cfg corei7.cfg x86.cfg nexus10.cfg \
+ odroid-xu.cfg odroid-xu-ubuntu.cfg
 
 
 OCB=ocamlbuild -cflags -w,A-4-9-27-29-45 -classic-display

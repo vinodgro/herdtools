@@ -23,7 +23,9 @@ GENDOTS=SB-00.dot SB-01.dot SB-02.dot SB-03.dot CoRWR.dot \
  WRC.dot SB+mfences.dot SB+mfences+GHB.dot \
  SB+mfences+CLUSTER.dot  SB+mfences+FREE.dot \
  IRIW+lwsyncs+APOIL.dot IRIW+syncs+APOIL.dot \
- 6.SB.dot
+ 6.SB.dot \
+ RW.dot WW.dot WR.dot W+RR.dot W+RW.dot \
+
 
 LB.dot: tst-arm/LB.litmus
 	herd -conf doc.cfg -showinitrf true -show prop -model minimal -o .  $< > /dev/null
@@ -89,6 +91,26 @@ IRIW+syncs+APOIL.dot: IRIW+syncs.litmus
 SB-00.dot SB-01.dot SB-02.dot SB-03.dot: SB.dot
 	splitdot SB.dot >/dev/null
 
+MORECO=-showlegend true -shortlegend true -model minimal
+
+RW.dot: tst-co/basic/RW.litmus
+	herd  -conf doc.cfg  $(MORECO) -show prop -o . $< >/dev/null
+
+WW.dot: tst-co/basic/WW.litmus
+	herd  -conf doc.cfg  $(MORECO) -show prop -o . $< >/dev/null
+
+WR.dot: tst-co/basic/WR.litmus
+	herd  -conf doc.cfg  $(MORECO) -show prop -o . $< >/dev/null
+
+W+RR.dot: tst-co/basic/W+RR.litmus
+	herd  -conf doc.cfg  $(MORECO) -show prop -o . $< >/dev/null
+
+W+RW.dot: tst-co/basic/W+RW.litmus
+	herd  -conf doc.cfg  $(MORECO) -show prop -o . $< >/dev/null
+
+
+# WW.dot WR.dot W+RR.dot W+RW.dot
+
 clean::
 	/bin/rm -f SB.dot $(GENDOTS)
 
@@ -119,16 +141,44 @@ TST=ARM-LB.log SB.litmus SB.log SB-PPC.litmus SB-PPC.log  SB-PPC2.log\
 STY=macros.sty common.tex syntaxdef.sty
 HVA=macros.hva common.tex syntaxdef.hva
 SRC=diy.tex litmus.tex gen.tex herd.tex auto.tex examples.tex version.tex
+GENTEX=BASIC.tex MPPOSS.tex
+GENSRC=$(GENTEX:.tex=-src)
+GENIMG=$(GENTEX:.tex=-img)
 PNG=$(DOTS:.dot=.png)
 ALLPNG=$(PNG) m1l-time.png
 PSTEX=$(DOTS:.dot=.pstex_t)
-CFG=hpcx.cfg saumur.cfg doc.cfg apoil.cfg
+CFG=hpcx.cfg saumur.cfg doc.cfg apoil.cfg trimslice.cfg dragon.cfg
 CAT=sc.cat tso-00.cat tso-01.cat  tso-02.cat
 GENCAT=herd.cat x86tso.cat minimal.cat uniproc.cat
-TXT=rename.txt cond.txt
+TXT=rename.txt cond.txt trimslice.sh
 DONT=x86.sc x86.explo x86-log.txt
 LITMUSDIR=../../litmus/
 HERDDIR=../../herd
+MAPPLY=mapply -j 16
+#Generated latex
+clean::
+	/bin/rm -rf $(GENTEX) $(GENSRC) $(GENIMG)
+
+BASIC.tex:tst-co/basic/@all BASIC-img/index.tex
+	sh tools/gen.sh BASIC tst-co/basic/@all > $@
+
+BASIC-img:
+	mkdir -p $@
+
+BASIC-img/index.tex: BASIC-img tst-co/basic/@all
+	$(MAPPLY) -com tools/img3.sh -comargs tools/UTCP.sh,BASIC-img tst-co/basic/@all > $@
+
+
+MPPOSS.tex:tst-co/MPPOSS/@all MPPOSS-img/index.tex
+	sh tools/gen.sh MPPOSS tst-co/MPPOSS/@all > $@
+
+MPPOSS-img:
+	mkdir -p $@
+
+MPPOSS-img/index.tex: MPPOSS-img tst-co/MPPOSS/@all
+	$(MAPPLY) -com tools/img3.sh -comargs tools/UTCP.sh,MPPOSS-img tst-co/MPPOSS/@all > $@
+
+
 
 #tar of x86 configuration
 x86.tar: x86.txt $(X86)
@@ -177,8 +227,9 @@ HACHAOPTS=-tocter
 
 dochtml: html/index.html
 
-html/diy.html: $(SRC) $(HVA) $(TST) $(CFG) $(CAT) $(GENCAT) $(TXT) $(DONT) $(ALLPNG)
+html/diy.html: $(SRC) $(HVA) $(TST) $(CFG) $(CAT) $(GENCAT) $(TXT) $(DONT) $(ALLPNG) $(GENTEX)
 	@mkdir -p html
+	cp -r $(GENSRC) $(GENIMG) html
 	 $(HEVEA) $(HEVEAOPTS) -o $@ diy.tex && \
         ( cp jade.bib html && cd html && bibhva diy && rm jade.bib ) && \
         $(HEVEA) $(HEVEAOPTS) -I html -o $@ diy.tex && \
@@ -266,6 +317,12 @@ clean::
 hpcx.cfg: $(LITMUSDIR)/hpcx.cfg
 	cp $< $@
 
+trimslice.cfg: $(LITMUSDIR)/trimslice.cfg
+	cp $< $@
+
+dragon.cfg: $(LITMUSDIR)/dragon.cfg
+	cp $< $@
+
 saumur.cfg: $(LITMUSDIR)/saumur.cfg
 	cp $< $@
 
@@ -338,6 +395,21 @@ SB-02.png: SB-02.dot
 
 SB-03.png: SB-03.dot
 	neato -Tpng SB-03.dot > $@
+
+RW.png: RW.dot
+	neato -Tpng $< > $@
+
+WW.png: WW.dot
+	neato -Tpng $< > $@
+
+WR.png: WR.dot
+	neato -Tpng $< > $@
+
+W+RW.png: W+RW.dot
+	neato -Tpng $< > $@
+
+W+RR.png: W+RR.dot
+	neato -Tpng $< > $@
 
 SB+rfi-pos.png: SB+rfi-pos.dot
 	neato -Tpng  SB+rfi-pos.dot > $@

@@ -109,7 +109,7 @@ which transmits its command line options to all test executables:
 \end{verbatim}
 Run logs are thus saved into files \texttt{X.01} to~\texttt{X.08}.
 The following table summarises the results:
-\begin{center}
+\begin{center}\let\handletest\xhandletest
 \input{X86.tex}
 \end{center}
 For every test and stride value cells show how many times the targeted relaxed
@@ -139,7 +139,7 @@ yields better ressource usage
 and, according to our experience, favours outcome variability.
 
 The following table summarises the results:
-\begin{center}
+\begin{center}\let\handletest\xhandletest
 \input{X86-SR.tex}
 \end{center}
 Again, we observe all targeted relaxed outcomes. In fact,
@@ -149,7 +149,7 @@ logical core machine.
 Another test statistic of interest is
 \emph{efficiency}, that is the number of targeted outcomes observed per
 second:
-\begin{center}
+\begin{center}\let\handletest\xhandletest
 \input{X86-E.tex}
 \end{center}
 As we can see, although the setting \opt{-s 10 -r 10000} yields the most
@@ -280,7 +280,7 @@ power7% sh run.sh +ca > Z.0C
 \end{verbatim}
 The following table summarises the results, with X meaning that the targeted
 relaxed outcome is observed:
-\begin{center}\def\tstdir{tst-ppc}
+\begin{center}\def\tstdir{tst-ppc}\let\handletest\xhandletest
 \input{PPC.tex}
 \end{center}
 On sees that all possible relaxed outcomes shows up with proper affinity
@@ -440,10 +440,148 @@ Single thread correctness can be defined as accesses to same
 location by the same thread do not contradict communication candidate
 relaxations --- See Sec.~\ref{communication:cr}.
 
-To that aim we first produce a few simple tests that access one memory location
+\subsection*{Test generation}
+We first produce a few simple tests that access one memory location
 only. We use the \prog{diy} test generator with configuration
 file~\ahref{tst-co/CO.conf}{\texttt{CO.conf}}:
 \verbatiminput{tst-co/src/CO.conf}
+The first section above describes generated cycles: the vocabulary
+of candidate relaxations (we also consider DMB barriers),
+the size of cycles, the (maximal) number of threads, and a strong limitation
+on the number of consecutive internal candidate relaxations
+(the setting \opt{ins 2} by rejecting 2 or more consecutive internal candidate
+relaxations in effect forbids sequences of internal candidate
+relaxations).
+We also specify \prog{diy} \opt{uni} mode (See Sec.~\ref{uni:def})
+that will allow test generation from one-location cycles,
+and replace final conditions by the observation of test outcomes
+(\opt{cond observe}).
+Here we go:
+\begin{verbatim}
+% diy -conf CO.conf
+Generator produced 31 tests
+% ls
+2+2W+dmb+pos.litmus  MP+dmbs.litmus     SB+dmb+pos.litmus  W+RR+dmb.litmus
+2+2W+dmbs.litmus     MP+pos+dmb.litmus  SB+dmbs.litmus     W+RR.litmus
+2+2W+poss.litmus     MP+poss.litmus     SB+poss.litmus     W+RW+dmb.litmus
+@all                 R+dmb+pos.litmus   S+dmb+pos.litmus   W+RW.litmus
+CO.conf              R+dmbs.litmus      S+dmbs.litmus      WW+dmb.litmus
+LB+dmb+pos.litmus    R+pos+dmb.litmus   S+pos+dmb.litmus   WW.litmus
+LB+dmbs.litmus       R+poss.litmus      S+poss.litmus
+LB+poss.litmus       RW+dmb.litmus      WR+dmb.litmus
+MP+dmb+pos.litmus    RW.litmus          WR.litmus
+\end{verbatim}
+\input{BASIC.tex}\newcommand{\basic}[1]{\ahref{BASIC-#1.html}{\ltest{#1}}}%
+We get 31~tests, 
+available in directory \ahref{tst-co}{\texttt{tst-co}}%
+\ifhevea{} (\ahref{tst-co.tar}{archive})\fi.
+Amongst those $31$~tests, are five tests that may exhibit
+the five ``basic'' uniproc violations.
+Those five basic uniproc violations are three direct contraditions of
+program order and communication candidate relaxations Ws,Rf and~Fr ---
+which we show
+as executions of the tests \basic{WW}, \basic{RW} and~\basic{WR}:
+\begin{center}
+\img{WW}\qquad\qquad
+\img{RW}\qquad\qquad
+\img{WR}
+\end{center}
+plus two contradictions of
+program order and communication candidate relaxation
+sequences Ws;Rf and~Fr;Rf,
+which we show
+as executions of the tests \basic{W+RW} and~\basic{W+RR}:
+\begin{center}
+\img{W+RW}\qquad
+\img{W+RR}
+\end{center}
+
+Namely, due to the transitivity of Ws and to the definition of Fr
+(that implies $\textrm{Fr;Ws} \subseteq \textrm{Fr}$) all sequences of
+communications are covered by the above listed five cases.
+
+\input{MPPOSS.tex}\newcommand{\mpposs}[1]{\ahref{MPPOSS-#1.html}{#1}}%
+However, having more tests than the five basic ones is relevant to
+hardware testing, as the \textsc{uniproc} check will be exercised in
+more contexts. For instance the test \mpposs{MP+poss}
+may reveal $12$~different violations of \textsc{uniproc}.
+We shall also test similar violations
+in the presence of one or two \texttt{dmb} fences
+(tests \mpposs{MP+dmb+pos}, \mpposs{MP+pos+dmb} and~\mpposs{MP+dmbs}).
+
+\subsection*{Running tests on hardware}
+
+\subsubsection*{Trimslice computer (a machine that runs linux)}
+We first run our test set on a
+\ahref{http://utilite-computer.com/web/trim-slice}{Trimslice computer},
+which is powered by a NVIDIA cortex-A9 based Tegra2 chipset.
+As our machine runs some linux distribution, we proceed by ordinary
+cross-compilation (\emph{i.e.} we compile litmus tests into C sources
+on our local machine and compile C files on the remote machine):
+\begin{verbatim}
+% litmus -mach trimslice -mem direct -st 1 -o /tmp/A.tar tst-co/@all
+% scp /tmp/A.tar trimslice:/tmp/A.tar
+\end{verbatim}
+We use the \afile{trimslice.cfg} (\prog{litmus}) configuration file present
+in the \prog{litmus} distribution, additionnally specifying
+\ahrefloc{defmemorymode}{memory direct mode}
+and a \ahrefloc{defstride}{stride value} of~\opt{1}.
+We then copy the \texttt{A.tar} archive to our Trimslice machine.
+
+We unpack and compile the C~sources on the remote Trimslice computer:
+\begin{verbatim}
+$ mkdir TST
+$ cd TST
+$ tar xf /tmp/A.tar
+$ make -j 4 all
+gcc -D_GNU_SOURCE -Wall -std=gnu99 -mcpu=cortex-a9 -marm -O2 -pthread -O2 -c affinity.c
+gcc -D_GNU_SOURCE -Wall -std=gnu99 -mcpu=cortex-a9 -marm -O2 -pthread -O2 -c outs.c
+gcc -D_GNU_SOURCE -Wall -std=gnu99 -mcpu=cortex-a9 -marm -O2 -pthread -O2 -c utils.c
+gcc -D_GNU_SOURCE -Wall -std=gnu99 -mcpu=cortex-a9 -marm -O2 -pthread -S R+dmbs.c
+...
+gcc -D_GNU_SOURCE -Wall -std=gnu99 -mcpu=cortex-a9 -marm -O2 -pthread  -o W+RW.exe affinity.o outs.o utils.o W+RW.s
+gcc -D_GNU_SOURCE -Wall -std=gnu99 -mcpu=cortex-a9 -marm -O2 -pthread  -o W+RR.exe affinity.o outs.o utils.o W+RR.s
+\end{verbatim}
+We are now ready for running the tests, we perform $10$~runs of the tests,
+with varying strides, using a shell script \afile{trimslice.sh}.
+\verbatiminput{trimslice.sh}
+Notice that we also use the
+\ahrefloc{affinity:runopt}{affinity setting \opt{-i 1}}.
+We do so in order to accelerate the tests, as very little
+can ne expected from a dual-core system as regards thread placement on cores.
+We run the tests:
+\begin{verbatim}
+$ sh ./trimslice.sh
+\end{verbatim}
+After a bit less then $20$~minutes we get ten files
+\texttt{CO.00} to~\texttt{CO.09} that we transfer back to our main machine,
+in some sub-directory \texttt{trimslice}.
+
+\subsubsection*{APQ8060 (a development board that runs Android)}
+We then run our test set on a development board
+powered by a Qualcomm \ahref{http://en.wikipedia.org/wiki/Snapdragon_(system_on_chip)#Snapdragon_S3}{APQ8060 system-on-chip} (dual-core Scorpion).
+This board runs Android and is connected to our local computer
+by the \emph{Android Debug Bridge} (adb).
+We perform complete cross-compilation, \emph{i.e.} we shall compile
+both litmus sources into C~sources and C~sources into executables
+on our ocal machine. We first run \prog{litmus} as follows:
+\begin{verbatim}
+% mkdir -p SRC/DRAGON
+% litmus -mach dragon -mem direct -st 1 -driver C -o SRC/DRAGON tst-co/@all
+\end{verbatim}
+We use the \afile{dragon.cfg} (\prog{litmus}) configuration file present
+in the \prog{litmus} distribution:
+\verbatiminput{dragon.cfg}
+The configuration file defines the number of available cores
+(\verb+avail = 2+),
+gives some defaults for standard tests parameters,
+specifies a few affinity settings
+(\verb+affinity = incr0+ and \verb+force_affinity = true+), and then
+define the C~cross-compiler and its options.
+Notice that the C~sources are dumped into teh pre-existing
+directory \texttt{SRC/DRAGON}.
+We then compile C~sources, on the local machine.
+
 
 
 

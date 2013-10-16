@@ -887,7 +887,7 @@ The following option is accepted when enabled at compile time:
 Insert the assembly code of each thread in a loop of size \opt{<n>}.
 \end{description}
 
-\paragraph{Affinity}
+\paragraph{\aname{affinity:runopt}{Affinity}}
 If affinity control has been enabled at compilation time
 (for instance, by supplying option \texttt{-affinity incr1}
 to \litmus),
@@ -1544,8 +1544,8 @@ of Sec.~\ref{exec:control}.
 \end{description}
 Notice that affinity control is not implemented for MacOs.
 
-The following option is significant when affinity control is enabled.
-Otherwise it is a silent no-op.
+The following options are significant when affinity control is enabled.
+Otherwise they are silent no-ops.
 \begin{description}
 \item[{\tt -p <ns>}]
 Specify the sequence of logical processors.
@@ -1554,6 +1554,11 @@ Set default value for option \opt{-p} of Sec.~\ref{exec:control}.
 Default for this \opt{-p} option
 will let executable files compute the logical processor sequence
 themselves.
+\item[{\tt -force_afffinity <bool>}]
+Code that sets affinity will spin until all specified
+cores (as given with option \opt{-avail <n>}) processors
+are up. This option is necessary on devices that let core sleep
+when the computing load is low. Default is false.
 \end{description}
 
 Custom affinity control (see Sec.~\ref{affinity:custom}) is enabled,

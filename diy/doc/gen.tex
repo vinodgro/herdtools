@@ -1239,10 +1239,10 @@ of loads that are neither the target of~Rf, nor the source of~Fr. This is
 the default.
 \item [{\tt -nooptcond}] Do not optimise conditions.
 \item [{\tt -optcoherence}] Optimise conditions assuming that
-the tested system (at least) follow the uniproc model
+the tested system (at least) follows the uniproc model
 (see Sec.~\ref{defuniproc}).
-\item [{\tt -optcoherence}] Do not optimise conditions assuming that
-the tested system (at least) follow the uniproc model. This is the default.
+\item [{\tt -nooptcoherence}] Do not optimise conditions assuming that
+the tested system (at least) follows the uniproc model. This is the default.
 \item [{\tt -neg <bool>}] Negate final condition, default is~\texttt{false}.
 \item[{\tt -c <bool>}] Avoid equivalent cycles. Default is~\opt{true}.
 Setting \opt{-c true} is intended for debug.
@@ -1361,7 +1361,7 @@ Default is~$4$.
 \item[{\tt -eprocs}] Produce tests with exactly \opt{<n>}
 threads, where \opt{<n>} is set above.
 \item[{\tt -ins <n>}] Reject tests as soon as the code of one thread
-consists of  more than \opt{<n>} instructions. Default is~$4$.
+originates from \opt{<n>} edges or more. Default is~$4$.
 \item[{\tt -relax <relax-list>}] Set relax list. Default is empty.
 The syntax of \opt{<relax-list>} is a comma (or space)
 separated list of candidate relaxations.
