@@ -446,11 +446,11 @@ static void usage(char *prog, cmd_t *d) {
     fprintf(stderr,"  -vb     do not show iteration timings%s\n",!d->verbose_barrier ? " (default)" : "") ;
   }
   if (d->prefetch) {
-    fprintf(stderr,"  -pra <T|F|I> set all prefetch\n") ;
+    fprintf(stderr,"  -pra (I|F|T|W) set all prefetch\n") ;
     fprintf(stderr,"  -prf <list> set prefetch, default '") ;
     prefetch_dump(stderr,d->prefetch) ;
     fprintf(stderr,"'\n") ;
-    fprintf(stderr,"    List syntax is comma separated proc:name=(I|F|T)\n") ;
+    fprintf(stderr,"    List syntax is comma separated proc:name=(I|F|T|W)\n") ;
   }
   if (d->static_prefetch >= 0) {
     fprintf(stderr,"  -prs <n> prefetch probability is 1/n, -prs 0 disables feature, default %i\n",d->static_prefetch) ;
