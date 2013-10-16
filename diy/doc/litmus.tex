@@ -1410,7 +1410,8 @@ We describe the more useful ones:
 \item[{\tt -libdir}] Show installation directory and exit.
 \item[{\tt -v}] Be verbose, can be repeated to increase verbosity.
 \item[{\tt -mach <name>}] Read configuration file~\file{name.cfg}.
-See the next section for the syntax of configuration files.
+See the \ahrefloc{config:sec}{next section}
+for the syntax of configuration files.
 \item[{\tt -o <dest>}]
 Save C-source of test files into \opt{<dest>} instead of running them.
 If  argument \opt{<dest>} is an archive (extension \opt{.tar})
@@ -1419,10 +1420,19 @@ or a compressed archive (extension \opt{.tgz}),
 demonstrated in Sec.~\ref{cross}.
 Otherwise, \opt{<dest>} is interpreted as the name of an
 existing directory and tests are saved in it.
-
-\item[{\tt -crossrun <(user@)?host(:port)?|adb>}] \aname{crossrun}{Instruct}
-the \texttt{run.sh} script to run
-individual tests on a remote machine.
+\item[{\tt -driver (shell|C|XCode)}]
+Choose the driver that will run the tests.
+In the ``\opt{shell}'' (and default) mode,
+each test will be compiled into an executable. A dedicated shell script
+\file{run.sh} will launch the test executables.
+In the ``\opt{C}'' mode, one executable \file{run.exe} is produced, which
+will launch the tests (see Sec.~\ref{driverc:example} for an example).
+Finally, the \opt{XCode} mode is for inclusion of the tests into
+a dedicated iOS App, which we do not distribute at the moment.
+\item[{\tt -crossrun <(user@)?host(:port)?|adb>}]
+When the shell driver is used (\opt{-driver shell} above),
+\aname{crossrun}{instruct}
+the \texttt{run.sh} script to run individual tests on a remote machine.
 The remote host can be contacted by the means of \texttt{ssh}
 or the Android Debug Bridge.
 \begin{description}
@@ -1712,7 +1722,7 @@ Time SB+SC 0.48
 \end{verbatim}
 One sees that the test name and final condition have changed.
 
-\subsection*{Configuration files}
+\subsection*{\aname{config:sec}{Configuration} files}
 The syntax of configuration files is minimal:
 lines ``\textit{key} \texttt{=} \textit{arg}'' are interpreted
 as setting the value of parameter~\textit{key} to \textit{arg}.

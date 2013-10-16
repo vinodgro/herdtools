@@ -509,9 +509,9 @@ We shall also test similar violations
 in the presence of one or two \texttt{dmb} fences
 (tests \mpposs{MP+dmb+pos}, \mpposs{MP+pos+dmb} and~\mpposs{MP+dmbs}).
 
-\subsection*{Running tests on hardware}
+\subsection{Running tests on hardware}
 
-\subsubsection*{Trimslice computer (a machine that runs linux)}
+\subsubsection{Trimslice computer (a machine that runs linux)}
 We first run our test set on a
 \ahref{http://utilite-computer.com/web/trim-slice}{Trimslice computer},
 which is powered by a NVIDIA cortex-A9 based Tegra2 chipset.
@@ -557,17 +557,17 @@ After a bit less then $20$~minutes we get ten files
 \texttt{CO.00} to~\texttt{CO.09} that we transfer back to our main machine,
 in some sub-directory \texttt{trimslice}.
 
-\subsubsection*{APQ8060 (a development board that runs Android)}
+\subsubsection{\label{driverc:example}APQ8060 (a development board that runs Android)}
 We then run our test set on a development board
 powered by a Qualcomm \ahref{http://en.wikipedia.org/wiki/Snapdragon_(system_on_chip)#Snapdragon_S3}{APQ8060 system-on-chip} (dual-core Scorpion).
 This board runs Android and is connected to our local computer
 by the \emph{Android Debug Bridge} (adb).
 We perform complete cross-compilation, \emph{i.e.} we shall compile
 both litmus sources into C~sources and C~sources into executables
-on our ocal machine. We first run \prog{litmus} as follows:
+on our local machine. We first run \prog{litmus} as follows:
 \begin{verbatim}
 % mkdir -p SRC/DRAGON
-% litmus -mach dragon -mem direct -st 1 -driver C -o SRC/DRAGON tst-co/@all
+% litmus -mach dragon -mem direct -st 1 -o SRC/DRAGON -driver C tst-co/@all
 \end{verbatim}
 We use the \afile{dragon.cfg} (\prog{litmus}) configuration file present
 in the \prog{litmus} distribution:
@@ -578,10 +578,22 @@ gives some defaults for standard tests parameters,
 specifies a few affinity settings
 (\verb+affinity = incr0+ and \verb+force_affinity = true+), and then
 define the C~cross-compiler and its options.
-Notice that the C~sources are dumped into teh pre-existing
-directory \texttt{SRC/DRAGON}.
+Notice that the C~sources are dumped into the pre-existing
+directory (\opt{-o SRC/DRAGON}) and that we build a single executable
+(\opt{-driver C}).
 We then compile C~sources, on the local machine.
-
+\begin{verbatim}
+% cd SRC/DRAGON
+% make -j 8
+arm-linux-gnueabi-gcc -D_GNU_SOURCE -Wall -std=gnu99 -march=armv7-a -mthumb -O2 -pthread -O2 -c affinity.c
+arm-linux-gnueabi-gcc -D_GNU_SOURCE -Wall -std=gnu99 -march=armv7-a -mthumb -O2 -pthread -O2 -c outs.c
+arm-linux-gnueabi-gcc -D_GNU_SOURCE -Wall -std=gnu99 -march=armv7-a -mthumb -O2 -pthread -O2 -c utils.c
+arm-linux-gnueabi-gcc -DASS -D_GNU_SOURCE -Wall -std=gnu99 -march=armv7-a -mthumb -O2 -pthread -S R+dmbs.c
+...
+arm-linux-gnueabi-gcc  -D_GNU_SOURCE -Wall -std=gnu99 -march=armv7-a -mthumb -O2 -pthread -static -o run.exe affinity.o outs.o utils.o R+dmbs.o MP+dmbs.o R+dmb+pos.o MP+dmb+pos.o WW+dmb.o 2+2W+dmbs.o S+dmbs.o 2+2W+dmb+pos.o S+dmb+pos.o WR+dmb.o SB+dmbs.o SB+dmb+pos.o R+pos+dmb.o RW+dmb.o LB+dmbs.o S+pos+dmb.o LB+dmb+pos.o W+RW+dmb.o MP+pos+dmb.o W+RR+dmb.o R+poss.o MP+poss.o WW.o 2+2W+poss.o S+poss.o WR.o SB+poss.o RW.o LB+poss.o W+RW.o W+RR.o run.o
+rm W+R
+...
+\end{verbatim}
 
 
 

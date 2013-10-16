@@ -1385,7 +1385,6 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
     if do_affinity then O.fi "int *cpu; /* On this cpu */" ;
     if do_timebase && have_timebase then
       O.fi "int delay; /* time base delay */" ;
-    if do_custom then O.fi "prfproc_t *prefetch;" ;
     if do_verbose_barrier_local then O.fi "pm_t *p_mutex;" ;
     O.fi "ctx_t *_a;   /* In this context */" ;
     O.f "} parg_t;" ;
@@ -1424,6 +1423,9 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
         | NoBarrier -> ()
         end ;
         O.fi "int _size_of_test = _a->_p->size_of_test;" ;
+
+        if do_custom then
+          O.fi "prfone_t *_prft = _a->_p->prefetch->t[%i].t;" proc ;
         if do_staticpl then
           O.oi "unsigned int _static_prefetch = _a->_p->static_prefetch;" ;
         begin match stride with
@@ -1456,7 +1458,6 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
           begin match addrs with
           | [] -> ()
           | _::_ ->
-              O.fx i "prfone_t *_prft = _b->prefetch->t;" ;
               O.fx i "prfdir_t _dir;" ;
               Misc.iteri
                 (fun k loc ->
@@ -1700,8 +1701,6 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
     O.oii "parg[_p].th_id = _p; parg[_p]._a = &ctx;" ;
     if do_affinity then O.oii "parg[_p].cpu = &(_a->cpus[0]);" ;
     if do_timebase && have_timebase then O.oii "parg[_p].delay = _b->delays[_p];" ;
-    if do_custom then
-      O.oii "parg[_p].prefetch = &_b->prefetch->t[_p];" ;
     if do_verbose_barrier_local then
       O.oii "parg[_p].p_mutex = _a->p_mutex;" ;
     loop_proc_postlude indent ;
