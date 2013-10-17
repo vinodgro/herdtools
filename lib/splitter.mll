@@ -20,7 +20,7 @@ type result =
   {
     arch : Archs.t ;
     name : Name.t ;
-    info : (string * string) list ;    
+    info : (string * string) list ;
     locs : Pos.pos2 * Pos.pos2 * Pos.pos2 *Pos.pos2 ;
     start : Lexing.position ;
   }
@@ -57,11 +57,11 @@ rule main_pos = parse
      main start lexbuf
     }
 and main start = parse
-| blank* ("X86"|"PPC"|"ARM") as arch
+| blank* (alpha|digit)+ as arch
   blank+
   (testname as tname)
   blank*
-  ('(' (name as texname) ')' blank*) ?  
+  ('(' (name as texname) ')' blank*) ?
   ( ('\n'? as line) blank*'"'([^'"']* as doc) '"' blank*) ? (* '"' *)
   ';' ?
   { begin match line with Some _ -> incr_lineno lexbuf | None -> () end ;
@@ -82,12 +82,12 @@ and main start = parse
         tname in
     let tname = match O.check_rename tname with
     | None -> tname
-    | Some n -> n in    
+    | Some n -> n in
     let names =
       { Name.name = tname ;
         file = init1.pos_fname ;
         texname = Misc.proj_opt tname texname ;
-        doc = Misc.proj_opt "" doc ; } in      
+        doc = Misc.proj_opt "" doc ; } in
     { arch = arch ;
       name = names ;
       info = info ;
@@ -129,7 +129,7 @@ and inside_prog  = parse
 | "locations"
    { false,lexeme_start_p lexbuf }
  (* name is for longuest match to avoid confusion, in case of eg. forallx *)
-| (name | _)  { inside_prog lexbuf }                                        
+| (name | _)  { inside_prog lexbuf }
 | "" { error "inside_prog" lexbuf }
 
 and inside_constr  = parse
@@ -176,12 +176,12 @@ let split name chan =
      pos_bol = 0; pos_cnum = 0};
   let r =
     try main_pos lexbuf
-    with 
+    with
     | LexMisc.Error (msg,loc) ->
 	Printf.eprintf "%a: splitter error in sublexer %s\n"
 	  Pos.pp_pos loc msg ;
 	raise Misc.Exit (* silent, message printed above *)
-    | e -> 
+    | e ->
 	Printf.eprintf
 	  "%a: Uncaught exception in splitter %s\n"
 	  Pos.pp_pos lexbuf.lex_curr_p
@@ -189,8 +189,6 @@ let split name chan =
 	assert false in
   if O.debug then show r ;
   r
-  
+
 end
 }
-
-
