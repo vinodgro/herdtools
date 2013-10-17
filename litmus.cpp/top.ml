@@ -85,17 +85,6 @@ module type Config = sig
   val limit : bool
 end
 
-module type TOP_MAKE = functor (L : Language.S) -> sig
-  val compile :
-    Hint.table ->
-    (string -> bool) ->
-    string list ->
-    StringSet.t ->
-    Answer.info StringMap.t ->
-    string ->
-    in_channel -> out_channel -> Splitter.result -> Answer.answer
-end
-
 module Top (OT:TopConfig) (Tar:Tar.S) : sig
   val from_files : string list -> unit
 end = struct
@@ -107,7 +96,7 @@ end = struct
       (A:Arch.S)
       (L:GenParser.LexParse with type instruction = A.pseudo)
       (XXXComp : XXXCompile.S with module A = A)
-      (Lang : Language.S) =
+      (Lang:Language.S) =
     struct
       module P = GenParser.Make(O)(A) (L)
       module T = Test.Make(A)
@@ -250,10 +239,7 @@ end = struct
         let carch = lazy (assert false)
       end in
       let get_cfg = function
-      | `PPC, _ -> Some (module OX : Config)
-      | `PPCGen, _ -> Some (module OX : Config)
-      | `X86, _ -> Some (module OX : Config)
-      | `ARM, _ -> Some (module OX : Config)
+      | `PPC, _ | `PPCGen, _ | `X86, _ | `ARM, _ -> Some (module OX : Config)
       | `C, Some given_carch ->
           let module OX = struct
             include OX
@@ -265,6 +251,11 @@ end = struct
       match get_cfg (arch, OT.carch) with
       | Some cfg ->
           let module Cfg = (val cfg : Config) in
+          let get_lang = function
+          | `PPC | `PPCGen | `X86 | `ARM -> (module ASMLang.Make : Language.S)
+          | `C -> (module CLang.Make : Language.S)
+          in
+          let module Lang = (val (get_lang arch) : Language.S) in
           let rec aux = function
           | `PPC ->
               let module Arch' = PPCArch.Make(OC)(V) in
@@ -276,7 +267,9 @@ end = struct
                 let parser = PPCParser.main
               end in
               let module Compile = PPCCompile.Make(V)(OC) in
-              (module (Make(Cfg)(Arch')(LexParse)(Compile)) : TOP_MAKE)
+              let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
+              X.compile hint avoid_cycle fst cycles hash_env
+                name in_chan out_chan splitted
           | `PPCGen ->
               let module Arch' = PPCGenArch.Make(OC)(V) in
               let module LexParse = struct
@@ -287,7 +280,9 @@ end = struct
                 let parser = PPCGenParser.main
               end in
               let module Compile = PPCGenCompile.Make(V)(OC) in
-              (module Make(Cfg)(Arch')(LexParse)(Compile) : TOP_MAKE)
+              let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
+              X.compile hint avoid_cycle fst cycles hash_env
+                name in_chan out_chan splitted
           | `X86 ->
               let module Arch' = X86Arch.Make(OC)(V) in
               let module LexParse = struct
@@ -298,7 +293,9 @@ end = struct
                 let parser = X86Parser.main
               end in
               let module Compile = X86Compile.Make(V)(OC) in
-              (module Make(Cfg)(Arch')(LexParse)(Compile) : TOP_MAKE)
+              let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
+              X.compile hint avoid_cycle fst cycles hash_env
+                name in_chan out_chan splitted
           | `ARM ->
               let module Arch' = ARMArch.Make(OC)(V) in
               let module LexParse = struct
@@ -309,18 +306,12 @@ end = struct
                 let parser = ARMParser.main
               end in
               let module Compile = ARMCompile.Make(V)(OC) in
-              (module Make(Cfg)(Arch')(LexParse)(Compile) : TOP_MAKE)
+              let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
+              X.compile hint avoid_cycle fst cycles hash_env
+                name in_chan out_chan splitted
           | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
           in
-          let get_lang = function
-          | `PPC | `PPCGen | `X86 | `ARM -> (module ASMLang.Make : Language.S)
-          | `C -> assert false (* HERE IS THE JOB *)
-          in
-          let module Make = (val (aux arch) : TOP_MAKE) in
-          let module Lang = (val (get_lang arch) : Language.S) in
-          let module X = Make(Lang) in
-          X.compile hint avoid_cycle fst cycles hash_env
-            name in_chan out_chan splitted
+          aux arch
       | None ->
           W.warn "Test %s not performed because -carch is not given but required while using C arch" tname ;
           Absent arch

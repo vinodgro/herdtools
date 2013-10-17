@@ -27,7 +27,13 @@ end
 
 exception Error of string
 
+module type Config = sig
+  val memory : Memory.t
+  val cautious : bool
+end
+
 module type S = sig
+
   type arch_reg
 
   type flow = Next | Branch of string
@@ -53,12 +59,25 @@ module type S = sig
   val dump_out_reg : int -> arch_reg -> string
   val dump_v : Constant.v -> string
   val addr_cpy_name : string -> int -> string
-  val dump : out_channel -> string -> (arch_reg * RunType.t) list -> int -> t  -> unit
-end
 
-module type Config = sig
-  val memory : Memory.t
-  val cautious : bool
+  (* TODO: Remove this ugly module *)
+  module Reexport : sig
+    module O : Config
+    module A : I with type arch_reg = arch_reg
+    module V : Constant.S
+
+    module RegSet : MySet.S with type elt = A.arch_reg
+
+    val to_string : ins -> string
+    val trashed_regs : t -> RegSet.t
+    val dump_trashed_reg : A.arch_reg -> string
+    val dump_copies : out_channel -> string -> (A.arch_reg * RunType.t) list -> int -> t -> unit
+    val dump_outputs : out_channel -> int -> t -> RegSet.t -> unit
+    val dump_inputs : out_channel -> t -> RegSet.t -> unit
+    val dump_clobbers : out_channel -> 'a -> unit
+    val dump_save_copies : out_channel -> string -> int -> t -> unit
+  end
+
 end
 
 module Make(O:Config) (A:I) (V:Constant.S): S
@@ -386,52 +405,22 @@ struct
             ("cc"::"memory"::
              List.map A.reg_to_string A.forbidden_regs)))
 
+  (* TODO: Remove this ugly module *)
+  module Reexport = struct
+    module A = A
+    module O = O
+    module V = V
 
-  let dump chan indent env proc t =
-    let rec dump_ins k ts = match ts with
-    | [] -> ()
-    | t::ts ->
-        begin match t.label with
-        | Some _ ->
-            fprintf chan "\"%c_litmus_P%i_%i\\n\"\n"  A.comment proc k
-        | None ->
-            fprintf chan "\"%c_litmus_P%i_%i\\n%s\"\n"
-              A.comment proc k
-              (if t.comment then "" else "\\t")
-        end ;
-        fprintf chan "\"%s\\n\"\n" (to_string t) ;
-(*
-        fprintf chan "\"%-20s%c_litmus_P%i_%i\\n\\t\"\n"
-          (to_string t) A.comment proc k ;
-*)
-        dump_ins (k+1) ts in
-    let trashed = trashed_regs t in
-    RegSet.iter
-      (fun reg ->
-        let ty = match A.internal_init reg with
-        | Some (_,ty) -> ty
-        | None -> "int" in
-        fprintf chan "%s%s %s;\n"
-          indent ty (dump_trashed_reg reg))
-      trashed ;
-    if O.cautious then begin
-      dump_copies chan indent env proc t
-    end ;
-    fprintf chan "asm __volatile__ (\n" ;
-    fprintf chan "\"\\n\"\n" ;
-    fprintf chan "\"%cSTART _litmus_P%i\\n\"\n" A.comment proc ;
-    begin match t.code with
-    | [] -> fprintf chan "\"\"\n"
-    | code -> dump_ins 0 code
-    end ;
-    fprintf chan "\"%cEND_litmus\\n\\t\"\n" A.comment ;
-    dump_outputs chan proc t trashed ;
-    dump_inputs chan t trashed ;
-    dump_clobbers chan t  ;
-    fprintf chan ");\n" ;
-    if O.cautious then begin
-      dump_save_copies chan indent proc t
-    end ;
-    ()
+    module RegSet = RegSet
+
+    let to_string = to_string
+    let trashed_regs = trashed_regs
+    let dump_trashed_reg = dump_trashed_reg
+    let dump_copies = dump_copies
+    let dump_outputs = dump_outputs
+    let dump_inputs = dump_inputs
+    let dump_clobbers = dump_clobbers
+    let dump_save_copies = dump_save_copies
+  end
 
 end
