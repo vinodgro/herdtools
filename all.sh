@@ -1,6 +1,6 @@
 #! /bin/sh
 
-DIRS="herd gen tools litmus tools"
+DIRS="herd gen tools litmus"
 COM="$@"
 case $COM in
   svn*)

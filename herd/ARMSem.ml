@@ -212,16 +212,24 @@ module Make (C:Sem.Config)(V:Value.S)
               checkCZ str c ii
 	  |  ARM.I_STR3 (rt,rn,rm,c) ->
               let str3 ii = 
-	      (((M.read_reg  rm ii) >>|
-              ((M.read_reg  rn ii) >>|
-              (M.read_reg  rt ii)))
-		 >>= 
-	       (fun (vm,(vn,vt)) ->
-		 (M.add vn vm) >>=
-		 (fun a ->
-		   (M.write_mem a vt ii)))) in
+	        (((M.read_reg  rm ii) >>|
+                ((M.read_reg  rn ii) >>|
+                (M.read_reg  rt ii)))
+		   >>= 
+	         (fun (vm,(vn,vt)) ->
+		   (M.add vn vm) >>=
+		   (fun a ->
+		     (M.write_mem a vt ii)))) in
               checkZ str3 c ii
-          | ARM.I_STREX _ -> Warn.fatal "STREX not implemented"
+          | ARM.I_STREX (r1,r2,r3,c) ->
+              let strex ii =
+                (M.read_reg r2 ii >>| M.read_reg r3 ii) >>=
+                fun (v,a) -> 
+                  M.altT
+                    (M.write_reg r1 V.one ii >>! ())
+                    ((M.write_reg r1 V.zero ii >>|
+                    M.write_mem_atomic a v ii) >>! ()) in
+              checkZ strex c ii
 	  | ARM.I_MOV (rd, rs, c) -> 
               let mov ii =
 	        M.read_reg  rs ii >>=

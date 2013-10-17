@@ -7,7 +7,7 @@ CFG=conti.cfg saumur.cfg saumur.close.cfg doko.cfg squale.cfg hpcx.cfg \
  chianti.cfg portable.cfg \
  power7.cfg power7.32.cfg power.cfg g5.cfg\
  ARM.cfg ARM_ADB.cfg cortex9.cfg cortex9-O0.cfg\
- dragon.cfg dragon-arm.cfg\
+ dragon.cfg dragon-arm.cfg dragon-thumb.cfg\
  trimslice.cfg\
  tst.cfg auto.cfg power7.smt.cfg power6.smt.cfg \
  mp.cfg ipad.cfg asus.cfg asus-debian.cfg asus-debian-thumb.cfg cortexA15.cfg \

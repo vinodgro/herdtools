@@ -515,7 +515,7 @@ in the presence of one or two \texttt{dmb} fences
 We first run our test set on a
 \ahref{http://utilite-computer.com/web/trim-slice}{Trimslice computer},
 which is powered by a NVIDIA cortex-A9 based Tegra2 chipset.
-As our machine runs some linux distribution, we proceed by ordinary
+As the Trimslice machine runs some Linux distribution, we proceed by ordinary
 cross-compilation (\emph{i.e.} we compile litmus tests into C sources
 on our local machine and compile C files on the remote machine):
 \begin{verbatim}
@@ -554,8 +554,8 @@ We run the tests:
 $ sh ./trimslice.sh
 \end{verbatim}
 After a bit less then $20$~minutes we get ten files
-\texttt{CO.00} to~\texttt{CO.09} that we transfer back to our main machine,
-in some sub-directory \texttt{trimslice}.
+\texttt{CO.00} to~\texttt{CO.09} that we transfer back to our local machine,
+into some sub-directory \texttt{trimslice}.
 
 \subsubsection{\label{driverc:example}APQ8060 (a development board that runs Android)}
 We then run our test set on a development board
@@ -575,7 +575,7 @@ in the \prog{litmus} distribution:
 The configuration file defines the number of available cores
 (\verb+avail = 2+),
 gives some defaults for standard tests parameters,
-specifies a few affinity settings
+specifies a few \ahrefloc{affinity:control}{affinity settings}
 (\verb+affinity = incr0+ and \verb+force_affinity = true+), and then
 define the C~cross-compiler and its options.
 Notice that the C~sources are dumped into the pre-existing
@@ -594,7 +594,29 @@ arm-linux-gnueabi-gcc  -D_GNU_SOURCE -Wall -std=gnu99 -march=armv7-a -mthumb -O2
 rm W+R
 ...
 \end{verbatim}
+Thanks to the setting \opt{-driver C} the above compilation produced one
+executable file ``\file{run.exe}'', which we upload onto the Android device:
+\begin{verbatim}
+% adb push ./run.exe /data/tmp
+6104 KB/s (892848 bytes in 0.142s)
+\end{verbatim}
+Then, we perform ten runs of the test set with stride variation,
+by running the shell script \afile{dragon.sh} on our local machine:
+\begin{verbatim}
+% cat dragon.sh
+adb shell /data/tmp/run.exe -s 5k -r 2k -i 1 -st 133 > CO.00
+...
+adb shell /data/tmp/run.exe -s 5k -r 2k -i 1 -st 37 > CO.09
+% sh dragon.sh
+\end{verbatim}
+After a bit less then $20$~minutes we get ten files
+\texttt{CO.00} to~\texttt{CO.09} in directory \file{SRC/DRAGON}
+that we move into some sub-directory \texttt{dragon}.
 
-
-
+\subsubsection{Other machines}
+We also run our test set on more recent
+Google nexus10 tablet (dual-core Cortex-A15 based Exynos5250, runing Android)
+and Hardkernel ODROID-XU development board
+(quad-core CortexA7-Cortex-A15 in tandem based Exynos5410, running Linux),
+resulting in log files into sub-directories \file{nexus10) and~\file{odroid-xu}.
 

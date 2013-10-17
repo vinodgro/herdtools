@@ -1261,7 +1261,7 @@ accelerating entry accesses and delaying exit accesses:
 % ./6.SB.exe 
 Test 6.SB Allowed
 Histogram (63 states)
-108   *>0:EAX=0; 1:EAX=0; 2:EAX=0; 3:EAX=0; 4:EAX=0; 5:EAX=0;
+24    *>0:EAX=0; 1:EAX=0; 2:EAX=0; 3:EAX=0; 4:EAX=0; 5:EAX=0;
 ...
 Prefetch=0:x=W,0:y=F,1:y=W,1:z=F,2:a=F,2:z=W,3:a=W,3:b=F,4:b=W,4:c=F,5:c=W,5:x=F
 ...
@@ -1526,7 +1526,7 @@ In mode ``\texttt{all}'', the \texttt{run.sh} script will additionally
 not run the test if invoked once more later.
 \end{description}
 
-The following option commands affinity control:
+\aname{affinity:control}{The} following optiondra commands affinity control:
 \begin{description}
 \item[{\tt -affinity (none|incr<n>|random|custom)}]
 Enable (of disable with tag \opt{none}) affinity control,
@@ -1564,7 +1564,7 @@ Set default value for option \opt{-p} of Sec.~\ref{exec:control}.
 Default for this \opt{-p} option
 will let executable files compute the logical processor sequence
 themselves.
-\item[{\tt -force_afffinity <bool>}]
+\item[{\tt -force\_afffinity <bool>}]
 Code that sets affinity will spin until all specified
 cores (as given with option \opt{-avail <n>}) processors
 are up. This option is necessary on devices that let core sleep

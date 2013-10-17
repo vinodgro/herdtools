@@ -150,7 +150,7 @@ PSTEX=$(DOTS:.dot=.pstex_t)
 CFG=hpcx.cfg saumur.cfg doc.cfg apoil.cfg trimslice.cfg dragon.cfg
 CAT=sc.cat tso-00.cat tso-01.cat  tso-02.cat
 GENCAT=herd.cat x86tso.cat minimal.cat uniproc.cat
-TXT=rename.txt cond.txt trimslice.sh
+TXT=rename.txt cond.txt trimslice.sh dragon.sh
 DONT=x86.sc x86.explo x86-log.txt
 LITMUSDIR=../../litmus/
 HERDDIR=../../herd

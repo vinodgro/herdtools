@@ -42,15 +42,17 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
 
 
 (* RMW utilities *)
-    let tempo1 = ARM.Symbolic_reg "T1"
+    let tempo1 = ARM.Symbolic_reg "T1" (* May be used for address *)
+    let tempo2 = ARM.Symbolic_reg "T2" (* utility *)
+    let tempo3 = ARM.Symbolic_reg "T3" (* May be used for stored values *)
 
     let loop_rmw r1 r2 addr =
       let lab = Label.next_label "Loop" in
       Label (lab,Nop)::
       pseudo
         [I_LDREX (r1,addr) ;
-         I_STREX (tempo1,r2,addr,AL);
-         I_CMPI (tempo1,0);
+         I_STREX (tempo2,r2,addr,AL);
+         I_CMPI (tempo2,0);
          I_BNE (lab);
        ]
 
@@ -59,25 +61,25 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
       if u <= 0 then
         pseudo
           [I_LDREX (r1,addr);
-           I_STREX (tempo1,r2,addr,AL);]
+           I_STREX (tempo2,r2,addr,AL);]
       else if u = 1 then
         pseudo
           [I_LDREX (r1,addr);
-           I_STREX (tempo1,r2,addr,AL);
-           I_CMPI (tempo1,0);
+           I_STREX (tempo2,r2,addr,AL);
+           I_CMPI (tempo2,0);
            I_BNE (Label.fail p);]
       else
         let out = Label.next_label "Go" in
         let rec do_rec = function
           | 1 ->
               [I_LDREX (r1,addr);
-               I_STREX (tempo1,r2,addr,AL);
-               I_CMPI (tempo1,0);
+               I_STREX (tempo2,r2,addr,AL);
+               I_CMPI (tempo2,0);
                I_BNE (Label.fail p);]
           | u ->
               I_LDREX (r1,addr)::
-              I_STREX (tempo1,r2,addr,AL)::
-              I_CMPI (tempo1,0)::
+              I_STREX (tempo2,r2,addr,AL)::
+              I_CMPI (tempo2,0)::
               I_BEQ (out)::
               do_rec (u-1) in
         pseudo (do_rec u)@[Label (out,Nop)]
@@ -169,8 +171,6 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
 
 (* Load exclusive *)
 
-    let tempo3 = ARM.Symbolic_reg "T3"
-
 (* FNO *)
 
     let emit_ldrex st p init x =
@@ -212,9 +212,9 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
         
 (* STA *)
 
-    let unroll_sta u p rA rB = unroll_rmw p tempo1 rA rB u
+    let unroll_sta u p rA rB = unroll_rmw p tempo2 rA rB u
 
-    let loop_sta rA rB = loop_rmw tempo1 rA rB
+    let loop_sta rA rB = loop_rmw tempo2 rA rB
 
     let do_emit_sta_reg p rA rB = match Cfg.unrollatomic with
     | None -> loop_sta rA rB
@@ -315,6 +315,9 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
         [Instruction (I_CMP (r1,r1));
          Instruction (I_BNE lab);
          Label (lab,Nop);] in
+      let ropt,init,cs,st = emit_access st p init e in
+      ropt,init,insert_isb isb c cs,st
+(*
       match e.dir with
       | R ->
           let r,init,cs,st = emit_load st p init e.loc in
@@ -322,6 +325,7 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
       | W ->
           let init,cs,st = emit_store st p init e.loc e.v in
           None,init,insert_isb isb c cs,st
+*)
 
     let emit_access_dep st p init e dp r1 = match dp with
     | ADDR -> emit_access_dep_addr st p init e r1
