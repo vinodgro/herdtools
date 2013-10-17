@@ -34,17 +34,7 @@ module Make(Tmpl:Template.S) = struct
 *)
         dump_ins (k+1) ts in
     let trashed = trashed_regs t in
-    RegSet.iter
-      (fun reg ->
-        let ty = match A.internal_init reg with
-        | Some (_,ty) -> ty
-        | None -> "int" in
-        fprintf chan "%s%s %s;\n"
-          indent ty (dump_trashed_reg reg))
-      trashed ;
-    if O.cautious then begin
-      dump_copies chan indent env proc t
-    end ;
+    before_dump chan indent env proc t trashed;
     fprintf chan "asm __volatile__ (\n" ;
     fprintf chan "\"\\n\"\n" ;
     fprintf chan "\"%cSTART _litmus_P%i\\n\"\n" A.comment proc ;
@@ -57,9 +47,7 @@ module Make(Tmpl:Template.S) = struct
     dump_inputs chan t trashed ;
     dump_clobbers chan t  ;
     fprintf chan ");\n" ;
-    if O.cautious then begin
-      dump_save_copies chan indent proc t
-    end ;
+    after_dump chan indent proc t;
     ()
 
 end

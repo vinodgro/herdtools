@@ -60,6 +60,8 @@ module type S = sig
   val dump_v : Constant.v -> string
   val addr_cpy_name : string -> int -> string
 
+  val after_dump : out_channel -> string -> int -> t -> unit
+
   (* TODO: Remove this ugly module *)
   module Reexport : sig
     module O : Config
@@ -76,6 +78,8 @@ module type S = sig
     val dump_inputs : out_channel -> t -> RegSet.t -> unit
     val dump_clobbers : out_channel -> 'a -> unit
     val dump_save_copies : out_channel -> string -> int -> t -> unit
+
+    val before_dump : out_channel -> string -> (arch_reg * RunType.t) list -> int -> t -> RegSet.t -> unit
   end
 
 end
@@ -405,6 +409,24 @@ struct
             ("cc"::"memory"::
              List.map A.reg_to_string A.forbidden_regs)))
 
+  let before_dump chan indent env proc t trashed =
+    RegSet.iter
+      (fun reg ->
+        let ty = match A.internal_init reg with
+        | Some (_,ty) -> ty
+        | None -> "int" in
+        fprintf chan "%s%s %s;\n"
+          indent ty (dump_trashed_reg reg))
+      trashed ;
+    if O.cautious then begin
+      dump_copies chan indent env proc t
+    end
+
+  let after_dump chan indent proc t =
+    if O.cautious then begin
+      dump_save_copies chan indent proc t
+    end
+
   (* TODO: Remove this ugly module *)
   module Reexport = struct
     module A = A
@@ -421,6 +443,8 @@ struct
     let dump_inputs = dump_inputs
     let dump_clobbers = dump_clobbers
     let dump_save_copies = dump_save_copies
+
+    let before_dump = before_dump
   end
 
 end
