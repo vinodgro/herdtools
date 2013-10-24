@@ -167,6 +167,8 @@ module Make(Config:Config) (C:XXXCompile.S)
     | DetourWs e ->
         Buffer.add_char buff 'C' ;
         Buffer.add_char buff (sig_of_dir e)
+    | Store ->
+        Buffer.add_char buff 'D'
 
   let sig_of_atoms buff a1 a2 =
     Buffer.add_char buff

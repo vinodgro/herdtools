@@ -8,8 +8,6 @@
 (*  under the terms of the Lesser GNU General Public License.        *)
 (*********************************************************************)
 
-open Printf
-
 (* Description of a test subdirectory *)
 type base_st =
     {

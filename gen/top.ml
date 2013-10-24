@@ -103,12 +103,12 @@ module StringMap = MyMap.Make(String)
 (* Compilation *)
 (***************)
 
-
   let show_in_cond =
     if O.optcond then
       let valid_edge e = match e.C.E.edge with
       | Rf _ | RfStar _| Fr _ | Ws _ | Hat|Detour _|DetourWs _ -> true
-      | Po _ | Fenced _ | Dp _|Rmw -> false in
+      | Po _ | Fenced _ | Dp _|Rmw -> false
+      | Store -> assert false in
       (fun n -> valid_edge n.C.C.prev.C.C.edge || valid_edge n.C.C.edge)
     else
       (fun _ -> true)
@@ -196,6 +196,17 @@ let get_fence n =
   | _, C.E.Fenced (fe,_,_,_) ->  Some fe
   | _,_ -> None
         
+let rec compile_stores st p i ns k = match ns with
+| [] -> i,k,st
+| n::ns ->
+    let sto = n.C.C.store in
+    if sto == C.C.nil then
+      compile_stores st p i ns k
+    else
+      let _,i,c,st = C.emit_access st p i sto.C.C.evt in
+      let i,k,st = compile_stores st p i ns k in
+      i,(c@k),st
+
 let rec compile_proc loc_writes st p ro_prev init ns = match ns with
 | [] -> init,[],(C.C.EventMap.empty,[]),st
 | n::ns ->
@@ -452,6 +463,10 @@ exception NoObserver
       let k =
         if n.C.C.next == n0 then StringSet.empty
         else do_rec n.C.C.next in
+      let k =
+        if n.C.C.store != C.C.nil then
+          StringSet.add n.C.C.store.C.C.evt.C.C.loc k
+        else k in
       let k = 
         match n.C.C.evt.C.C.dir with
         | W -> StringSet.add n.C.C.evt.C.C.loc k
@@ -668,6 +683,7 @@ let last_map cos =
       | [] -> List.rev i,[],(C.C.EventMap.empty,[]),[]
       | n::ns ->
           let i,c,(m,f),st = compile_proc loc_writes A.st0 p No i n in
+          let i,c,st = compile_stores st p i n c in
           let i,c,f,st =
             match O.cond with
             | Unicond -> i,c,f,st                
@@ -826,6 +842,7 @@ let test_of_cycle name ?com ?(info=[]) ?(check=(fun _ -> true)) es c =
 let make_test name ?com ?info ?check es =
   try
     if O.verbose > 1 then eprintf "**Test %s**\n" name ;
+    if O.verbose > 2 then eprintf "**Cycle %s**\n" (pp_edges es) ;
     let es,c = C.C.make es in
     test_of_cycle name ?com ?info ?check es c
   with

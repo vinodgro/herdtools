@@ -41,7 +41,9 @@ module type S = sig
       mutable next : node ;
       mutable prev : node ;
       mutable detour : node ;
+      mutable store : node  ;
     } 
+  val nil : node
 
 (* Re-extract edges out of cycle *)
   val extract_edges : node -> edge list
@@ -111,6 +113,7 @@ module Make (O:Config) (E:Edge.S) :
       mutable next : node ;
       mutable prev : node ;
       mutable detour : node ;
+      mutable store : node  ;
     }
 
   let debug_dir d = match d with W -> "W" | R -> "R"
@@ -122,9 +125,29 @@ module Make (O:Config) (E:Edge.S) :
 
 let debug_edge = E.pp_edge
 
+
+let rec nil =
+  {
+   evt = evt_null ;
+   edge = E.plain_edge (E.Po (Diff,Irr,Irr)) ;
+   next = nil ;
+   prev = nil ;
+   detour = nil ;
+   store = nil ;
+  }
+
 let debug_node chan n =
+  if n.store != nil then
+    fprintf chan "[Store: %s]" (debug_evt n.store.evt) ;
   fprintf chan "%s -%s->"
     (debug_evt n.evt) (debug_edge n.edge)
+
+  let debug_nodes chan ns =
+    let rec iter chan = function
+      | [] -> ()
+      | [n] -> debug_node chan n
+      | n::ns -> fprintf chan "%a,%a" debug_node n iter ns in
+    iter chan ns
 
  let debug_cycle chan n =
   let rec do_rec m =
@@ -136,16 +159,6 @@ let debug_node chan n =
 
 
 
-
-let rec nil =
-  {
-   evt = evt_null ;
-   edge = E.plain_edge (E.Po (Diff,Irr,Irr)) ;
-   next = nil ;
-   prev = nil ;
-   detour = nil ;
-  }
-
 let do_alloc_node idx e = 
   {
    evt = { evt_null with idx= idx ;} ;
@@ -153,6 +166,7 @@ let do_alloc_node idx e =
    next = nil ; 
    prev = nil ;
    detour = nil ;
+   store = nil ;
   }
 
 let alloc_node idx e =
@@ -176,12 +190,34 @@ let cons_cycle n c =
 let set_detours n =
   let rec do_rec m =
     if E.is_detour m.edge then begin
-      let d = m.detour in
-      d.prev <- m ;
-      d.next <- m.next
+        let d = m.detour in
+        d.prev <- m ;
+        d.next <- m.next
     end ;
     if m.next != n then do_rec m.next in
   do_rec n
+
+let do_remove_store n =
+  let rec do_rec m =
+    if E.is_store m.edge then begin
+      let nxt = m.next and prev = m.prev in
+      nxt.prev <- prev ;
+      prev.next <- nxt ;
+      nxt.store <- m ;
+      m.evt <- { m.evt with dir=W;}
+    end ;
+    if m.next != n then do_rec m.next in
+  do_rec n
+
+let remove_store n =
+  let rec find_not_store m =
+    if E.is_store m.edge then
+      if m.next == n then Warn.fatal "All 'Store' cycle"
+      else find_not_store m.next
+    else m in
+  let n = find_not_store n in
+  do_remove_store n ;
+  n
 
 let build_cycle =
 
@@ -198,7 +234,7 @@ let build_cycle =
   fun es ->
     let c = do_rec 0 es in
     set_detours c ;
-    c
+    remove_store c
 
 
 let find_node p n =
@@ -336,9 +372,12 @@ let set_diff_loc st n0 =
   let rec do_rec st p m =
     let loc,st =
       if same_loc p.edge then p.evt.loc,st
-      else next_loc st in
+      else next_loc st in    
     m.evt <- { m.evt with loc=loc; } ;
-(*    eprintf "LOC SET: %a\n%!" debug_node m ;*)
+    if m.store != nil then begin
+      m.store.evt <- { m.store.evt with loc=loc; }
+    end ;
+(*    eprintf "LOC SET: %a\n%!" debug_node m ; *)
     if m.next != n0 then do_rec st p.next m.next
     else begin
       if m.evt.loc = n0.evt.loc then
@@ -383,9 +422,17 @@ let set_same_loc st n0 =
       else do_rec m.next in
     [do_rec n]
 
+
   let rec do_set_write_val next = function
     | [] -> ()
     | n::ns ->
+        let next = 
+          let st = n.store in
+          if st == nil then next
+          else begin
+            st.evt <- { st.evt with v=next; } ;
+            next_co next
+          end in
         if E.is_detour n.edge then begin
           let m = n.detour in
           let v =  match n.evt.dir with
@@ -426,7 +473,8 @@ let set_same_loc st n0 =
             (fun m -> match m.prev.edge.E.edge with
             | E.Fr _|E.Rf _|E.RfStar _|E.Ws _
             | E.Hat|E.Rmw|E.Detour _|E.DetourWs _ -> true
-            | E.Po _|E.Dp _|E.Fenced _ -> false) n in
+            | E.Po _|E.Dp _|E.Fenced _ -> false
+            | E.Store -> assert false) n in
         split_one_loc m
       with Exit -> Warn.fatal "Cannot set write values" in
     set_all_write_val nss ;
@@ -443,6 +491,9 @@ let do_set_read_v =
   let rec do_rec v = function
     | [] -> ()
     | n::ns ->
+        let v = 
+          if n.store == nil then v
+          else n.store.evt.v in
         match n.evt.dir with
         | R ->
             n.evt <- { n.evt with v=v; } ;
@@ -494,10 +545,13 @@ let finish n =
 
 (* Re-extract edges, with irelevant directions solved *)
 let extract_edges n =
-  let rec do_rec m = 
-    m.edge::
-    if m.next == n then []
-    else do_rec m.next in
+  let rec do_rec m =
+    let k =
+      if m.next == n then []
+      else do_rec m.next in
+    let k = m.edge::k in
+    if m.store == nil then k
+    else m.store.edge::k in  
   do_rec n
 
 let resolve_edges = function
@@ -606,9 +660,13 @@ let rec group_rec x ns = function
         if E.is_detour m.edge then
           (e.loc,m.detour)::k
         else k in
-      match e.dir with
+      let k =  match e.dir with
       | W -> (e.loc,m)::k
       | R -> k in
+      let st = m.store in
+      if st != nil then (st.evt.loc,st)::k
+      else k in
+      
     do_rec n
 
   let get_observers n =
@@ -625,12 +683,23 @@ let rec group_rec x ns = function
   let coherence n =
     let r = match find_change n with
     | Some n ->
-        let r = by_loc (get_writes n) in
+        let ws = get_writes n in
+(*
+        List.iter
+          (fun (loc,n) ->
+            eprintf "LOC=%s, node=%a\n" loc debug_node n)
+          ws ;
+*)
+        let r = by_loc ws in
         List.fold_right
           (fun (loc,ws) k -> match ws with
           | [] -> k
           | [_] -> (loc,ws)::k
-          | _ -> assert false)
+          | _ ->
+              List.iter
+                (fun ns -> eprintf "[%a]\n" debug_nodes ns)
+                ws ;
+              assert false)
           r []
     | None ->
         if O.same_loc then

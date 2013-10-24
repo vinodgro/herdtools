@@ -59,11 +59,28 @@ module Make : functor (C:Config) -> functor (E:Edge.S) ->
                     prev.next <- y ; y.prev <- prev ;
                     do_rec y ys in
               do_rec x xs ; x in
-        patch ms
+
+        let find_next_dir n =
+          let rec f_rec m =
+            if not (E.is_store m.edge) then m.dir
+            else if m.next == n then assert false
+            else f_rec m.next in
+          f_rec n in
+
+        let remove_store_dir n =
+          let rec do_rec m =
+            if E.is_store m.edge then m.dir <- find_next_dir m.next ;
+            if m.next != n then do_rec m.next in
+          do_rec n in
+
+        let r = patch ms in
+        remove_store_dir r ;
+        r
 
 
-      let same_proc e = E.get_ie e = Int
-      let diff_proc e = E.get_ie e = Ext
+(* Notice, do not halt on stores... *)
+      let same_proc e = try E.get_ie e = Int with E.IsStore _ -> assert false
+      let diff_proc e = try E.get_ie e = Ext with E.IsStore _ -> assert false
 
       exception NotFound
 

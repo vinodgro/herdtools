@@ -212,7 +212,9 @@ let speclist =
     "<relax-list> specify a safe list")::
   []
 
-let usage_msg = "Usage: " ^ Sys.argv.(0) ^   "[options]*"
+let prog = if Array.length Sys.argv > 0 then Sys.argv.(0) else "XXX"
+
+let usage_msg = "Usage: " ^ prog ^   "[options]*"
                                              
 let read_no fname =
   try

@@ -207,5 +207,6 @@ let () =
     end pp_es
         with
         | Misc.Exit -> ()
-        | (Misc.Fatal msg|Misc.UserError msg) -> eprintf "Fatal error: %s\n" msg
+        | (Misc.Fatal msg|Misc.UserError msg) ->
+            eprintf "%s: Fatal error: %s\n" Config.prog msg
 

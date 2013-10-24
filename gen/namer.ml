@@ -37,6 +37,7 @@ module Make
             Some (sprintf "det%s" (String.lowercase (pp_extr e)))
         | DetourWs e ->
             Some (sprintf "det%sw" (String.lowercase (pp_extr e)))
+        | Store -> Some "sto"
         | _ -> None
 
       let atom_name = function
@@ -101,10 +102,10 @@ module Make
       | [] -> [],[]
       | e::es ->
           let xs,xss = po_list es in
-          begin match E.get_ie e with
+          match E.get_ie e with
           | Ext -> [],add_list xs xss
           | Int -> (e::xs),xss
-          end
+
             
       let new_namer es =
         let xs,xss = po_list es in

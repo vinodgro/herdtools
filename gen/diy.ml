@@ -215,5 +215,5 @@ let () =
     exit 0
   with
   | Misc.Fatal msg | Misc.UserError msg->
-    eprintf "Fatal error: %s\n" msg ;
+    eprintf "%s: Fatal error: %s\n" Config.prog msg ;
     exit 2

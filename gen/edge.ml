@@ -27,6 +27,7 @@ module type S = sig
     | DetourWs of extr   (* source direction *)
     | Po of sd*extr*extr | Fenced of fence*sd*extr*extr
     | Dp of dp*sd*extr
+    | Store (* Insert a store at thread start *)
 (* fancy *)
     | Hat
     | RfStar of ie
@@ -49,6 +50,9 @@ module type S = sig
   val parse_edges : string -> edge list
 
   val pp_edges : edge list -> string
+
+(* Raised by get/set function on Store edge *)
+  exception IsStore of string
 
 (* Get source and target event direction,
    Returning Irr means that a Read OR a Write is acceptable *)  
@@ -75,6 +79,7 @@ module type S = sig
   val compact_sequence : edge list -> edge list -> edge -> edge -> edge list list
 (* Utilities *)
   val is_detour : edge -> bool
+  val is_store : edge -> bool
 
 (* Set *)
   module Set : MySet.S with type elt = edge
@@ -103,7 +108,7 @@ and type dp = F.dp = struct
     | DetourWs of extr
     | Po of sd*extr*extr | Fenced of fence*sd*extr*extr
     | Dp of dp*sd*extr
-(* fancy *)
+    | Store
     | Hat
     | RfStar of ie
     | Rmw
@@ -133,6 +138,7 @@ let pp_tedge = function
         (F.pp_dp dp) (pp_sd sd) (pp_extr e)
   | Hat -> "Hat"
   | Rmw -> "Rmw"
+  | Store -> "Store"
 
 let pp_edge e = pp_tedge e.edge ^ pp_aa e.a1 e.a2
 
@@ -161,15 +167,19 @@ let pp_strong sd e1 e2 =
 
 let pp_dp_default tag sd e = sprintf "%s%s%s" tag (pp_sd sd) (pp_extr e)
 
+exception IsStore of string
+
 let do_dir_tgt e = match e with
   | Po(_,_,e)| Fenced(_,_,_,e)|Dp (_,_,e) -> e
   | Rf _| RfStar _ | Hat | Detour _ -> Dir R
-  | Ws _|Fr _|Rmw|DetourWs _-> Dir W
+  | Ws _|Fr _|Rmw|DetourWs _ -> Dir W
+  | Store -> Dir W
 
 and do_dir_src e = match e with
   | Po(_,e,_)| Fenced(_,_,e,_) | Detour e | DetourWs e -> e
   | Dp _|Fr _|Hat|Rmw -> Dir R
   | Ws _|Rf _|RfStar _ -> Dir W
+  | Store -> Dir W
 
 
 let fold_tedges f r =
@@ -193,6 +203,7 @@ let fold_tedges f r =
     F.fold_dpw
       (fun dp -> fold_sd (fun sd -> f (Dp (dp,sd,Dir W)))) r in
   let r = f Hat r in
+  let r = f Store r in
   r
 
 let fold_edges f =
@@ -265,7 +276,7 @@ let do_set_tgt d e = match e  with
   | Fenced(f,sd,src,_) -> Fenced(f,sd,src,Dir d)
   | Dp (dp,sd,_) -> Dp (dp,sd,Dir d) 
   | Rf _ |RfStar _ | Hat
-  | Ws _|Fr _|Rmw|Detour _|DetourWs _ -> e
+  | Ws _|Fr _|Rmw|Detour _|DetourWs _|Store -> e
 
 and do_set_src d e = match e with
   | Po(sd,_,tgt) -> Po(sd,Dir d,tgt)
@@ -273,7 +284,7 @@ and do_set_src d e = match e with
   | Detour _ -> Detour (Dir d)
   | DetourWs _ -> DetourWs (Dir d)
   | Fr _|Hat|Dp _
-  | Ws _|Rf _|RfStar _|Rmw -> e
+  | Ws _|Rf _|RfStar _|Rmw|Store -> e
 
 let set_tgt d e = { e with edge = do_set_tgt d e.edge ; }
 and set_src d e = { e with edge = do_set_src d e.edge ; }
@@ -281,15 +292,23 @@ and set_src d e = { e with edge = do_set_src d e.edge ; }
 let loc_sd e = match e.edge with
   | Fr _|Ws _|Rf _|RfStar _|Hat|Rmw|Detour _|DetourWs _ -> Same
   | Po (sd,_,_) | Fenced (_,sd,_,_) | Dp (_,sd,_) -> sd
+  | Store -> Same
 
 let get_ie e = match e.edge with
   | Po _|Dp _|Fenced _|Hat|Rmw|Detour _|DetourWs _ -> Int
   | Rf ie|RfStar ie|Fr ie|Ws ie -> ie
+  | Store -> Int
 
-  let can_precede_dirs  x y = match dir_tgt x,dir_src y with
-  | Irr,Irr -> false
-  | (Irr,Dir _) | (Dir _,Irr) -> true
-  | Dir d1,Dir d2 -> d1=d2
+  let can_precede_dirs  x y = match x.edge,y.edge with
+  | (Store,Store) -> false
+  | (Store,_) -> get_ie y = Int
+  | (_,Store) -> true
+  | _,_ ->
+      begin match dir_tgt x,dir_src y with
+      | Irr,Irr -> false
+      | (Irr,Dir _) | (Dir _,Irr) -> true
+      | Dir d1,Dir d2 -> d1=d2
+      end
 
   let can_precede_atoms x y = x.a2 = y.a2
 
@@ -310,7 +329,7 @@ let get_ie e = match e.edge with
 
   let do_expand_edge e f =
     match e.edge with
-    | Rf _ | RfStar _ | Fr _ | Ws _ | Hat |Rmw|Dp _ -> f e
+    | Rf _ | RfStar _ | Fr _ | Ws _ | Hat |Rmw|Dp _|Store  -> f e
     | Detour d ->
         expand_dir d (fun d -> f { e with edge=Detour d;})
     | DetourWs d ->
@@ -399,6 +418,10 @@ let get_ie e = match e.edge with
 
   let is_detour e = match e.edge with
   | Detour _|DetourWs _ -> true
+  | _ -> false
+
+  let is_store e = match e.edge with
+  | Store -> true
   | _ -> false
 
   module Set =

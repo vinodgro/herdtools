@@ -256,7 +256,7 @@ module Make(C:XXXCompile.S)
 
     let can_prefix prefix = mk_can_prefix prefix
 
-    let call_rec prefix f0 safes po_safe n r suff f_rec k =
+    let call_rec prefix f0 safes po_safe over n r suff f_rec k =
       if
         can_precede safes po_safe r suff &&
         minprocs suff <= O.nprocs &&
@@ -267,6 +267,7 @@ module Make(C:XXXCompile.S)
         if O.verbose > 2 then eprintf "CALL: %i %s\n%!" n (pp_ess suff) ;  
         let k =
           if
+            over &&
             (n = 0 || (n > 0 && O.upto)) &&
             can_prefix prefix (can_precede safes po_safe) suff
           then begin
@@ -317,27 +318,30 @@ module Make(C:XXXCompile.S)
           let call_rec = call_rec prefix (f [fst r0]) aset po_safe  in
 
 (* Add a safe edge to suffix *)        
-          let rec add_safe ss n suf k =
+          let rec add_safe over ss n suf k =
             match ss with
             | [] -> k
             | s::ss ->
-                let k = call_rec n s suf add_relaxs k in
-                add_safe ss n suf k
+                let k = call_rec over n s suf (add_relaxs over) k in
+                add_safe over ss n suf k
 
 (* Add some relax edges r0 to suffix, or nothing *)
-          and add_relaxs n suf k = 
-            let k = call_rec n r0 suf add_relaxs k in
-            add_safe safe n suf k in
+          and add_relaxs over n suf k = 
+            let k = call_rec true n r0 suf (add_relaxs true) k in
+            add_safe over safe n suf k in
 
-(* Start with a relax edge r0 *)          
-          let k = call_rec n r0 [] add_relaxs k in
-          choose_relax rs k in
+          match prefix with
+          | [] -> (* Optimise: start with a relax edge r0 *)
+              let k = call_rec true n r0 [] (add_relaxs true) k in
+              choose_relax rs k
+          | _::_ ->
+              let k = add_relaxs false n [] k in
+              choose_relax rs k in
 
 (* Alternative: mix relaxation from relax list *)
 
       let all_relax k =
-        let all_list = relax@safe
-        and relax_set = RelaxSet.of_list (List.map fst relax) in
+        let relax_set = RelaxSet.of_list (List.map fst relax) in
         let extract_relaxs suff =
           let suff_set = RelaxSet.of_list (List.map fst suff)  in
           RelaxSet.elements (RelaxSet.inter suff_set relax_set) in
@@ -351,29 +355,37 @@ module Make(C:XXXCompile.S)
             aset po_safe in
         
 (* Add a one edge to suffix *)        
-        let rec add_one ss n suf k = match ss with
-        | [] -> k
-        | s::ss ->
-            let k = call_rec n s suf (add_one all_list) k in
-            add_one ss n suf k in
+        let rec add_one over rs ss n suf k = match rs,ss with
+        | [],[] -> k
+        | [],s::ss ->
+            let k = call_rec over n s suf (add_one over relax safe) k in
+            add_one over rs ss n suf k
+        | r::rs,_ ->
+            let k = call_rec true n r suf (add_one true relax safe) k in
+            add_one over rs ss n suf k in
+            
 
 (* Force first edge to be a relaxed one *)
         let rec add_first rs k = match rs with
         | [] -> k
         | r::rs ->
-            let k = call_rec n r [] (add_one all_list) k in
+            let k = call_rec true n r [] (add_one true relax safe) k in
             add_first rs k in
 
-        add_first relax k in
-      
-      
+        match prefix with
+        | [] ->
+            add_first relax k
+        | _::_ ->
+            add_one false relax safe n [] k in
+            
+(* New relax that does not enforce the first edge to be a relax *)      
 
 (* As a safety check, generate cycles with no relaxation *)
       let call_rec = call_rec prefix (f []) aset po_safe in
       let rec no_relax ss n suf k = match ss with
       | [] -> k
       | s::ss ->
-          let k = call_rec n s suf (no_relax safe) k in
+          let k = call_rec true n s suf (no_relax safe) k in
           no_relax ss n suf k in
 
       fun k -> match relax with
@@ -388,7 +400,6 @@ module Make(C:XXXCompile.S)
     let rec all_int l =
       match l with
       | [] -> true
-      | [a] -> is_int a (* ??? pas très utile :) *)
       | a::s -> (is_int a)&&(all_int s)
 
     let rec count_e ce = function
@@ -523,6 +534,9 @@ module Make(C:XXXCompile.S)
       let k = er (Hat)::k in
       k
         
-    let gen ?(relax=relax) ?(safe=safe) n = secret_gen relax safe n
-
+    let gen ?(relax=relax) ?(safe=safe) n =
+      try secret_gen relax safe n
+      with e ->
+        eprintf "Exc: %s\n" (Printexc.to_string e) ;
+        raise e
   end

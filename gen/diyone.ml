@@ -120,7 +120,7 @@ module Make(O:Config) (C:XXXCompile.S) =
             D.all gen
         | _ -> ignore (dump name es)
             with Fatal msg ->
-              eprintf "Fatal error: %s\n" msg ;
+              eprintf "%s: Fatal error: %s\n" Config.prog msg ;
               exit 2
 
     let zyva = do_zyva O.family
