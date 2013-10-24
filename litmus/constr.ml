@@ -29,7 +29,6 @@ module Make(A : Arch.S) : S with module A = A  =
   struct
     open Constant
     module A = A
-    module V = A.V
 
     type prop = (A.location,Constant.v) ConstrGen.prop
     type constr = prop ConstrGen.constr

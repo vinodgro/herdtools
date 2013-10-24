@@ -466,48 +466,48 @@ let user2_barrier_def () =
   if Cfg.cautious then O.oi "mcautious();" ;
   O.o "}"
 
-let dump_read_timebase () =
-  if (do_verbose_barrier || do_timebase) && have_timebase then begin
-    O.o "typedef uint64_t tb_t ;" ;
-    O.o "#define PTB PRIu64" ;
-    O.o "" ;
-    begin match A.arch with
-    | X86 ->
-       O.o "inline static tb_t read_timebase(void) {" ;
-       O.oi "unsigned int a,d;" ;
-       O.oi "asm __volatile__ (\"rdtsc\" : \"=a\" (a), \"=d\" (d));" ;
-       O.oi "return ((tb_t)a) | (((tb_t)d)<<32);" ;
-       O.o "}"
-    | PPCGen
-    | PPC ->
-       O.oi "tb_t r;" ;
-       O.o "inline static tb_t read_timebase(void) {" ;
-       begin match ws with
-       | Word.W32|Word.WXX ->
-         let asm s = O.o (sprintf "\"%s\\n\\t\"" s) in
-         O.oi "uint32_t r1,r2,r3;" ;
-         O.o "asm __volatile__ (" ;
-         asm "0:" ;
-         asm "mftbu %[r1]" ;
-         asm "mftb %[r2]" ;
-         asm "mftbu %[r3]" ;
-         asm "cmpw %[r1],%[r3]" ;
-         asm "bne 0b" ;
-         O.o ":[r1] \"=r\" (r1), [r2] \"=r\" (r2), [r3] \"=r\" (r3)" ;
-         O.o ": :\"memory\" );" ;
-         O.oi "r = r2;" ;
-         O.oi "r |= ((tb_t)r1) << 32;" ;
-         ()
-       | Word.W64->
-          O.oi "asm __volatile__ (\"mftb %[r1]\" :[r1] \"=r\" (r) : : \"memory\");"
-       end ;
-       O.oi "return r;" ;
-       O.o "}"
-   | ARM -> assert false
-    end ;
-   end
+  let dump_read_timebase () =
+    if (do_verbose_barrier || do_timebase) && have_timebase then begin
+      O.o "typedef uint64_t tb_t ;" ;
+      O.o "#define PTB PRIu64" ;
+      O.o "" ;
+      begin match A.arch with
+      | X86 ->
+          O.o "inline static tb_t read_timebase(void) {" ;
+          O.oi "unsigned int a,d;" ;
+          O.oi "asm __volatile__ (\"rdtsc\" : \"=a\" (a), \"=d\" (d));" ;
+          O.oi "return ((tb_t)a) | (((tb_t)d)<<32);" ;
+          O.o "}"
+      | PPCGen
+      | PPC ->
+          O.oi "tb_t r;" ;
+          O.o "inline static tb_t read_timebase(void) {" ;
+          begin match ws with
+          | Word.W32|Word.WXX ->
+              let asm s = O.o (sprintf "\"%s\\n\\t\"" s) in
+              O.oi "uint32_t r1,r2,r3;" ;
+              O.o "asm __volatile__ (" ;
+              asm "0:" ;
+              asm "mftbu %[r1]" ;
+              asm "mftb %[r2]" ;
+              asm "mftbu %[r3]" ;
+              asm "cmpw %[r1],%[r3]" ;
+              asm "bne 0b" ;
+              O.o ":[r1] \"=r\" (r1), [r2] \"=r\" (r2), [r3] \"=r\" (r3)" ;
+              O.o ": :\"memory\" );" ;
+              O.oi "r = r2;" ;
+              O.oi "r |= ((tb_t)r1) << 32;" ;
+              ()
+          | Word.W64->
+              O.oi "asm __volatile__ (\"mftb %[r1]\" :[r1] \"=r\" (r) : : \"memory\");"
+          end ;
+          O.oi "return r;" ;
+          O.o "}"
+      | ARM -> assert false
+      end ;
+    end
 
-let lab_ext = if do_numeric_labels then "" else "_lab"
+  let lab_ext = if do_numeric_labels then "" else "_lab"
 
   let dump_tb_barrier_def () =
     let fname =
@@ -1500,30 +1500,32 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
                   (fun f loc ->
                     O.fx iloop "if (rand_bit(&(_a->seed))) %s(%s);" f loc)
             | _ -> assert false
-          end else if do_staticpl then begin
-            O.fx iloop "switch (_static_prefetch) {" ;
-            let i = iloop in
-            let j = Indent.tab i in
-            O.fx i "case 0:" ;
-            O.fx j "break;" ;
-            O.o "" ;
-            O.fx i "case 1:" ;
-            iter
-              (fun f loc -> O.fx j "%s(%s);" f loc) ;
-            O.fx j "break;" ;
-            O.o "" ;
-            O.fx i "case 2:" ;
-            iter
-              (fun f loc -> O.fx j "if (rand_bit(&(_a->seed))) %s(%s);" f loc) ;
-            O.fx j "break;" ;
-            O.o "" ;
-            O.fx i "default:" ;
-            iter
-              (fun f loc ->
-                O.fx j "if (rand_k(&(_a->seed),_static_prefetch) == 0) %s(%s);"
-                  f loc) ;
-            O.fx j "break;" ;
-            O.fx iloop "}" ;          
+          end else if do_staticpl then begin match prf with
+          | [] -> ()
+          | _::_ ->
+              O.fx iloop "switch (_static_prefetch) {" ;
+              let i = iloop in
+              let j = Indent.tab i in
+              O.fx i "case 0:" ;
+              O.fx j "break;" ;
+              O.o "" ;
+              O.fx i "case 1:" ;
+              iter
+                (fun f loc -> O.fx j "%s(%s);" f loc) ;
+              O.fx j "break;" ;
+              O.o "" ;
+              O.fx i "case 2:" ;
+              iter
+                (fun f loc -> O.fx j "if (rand_bit(&(_a->seed))) %s(%s);" f loc) ;
+              O.fx j "break;" ;
+              O.o "" ;
+              O.fx i "default:" ;
+              iter
+                (fun f loc ->
+                  O.fx j "if (rand_k(&(_a->seed),_static_prefetch) == 0) %s(%s);"
+                    f loc) ;
+              O.fx j "break;" ;
+              O.fx iloop "}" ;          
           end
         end ;
         begin match barrier with
@@ -2339,7 +2341,7 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
                   (fun loc ->
                     sprintf "{ global_names[%i], none, }"
                       (find_index loc vars))
-               addrs)) ;            
+                  addrs)) ;            
           O.fi "prfproc_t _prf_%i = { %i, _prf_t_%i}; "
             i (List.length addrs) i)
         test.T.code ;
