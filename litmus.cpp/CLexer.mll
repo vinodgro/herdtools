@@ -14,6 +14,8 @@ let alpha = ['a'-'z' 'A'-'Z' '_']
 let name = (alpha+ ['0'-'9']* alpha*)
 
 rule main = parse
+| [' ''\t']+ { main lexbuf }
+| '\n' { Lexing.new_line lexbuf ; main lexbuf ; }
 | 'P' (num as x) { CParser.PROC (int_of_string x) }
 | '(' { CParser.LPAREN }
 | ')' { CParser.RPAREN }
@@ -24,11 +26,16 @@ rule main = parse
       CParser.BODY (Buffer.contents buf)
     }
 | '*' { CParser.STAR }
-| ' ' { main lexbuf }
 | "int" { CParser.INT }
 | name as x { CParser.NAME x }
+| eof { CParser.EOF }
+| "" { LexMisc.error "CLexer" lexbuf }
 
 and get_body i buf = parse
+| '\n' as lxm
+    { Lexing.new_line lexbuf ;
+      Buffer.add_char buf lxm ; 
+      get_body i buf lexbuf ; }
 | '{' { Buffer.add_string buf (Lexing.lexeme lexbuf); get_body (succ i) buf lexbuf }
 | '}'
     { if i > 0 then begin
@@ -36,5 +43,5 @@ and get_body i buf = parse
        get_body (pred i) buf lexbuf
      end
     }
-| eof { failwith "eof in get_body" }
+| eof { LexMisc.error "eof in body" lexbuf }
 | _ { Buffer.add_string buf (Lexing.lexeme lexbuf); get_body i buf lexbuf }

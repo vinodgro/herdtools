@@ -9,7 +9,7 @@
 /*  General Public License.                                          */
 /*********************************************************************/
 
-%token COMMA STAR INT
+%token EOF COMMA STAR INT
 %token LPAREN RPAREN
 %token <int> PROC
 %token <string> BODY
@@ -21,6 +21,7 @@
 %%
 
 main:
+| EOF { [] }
 | PROC LPAREN params RPAREN BODY main
     { {CAst.proc = $1; params = $3; body = $5} :: $6 }
 
@@ -30,4 +31,4 @@ params:
 | ty NAME COMMA params { {CAst.param_ty = $1; param_name = $2} :: $4 }
 
 ty:
-| INT STAR NAME { CAst.Int_ptr }
+| INT STAR { CAst.Int_ptr }
