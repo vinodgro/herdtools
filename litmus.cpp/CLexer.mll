@@ -34,14 +34,17 @@ rule main = parse
 and get_body i buf = parse
 | '\n' as lxm
     { Lexing.new_line lexbuf ;
-      Buffer.add_char buf lxm ; 
+      Buffer.add_char buf lxm ;
       get_body i buf lexbuf ; }
-| '{' { Buffer.add_string buf (Lexing.lexeme lexbuf); get_body (succ i) buf lexbuf }
-| '}'
+| '{' as lxm
+    { Buffer.add_char buf lxm;
+      get_body (succ i) buf lexbuf
+    }
+| '}' as lxm
     { if i > 0 then begin
-       Buffer.add_string buf (Lexing.lexeme lexbuf);
+       Buffer.add_char buf lxm;
        get_body (pred i) buf lexbuf
      end
     }
 | eof { LexMisc.error "eof in body" lexbuf }
-| _ { Buffer.add_string buf (Lexing.lexeme lexbuf); get_body i buf lexbuf }
+| _ as lxm { Buffer.add_char buf lxm; get_body i buf lexbuf }
