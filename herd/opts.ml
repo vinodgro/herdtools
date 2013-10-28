@@ -87,5 +87,6 @@ module PP = struct
 
   let unshow = ref StringSet.empty
   let extrachars = ref 0.0
+  let shift = ref [| |]
 end
 

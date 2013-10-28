@@ -337,9 +337,25 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
     | i1::(i2::_ as rem) ->
         E.EventRel.cartesian i1 i2::order_one_proc rem
 
-  let rec make_posy y env = function
-    | [] -> env
-    | e::es -> make_posy (y-1) (E.EventMap.add e y env) es
+  let shift_max =
+    let r = ref 0.0 in
+    for k = 0 to Array.length PC.shift-1 do
+      let x = PC.shift.(k) in
+      if !r < x then r := x
+    done ;
+    !r
+
+  let get_shift p =
+    eprintf "GET: %i\n" p ;
+    if p >= Array.length PC.shift then 0.0
+    else  PC.shift.(p)
+
+  let make_posy y env (p,es) =
+    let s = get_shift p in
+    let rec do_make_posy y env = function
+      | [] -> env
+      | e::es -> do_make_posy (y -. 1.0) (E.EventMap.add e y env) es in
+    do_make_posy (y -. s) env es
 
   let order_events es by_proc_and_poi =
     let iico =
@@ -356,6 +372,9 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
       List.fold_left
         (fun n es -> max n (List.length es)) 0 rs in
     let max = max-1 in
+    let max = float_of_int max in
+    let max = max +. shift_max in
+    let rs = List.mapi (fun k es -> k,es) rs in
     let env = List.fold_left (make_posy max) E.EventMap.empty rs in
     max,env
       
@@ -536,12 +555,10 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
     let get_posx_int e = E.proc_of e in
     let get_posx e = float_of_int (get_posx_int e) in
 
-    let get_posy_int e =
+    let get_posy e =
       try E.EventMap.find e envy
-      with Not_found -> 10 in
+      with Not_found -> 10.0 in
 
-
-    let get_posy e = float_of_int (get_posy_int e) in
 
     let is_even e1 e2 =
       let d =  abs (get_posx_int e1 - get_posx_int e2) in
@@ -557,7 +574,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
       let d =  abs (get_posx_int e1 - get_posx_int e2) in
       d >= 2 &&
       not (is_even e1 e2) &&
-      get_posy_int e1 < get_posy_int e2 in
+      get_posy e1 < get_posy e2 in
 
     let xorigin=1.0 in
     
@@ -715,7 +732,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
 	        let pos =       
 	          sprintf "%f,%f"
                     (xfinal (float_of_int n))
-                    (yfinal (float_of_int maxy +. 0.6))in
+                    (yfinal (maxy +. 0.6))in
 	        fprintf chan
                   "proc%i_label_node [shape=%s%a, label=\"%a\", pos=\"%s!\", fixedsize=true, width=%f, height=%f]\n"
                   n (if PC.verbose > 0 then "box" else "none")

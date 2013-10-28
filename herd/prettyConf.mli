@@ -89,4 +89,5 @@ module type S = sig
   val edgeattrs : DotEdgeAttr.t
   val unshow : StringSet.t
   val extrachars : float
+  val shift : float array
 end

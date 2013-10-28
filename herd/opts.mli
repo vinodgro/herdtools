@@ -83,5 +83,6 @@ module PP : sig
   val get_edgeattrs : unit -> DotEdgeAttr.t
   val unshow : StringSet.t ref
   val extrachars : float ref
+  val shift : float array ref
 end
 

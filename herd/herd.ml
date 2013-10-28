@@ -209,6 +209,21 @@ let options = [
     "global scale factor for graphs, y direction" ;
   parse_bool "-showthread" PP.showthread
     "show thread numbers in figures" ;
+  "-shift",
+  Arg.String
+    (fun tag ->
+      let fs = Misc.split_comma tag in
+      let fs =
+        List.map
+          (fun f ->
+            try float_of_string f with
+            | _ ->
+                raise
+                  (Arg.Bad
+                     (sprintf "bad argument for option -shift: '%s'" tag)))
+          fs in
+      PP.shift := Array.of_list fs),
+  "<float,...,float> add vertical space at thread start (column mode only)";
 (* Legend *)
   parse_bool "-showlegend" PP.showlegend  "show legend in pictures" ;
   parse_bool "-showkind" showkind  "show test kind in legends" ;
@@ -428,6 +443,7 @@ let () =
           with Sys_error msg ->
             eprintf "Cannot read %s: %s\n" f msg ;
             exit 2
+      let shift = !PP.shift
     end
 
   end in

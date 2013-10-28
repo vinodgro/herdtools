@@ -207,7 +207,17 @@ and opt = parse
     | _ ->
         error (sprintf "bad argument for key edgeattr: '%s'" arg)
    }
-
+| "shift" arg
+   {
+    let fs = Misc.split_comma arg in
+    let fs =
+      List.map
+        (fun f ->
+          try float_of_string f
+          with _ -> error "bad argument for keyt shift: '%s' arg")
+        fs in
+    PP.shift := Array.of_list fs
+   }
 (* Errors *)
 | ['a'-'z''A'-'Z']+ as key
    { error (sprintf "Unkown key '%s' in configuration file" key) }
