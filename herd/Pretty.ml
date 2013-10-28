@@ -346,7 +346,6 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
     !r
 
   let get_shift p =
-    eprintf "GET: %i\n" p ;
     if p >= Array.length PC.shift then 0.0
     else  PC.shift.(p)
 
