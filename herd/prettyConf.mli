@@ -90,4 +90,5 @@ module type S = sig
   val unshow : StringSet.t
   val extrachars : float
   val shift : float array
+  val ptscale : float
 end

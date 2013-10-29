@@ -65,6 +65,7 @@ module PP = struct
   let scale = ref 1.0
   let xscale = ref 1.0
   let yscale = ref 1.0
+  let ptscale = ref 3.0
   let squished = ref false
   let graph = ref Graph.Cluster
   let showpo = ref true

@@ -207,6 +207,7 @@ let options = [
     "global scale factor for graphs, x direction" ;
   parse_float "-yscale" PP.yscale
     "global scale factor for graphs, y direction" ;
+  parse_float "-ptscale" PP.ptscale "scale factor points" ;
   parse_bool "-showthread" PP.showthread
     "show thread numbers in figures" ;
   "-shift",
@@ -412,6 +413,7 @@ let () =
       let scale = !PP.scale
       let xscale = !PP.xscale
       let yscale = !PP.yscale
+      let ptscale = !PP.ptscale
       let squished = !PP.squished
       let graph = !PP.graph
       let showpo = !PP.showpo

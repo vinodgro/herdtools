@@ -266,16 +266,17 @@ module Make(O:Config)(M:XXXMem.S) =
             raise e in
 (* Close *)
       close_dot ochan ;
+      let do_show () = 
 (* Show if something to show *)
-      begin match ochan with
-      | Some (_,fname) when c.shown > 0 ->
-          let module SH = Show.Make(S.O.PC) in
-          SH.show_file fname 
-      | Some _|None -> ()
-      end ;
+        begin match ochan with
+        | Some (_,fname) when c.shown > 0 ->
+            let module SH = Show.Make(S.O.PC) in
+            SH.show_file fname 
+        | Some _|None -> ()
+        end ;
 (* Erase *)
-      erase_dot ochan ;
-      Handler.pop () ;
+        erase_dot ochan ;
+        Handler.pop () in
 (* Reduce final states, so as to show relevant locations only *)
       let finals =
         let locs = 
@@ -290,14 +291,14 @@ module Make(O:Config)(M:XXXMem.S) =
           c.states in
       let nfinals = A.StateSet.cardinal finals in
       match O.restrict with
-      | Observed when c.cands = 0 -> ()
-      | NonAmbiguous when c.cands <> nfinals -> ()
-      | CondOne when c.pos <> count_prop test finals -> ()
+      | Observed when c.cands = 0 -> do_show ()
+      | NonAmbiguous when c.cands <> nfinals -> do_show ()
+      | CondOne when c.pos <> count_prop test finals -> do_show ()
       | _ ->
           begin
 (* Header *)
         let tname = test.Test.name.Name.name in
-        printf "Test %s %s\n%!" tname (C.dump_as_kind cstr) ;
+        printf "Test %s %s\n" tname (C.dump_as_kind cstr) ;
 (**********)
 (* States *)
 (**********)
@@ -312,11 +313,11 @@ module Make(O:Config)(M:XXXMem.S) =
         printf "Witnesses\n" ;
         printf "Positive: %i Negative: %i\n" pos neg ;
         printf "Condition %a\n" C.dump_constraints cstr ;
-        printf "Observation %s %s %i %i\n" tname
+        printf "Observation %s %s %i %i\n%!" tname
           (if c.pos = 0 then "Never"
           else if c.neg = 0 then "Always"
           else "Sometimes") c.pos c.neg ;
-        
+        do_show () ;
 (* Auto info or Hash only*)
         if O.auto then begin
           List.iter

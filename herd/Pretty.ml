@@ -498,7 +498,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
 
   let pp_point chan n lbl pos =
     let {color=color;_} = get_ea (fun x -> x) lbl in
-    let sz = (pt2inch (scalepenwidth 3.0)) in
+    let sz = (pt2inch (scalepenwidth PC.ptscale)) in
     fprintf chan "%s [shape=point, height=%.2f, width=%.2f" n sz sz ;
     pp_attr chan "color" color ;
     pp_extra chan pos ;

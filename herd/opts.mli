@@ -63,6 +63,7 @@ module PP : sig
   val scale : float ref
   val xscale : float ref
   val yscale : float ref
+  val ptscale : float ref
   val squished : bool ref
   val graph : Graph.t ref
   val showpo : bool ref
@@ -83,6 +84,6 @@ module PP : sig
   val get_edgeattrs : unit -> DotEdgeAttr.t
   val unshow : StringSet.t ref
   val extrachars : float ref
-  val shift : float array ref
+  val shift : float array ref      
 end
 
