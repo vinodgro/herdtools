@@ -31,7 +31,7 @@ module type Config = sig
   val affinity : Affinity.t
 end
 
-module Make(O:Config)(A:Arch.S)(Tar:Tar.S) =
+module Make(O:Config)(Tar:Tar.S) =
   struct
     open TargetOS
 

@@ -1936,8 +1936,6 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
     O.o "" ;
     cpys
 
-  module D = TestDump.Make(T)
-
   let dump_report doc _env test =
     O.o "#ifdef ASS" ;
     O.o "static void ass(FILE *out) { }" ;
@@ -1953,7 +1951,7 @@ let lab_ext = if do_numeric_labels then "" else "_lab"
     dstring nice ;
     dstring title ;
     dstring nice ;
-    let xs = D.lines doc test.T.src in
+    let xs = T.D.lines doc test.T.src in
     List.iter dstring xs ;
     O.oi "fprintf(out,\"Generated assembler\\n\");" ;
     O.oi "ass(out);" ;

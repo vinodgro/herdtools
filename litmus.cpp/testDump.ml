@@ -12,27 +12,32 @@
 
 (* Dump a test, litmus sources *)
 
+module type I = sig
+  module A : Arch.S
+  module C : Constr.S with module A = A
+end
 
-module Make(T: Test.S) : sig
-  type test =
-      (T.A.state, (int * T.A.pseudo list) list, T.C.constr, T.A.location)
-        MiscParser.result
+module Make(I:I) : sig
+  type state = (I.A.location * I.A.V.v) list
+  type code =  (int * I.A.pseudo list) list
+  type test =  (state, code, I.C.constr, I.A.location)  MiscParser.result
   val dump : out_channel -> Name.t -> test -> unit
   val lines : Name.t -> test -> string list
 end = struct
-  type test =
-      (T.A.state, (int * T.A.pseudo list) list, T.C.constr, T.A.location)
-        MiscParser.result
+  type state = (I.A.location * I.A.V.v) list
+  type code =  (int * I.A.pseudo list) list
+  type test =  (state, code, I.C.constr, I.A.location)  MiscParser.result
   include SimpleDumper.Make
       (struct
         open Printf
 
-        module A = T.A
+        module A = I.A
 
         let dump_state_atom (loc,v) =
             sprintf "%s=%s" (A.pp_location loc) (A.V.pp_v v)
 
         type state = A.state
+
         let dump_state st =
             String.concat " "
               (List.map
@@ -40,7 +45,7 @@ end = struct
               st)
 
             
-        type constr = T.C.constr
+        type constr = I.C.constr
         let dump_atom a =
           let open ConstrGen in
           match a with
@@ -51,6 +56,6 @@ end = struct
         let dump_constr = ConstrGen.constraints_to_string dump_atom
 
         type location = A.location
-        let dump_location loc = T.A.pp_location loc
+        let dump_location loc = A.pp_location loc
       end)
 end

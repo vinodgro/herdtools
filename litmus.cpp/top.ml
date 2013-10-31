@@ -102,7 +102,7 @@ end = struct
       module T = Test.Make(A)
       module Comp = Compile.Make (O)(T) (XXXComp)
       module MS = Skel.Make(O)(T)
-      module R = Run.Make(O)(Tar)(T)
+      module R = Run.Make(O)(Tar)(T.D)
 
       let get_cycle t =
         let info = t.MiscParser.info in
@@ -182,7 +182,7 @@ end = struct
             let utils =
               match utils with
               | [] ->
-                  let module Obj = ObjUtil.Make(O)(A)(Tar) in
+                  let module Obj = ObjUtil.Make(O)(Tar) in
                   Obj.dump ()
               | _ -> utils  in
             R.run name out_chan doc allocated source ;

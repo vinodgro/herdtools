@@ -31,6 +31,8 @@ module type S = sig
 
   val find_our_constraint : t -> C.constr
   val get_nprocs : t -> int
+
+  module D : module type of TestDump.Make(struct module A=A module C=C end)
 end
 
     
@@ -57,4 +59,11 @@ struct
   let find_our_constraint test = test.condition
 
   let get_nprocs t = List.length t.code
+
+  module D = 
+    TestDump.Make
+      (struct
+        module A = A
+        module C = C
+      end)
 end
