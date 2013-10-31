@@ -18,7 +18,7 @@ open Printf
 (*****************************)
 
 let logs = ref []
-let verbose = ref 0
+let verb = ref 0
 
 type runopts =
     {mode:OutMode.t;
@@ -91,7 +91,7 @@ let delay_ro f x =
 
 let options =
   [
-  ("-v", Arg.Unit (fun _ -> incr verbose),
+  ("-v", Arg.Unit (fun _ -> incr verb),
    "<non-default> show various diagnostics, repeat to increase verbosity");
   ("-show", Arg.String
      (delay_ro
@@ -263,14 +263,14 @@ module type Config = sig
   val opt_cond : bool
 end
 
-module Verbose = struct let verbose = !verbose end
+module Verbose = struct let verbose = !verb end
 module LR = LexRename.Make(Verbose)
 module LS = LogState.Make(Verbose)
 
 
 module Config = struct 
   let mode = runopts.mode 
-  let verbose = !verbose
+  let verbose = !verb
   let show_litmus_summary = runopts.show_litmus_summary
   let restrict = runopts.restrict_by_first_column
 
@@ -346,7 +346,6 @@ end
 (************)
 
 module Make (Opt:Config) = struct
-
   open Opt
   open LogState
 
@@ -1077,6 +1076,7 @@ let format_int_string s =
         Matrix.Build
           (struct
 
+(*
             let pp_bd (loc,v) = sprintf "%s=%s" loc v
 
             let pp_cond_simple bdss =
@@ -1170,13 +1170,13 @@ let format_int_string s =
                     | _,_  -> sprintf "%s /\\ (%s) \\/ (%s)"
                           (pp_bd bd_max) pp_ok pp_no in
                 do_rec bdss
-                
+*)                
                        
               
               
             let pp_cond =
-              if Opt.opt_cond then pp_cond_opt
-              else pp_cond_simple
+              if Opt.opt_cond then CondPP.pp_opt
+              else CondPP.pp_simple
 
             let pp_prop name bdss =
               sprintf "%s \"exists %s\"" name (pp_cond bdss)

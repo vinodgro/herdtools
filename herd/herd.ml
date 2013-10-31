@@ -113,6 +113,9 @@ let options = [
    sprintf "<int> branch unrolling upper limit, default %i" !unroll);
   parse_bool "-hexa" PP.hexa "print numbers in hexadecimal";
 (* undocumented *)
+  ("-switch",
+   Arg.Unit (fun () -> Misc.switch := true),
+   "switch something") ;
   ("-web",
    Arg.Unit (fun () -> load_config "web.cfg")," alias for -conf web.cfg");
   parse_tag

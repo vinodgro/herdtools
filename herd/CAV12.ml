@@ -182,10 +182,12 @@ module Make
           else k)
         evord []
 
+    let show_reduced = true
+
 (* Pretty print of evord *)
     let vb_pp_reduced br ar evord vb_pp =
       let rt = SE.SplittedRel.remove_transitive_edges in
-      if not !Misc.switch then
+      if show_reduced then
         let evord =
           SE.SplittedRel.filter
             (fun (e1,e2) ->
@@ -306,6 +308,8 @@ module Make
                       ({ SE.nature = SE.Prop (E.proc_of y) ; event = x ; },
                        { SE.nature = SE.Exe ; event = y ; })::k
                   | W,W ->
+                      if !Misc.switch then k
+                      else
                       ({ SE.nature = SE.Com ; event = x ; },
                        { SE.nature = SE.Prop (E.proc_of x) ; event = y ; })::k
                 else k)
