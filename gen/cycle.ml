@@ -394,6 +394,9 @@ let set_same_loc st n0 =
   let loc,st = next_loc st in
   let rec do_rec m =
     m.evt <- { m.evt with loc=loc; } ;
+    if m.store != nil then begin
+      m.store.evt <- { m.store.evt with loc=loc; }
+    end ;
     if m.next != n0 then do_rec m.next in
   do_rec n0 ;
   st
