@@ -15,23 +15,26 @@
 module type I = sig
   module A : Arch.S
   module C : Constr.S with module A = A
+  module P : PseudoAbstract.S
 end
 
 module Make(I:I) : sig
   type state = (I.A.location * I.A.V.v) list
-  type code =  (int * I.A.pseudo list) list
+  type code =  (int * I.P.pseudo list) list
   type test =  (state, code, I.C.constr, I.A.location)  MiscParser.result
   val dump : out_channel -> Name.t -> test -> unit
   val lines : Name.t -> test -> string list
 end = struct
   type state = (I.A.location * I.A.V.v) list
-  type code =  (int * I.A.pseudo list) list
+  type code =  (int * I.P.pseudo list) list
   type test =  (state, code, I.C.constr, I.A.location)  MiscParser.result
-  include SimpleDumper.Make
+  include SimpleDumper_prime.Make
       (struct
         open Printf
 
         module A = I.A
+
+        module P = I.P
 
         let dump_state_atom (loc,v) =
             sprintf "%s=%s" (A.pp_location loc) (A.V.pp_v v)
@@ -44,7 +47,7 @@ end = struct
                  (fun a -> sprintf "%s;" (dump_state_atom a))
               st)
 
-            
+
         type constr = I.C.constr
         let dump_atom a =
           let open ConstrGen in

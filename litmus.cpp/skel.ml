@@ -53,7 +53,7 @@ module type Config = sig
   include DumpParams.Config
 end
 
-module Make(Cfg:Config) (T:Test.S) (O:Indent.S)(Lang:Language.S) : sig
+module Make(Cfg:Config) (P:sig type pseudo end) (T:Test.S with type P.pseudo = P.pseudo) (O:Indent.S)(Lang:Language.S) : sig
   val dump : Name.t -> T.t -> unit
 end = struct
   module A = T.A

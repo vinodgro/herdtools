@@ -9,15 +9,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-type ty =
-  | Int_ptr
+module type S = sig
+  type pseudo
 
-type param = { param_ty : ty; param_name : string }
-
-type body = string
-
-type t =
-  { proc : int
-  ; params : param list
-  ; body : body
-  }
+  val dump_prog : (int * pseudo list) -> string list
+end

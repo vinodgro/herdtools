@@ -9,15 +9,33 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-type ty =
-  | Int_ptr
+module type Config = sig
+  val numeric_labels : bool
+  val signaling : bool
+  val timeloop : int
+  val barrier : Barrier.t
+end
 
-type param = { param_ty : ty; param_name : string }
+module Make
+    (O:Config)
+    (T:Test.S) =
+  struct
 
-type body = string
+    let compile t =
+      let
+          { MiscParser.init = init ;
+            info = info;
+            prog = code;
+            condition = final;
+            locations = locs ; _
+          } = t in
+      { T.init = (* init *) assert false (* TODO… *);
+        info = info;
+        code = assert false;
+        condition = (* final *) assert false (* TODO… *);
+        globals = assert false;
+        flocs = assert false (* List.map fst locs *) (* TODO… *) ;
+        src = t;
+      }
 
-type t =
-  { proc : int
-  ; params : param list
-  ; body : body
-  }
+  end

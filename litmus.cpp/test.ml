@@ -13,9 +13,10 @@
 module type S = sig
   module A : Arch.S
   module C : Constr.S with module A = A
+  module P : PseudoAbstract.S
 
   type src =
-    ((A.location * Constant.v) list, (int * A.pseudo list) list,
+    ((A.location * Constant.v) list, (int * P.pseudo list) list,
           C.constr, A.location)
          MiscParser.result
 
@@ -32,19 +33,20 @@ module type S = sig
   val find_our_constraint : t -> C.constr
   val get_nprocs : t -> int
 
-  module D : module type of TestDump.Make(struct module A=A module C=C end)
+  module D : module type of TestDump.Make(struct module A=A module C=C module P = P end)
 end
 
-    
 
-module Make(A:Arch.S) : S with module A = A =
+
+module Make(A:Arch.S)(P:PseudoAbstract.S) : S with module A = A and module P = P =
 struct
   module A  = A
   module C = Constr.Make(A)
+  module P = P
 
   type 'a type_env = ('a * RunType.t) list
   type src =
-    ((A.location * Constant.v) list, (int * A.pseudo list) list,
+    ((A.location * Constant.v) list, (int * P.pseudo list) list,
           C.constr, A.location)
          MiscParser.result
   type t =
@@ -60,10 +62,11 @@ struct
 
   let get_nprocs t = List.length t.code
 
-  module D = 
+  module D =
     TestDump.Make
       (struct
         module A = A
         module C = C
+        module P = P
       end)
 end
