@@ -844,9 +844,9 @@ let user2_barrier_def () =
             O.fi "else if (v_addr == (void *)_a->%s[_i]) return %i;"
               s k in
       O.o "static int idx_addr(ctx_t *_a,int _i,void *v_addr) {" ;
-      O.oi "if (v_addr == NULL) { err(2,\"NULL\"); return -1;}" ;
+      O.oi "if (v_addr == NULL) { fatal(\"NULL\"); return -1;}" ;
       Misc.iteri (fun k (s,_) -> dump_test k s) test.T.globals ;
-      O.oi "else { err(2,\"???\"); return -1;}" ;
+      O.oi "else { fatal(\"???\"); return -1;}" ;
       O.o "}" ;
       O.o "" ;
 (* Pretty-print indices *)
@@ -1079,7 +1079,7 @@ let user2_barrier_def () =
               (dump_leftval a) (dump_a_v_casted v) in
       List.iter
         (fun x ->
-          O.fii "if (%s%s) err(2,\"check_globals failed\");"
+          O.fii "if (%s%s) fatal(\"check_globals failed\");"
             (if do_randompl then "rand_bit(&(_a->seed)) && " else "")
             (dump_test x))
         test.T.globals ;
@@ -1776,7 +1776,7 @@ let user2_barrier_def () =
       if do_safer then begin
         O.oii "/* Check local histograns */" ;
         O.oii "for (int _p = 0 ; _p < N-1 ; _p++) {" ;
-        O.oiii "if (!same_hist(phist[_p],phist[_p+1])) err(1,\"check hist\") ;" ;
+        O.oiii "if (!same_hist(phist[_p],phist[_p+1])) fatal(\"check hist\") ;" ;
         O.oii "}" ;
         O.oii "merge_hists(hist0,phist[0]);" ;
         O.oii "for (int _p = 0 ; _p < N-1 ; _p++) {" ;
@@ -1816,7 +1816,7 @@ let user2_barrier_def () =
               (fun loc ->
                 loop_proc_prelude indent3 ;
                 O.fiv
-                  "if (%s != ctx.cpy_%s[_p][_i]) err(1,\"%s: global %s unstabilized\") ;"
+                  "if (%s != ctx.cpy_%s[_p][_i]) fatal(\"%s: global %s unstabilized\") ;"
                   (dump_loc_copy loc) (dump_loc_name loc)
                   (doc.Name.name)  (dump_loc_name loc) ;
                 loop_proc_postlude indent3)
@@ -1827,7 +1827,7 @@ let user2_barrier_def () =
       List.iter
         (fun (cpy,loc) ->
           O.fiii
-            "if (ctx.%s[_i] != ctx.%s[_i]) err(1,\"%s: address copy %s is wrong\") ; "
+            "if (ctx.%s[_i] != ctx.%s[_i]) fatal(\"%s: address copy %s is wrong\") ; "
             cpy loc doc.Name.name cpy)
         cpys ;
 (* Compute final condition *)
@@ -1870,7 +1870,7 @@ let user2_barrier_def () =
               "if (!check_shuffle(ctx.%s,ctx.%s,_b->size_of_test))"
               loc (dump_ctx_tag loc) ;
             O.fiii
-              "err(1,\"%s: check_shuffle for %s\");"
+              "fatal(\"%s: check_shuffle for %s\");"
               doc.Name.name loc)
 
           locs
@@ -1884,7 +1884,7 @@ let user2_barrier_def () =
       O.oiii "just_dump_outcomes(stderr,hist);" ;
       O.oiii "fprintf(stderr,\"Local histogram:\\n\");" ;
       O.oiii "just_dump_outcomes(stderr,hist0);" ;
-      O.oiii "err(1,\"check summed hist\");" ;
+      O.oiii "fatal(\"check summed hist\");" ;
       O.oii "}"
     end ;
     if do_speedcheck then begin
@@ -2201,7 +2201,7 @@ let user2_barrier_def () =
       (fun i ->
         O.ox i
           "if (sum_hist(hk) != n_outs || hk->n_pos + hk->n_neg != n_outs) {" ;
-        O.oy i "err(1,\"sum_hist\");" ;
+        O.oy i "fatal(\"sum_hist\");" ;
         O.ox i "}") ;
     O.oii "merge_hists(hist,hk);" ;
     O.oii "free_hist(hk);" ;
@@ -2217,7 +2217,7 @@ let user2_barrier_def () =
       (fun i ->
         O.ox i
           "if (sum_hist(hist) != n_outs || hist->n_pos + hist->n_neg != n_outs) {"  ;
-        O.oy i "err(1,\"sum_hist\") ;" ;
+        O.oy i "fatal(\"sum_hist\") ;" ;
         O.ox i "}") ;
     O.oi "dump_hist(out,hist);" ;
     begin match test.T.condition with
@@ -2360,7 +2360,7 @@ let user2_barrier_def () =
                   (sprintf "'%c'")
                   (Misc.explode prf)@["'\\0'"])) ;
           O.oi
-            "if (!parse_prefetch(_prefetch_txt,&_prefetch)) err(1,\"parse_prefetch\");"
+            "if (!parse_prefetch(_prefetch_txt,&_prefetch)) fatal(\"parse_prefetch\");"
         with Not_found -> ()
       end 
     end ;

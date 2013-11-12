@@ -23,19 +23,13 @@
 /* Misc */
 /********/
 
-void err(int e, char *msg) {
-  perror(msg) ;
-  fprintf(stdout,"Failure: %s\n", msg) ;
-  exit(e) ;
-}
-
 static void fatal(char *msg) {
   fprintf(stderr,"Failure: %s\n", msg) ;
   fprintf(stdout,"Failure: %s\n", msg) ;
   exit(1) ;
 }
 
-static void errexit(char *msg,int err) {
+void errexit(char *msg,int err) {
   fprintf(stderr,"%s: %s\n",msg,strerror(err)) ;
   exit(2) ;
 }
@@ -45,7 +39,8 @@ void *malloc_check(size_t sz) {
   void *p = malloc(sz) ;
   if (!p) { 
     if (!errno) errno = ENOMEM ;
-    err(1,"malloc") ;
+    perror("malloc") ;
+    exit(2) ;
   }
   return p ;
 }
@@ -469,9 +464,10 @@ static void usage(char *prog, cmd_t *d) {
 
 static long my_add (long x, long y) {
   long r = x+y ;
-  if (r < x || r < y) { errno = ERANGE ; err(1,"overflow") ; } 
+  if (r < x || r < y) { errno = ERANGE ; fatal("overflow") ; } 
   return r ;
 }
+
 static long my_pow10(int p,long x) {
   long r = x ;
   for ( ; p > 0 ; p--) {
@@ -485,7 +481,7 @@ static long my_pow10(int p,long x) {
 
 static int do_argint(char *p, char **q) {
   long r =  strtol(p,q,10) ;
-  if (errno == ERANGE) { err(1,"overflow") ; }
+  if (errno == ERANGE) { fatal("overflow") ; }
   if (**q == 'k' || **q == 'K') { r = my_pow10(3,r) ; *q += 1; }
   else if (**q == 'm' || **q == 'M') { r = my_pow10(6,r) ; *q +=1 ; }
   return r ;
@@ -774,7 +770,8 @@ pc_t *pc_create(void) {
   pc_t *p = malloc_check(sizeof(*p)) ;
   p->c_mutex = pm_create() ;
   p->c_cond = malloc_check(sizeof(*(p->c_cond))) ;
-  if (pthread_cond_init(p->c_cond,NULL)) {  err(1,"cond_init") ; }
+  int e = pthread_cond_init(p->c_cond,NULL) ;
+  if (e) { errexit("cond_init",e); }
   return p ;
 }
 
@@ -793,15 +790,18 @@ static void pc_unlock(pc_t *p) {
 }
 
 void pc_wait(pc_t *p) {
-  if (pthread_cond_wait(p->c_cond, p->c_mutex)) err(1,"cond_wait") ;
+  int e = pthread_cond_wait(p->c_cond, p->c_mutex) ;
+  if (e) { errexit("cond_wait",e) ; }
 }
 
 void pc_broadcast (pc_t *p) {
-  if (pthread_cond_broadcast(p->c_cond)) err(1,"cond_broadcast") ;
+  int e = pthread_cond_broadcast(p->c_cond) ;
+  if (e) { errexit("cond_broadcast",e) ; }
 }
 
 static void pc_signal(pc_t *p) {
-  if (pthread_cond_signal(p->c_cond)) err(1,"cond_signal") ;
+  int e = pthread_cond_signal(p->c_cond);
+  if (e) errexit("cond_signal",e) ;
 }
 
 
@@ -900,7 +900,7 @@ void op_free(op_t *p) {
 
 void op_set(op_t *p, void *v) {
   pc_lock(p->cond) ;
-  if (p->some) err(1,"op_set") ;
+  if (p->some) { fatal("op_set") ; }
   p->val = v ;
   p->some = 1 ;
   pc_signal(p->cond) ;
@@ -923,12 +923,14 @@ void *op_get(op_t *p) {
 /* Thread launch and join */
 
 void launch(pthread_t *th, f_t *f, void *a) {
-  if (pthread_create(th,NULL,f,a)) { err(1,"phread_create"); }
+  int e = pthread_create(th,NULL,f,a);
+  if (e) errexit("phread_create",e);
 }
 
 void *join(pthread_t *th) {
   void *r ;
-  if (pthread_join (*th,&r)) {err(1,"pthread_join"); }
+  int e = pthread_join(*th,&r) ;
+  if (e)  errexit("pthread_join",e);
   return r ;
 }
 
@@ -1078,7 +1080,7 @@ int check_shuffle(int **t, int *min, int sz) {
 
 tsc_t timeofday(void) {
   struct timeval tv ;
-  if (gettimeofday(&tv,NULL)) err(1,"gettimeoday") ;  
+  if (gettimeofday(&tv,NULL)) errexit("gettimeoday",errno) ;  
   return tv.tv_sec * ((tsc_t)1000000) + tv.tv_usec ;
 }
 

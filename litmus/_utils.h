@@ -21,7 +21,8 @@
 /* type of state for pseudorandom  generators */
 typedef unsigned int st_t ;
 
-void err(int e, char *msg) ;
+/* e is errno */
+void errexit(char *msg,int e) ;
 
 void *malloc_check(size_t sz) ;
 
