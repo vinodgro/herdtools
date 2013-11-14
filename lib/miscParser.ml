@@ -86,6 +86,12 @@ type ('loc,'v,'ins) r3 =
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
        'loc) result    
 
+type ('loc,'v,'code) r4 =
+      (('loc * 'v) list,
+       'code list,
+       ('loc, 'v) ConstrGen.prop ConstrGen.constr,
+       'loc) result    
+
 (* Result of generic parsing *)
 type 'pseudo t =
     (state, (int * 'pseudo list) list, constr, location) result
