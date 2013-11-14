@@ -54,33 +54,29 @@ end
 (* input signature, a lexer and a parser for a given architecture *)
 module type LexParse = sig
   type token
-  type instruction
 
   val lexer : Lexing.lexbuf -> token
   val parser :
-    (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
-    int list * instruction list list
+    (Lexing.lexbuf -> token) -> Lexing.lexbuf -> CAst.t list
 end
 
 (* Output signature *)
 module type S = sig
-  type pseudo
-
-  val parse : in_channel -> Splitter.result -> pseudo MiscParser.t
+  val parse : in_channel -> Splitter.result ->
+    (MiscParser.state, CAst.t list,
+     MiscParser.constr, MiscParser.location) MiscParser.result
 end
 
 
 module Make
     (O:Config)
-    (L: LexParse) : S with type pseudo = L.instruction =
+    (L: LexParse) : S =
   struct
-    type pseudo = L.instruction
 
 (*
   Transpose the instructions:
   a list of rows -> a list of columns (each being the program
   for a given processor
-*)
     let transpose procs prog =
       try
 	let prog = Misc.transpose prog in
@@ -88,18 +84,20 @@ module Make
       with
       |  Misc.TransposeFailure | Invalid_argument "List.combine" ->
 	  Warn.fatal "mismatch in instruction lines"
-
+*)
 
 (************************)
 (* Various basic checks *)
 (************************)
 
-let check_procs procs =
+let check_procs prog =
+  let procs = List.map (fun cfun ->  cfun.CAst.proc) prog in
   Misc.iteri
     (fun k p ->
       if k <> p then
         Warn.fatal "Processes must be P0, P1, ...")
-    procs
+    procs ;
+  procs
 
 let check_loc procs loc = match loc with
 | MiscParser.Location_reg (p,_) ->
@@ -143,10 +141,9 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       call_parser "init" lexbuf SL.token StateParser.init
 
     let parse_prog lexbuf =
-      let procs,prog = call_parser "prog" lexbuf L.lexer L.parser in
-      check_procs procs ;
-      let prog = transpose procs prog in
-      prog
+      let prog = call_parser "prog" lexbuf L.lexer L.parser in
+      let procs = check_procs prog in
+      procs,prog
 
     let parse_cond lexbuf =
       let cond =  call_parser "cond" lexbuf
@@ -168,10 +165,9 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let init =
 	call_parser_loc "init"
 	  chan init_loc SL.token StateParser.init in
-      let procs,prog =
+      let prog =
 	call_parser_loc "prog" chan prog_loc L.lexer L.parser in
-      check_procs procs ;
-      let prog = transpose procs prog in
+      let procs = check_procs prog in
       let (locs,final,_quantifiers) =
 	call_parser_loc "final"
 	  chan constr_loc SL.token StateParser.constraints in

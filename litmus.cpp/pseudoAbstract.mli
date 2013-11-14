@@ -10,7 +10,7 @@
 (*********************************************************************)
 
 module type S = sig
-  type pseudo
+  type code
 
-  val dump_prog : (int * pseudo list) -> string list
+  val dump_prog : (int * code) -> string list
 end

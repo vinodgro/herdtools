@@ -31,17 +31,17 @@ end
 module Make(I:I) : sig
   val dump : out_channel ->
     Name.t ->
-    (I.state, (int * I.P.pseudo list) list, I.constr, I.location)
+    (I.state, (int * I.P.code) list, I.constr, I.location)
         MiscParser.result
       -> unit
   val dump_info : out_channel ->
     Name.t ->
-    (I.state, (int * I.P.pseudo list) list, I.constr, I.location)
+    (I.state, (int * I.P.code) list, I.constr, I.location)
         MiscParser.result
       -> unit
   val lines :
       Name.t ->
-        (I.state, (int * I.P.pseudo list) list, I.constr, I.location)
+        (I.state, (int * I.P.code) list, I.constr, I.location)
           MiscParser.result
       -> string list
 end = struct

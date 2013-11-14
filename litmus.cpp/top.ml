@@ -99,7 +99,7 @@ end = struct
       (Lang:Language.S) =
     struct
       module Pseudo = struct
-        type pseudo = A.pseudo
+        type code = A.pseudo list
         let rec fmt_io io = match io with
         | A.Nop -> ""
         | A.Instruction ins -> A.dump_instruction ins
@@ -116,7 +116,7 @@ end = struct
       module P = GenParser.Make(O)(A) (L)
       module T = Test.Make(A)(Pseudo)
       module Comp = Compile.Make (O)(A)(T) (XXXComp)
-      module MS = Skel.Make(O)(struct type pseudo = A.pseudo end)(T)
+      module MS = Skel.Make(O)(Pseudo)(T)
       module R = Run.Make(O)(Tar)(T.D)
 
       let get_cycle t =
@@ -214,16 +214,16 @@ end = struct
   module Make'
       (O:Config)
       (A:Arch.S)
-      (L:CGenParser.LexParse with type instruction = CAst.param list * CAst.body)
+      (L:CGenParser.LexParse)
       (Lang:Language.S) =
     struct
       module P = CGenParser.Make(O)(L)
       module Pseudo = struct
-        type pseudo = L.instruction
-        let dump_prog (i, l) =
-          let f (params, body) =
+        type code = CAst.t
+        let dump_prog (i, cfun) =
+          let f { CAst.params; body; _ } =
             let string_of_ty = function
-            | CAst.Int_ptr -> "int*"
+              | CAst.Int_ptr -> "int*"
             in
             let f {CAst.param_ty; param_name} =
               Printf.sprintf "%s %s" (string_of_ty param_ty) param_name
@@ -231,11 +231,11 @@ end = struct
             let params = String.concat ", " (List.map f params) in
             Printf.sprintf "static void P%i(%s) {\n%s\n}\n" i params body
           in
-          Printf.sprintf "P%i" i :: List.map f l
+          Printf.sprintf "P%i" i :: [f cfun]
       end
       module T = Test.Make(A)(Pseudo)
       module Comp = CCompile.Make(O)(T)
-      module MS = Skel.Make(O)(struct type pseudo = P.pseudo end)(T)
+      module MS = Skel.Make(O)(Pseudo)(T)
       module R = Run.Make(O)(Tar)(T.D)
 
       let get_cycle t =
@@ -303,6 +303,11 @@ end = struct
             let parsed = change_hint hint doc.Name.name parsed in
             let module Alloc = CSymbReg.Make(A) in
             let allocated = Alloc.allocate_regs parsed in
+            let allocated =
+              { allocated with MiscParser.prog =
+                List.map
+                  (fun cfun -> cfun.CAst.proc,cfun)
+                  allocated.MiscParser.prog; } in
             let compiled = Comp.compile allocated in
             let source = MyName.outname name ".c" in
             let () =
@@ -452,14 +457,9 @@ end = struct
                 ) : Arch.S)
               in
               let module LexParse = struct
-                type instruction = CAst.param list * CAst.body
                 type token = CParser.token
                 let lexer = CLexer.main
-                let parser x y =
-                  let f (procs, instrs) {CAst.proc; params; body} =
-                    (proc :: procs, [params, body] :: instrs)
-                  in
-                  List.fold_left f ([], []) (CParser.main x y)
+                let parser = CParser.main
               end in
               let module X = Make'(Cfg)(Arch')(LexParse)(Lang) in
               X.compile hint avoid_cycle fst cycles hash_env

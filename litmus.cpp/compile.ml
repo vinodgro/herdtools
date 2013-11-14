@@ -20,7 +20,7 @@ end
 module Make
     (O:Config)
     (A_should_not_be_used : Arch.S)
-    (T:Test.S with module A = A_should_not_be_used and type P.pseudo = A_should_not_be_used.pseudo)
+    (T:Test.S with module A = A_should_not_be_used and type P.code = A_should_not_be_used.pseudo list)
     (C:XXXCompile.S with module A = T.A) =
   struct
     open Printf
