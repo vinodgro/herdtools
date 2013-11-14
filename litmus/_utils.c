@@ -23,7 +23,7 @@
 /* Misc */
 /********/
 
-static void fatal(char *msg) {
+void fatal(char *msg) {
   fprintf(stderr,"Failure: %s\n", msg) ;
   fprintf(stdout,"Failure: %s\n", msg) ;
   exit(1) ;
