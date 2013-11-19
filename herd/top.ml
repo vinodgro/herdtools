@@ -21,6 +21,7 @@ module type Config = sig
   val outcomereads : bool
   val outputdir : string option
   val suffix : string
+  val dumpes : bool
   include Mem.Config
 end
 
@@ -94,7 +95,7 @@ module Make(O:Config)(M:XXXMem.S) =
 
             
 (* rfmap generation and processing, from pre-candidates *)
-    let iter_rfms test rfms kont kont_loop k =
+    let iter_rfms test rfms kont kont_loop k =      
       let kont =
         if O.verbose > 0 then
           fun conc k ->
@@ -254,6 +255,23 @@ module Make(O:Config)(M:XXXMem.S) =
       let ochan = open_dot test in
 (* So small a race condition... *)
       Handler.push (fun () -> erase_dot ochan) ;
+(* Dump event structures ... *)
+      if O.dumpes then begin
+        match ochan with
+        | None -> ()
+        | Some (chan,fname) ->
+            let module PP = Pretty.Make(S) in
+            List.iter
+              (fun (_i,_cs,es) -> PP.dump_es chan test es)
+              rfms ;
+            close_dot ochan ;
+            if S.O.PC.gv then begin
+              let module SH = Show.Make(S.O.PC) in
+              SH.show_file fname
+            end ;
+        erase_dot ochan ;
+        Handler.pop ()
+      end else
       let call_model conc =
         M.check_event_structure
           test conc (model_kont ochan test cstr) in

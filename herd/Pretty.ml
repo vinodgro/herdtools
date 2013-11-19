@@ -35,7 +35,9 @@ module type S = sig
       out_channel ->S.test -> string ->
 	S.concrete -> S.rel_pp -> unit
 
-(* Simpler function, just to dump rfmaps *)
+(* Simpler function, just to dump event structures with and without rfmaps *)
+  val dump_es :
+      out_channel -> test -> event_structure -> unit
   val dump_es_rfm :
       out_channel -> test -> event_structure -> rfmap -> unit
 
@@ -1011,6 +1013,7 @@ let dump_legend chan test legend conc vbs =
   let dump_es_rfm_legend chan legend test es rfm =
     pp_dot_event_structure chan test legend es rfm [] S.conc_zero
 
+  let dump_es chan test es =  dump_es_rfm_legend chan None test es S.RFMap.empty
   let dump_es_rfm chan =  dump_es_rfm_legend chan None
 
 (* Showed versions of dump functions *)

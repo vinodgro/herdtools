@@ -40,6 +40,7 @@ let showkind = ref false
 let shortlegend = ref false
 let outcomereads = ref false
 let suffix = ref ""
+let dumpes = ref false
 let outputdir = ref None
 
 (* Pretty printing configuration, deserves its own module *)

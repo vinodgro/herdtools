@@ -102,6 +102,7 @@ and opt = parse
 | "conf" arg { dolex main (MyLib.find arg) }
 | "verbose" arg { lex_int verbose arg }
 | "suffix" arg { suffix := arg }
+| "dumpes" arg { lex_bool dumpes arg }
 (* Change input *)
 | "names" arg
    { names := !names @ [arg] }

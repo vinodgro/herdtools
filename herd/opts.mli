@@ -39,6 +39,7 @@ val shortlegend : bool ref
 val outcomereads : bool ref
 val outputdir : string option ref
 val suffix : string ref
+val dumpes : bool ref
 
 (* Pretty printing configuration, deserves its own module *)
 module PP : sig

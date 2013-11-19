@@ -105,6 +105,7 @@ let options = [
    "<dir> generated files will go into <dir>, default: do not generate") ;
   ("-suffix", Arg.String (fun s -> suffix := s),
    "<suf> add <suf> at the end of the base of generated files") ;
+  parse_bool "-dumpes" Opts.dumpes "dump event structures";
   ( "-gv",
     Arg.Unit (fun _ -> PP.gv := true),
     "<non-default>  fork gv to show output graphs") ;
@@ -393,6 +394,7 @@ let () =
 
     let outputdir = !outputdir
     let suffix = !suffix
+    let dumpes = !dumpes
 
     module PC = struct
       let verbose = verbose
