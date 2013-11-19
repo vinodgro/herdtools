@@ -713,6 +713,11 @@ By default \herd{} does not generate \texttt{.dot} files.
 \item[{\tt -suffix <suf>}] Change the name of \texttt{.dot} files
 into \textit{base}\textit{suff}\texttt{.dot}. Useful when several \texttt{.dot} files derive from the same test. Default is the empty string (no suffix).
 \item[{\tt \aname{opt:gv}{-gv}}] Fork the \ahref{\urlgv}{\prog{gv} Postscript viewer} to display execution diagrams.
+\item[{\tt -dumpes <bool>}]
+Dump genererated event structures and exit. Default is \opt{false}.
+Event structures will be dumped in a \texttt{.dot} file whose
+name is determined as usual --- See options \opt{-o} and \opt{-suffix} above.
+Optionally the event structures can be displayed with the \opt{-gv} option.
 \item[{\tt -unroll <int>}] The setting \opt{-unroll }$n$ performs backwards
 jumps $n$ times. This is a workaround for one of \herd{} main limitation:
 \herd{} does not really handle loops. Default is~\opt{2}.
