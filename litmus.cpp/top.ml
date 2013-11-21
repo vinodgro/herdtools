@@ -224,26 +224,28 @@ end = struct
 
         module Internal = struct
           type arch_reg = reg
-          let pp_reg = assert false
-          let reg_compare = assert false
+          let pp_reg x = x
+          let reg_compare = String.compare
 
           type arch_global = string
-          let maybev_to_global = assert false
-          let pp_global = assert false
-          let global_compare = assert false
+          let maybev_to_global = function
+            | Constant.Concrete i -> "addr_" ^ string_of_int i
+            | Constant.Symbolic s -> s
+          let pp_global x = x
+          let global_compare = String.compare
 
-          let comment = assert false
-          let reg_class = assert false
-          let internal_init = assert false
-          let reg_to_string = assert false
-          let forbidden_regs = assert false
+          let comment = Obj.magic () (* Is it really used ? *)
+          let reg_class _ = assert false (* Unused *)
+          let internal_init _ = assert false (* Unused *)
+          let reg_to_string x = x
+          let forbidden_regs = []
           let arch = `C
         end
 
         include Location.Make(Internal)
 
-        let parse_reg = assert false
-        let reg_compare = assert false
+        let parse_reg x = Some x
+        let reg_compare = Internal.reg_compare
 
         type state = (location * V.v) list
 
@@ -251,8 +253,12 @@ end = struct
 
         let arch = Internal.arch
 
-        let find_in_state = assert false
-        let pp_reg = assert false
+        let rec find_in_state loc = function
+          | [] -> V.intToV 0
+          | (loc2,v)::rem ->
+              if location_compare loc loc2 = 0 then v
+              else find_in_state loc rem
+        let pp_reg x = x
       end
       module P = CGenParser.Make(O)(L)
       module Pseudo = struct

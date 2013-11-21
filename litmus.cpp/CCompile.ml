@@ -23,18 +23,18 @@ module Make
 
     let compile t =
       let
-          { MiscParser.init = init ;
-            info = info;
-            prog = code;
-            condition = final;
-            locations = locs ; _
-          } = t in
-      { T.init = (* init *) assert false (* TODO… *);
+        { MiscParser.init = init ;
+          info = info;
+          prog = code;
+          condition = final;
+          locations = locs ; _
+        } = t in
+      { T.init = init;
         info = info;
         code = assert false;
-        condition = (* final *) assert false (* TODO… *);
+        condition = final;
         globals = assert false;
-        flocs = assert false (* List.map fst locs *) (* TODO… *) ;
+        flocs = List.map fst locs;
         src = t;
       }
 
