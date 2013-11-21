@@ -422,6 +422,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
 
   let dm = PC.dotmode
   let m = match dm with | Plain -> Ascii| Fig -> DotFig
+  let mmode = m
 
   let pp_edge_label movelabel lbl =
     let lbl =
@@ -744,7 +745,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
           end ;
 (* Now output events *)
           Misc.iteri 
-            (fun m evts -> 
+            (fun m evts ->
               let is_locked_instruction = 
                 (E.Atomicity.mem evts es.E.atomicity) in
               if
@@ -753,13 +754,22 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
                   (* SS: Let there be silently many events per proc without boxing ||
                      E.EventSet.cardinal evts > 1) *)
               then begin
+                let pp_ins =
+                  if PC.labelbox then 
+                    let e0 =
+                      try E.EventSet.choose evts
+                      with Not_found -> assert false in
+                    let ins = e0.E.iiid.A.inst in
+                    a_pp_instruction dm mmode ins
+                  else "" in
                 fprintf chan "subgraph cluster_proc%i_poi%i" n m ;
                 fprintf chan
-	          " { %s label = \"\"; shape=box;\n"
+	          " { %s label = \"%s\"; labelloc=\"b\"; shape=box;\n"
 	          (if not PC.mono then
                     "color="^
                     (if is_locked_instruction then "red" else "green")^";"
-                  else "color=\"grey30\"; style=dashed; ") ;
+                  else "color=\"grey30\"; style=dashed; ")
+                  pp_ins ;
                 (* assuming atomicity sets are always full instructions *)
                 E.EventSet.pp chan ""
                   (pp_event

@@ -191,6 +191,7 @@ and opt = parse
 | "showpo" arg { lex_bool PP.showpo arg }
 | "relabel" arg { lex_bool PP.relabel arg }
 | "withbox" arg { lex_bool PP.withbox arg }
+| "labelbox" arg { lex_bool PP.labelbox arg }
 | "showfinalrf" arg { lex_bool PP.showfinalrf arg }
 | "showinitrf" arg { lex_bool PP.showinitrf arg }
 | "showfr" arg { lex_bool PP.showfr arg }

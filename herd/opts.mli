@@ -70,6 +70,7 @@ module PP : sig
   val showpo : bool ref
   val relabel : bool ref
   val withbox : bool ref
+  val labelbox : bool ref
   val showthread : bool ref
   val showlegend : bool ref
   val showfinalrf : bool ref

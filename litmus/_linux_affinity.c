@@ -32,8 +32,7 @@ cpus_t *read_affinity(void) {
   int res = pthread_getaffinity_np(pthread_self(), sizeof(mask), &mask) ;
   
   if (res != 0) { 
-    errno = res ;
-    err(res,"pthread_getaffinity_np");
+    errexit("pthread_getaffinity_np",res);
   }
   for (int p=0 ; p <  CPU_SETSIZE ; p++) {
     if (CPU_ISSET(p,&mask)) sz++ ;
@@ -101,8 +100,7 @@ void write_affinity(cpus_t *p) {
   if  (exists_pos) {
     int r = pthread_setaffinity_np(pthread_self(),sizeof(mask),&mask) ;
     if (r != 0) {
-      errno = r ;
-      err(r,"pthread_setaffinity_np") ;
+      errexit("pthread_setaffinity_np",r) ;
     }
   }
 }
@@ -114,8 +112,7 @@ void write_one_affinity(int a) {
     CPU_SET(a,&mask) ;
     int r = pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) ;
     if (r != 0) {
-      errno = r ;
-      err(r,"pthread_setaffinity_np") ;
+      errexit("pthread_setaffinity_np",r) ;
     }
   }
 }

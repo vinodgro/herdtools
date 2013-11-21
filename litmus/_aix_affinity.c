@@ -28,7 +28,7 @@ static void pp_set(FILE *fp, cpus_t *p) {
 static int get_avail(void) {
   int n_online = sysconf(_SC_NPROCESSORS_ONLN);
   if (n_online < 0) {
-    err(1,"sysconf") ;
+    fatal("sysconf") ;
   }
   return n_online ;
 }
@@ -56,7 +56,7 @@ void write_one_affinity(int a) {
   if (a >= 0) {
     int tid = thread_self();
     if (bindprocessor(BINDTHREAD, tid, a) < 0) {
-      err(1,"bindprocessor") ;
+      fatal("bindprocessor") ;
     }
   }  
 }

@@ -72,6 +72,7 @@ module PP = struct
   let showpo = ref true
   let relabel = ref false
   let withbox = ref false
+  let labelbox = ref false
   let showthread = ref true
   let showlegend = ref true
   let showfinalrf = ref false

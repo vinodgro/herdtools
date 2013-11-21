@@ -76,6 +76,7 @@ module type S = sig
   val showpo : bool
   val relabel : bool
   val withbox : bool
+  val labelbox : bool
   val showthread : bool
   val showlegend : bool
   val showfinalrf : bool
