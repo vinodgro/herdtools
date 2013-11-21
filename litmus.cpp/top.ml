@@ -115,8 +115,8 @@ end = struct
 
       module P = GenParser.Make(O)(A) (L)
       module T = Test.Make(A)(Pseudo)
-      module Comp = Compile.Make (O)(A)(T) (XXXComp)
-      module MS = Skel.Make(O)(Pseudo)(T)
+      module Comp = Compile.Make (O)(A)(A)(T) (XXXComp)
+      module MS = Skel.Make(O)(Pseudo)(A)(T)
       module R = Run.Make(O)(Tar)(T.D)
 
       let get_cycle t =
@@ -217,6 +217,43 @@ end = struct
       (L:CGenParser.LexParse)
       (Lang:Language.S) =
     struct
+      module A' = struct
+        module V = A.V
+
+        type reg = string
+
+        module Internal = struct
+          type arch_reg = reg
+          let pp_reg = assert false
+          let reg_compare = assert false
+
+          type arch_global = string
+          let maybev_to_global = assert false
+          let pp_global = assert false
+          let global_compare = assert false
+
+          let comment = assert false
+          let reg_class = assert false
+          let internal_init = assert false
+          let reg_to_string = assert false
+          let forbidden_regs = assert false
+          let arch = `C
+        end
+
+        include Location.Make(Internal)
+
+        let parse_reg = assert false
+        let reg_compare = assert false
+
+        type state = (location * V.v) list
+
+        module Out = Template.Make(O)(Internal)(V)
+
+        let arch = Internal.arch
+
+        let find_in_state = assert false
+        let pp_reg = assert false
+      end
       module P = CGenParser.Make(O)(L)
       module Pseudo = struct
         type code = CAst.t
@@ -233,9 +270,9 @@ end = struct
           in
           Printf.sprintf "P%i" i :: [f cfun]
       end
-      module T = Test.Make(A)(Pseudo)
+      module T = Test.Make(A')(Pseudo)
       module Comp = CCompile.Make(O)(T)
-      module MS = Skel.Make(O)(Pseudo)(T)
+      module MS = Skel.Make(O)(Pseudo)(A')(T)
       module R = Run.Make(O)(Tar)(T.D)
 
       let get_cycle t =
@@ -301,7 +338,7 @@ end = struct
           then begin
             let hash_env = StringMap.add tname hash hash_env in
             let parsed = change_hint hint doc.Name.name parsed in
-            let module Alloc = CSymbReg.Make(A) in
+            let module Alloc = CSymbReg.Make(A') in
             let allocated = Alloc.allocate_regs parsed in
             let allocated =
               { allocated with MiscParser.prog =
@@ -395,7 +432,7 @@ end = struct
           | `C -> (module CLang.Make : Language.S)
           in
           let module Lang = (val (get_lang arch) : Language.S) in
-          let rec aux = function
+          let aux = function
           | `PPC ->
               let module Arch' = PPCArch.Make(OC)(V) in
               let module LexParse = struct

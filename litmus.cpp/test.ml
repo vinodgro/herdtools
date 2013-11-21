@@ -11,7 +11,7 @@
 (*********************************************************************)
 
 module type S = sig
-  module A : Arch.S
+  module A : Arch.Base
   module C : Constr.S with module A = A
   module P : PseudoAbstract.S
 
@@ -38,7 +38,7 @@ end
 
 
 
-module Make(A:Arch.S)(P:PseudoAbstract.S) : S with module A = A and module P = P =
+module Make(A:Arch.Base)(P:PseudoAbstract.S) : S with module A = A and module P = P =
 struct
   module A  = A
   module C = Constr.Make(A)

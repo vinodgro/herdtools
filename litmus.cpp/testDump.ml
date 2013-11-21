@@ -13,21 +13,19 @@
 (* Dump a test, litmus sources *)
 
 module type I = sig
-  module A : Arch.S
+  module A : Arch.Base
   module C : Constr.S with module A = A
   module P : PseudoAbstract.S
 end
 
 module Make(I:I) : sig
-  type state = (I.A.location * I.A.V.v) list
   type code =  (int * I.P.code) list
-  type test =  (state, code, I.C.constr, I.A.location)  MiscParser.result
+  type test =  (I.A.state, code, I.C.constr, I.A.location)  MiscParser.result
   val dump : out_channel -> Name.t -> test -> unit
   val lines : Name.t -> test -> string list
 end = struct
-  type state = (I.A.location * I.A.V.v) list
   type code =  (int * I.P.code) list
-  type test =  (state, code, I.C.constr, I.A.location)  MiscParser.result
+  type test =  (I.A.state, code, I.C.constr, I.A.location)  MiscParser.result
   include SimpleDumper_prime.Make
       (struct
         open Printf
@@ -42,11 +40,11 @@ end = struct
         type state = A.state
 
         let dump_state st =
-            String.concat " "
-              (List.map
-                 (fun a -> sprintf "%s;" (dump_state_atom a))
-              st)
-
+          String.concat " "
+            (List.map
+               (fun a -> sprintf "%s;" (dump_state_atom a))
+               st
+            )
 
         type constr = I.C.constr
         let dump_atom a =

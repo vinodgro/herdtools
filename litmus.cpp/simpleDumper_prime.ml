@@ -14,7 +14,7 @@
 (* Parsable dump *)
 (*****************)
 module type I = sig
-  module A : ArchBase.S
+  module A : Arch.Base
 
   module P : PseudoAbstract.S
 

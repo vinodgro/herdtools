@@ -19,14 +19,19 @@ end
 
 module Make
     (O:Config)
-    (A_should_not_be_used : Arch.S)
-    (T:Test.S with module A = A_should_not_be_used and type P.code = A_should_not_be_used.pseudo list)
-    (C:XXXCompile.S with module A = T.A) =
+    (A_complete : Arch.S)
+    (A : Arch.Base
+     with type reg = A_complete.reg
+      and type location = A_complete.location
+      and module Out = A_complete.Out
+    )
+    (T:Test.S with module A = A and type P.code = A_complete.pseudo list)
+    (C:XXXCompile.S with module A = A_complete) =
   struct
     open Printf
     open Constant
 
-    module A = T.A
+    module A = A_complete
     module V = A.V
     module Constr = T.C
     open A.Out

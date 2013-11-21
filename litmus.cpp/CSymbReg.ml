@@ -23,7 +23,7 @@ module type S = sig
       (MiscParser.location, MiscParser.maybev) t -> (location,v) t
 end
 
-module Make (A:Arch.S) : S
+module Make (A:Arch.Base) : S
 with type v = A.V.v and type location = A.location
  = struct
 
@@ -63,11 +63,6 @@ with type v = A.V.v and type location = A.location
 
   let finish_constr f_reg = ConstrGen.map_constr (finish_atom f_reg)
 
-  let finish_pseudo f_reg =
-    A.pseudo_map (A.map_regs (fun r -> r) f_reg)
-
-  let finish_code f_reg = List.map (finish_pseudo f_reg)
-
 
 (**********************************)
 (* All those to collect registers *)
@@ -89,16 +84,6 @@ with type v = A.V.v and type location = A.location
         let compare = A.reg_compare
       end)
 
-
-  let collect_pseudo f =
-    A.pseudo_fold
-      (fun k ins -> A.fold_regs f k ins)
-
-  let collect_prog =
-    List.map
-      (List.fold_left
-         (collect_pseudo  (RegSet.add,StringSet.add))
-         (RegSet.empty,StringSet.empty))
 
 
   let collect_location loc (regs,symbs as c) = match loc with
@@ -177,7 +162,7 @@ with type v = A.V.v and type location = A.location
                 if p=q then RegSet.add reg k else k)
               regs RegSet.empty in
           let free_regs =
-            RegSet.diff (RegSet.of_list A.allowed_for_symb)
+            RegSet.diff (RegSet.of_list [](*A.allowed_for_symb*))
               (RegSet.union regs_p regs_cstr) in
           let env,_ =
             StringSet.fold
