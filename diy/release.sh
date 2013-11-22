@@ -8,6 +8,7 @@ FINAL=$TMP/diy-$V
 /bin/rm -rf $FINAL && mkdir $FINAL
 ( cd $FINAL && \
   svn export -N $REPOS/litmus litmus && \
+  ( cd litmus && svn export -N $REPOS/litmus/generated  ) && \
   svn export -N $REPOS/gen gen && \
   svn export -N $REPOS/herd herd && \
   svn export -N $REPOS/tools tools && \

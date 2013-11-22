@@ -32,7 +32,7 @@ cleandir ()
   sed -e 's|PREFIX=$$HOME|PREFIX=/usr/local|' -e 's|EXTRAPROGS=.*|EXTRAPROGS=|' Makefile > /tmp/tmp.$$ && mv $TMPFILE Makefile && \
   make && \
   erasetxt && \
-  if [ -d lib ]
+  if [ -d lib -a ! \( -h lib \) ]
   then
     for f in lib/*.ml lib/*.ml[iyl]
     do
