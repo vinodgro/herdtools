@@ -260,7 +260,6 @@ end = struct
               else find_in_state loc rem
         let pp_reg x = x
       end
-      module P = CGenParser.Make(O)(L)
       module Pseudo = struct
         type code = CAst.t
         let dump_prog (i, cfun) =
@@ -276,6 +275,7 @@ end = struct
           in
           Printf.sprintf "P%i" i :: [f cfun]
       end
+      module P = CGenParser.Make(O)(Pseudo)(A')(L)
       module T = Test.Make(A')(Pseudo)
       module Comp = CCompile.Make(O)(T)
       module MS = Skel.Make(O)(Pseudo)(A')(T)

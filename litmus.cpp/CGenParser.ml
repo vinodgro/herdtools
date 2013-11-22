@@ -70,6 +70,8 @@ end
 
 module Make
     (O:Config)
+    (P:PseudoAbstract.S with type code = CAst.t)
+    (A:Arch.Base)
     (L: LexParse) : S =
   struct
 
@@ -154,7 +156,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let lexbuf = LU.from_section loc chan in
       call_parser name lexbuf
 
-    (*    module D = TestHash.Make(A)*)
+    module D = CTestHash.Make(P)(A)
 
     let parse chan
         {
@@ -201,6 +203,6 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
         let info = parsed.MiscParser.info in
         { parsed with
           MiscParser.info =
-            ("Hash",Obj.magic ())::info ; } in
+            ("Hash",D.digest init (List.map (fun x -> x.CAst.proc, x) prog) all_locs)::info ; } in
       parsed
   end
