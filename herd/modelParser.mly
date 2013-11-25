@@ -42,7 +42,7 @@ let pp () =
 %token MM  MR  MW WM WW WR RM RW RR
 /* Plain/Atomic */
 %token AA AP PA PP
-%token SEMI UNION INTER COMMA
+%token SEMI UNION INTER COMMA DIFF
 %token STAR PLUS OPT
 %token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS
 %type <AST.t> main
@@ -51,6 +51,7 @@ let pp () =
 /* Precedences */
 %right UNION
 %right SEMI
+%left DIFF
 %right INTER
 %nonassoc STAR PLUS OPT
 %%
@@ -101,6 +102,7 @@ exp:
 | exp OPT { Op1(Opt,$1) }
 | exp SEMI exp { do_op Seq $1 $3 }
 | exp UNION exp { do_op Union $1 $3 }
+| exp DIFF exp { do_op Diff $1 $3 }
 | exp INTER exp { do_op Inter $1 $3 }
 | LPAR exp RPAR { $2 }
 

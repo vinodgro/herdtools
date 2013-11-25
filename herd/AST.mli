@@ -13,7 +13,7 @@
 (* Syntax tree of model definition *)
 type pos = { pos:int; len:int;}
 type direction = Write | Read | WriteRead | Atomic | Plain
-type op2 = Union | Inter | Seq
+type op2 = Union | Inter | Seq | Diff
 type op1 = Plus | Star | Opt | Select of direction * direction
 type konst = Empty
 

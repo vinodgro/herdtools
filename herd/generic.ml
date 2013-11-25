@@ -92,6 +92,12 @@ module Make
               match op with
               | Union -> S.unions vs
               | Seq -> S.seqs vs
+              | Diff ->
+                  begin match vs with
+                  | [] -> assert false
+                  | v::vs ->
+                      List.fold_left E.EventRel.diff v vs
+                  end
               | Inter ->
                   begin match vs with
                   | [] -> assert false

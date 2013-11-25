@@ -53,6 +53,7 @@ rule token = parse
 | '&'  {  INTER }
 | '*'  {  STAR }
 | '+'  {  PLUS }
+| '/'  {  DIFF }
 | '?'  {  OPT }
 | '='  {  EQUAL }
 | ';'  {  SEMI }
