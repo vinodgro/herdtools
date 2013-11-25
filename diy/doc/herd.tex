@@ -513,6 +513,7 @@ A relation can be seen as a set of pairs of memory events.
 \alt \NT{expr}\T{*} \orelse \NT{expr}\T{+}  \orelse \NT{expr}\T{?}
 \alt \NT{expr}\T{|}\NT{expr} \orelse
 \NT{expr}\T{;}\NT{expr} \orelse
+\NT{expr}\T{/}\NT{expr} \orelse
 \NT{expr}\T{\&}\NT{expr}
 \alt \NT{selector}\T{(}\NT{expr}\T{)}
 \alt \T{(}\NT{expr}\T{)}
@@ -546,11 +547,15 @@ by the postfix operators \T{+} and~\T{*}.
 The construct \synt{\NT{expr}\T{?}} (option) evaluates to the union
 of  \NT{expr} value and of the identity relation.
 
-Infix operators are \T{|} (union), \T{;} (sequence) and~\T{\&} (intersection).
+Infix operators are \T{|} (union), \T{;} (sequence), \T{\&} (intersection)
+and \T{/} (set difference).
 The precedence of operators is as follows:
-postfix operators bind tighter than~\T{;} and~\T{\&},
-which bind tighter than~\T{|}. All infix operators are right-associative,
-which their semantics will not reveal anyway.
+postfix operators bind tighter than infix operators.
+Infix operators from higher precedence to lower precedence are:
+\T{\&}, \T{/}, \T{;} and~\T{|}.
+All infix operators are right-associative,
+except set difference which is left-associative.
+
 
 For the record, given two relations $r_1$ and~$r_2$,
 the sequence $r_1; r_2$ is defined
