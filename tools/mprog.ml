@@ -23,11 +23,112 @@ module Top
          val hexa : bool
          val outputdir : string option
          val mode : OutMode.t
+         val transpose : bool
        end) =
   struct
 
     module T = struct
       type t = unit
+    end
+
+    (* Transpose dump *)
+    module Transpose(A:ArchBase.S) = struct
+
+      module D =
+        TransposeDumper.Make
+          (struct
+            module A = A
+            type prog =  (int * A.pseudo list) list
+
+            let dump_loc = MiscParser.dump_location
+            let dump_reg r = r
+
+            let dump_state_atom dump_loc (loc,v) =
+              sprintf "%s=%s" (dump_loc loc) (SymbConstant.pp_v v)
+
+            type state = MiscParser.state
+
+            let add_loc v k =
+              MiscParser.LocSet.add (MiscParser.Location_global v) k
+
+            let rec get_addrs_ins k = function
+              | A.Nop -> k
+              | A.Label (_,i) -> get_addrs_ins k i
+              | A.Instruction i ->
+                  A.fold_addrs add_loc k i
+              | A.Macro _ -> assert false
+
+
+            let dump_global_state prog st =
+              let global_st =
+                List.filter (fun (loc,_) -> MiscParser.is_global loc) st in
+(* Compute global location referenced from code and init *)
+              let gs =
+                List.fold_left
+                  (fun k (_,code) ->
+                    List.fold_left get_addrs_ins k code)
+                  MiscParser.LocSet.empty prog in
+              let gs =
+                List.fold_left
+                  (fun k (_,v) -> match v with
+                  | Constant.Symbolic _ as loc -> add_loc loc k
+                  | _ -> k) gs st in
+                      
+              let zeros =
+                MiscParser.LocSet.fold
+                  (fun loc k ->
+                    if
+                      List.exists
+                        (fun (loc0,_) ->
+                          MiscParser.location_compare loc loc0 = 0)
+                        global_st
+                    then k
+                    else (loc,SymbConstant.intToV 0)::k)
+                  gs [] in
+              let st = global_st @ zeros in
+              String.concat " "
+                (List.map
+                   (fun a -> sprintf "%s;" (dump_state_atom dump_loc a))
+                   st)
+
+            let dump_proc_state p st =
+              let st =
+                List.fold_right
+                  (fun (loc,v) k ->
+                    match MiscParser.as_local_proc p loc with
+                    | Some reg -> (reg,v)::k
+                    | None -> k)
+                  st [] in
+              String.concat " "
+                (List.map
+                   (fun a -> sprintf "%s;" (dump_state_atom dump_reg a))
+                   st)
+                
+            type constr = MiscParser.constr
+            let dump_atom a =
+              let open ConstrGen in
+              match a with
+              | LV (loc,v) -> dump_state_atom dump_loc (loc,v)
+              | LL (loc1,loc2) ->
+                  sprintf "%s=%s" (dump_loc loc1) (MiscParser.dump_rval loc2)
+
+            let dump_constr = ConstrGen.constraints_to_string dump_atom
+
+            type location = MiscParser.location
+            let dump_location = dump_loc
+          end)
+
+      let zyva = match O.outputdir with
+      | None -> D.dump_info stdout
+      | Some d ->
+          fun name parsed ->
+            let fname = name.Name.file in
+            let fname = Filename.basename fname in
+            let fname = Filename.concat d fname in
+            Misc.output_protect
+              (fun chan -> D.dump_info chan name parsed)
+              fname
+
     end
 
     (* Text dump *)
@@ -63,7 +164,6 @@ module Top
 
             type location = MiscParser.location
             let dump_location = dump_loc
-                
           end)
 
       let zyva = match O.outputdir with
@@ -108,17 +208,20 @@ module Top
 
     end
 
-    module Z =  ToolParse.Top(T)(Text)
-
     open OutMode
-    let zyva = match O.mode with
-    | Txt ->
-        let module Z =  ToolParse.Top(T)(Text) in
+
+    let zyva =
+      if O.transpose then
+        let module Z =  ToolParse.Top(T)(Transpose) in
         Z.from_file
-    | LaTeX|HeVeA|HeVeANew ->
-        let module Z =  ToolParse.Top(T)(Latex) in
-        Z.from_file
-        
+      else match O.mode with
+      | Txt ->
+          let module Z =  ToolParse.Top(T)(Text) in
+          Z.from_file
+      | LaTeX|HeVeA|HeVeANew ->
+          let module Z =  ToolParse.Top(T)(Latex) in
+          Z.from_file
+          
   end
 
 (***********************)
@@ -128,6 +231,7 @@ let texmacros = ref false
 let hexa = ref false
 let outputdir = ref None
 let mode = ref OutMode.LaTeX
+let transpose = ref false
 let opts =
   [
    "-v",Arg.Unit (fun () -> incr verbose), " be verbose";
@@ -137,6 +241,8 @@ let opts =
    (sprintf "<bool> hexadecimal output, default %b" !hexa);
    begin let module P = ParseTag.Make(OutMode) in
    P.parse "-mode" mode "output mode" end ;
+   "-transpose", Arg.Bool (fun b -> transpose := b),
+   (sprintf "<bool> show code proc by proc, default %b" !transpose);
    "-o", Arg.String (fun s -> outputdir := Some s),
    "<name>  all output in directory <name>";
  ]
@@ -159,6 +265,7 @@ module X =
       let hexa = !hexa
       let outputdir = !outputdir
       let mode = !mode
+      let transpose = !transpose
     end)
 
 let () =

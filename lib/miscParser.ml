@@ -46,6 +46,17 @@ let dump_rval loc = match loc with
   | Location_sreg s -> s
   | Location_global v -> Printf.sprintf "*%s" (SymbConstant.pp_v v)
 
+let is_global = function
+  | Location_global _ -> true
+  | Location_reg _ -> false
+  | Location_sreg _ -> assert false
+
+let as_local_proc i = function
+  | Location_reg (j,reg) -> if i=j then Some reg else None
+  | Location_global _ -> None
+  | Location_sreg _ -> assert false
+
+  
 module LocSet =
   MySet.Make
     (struct type t = location let compare = location_compare end)
