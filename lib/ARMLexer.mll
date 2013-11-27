@@ -44,6 +44,8 @@ rule token = parse
 | "ands" | "ANDS"   { I_ANDS }
 | "bne" | "BNE"   { I_BNE }
 | "beq" | "BEQ"   { I_BEQ }
+| "cbz" | "CBZ"   { I_CBZ }
+| "cbnz" | "CBNZ"   { I_CBNZ }
 | "cmp" | "CMP"   { I_CMP }
 | "ldr" | "LDR"   { I_LDR }
 | "ldrex" | "LDREX"   { I_LDREX }

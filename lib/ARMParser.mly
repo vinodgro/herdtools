@@ -25,7 +25,7 @@ open ARMBase
 
 /* Instruction tokens */
 
-%token I_ADD I_ADDS I_AND I_ANDS I_B I_BEQ I_BNE I_CMP I_MOV I_MOVNE I_MOVEQ I_XOR I_XORS I_DMB I_DSB I_ISB
+%token I_ADD I_ADDS I_AND I_ANDS I_B I_BEQ I_BNE I_CMP I_MOV I_MOVNE I_MOVEQ I_XOR I_XORS I_DMB I_DSB I_ISB I_CBZ I_CBNZ
 %token I_LDR I_LDREX I_LDRNE I_LDREQ I_STR I_STRNE I_STREQ I_STREX
 %token I_SY I_ST I_ISH I_ISHST I_NSH I_NSHST I_OSH I_OSHST
 %type <int list * (ARMBase.pseudo) list list> main 
@@ -89,6 +89,10 @@ instr:
      { I_BNE $2 }
   | I_BEQ NAME
      { I_BEQ $2 }
+  | I_CBZ reg COMMA NAME
+     { I_CB (false,$2,$4) }
+  | I_CBNZ reg COMMA NAME
+     { I_CB (true,$2,$4) }
   | I_CMP reg COMMA k
      { I_CMPI ($2,$4) }
   | I_CMP reg COMMA reg

@@ -147,6 +147,12 @@ module Make(V:Constant.S)(C:Config) =
           (pp_cond cond) (A.Out.dump_label (tr_lab lbl)) ;
         branch=[Next; Branch lbl] ; }
 
+    let cb tr_lab n r lbl =
+      { empty_ins with
+        memo = sprintf "cb%sz ^i0,%s"
+          (if n then "n" else "") (A.Out.dump_label (tr_lab lbl)) ;
+        inputs = [r;] ;
+        branch=[Next; Branch lbl] ; }
     let emit_lbl lbl =
       { empty_ins with
         memo=sprintf "%s:" (A.Out.dump_label lbl) ;
@@ -220,6 +226,7 @@ module Make(V:Constant.S)(C:Config) =
     | I_B lbl -> b tr_lab lbl::k
     | I_BNE lbl -> bcc tr_lab NE lbl::k
     | I_BEQ lbl -> bcc tr_lab EQ lbl::k
+    | I_CB (n,r,lbl) -> cb tr_lab n r lbl::k
 (* Misc *)
     | I_DMB o ->
         check_armv6k ins ;

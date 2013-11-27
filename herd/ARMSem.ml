@@ -44,6 +44,8 @@ module Make (C:Sem.Config)(V:Value.S)
     let (>>::) = M.(>>::)
 
     let flip_flag v = M.op Op.Xor v V.one	
+    let is_zero v = M.op Op.Eq v V.zero
+    let is_not_zero v = M.op Op.Ne v V.zero
     let check_flag = function
       |ARM.AL -> assert false
       |ARM.NE -> flip_flag
@@ -164,6 +166,10 @@ module Make (C:Sem.Config)(V:Value.S)
 	      M.read_reg ARM.Z ii >>=
 	      fun v -> flip_flag v >>= fun vneg -> M.commit ii >>=
                 fun () -> B.bccT vneg lbl 
+          | ARM.I_CB (n,r,lbl) ->
+              let cond = if n then is_not_zero else is_zero in
+              M.read_reg r ii >>= cond >>=
+                fun v -> M.commit ii >>= fun () -> B.bccT v lbl
 	  | ARM.I_CMPI (r,v) ->
 	      ((M.read_reg  r ii) 
 		 >>= 

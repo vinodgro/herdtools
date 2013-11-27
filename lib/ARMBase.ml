@@ -155,6 +155,7 @@ type instruction =
   | I_B of lbl
   | I_BEQ of lbl 
   | I_BNE of lbl (* Was maybeVal ??? *)
+  | I_CB of bool * reg * lbl
   | I_CMPI of reg * k
   | I_CMP of reg * reg
   | I_LDR of reg * reg * condition
@@ -240,6 +241,9 @@ let do_pp_instruction m =
   | I_B v -> "B " ^ pp_lbl v
   | I_BEQ(v) -> "BEQ "^ pp_lbl v
   | I_BNE(v) -> "BNE "^ pp_lbl v
+  | I_CB (n,r,lbl) ->
+      sprintf "CB%sZ" (if n then "N" else "") ^
+      " " ^ pp_reg r ^ "," ^ pp_lbl lbl
   | I_CMPI (r,v) -> ppi_ri "CMP" r v
   | I_CMP (r1,r2) -> ppi_rr "CMP" r1 r2
   | I_LDREX(rt,rn) -> ppi_rrm "LDREX" rt rn
@@ -303,6 +307,7 @@ let fold_regs (f_reg,f_sreg) =
       -> fold_reg r3 (fold_reg r2 (fold_reg r1 c))
   | I_CMPI (r, _)
   | I_MOVI (r, _, _)
+  | I_CB (_,r,_)
       -> fold_reg r c
   | I_B _
   | I_BEQ _
@@ -330,6 +335,7 @@ let map_regs f_reg f_symb =
   | I_B _
   | I_BEQ _ 
   | I_BNE _ -> ins
+  | I_CB (n,r,lbl) -> I_CB (n,map_reg r,lbl)
   | I_CMPI (r, k) -> I_CMPI (map_reg r, k)
   | I_CMP (r1, r2) -> I_CMP (map_reg r1, map_reg r2)
   | I_LDREX (r1, r2) -> I_LDREX (map_reg r1, map_reg r2)
@@ -382,7 +388,7 @@ let get_next = function
   | I_SEL _
     -> [Label.Next]
   | I_B lbl -> [Label.To lbl]
-  | I_BEQ lbl|I_BNE lbl -> [Label.Next; Label.To lbl]
+  | I_BEQ lbl|I_BNE lbl|I_CB (_,_,lbl) -> [Label.Next; Label.To lbl]
 
 include Pseudo.Make
     (struct
@@ -398,6 +404,7 @@ include Pseudo.Make
         | I_B _
         | I_BEQ _
         | I_BNE _
+        | I_CB _
         | I_CMPI _
         | I_CMP _
         | I_MOVI _
@@ -422,6 +429,7 @@ include Pseudo.Make
         | I_B lbl
         | I_BEQ lbl
         | I_BNE lbl
+        | I_CB (_,_,lbl)
           -> f k lbl
         | _ -> k
 
@@ -429,6 +437,7 @@ include Pseudo.Make
         | I_B lbl -> I_B (f lbl)
         | I_BEQ lbl -> I_BEQ (f lbl)
         | I_BNE lbl -> I_BNE (f lbl)
+        | I_CB (n,r,lbl) -> I_CB (n,r,f lbl)
         | ins -> ins
 
     end)

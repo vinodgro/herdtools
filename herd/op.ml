@@ -18,7 +18,7 @@ type op =
   | Add | Sub | Mul | Div
   | And | Or | Xor
   | ShiftLeft
-  | Lt | Gt | Eq
+  | Lt | Gt | Eq | Ne
 
 let pp_op o = 
   match o with
@@ -33,6 +33,7 @@ let pp_op o =
   | Eq -> "=="
   | Lt -> "<"
   | Gt -> ">"
+  | Ne -> "!="
 
 (********************)
 

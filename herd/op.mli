@@ -21,7 +21,7 @@ type op =
 (* Logical shift left *)
   | ShiftLeft
 (* Return C-style boolean (zero is false, not zero is true) *)
-  | Lt | Gt | Eq
+  | Lt | Gt | Eq | Ne
 
 val pp_op : op -> string
 

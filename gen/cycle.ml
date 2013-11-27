@@ -483,8 +483,8 @@ let set_same_loc st n0 =
     set_all_write_val nss ;
     nss
   
-  
 
+(* TODO: this is wrong for Store CR's: consider Rfi Store PosRR *)
 let do_set_read_v =
 
   let next n = match n.edge.E.edge with
