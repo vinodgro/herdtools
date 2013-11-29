@@ -18,10 +18,11 @@ end
 
 module Make
     (O:Config)
-    (T:Test.S with type P.code = CAst.t) =
+    (T:Test.S with type P.code = CAst.t and type A.reg = string) =
   struct
 
     module A = T.A
+    module C = T.C
 
     let add_addr_type a ty env =
       try
@@ -70,7 +71,29 @@ module Make
         (fun a ty k -> (a,ty)::k)
         env []
 
-    let comp_code _ = assert false
+    let get_globals proc =
+      let f acc = function
+        | A.Location_reg (p, name) when p = proc -> name :: acc
+        | A.Location_reg _
+        | A.Location_global _ -> acc
+      in
+      List.fold_left f []
+
+    let comp_template proc final =
+      { A.Out.init = []
+      ; addrs = []
+      ; final
+      ; code = []
+      }
+
+    let comp_code final =
+      List.fold_left
+        (fun acc (proc, _) ->
+           let final = get_globals proc (C.locations final) in
+           let regs = List.map (fun x -> (x, RunType.Pointer)) final in
+           (proc, (comp_template proc final, regs)) :: acc
+        )
+        []
 
     let compile t =
       let
@@ -82,7 +105,7 @@ module Make
         } = t in
       { T.init = init;
         info = info;
-        code = comp_code code;
+        code = comp_code final code;
         condition = final;
         globals = comp_globals init code;
         flocs = List.map fst locs;
