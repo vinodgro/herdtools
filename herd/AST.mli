@@ -16,19 +16,26 @@ type direction = Write | Read | WriteRead | Atomic | Plain
 type op2 = Union | Inter | Seq | Diff
 type op1 = Plus | Star | Opt | Select of direction * direction
 type konst = Empty
+type var = string
 
 type exp =
   | Konst of  konst
-  | Var of string
+  | Var of var
   | Op1 of op1 * exp
   | Op of op2 * exp list
+  | App of exp * exp list
+  | Bind  of binding list * exp
+  | BindRec  of binding list * exp
+
+and binding = var * exp
+and fdef = var * var list * exp
 
 type test = Acyclic | Irreflexive | TestEmpty
 
-type binding = (string * exp)
 type ins =
   | Let of binding list
   | Rec of binding list
+  | Fun of fdef list
   | Test of pos * test * exp * string option
   | UnShow of string list
   | Show of string list

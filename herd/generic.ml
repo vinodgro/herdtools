@@ -38,10 +38,29 @@ module Make
 (*  Model interpret *)
     let (pp,model) = O.m
 
+    type v =
+      | Rel of S.event_rel
+      | Clo of closure
+
+    and env = v StringMap.t
+    and closure =
+        { clo_args : AST.var list ;
+          clo_env : env ;
+          clo_body : AST.exp; }
+
     let find_env env k =
       try StringMap.find k env
       with
       | Not_found -> Warn.user_error "unbound var: %s" k
+
+    let as_rel = function
+      | Rel r -> r
+      | Clo _ ->  Warn.user_error "relation expected"
+
+    let as_clo = function
+      | Clo c -> c
+      | Rel _ -> Warn.user_error "closure expected"
+
 
     let rec stabilised vs ws = match vs,ws with
     | [],[] -> true
@@ -53,7 +72,7 @@ module Make
 
 (* State of interpreter *)
     type st =
-        { env : S.event_rel StringMap.t ;
+        { env : env ;
           show : S.event_rel StringMap.t Lazy.t ;
           skipped : StringSet.t ; }
 
@@ -62,7 +81,7 @@ module Make
     let show_to_vbpp st =
       StringMap.fold (fun tag v k -> (tag,v)::k)   (Lazy.force st.show) []
 
-        
+    let empty_rel = Rel E.EventRel.empty        
     let interpret test conc m id vb_pp =
 
       let is_dir = function
@@ -73,23 +92,24 @@ module Make
         | Plain -> fun e -> not (E.is_atomic e) in
 
       let rec eval env = function
-        | Konst Empty -> E.EventRel.empty
+        | Konst Empty -> empty_rel
         | Var k -> find_env env k
         | Op1 (op,e) ->
             begin
-              let v = eval env e in
-              match op with
-              | Plus -> S.tr v
-              | Star -> S.union (S.tr v) id
-              | Opt -> S.union v id
-              | Select (s1,s2) ->
-                  let f1 = is_dir s1 and f2 = is_dir s2 in
-                  S.restrict f1 f2 v
+              let v = eval_rel env e in
+              Rel
+                (match op with
+                | Plus -> S.tr v
+                | Star -> S.union (S.tr v) id
+                | Opt -> S.union v id
+                | Select (s1,s2) ->
+                    let f1 = is_dir s1 and f2 = is_dir s2 in
+                    S.restrict f1 f2 v)
             end
         | Op (op,es) ->
             begin
-              let vs = List.map (eval env) es in
-              match op with
+              let vs = List.map (eval_rel env) es in
+              let v = match op with
               | Union -> S.unions vs
               | Seq -> S.seqs vs
               | Diff ->
@@ -103,26 +123,68 @@ module Make
                   | [] -> assert false
                   | v::vs ->
                       List.fold_left E.EventRel.inter v vs
-                  end
-            end in
+                  end in
+              Rel v
+            end
+        | App (f,es) ->
+            let f = eval_clo env f in
+            let vs = List.map (eval env) es in
+            let bds =
+              try
+                List.combine f.clo_args vs
+              with _ -> Warn.user_error "argument_mismatch" in
+            let env =
+              List.fold_right
+                (fun (x,v) env -> StringMap.add x v env)
+                bds f.clo_env in
+            eval env f.clo_body
+        | Bind (bds,e) ->
+            let env = eval_bds env bds in
+            eval env e
+        | BindRec (bds,e) ->
+            let rec fix k env vs =
+              if true || (O.debug && O.verbose > 1) then begin
+                let vb_pp =
+                  List.map2
+                    (fun (x,_) v -> x,rt_loc v)
+                    bds vs in
+                MU.pp_failure test conc
+                  (sprintf "Fix %i" k)
+                  vb_pp
+              end ;
+              let env,ws = fix_step env bds in
+              if stabilised vs ws then env
+              else fix (k+1) env ws in
+            let env =
+              fix 0
+                (List.fold_left
+                   (fun env (k,_) -> StringMap.add k empty_rel env)
+                  env bds)
+                (List.map (fun _ -> E.EventRel.empty) bds) in
+            eval env e
+
+      and eval_rel env e = as_rel (eval env e)
+      and eval_clo env e = as_clo (eval env e)
 
 (* For let *)
-      let rec eval_bds env bds = match bds with
+      and eval_bds env bds = match bds with
       | [] -> env
       | (k,e)::bds ->
           let v = eval env e in
-          StringMap.add k v (eval_bds env bds) in
+          StringMap.add k v (eval_bds env bds)
 
 (* For let rec *)
-      let rec fix_step env bds = match bds with
+      and fix_step env bds = match bds with
       | [] -> env,[]
       | (k,e)::bds ->
           let v = eval env e in
           let env = StringMap.add k v env in
           let env,vs = fix_step env bds in
-          env,(v::vs) in
+          env,(as_rel v::vs) in
+
 
 (* Showing bound variables, (-doshow option) *)
+
       let doshow bds st =
         let to_show =
           StringSet.inter S.O.PC.doshow (StringSet.of_list (List.map fst bds)) in
@@ -131,7 +193,7 @@ module Make
           let show = lazy begin
             StringSet.fold
               (fun x show  ->
-                StringMap.add x (rt_loc (eval st.env (Var x))) show)
+                StringMap.add x (rt_loc (eval_rel st.env (Var x))) show)
               to_show
               (Lazy.force st.show)
           end in
@@ -144,7 +206,7 @@ module Make
           let show = lazy begin              
             List.fold_left
               (fun show x ->
-                StringMap.add x (rt_loc (eval st.env (Var x))) show)
+                StringMap.add x (rt_loc (eval_rel st.env (Var x))) show)
               (Lazy.force st.show) xs
           end in
           run { st with show;} c
@@ -158,7 +220,7 @@ module Make
       | ShowAs (e,id) ->
           let show = lazy begin
             StringMap.add id
-              (rt_loc (eval st.env e)) (Lazy.force st.show)
+              (rt_loc (eval_rel st.env e)) (Lazy.force st.show)
           end in
           run { st with show; } c
       | Test (pos,t,e,name) ->
@@ -169,7 +231,7 @@ module Make
           if
             O.strictskip || not skip_this_check
           then
-            let v = eval st.env e in
+            let v = eval_rel st.env e in
             let pred = match t with
             | Acyclic -> E.EventRel.is_acyclic
             | Irreflexive -> E.EventRel.is_irreflexive
@@ -218,12 +280,20 @@ module Make
           let env =
             fix 0
               (List.fold_left
-                 (fun env (k,_) -> StringMap.add k E.EventRel.empty env)
+                 (fun env (k,_) -> StringMap.add k empty_rel env)
                  st.env bds)
               (List.map (fun _ -> E.EventRel.empty) bds) in
           let st = { st with env; } in
           let st = doshow bds st in
           run st c
+      | Fun fdefs ->
+          let env =
+            List.fold_right
+              (fun (f,xs,b) env ->
+                StringMap.add
+                  f (Clo {clo_args=xs; clo_env=st.env; clo_body=b; }) env)
+              fdefs st.env in
+          run { st with env; } c
 
       and run st = function
         | [] ->  Some st 
@@ -251,7 +321,7 @@ module Make
 (* Initial env *)
       let m =
         List.fold_left
-          (fun m (k,v) -> StringMap.add k v m)
+          (fun m (k,v) -> StringMap.add k (Rel v) m)
           StringMap.empty
           ["id",id;
            "atom",conc.S.atomic_load_store;
@@ -298,12 +368,13 @@ module Make
 
         let m =
           List.fold_left
-            (fun m (k,v) -> StringMap.add k v m)
+            (fun m (k,v) -> StringMap.add k (Rel v) m)
             m
             [
              "fr", fr; "fre", U.ext fr; "fri", U.internal fr;
              "co", co; "coe", U.ext co; "coi", U.internal co;
            ] in
+
         match interpret test conc m id vb_pp with
         | Some st ->
             if not O.strictskip || StringSet.equal st.skipped O.skipchecks then

@@ -31,7 +31,7 @@ let () =
      "show",SHOW;
      "unshow",UNSHOW;
      "empty",TESTEMPTY;
-     "as",AS;
+     "as",AS; "fun", FUN; "in",IN;
    ]
 
 

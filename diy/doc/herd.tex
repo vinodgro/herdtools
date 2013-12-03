@@ -516,6 +516,8 @@ A relation can be seen as a set of pairs of memory events.
 \NT{expr}\T{/}\NT{expr} \orelse
 \NT{expr}\T{\&}\NT{expr}
 \alt \NT{selector}\T{(}\NT{expr}\T{)}
+\alt \NT{id} \T{(} \NT{args} \T{)}
+\alt \T{let} \boption\T{rec}\eoption \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{} \T{in} \NT{expr}
 \alt \T{(}\NT{expr}\T{)}
 \sep
 \NT{selector} \is
@@ -533,6 +535,9 @@ A relation can be seen as a set of pairs of memory events.
 \T{AP} \orelse
 \T{PA} \orelse
 \T{PP}
+\sep
+\NT{args} \is \epsilon
+\alt \NT{expr} \brepet{} \T{,} \NT{expr} \erepet{}
 \end{syntax}
 
 \subsubsection*{Simple expressions}
@@ -584,6 +589,27 @@ $$
 For instance, the expression \verb+RW(po)+ yields the read-to-write pairs
 in program order.
 
+\subsubsection*{Function calls}
+Functions calls are written
+\synt{\NT{id}\T{(}\NT{expr}_1 \T{,} \ldots \T{,} \NT{expr}_n\T{)}}.
+That is, functions have an arity ($n$ above, which can be zero)
+and arguments are given as a comma separated list of expressions.
+Our language have call-by-value semantics. That is,
+the effective parameters
+\synt{\NT{expr}_1 \T{,} \ldots \T{,} \NT{expr}_n} are evaluated before
+being bound to formal parameters.
+
+\subsubsection*{Local bindings}
+The local binding construct
+\synt{\T{let} \boption{} \T{rec} \eoption{} \nt{bindings} \T{in} \NT{expr}}
+binds the names defined by \nt{bindings} 
+for evaluating the expression \NT{expr}.
+Both non-recursive and recursive bindings are allowed.
+See the subsection on \ahrefloc{bindings}{bindings}
+in Section~\ref{language:instruction}
+for the syntax and semantics of bindings.
+
+
 \subsubsection*{Parenthesized expressions}
 The expression
 \synt{\T{(}\NT{expr}\T{)}} has the same value as \synt{\NT{expr}}.
@@ -594,6 +620,7 @@ There are three kind of effects: adding new bindings,
 checking a condition, and specifying relations that are shown in pictures.
 \begin{syntax}
 \NT{instruction} \is{} \T{let} \boption\T{rec}\eoption \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{}
+\alt \T{fun} \NT{fundef} \brepet{} \T{and} \NT{fundef} \erepet{}
 \alt \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption
 \alt \T{show} \NT{expr} \T{as} \NT{id}
 \alt \T{show} \brepet \NT{id} \erepet
@@ -601,10 +628,15 @@ checking a condition, and specifying relations that are shown in pictures.
 \sep
 \NT{binding} \is \NT{id} \T{=} \NT{expr}
 \sep
+\NT{fundef} \is \NT{id} \T{(} \NT{params} \T{)} \T{=} \NT{expr}
+\sep
+\NT{params} \is \epsilon
+\alt \NT{id} \brepet{} \T{,} \NT{id} \erepet{}
+\sep
 \NT{check} \is \T{acyclic} \orelse \T{irreflexive} \orelse \T{empty}
 \end{syntax}
 
-\subsubsection*{Bindings}
+\subsubsection*{\label{bindings}Bindings}
 The \T{let} and \T{let}~\T{rec} constructs bind value names for the rest
 of model execution. The construct
 \begin{center}
@@ -628,11 +660,36 @@ all communication relations:
 let com = rf | co | fr
 let rec complus = com | (complus ; complus)
 \end{verbatim}
-Notice that the instruction \verb-let complus = (rf|co|rf)+- is equivalent.
+Notice that the instruction \verb-let complus = (rf|co|fr)+- is equivalent.
 
 %Notice that \herd{} assumes that recursive definitions are well-formed,
 %\emph{i.e.} that they yield an increasing functional.
 %The result of ill-formed definitions is undefined.
+
+\subsubsection*{Function definitions}
+The \T{fun} construct defines functions for the rest
+of model execution:
+\begin{center}
+\synt{\T{fun} \NT{id}_1 \T{(} \NT{params}_1 \T{)} \T{=} \NT{expr}_1 \T{and} \ldots \T{and} \NT{id}_n \T{(} \NT{params}_n \T{)} \T{=} \NT{expr}_n}
+\end{center}
+defines $n$ functions \synt{\NT{id}_1},\ldots , \synt{\NT{id}_n}.
+Function arity is defined by the length of its formal parameter list
+\NT{params}, which can be empty.
+Notice that functions have the usual static scoping semantics:
+variables that appear free in function bodies 
+(\synt{\NT{expr}_1,\ldots,\NT{expr}_n} above) are bound the
+the value of such free variable at function creation time.
+
+There are no recursive functions, as those would not be very useful in
+our limited language. Nevertheless, one may for instance
+write a generic transitive closure
+function by using a local recursive binding:
+\begin{verbatim}
+fun tr(r) = let rec t = r | (t;t) in t
+let complus = tr(rf|co|fr)
+\end{verbatim}
+Again notice that the instruction
+\verb-let complus = (rf|co|fr)+- is equivalent.
 
 \subsubsection*{Checks}
 The construct
@@ -646,7 +703,8 @@ or \T{empty}, execution goes on. Otherwise, execution stops.
 check can optionally be named  by appending
 \synt{\T{as} \NT{id}} after it.
 The feature permits not to perform some checks at user's will,
-thanks to the \opt{-skipcheck~}\nt{id} command line option.
+thanks to the \ahrefloc{skipcheck}{\opt{-skipcheck~}\nt{id}}
+command line~option.
 
 
 \subsubsection*{Show (and unshow) directives}
@@ -790,7 +848,7 @@ with the option~\opt{-skipcheck} --- see  next option.
 Default is~\opt{none}.
 
 \item[{\tt -skipcheck <\textit{name}$_1$,\ldots,\textit{name}$_n$>}]
-This option applies to text file models. It instructs \herd{} to ignore
+\aname{skipcheck}{This option} applies to text file models. It instructs \herd{} to ignore
 the outcomes of the given checks. For the option to operate, checks must
 be named in the model file with the \texttt{as }\textit{name} construct --
 see Sec.~\ref{name:check:def}.

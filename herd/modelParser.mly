@@ -44,7 +44,7 @@ let pp () =
 %token AA AP PA PP
 %token SEMI UNION INTER COMMA DIFF
 %token STAR PLUS OPT
-%token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS
+%token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN
 %type <AST.t> main
 %start main
 
@@ -67,6 +67,7 @@ ins_list:
 ins:
 | LET bind_list { Let $2 }
 | LET REC bind_list { Rec $3 }
+| FUN fdef_list { Fun $2 }
 | test exp AS VAR { Test(pp (),$1,$2,Some $4) }
 | test exp  { Test(pp (),$1,$2,None) }
 | SHOW exp AS VAR { ShowAs ($2, $4) }
@@ -79,7 +80,7 @@ test:
 | TESTEMPTY { TestEmpty }
 
 var_list:
-|  { [] }
+| VAR { [$1] }
 | VAR commaopt var_list { $1 :: $3 }
 
 commaopt:
@@ -93,18 +94,47 @@ bind_list:
 bind:
 | VAR EQUAL exp { ($1,$3) }
 
+fdef_list:
+| fdef { [$1] }
+| fdef AND fdef_list { $1 :: $3 }
+
+fdef:
+| VAR LPAR formals RPAR EQUAL exp { $1,$3,$6 }
+
+formals:
+|  { [] }
+| formalsN { $1 }
+
+formalsN:
+| VAR { [$1] }
+| VAR COMMA formalsN { $1 :: $3 }
+
 exp:
+| LET bind_list IN exp { Bind ($2,$4) }
+| LET REC bind_list IN exp { BindRec ($3,$5) }
+| base { $1 }
+
+base:
 | EMPTY { Konst Empty }
 | select LPAR exp RPAR { Op1 ($1,$3) }
-| VAR { Var $1 }
-| exp STAR { Op1(Star,$1) }
-| exp PLUS { Op1(Plus,$1) }
-| exp OPT { Op1(Opt,$1) }
-| exp SEMI exp { do_op Seq $1 $3 }
-| exp UNION exp { do_op Union $1 $3 }
-| exp DIFF exp { do_op Diff $1 $3 }
-| exp INTER exp { do_op Inter $1 $3 }
+|  exp0 { $1 }
+| base STAR { Op1(Star,$1) }
+| base PLUS { Op1(Plus,$1) }
+| base OPT { Op1(Opt,$1) }
+| base SEMI base { do_op Seq $1 $3 }
+| base UNION base { do_op Union $1 $3 }
+| base DIFF base { do_op Diff $1 $3 }
+| base INTER base { do_op Inter $1 $3 }
 | LPAR exp RPAR { $2 }
+
+exp0:
+| VAR { Var $1 }
+| exp0 LPAR args RPAR { App ($1,$3) }
+
+
+args:
+| exp  { [ $1 ] }
+| exp COMMA args { $1 :: $3 }
 
 select:
 | MM { Select (WriteRead,WriteRead) }
