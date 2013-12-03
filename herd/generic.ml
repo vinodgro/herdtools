@@ -35,7 +35,6 @@ module Make
     module MU = ModelUtils.Make(O)(S)
     module JU = JadeUtils.Make(O)(S)(B)
     module W = Warn.Make(O)
-
 (*  Model interpret *)
     let (pp,model) = O.m
 
@@ -62,6 +61,7 @@ module Make
 
     let show_to_vbpp st =
       StringMap.fold (fun tag v k -> (tag,v)::k)   (Lazy.force st.show) []
+
         
     let interpret test conc m id vb_pp =
 
@@ -122,6 +122,21 @@ module Make
           let env,vs = fix_step env bds in
           env,(v::vs) in
 
+(* Showing bound variables, (-doshow option) *)
+      let doshow bds st =
+        let to_show =
+          StringSet.inter S.O.PC.doshow (StringSet.of_list (List.map fst bds)) in
+        if StringSet.is_empty to_show then st
+        else
+          let show = lazy begin
+            StringSet.fold
+              (fun x show  ->
+                StringMap.add x (rt_loc (eval st.env (Var x))) show)
+              to_show
+              (Lazy.force st.show)
+          end in
+          { st with show;} in
+        
 (* Execute one instruction *)
 
       let rec exec st i c =  match i with
@@ -183,7 +198,9 @@ module Make
           end
       | Let bds -> 
           let env = eval_bds st.env bds in
-          run { st with env } c
+          let st = { st with env; } in
+          let st = doshow bds st in
+          run st c
       | Rec bds ->
           let rec fix k env vs =
             if O.debug && O.verbose > 1 then begin
@@ -204,7 +221,9 @@ module Make
                  (fun env (k,_) -> StringMap.add k E.EventRel.empty env)
                  st.env bds)
               (List.map (fun _ -> E.EventRel.empty) bds) in
-          run {st with env} c
+          let st = { st with env; } in
+          let st = doshow bds st in
+          run st c
 
       and run st = function
         | [] ->  Some st 

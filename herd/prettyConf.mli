@@ -88,6 +88,7 @@ module type S = sig
   val movelabel : bool
   val fixedsize : bool
   val edgeattrs : DotEdgeAttr.t
+  val doshow : StringSet.t
   val unshow : StringSet.t
   val extrachars : float
   val shift : float array

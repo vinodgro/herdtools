@@ -258,6 +258,12 @@ let options = [
       let es = Misc.split_comma tag in
       PP.unshow := StringSet.union (StringSet.of_list es) !PP.unshow),
   "<name,..,name> do not show those edges";
+ "-doshow",
+  Arg.String
+    (fun tag ->
+      let es = Misc.split_comma tag in
+      PP.doshow := StringSet.union (StringSet.of_list es) !PP.doshow),
+  "<name,..,name> do show those edges";
 (* DOT contents control *)
   parse_tag "-splines"
     (fun tag -> match Splines.parse tag with
@@ -438,6 +444,7 @@ let () =
       let fixedsize = !PP.fixedsize
       let extrachars = !PP.extrachars
       let edgeattrs = PP.get_edgeattrs ()
+      let doshow = !PP.doshow
       let unshow = !PP.unshow
       let dotheader = match !PP.dotheader with
       | None -> None

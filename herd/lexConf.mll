@@ -203,6 +203,16 @@ and opt = parse
 | "fixedsize" arg { lex_bool PP.fixedsize arg }
 | "extrachars" arg { lex_float PP.extrachars arg }
 | "dotheader" arg { PP.dotheader := Some arg }
+| "unshow" arg
+    {
+      let es =  Misc.split_comma arg in
+      PP.unshow := StringSet.union (StringSet.of_list es) !PP.unshow
+   }
+| "doshow" arg
+    {
+      let es =  Misc.split_comma arg in
+      PP.doshow := StringSet.union (StringSet.of_list es) !PP.doshow
+   }
 | "edgeattr" arg
   {
     match Misc.split_comma arg with

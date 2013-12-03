@@ -88,6 +88,7 @@ module PP = struct
   let add_edgeattr lbl a v = edgeattrs := DotEdgeAttr.add lbl a v !edgeattrs
   let get_edgeattrs () = !edgeattrs
 
+  let doshow = ref StringSet.empty
   let unshow = ref StringSet.empty
   let extrachars = ref 0.0
   let shift = ref [| |]

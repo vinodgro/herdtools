@@ -972,10 +972,14 @@ Default is~\opt{false}.
 \item[{\tt -showfinalrf <bool>}] Show read-from edges to the final state,
 \emph{i.e} show the last store to locations. Default is~\opt{false}.
 \item[{\tt -showfr <bool>}] Show from-read edges. Default is~\opt{true}.
+\item[{\tt -doshow <\textit{name}$_1$,\ldots,\textit{name}$_n$>}]
+Do show edges labelled with \textit{name}$_1$,\ldots,\textit{name}$_n$.
+This setting applies when names are bound in model definition.
 \item[{\tt -unshow <\textit{name}$_1$,\ldots,\textit{name}$_n$>}]
 Do not show edges labelled with \textit{name}$_1$,\ldots,\textit{name}$_n$.
 This setting applies at the very last momement and thus cancels any
-\verb+show+ directive in model definition.
+\verb+show+ directive in model definition and any \opt{-doshow} command
+line~option.
 \end{description}
 Other options offer some control over some of the attributes defined in
 \ahref{\urlgraphviz}{Graphviz software} documentation.
