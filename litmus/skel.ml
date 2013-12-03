@@ -1423,11 +1423,17 @@ let user2_barrier_def () =
         | NoBarrier -> ()
         end ;
         O.fi "int _size_of_test = _a->_p->size_of_test;" ;
-
+        let prf = 
+          List.filter
+            (fun (xproc,_,_) -> proc=xproc)
+            (Prefetch.parse (get_prefetch_info test)) in
         if do_custom then
           O.fi "prfone_t *_prft = _a->_p->prefetch->t[%i].t;" proc ;
-        if do_staticpl then
-          O.oi "unsigned int _static_prefetch = _a->_p->static_prefetch;" ;
+        if do_staticpl then begin match prf with
+        | [] -> ()
+        | _::_ -> 
+            O.oi "unsigned int _static_prefetch = _a->_p->static_prefetch;"
+        end ;
         begin match stride with
         | None -> ()
         | Some _ -> O.fi "int _stride = _a->_p->stride;"
@@ -1471,24 +1477,22 @@ let user2_barrier_def () =
           end
         end else begin
           let vars = get_global_names test in
-          let prf = Prefetch.parse (get_prefetch_info test) in
           let iter pp =
             List.iter
               (fun (xproc,loc,t) ->
-                if xproc = proc then begin
-                  if List.mem loc vars then begin
-                    try
-                      let f = match t with
-                      | Prefetch.Ignore -> raise Exit
-                      | Prefetch.Flush -> "cache_flush"
-                      | Prefetch.Touch -> "cache_touch"
-                      | Prefetch.TouchStore -> "cache_touch_store" in
+                if List.mem loc vars then begin
+                  try
+                    let f = match t with
+                    | Prefetch.Ignore -> raise Exit
+                    | Prefetch.Flush -> "cache_flush"
+                    | Prefetch.Touch -> "cache_touch"
+                    | Prefetch.TouchStore -> "cache_touch_store" in
                       pp f (dump_a_addr loc)
-                    with Exit -> ()
-                  end else
-                    Warn.warn_always
-                      "Variable %s from prefetch is absent in test" loc
-                end) prf in
+                  with Exit -> ()
+                end else
+                  Warn.warn_always
+                    "Variable %s from prefetch is absent in test" loc)
+              prf in
           if do_staticNpl then begin
             match Cfg.preload with
             | Preload.StaticNPL Preload.One ->

@@ -4,7 +4,7 @@
 acyclic po-loc | rf | fr | co
 
 (* Atomic *)
-empty atom & (fre;coe)
+empty atom & (fre;coe) as atomic
 
 (* Utilities *)
 let dd = addr | data
@@ -62,7 +62,7 @@ let fenceext = (rfe;fence)|(fence;rfe)|(rfe;fence;rfe)
 (* happens before *)
 let hb = ppo | ppoext | fence | fenceext
 let GHB = hb
-show GHB
+show GHB as ghb
 acyclic hb
 
 (* prop *)
@@ -73,8 +73,7 @@ show propbase
 let chapo = rfe|fre|coe|(fre;rfe)|(coe;rfe)
 
 let prop = WW(propbase)| (chapo? ; propbase*; strong; hbstar)
-
-#show prop
+show prop
 acyclic co|prop
 irreflexive fre;prop;hbstar
 
