@@ -513,11 +513,13 @@ A relation can be seen as a set of pairs of memory events.
 \alt \NT{expr}\T{*} \orelse \NT{expr}\T{+}  \orelse \NT{expr}\T{?}
 \alt \NT{expr}\T{|}\NT{expr} \orelse
 \NT{expr}\T{;}\NT{expr} \orelse
-\NT{expr}\T{/}\NT{expr} \orelse
+\NT{expr}\T{\textbackslash}\NT{expr} \orelse
 \NT{expr}\T{\&}\NT{expr}
 \alt \NT{selector}\T{(}\NT{expr}\T{)}
 \alt \NT{id} \T{(} \NT{args} \T{)}
-\alt \T{let} \boption\T{rec}\eoption \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{} \T{in} \NT{expr}
+\alt \T{fun} \T{(} \NT{params} \T{)} \T{->} \NT{expr}
+\alt \T{let} \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{} \T{in} \NT{expr}
+\alt \T{let} \T{rec} \NT{valbinding} \brepet{} \T{and} \NT{valbinding} \erepet{} \T{in} \NT{expr}
 \alt \T{(}\NT{expr}\T{)}
 \sep
 \NT{selector} \is
@@ -538,6 +540,16 @@ A relation can be seen as a set of pairs of memory events.
 \sep
 \NT{args} \is \epsilon
 \alt \NT{expr} \brepet{} \T{,} \NT{expr} \erepet{}
+\sep
+\NT{params} \is \epsilon
+\alt \NT{id} \brepet{} \T{,} \NT{id} \erepet{}
+\sep
+\NT{binding} \is \NT{valbinding} \orelse \NT{funbinding}
+\sep
+\NT{valbinding} \is \NT{id} \T{=} \NT{expr}
+\sep
+\NT{funbinding} \is \NT{id} \T{(} \NT{params} \T{)} \T{=} \NT{expr}
+\sep
 \end{syntax}
 
 \subsubsection*{Simple expressions}
@@ -553,11 +565,11 @@ The construct \synt{\NT{expr}\T{?}} (option) evaluates to the union
 of  \NT{expr} value and of the identity relation.
 
 Infix operators are \T{|} (union), \T{;} (sequence), \T{\&} (intersection)
-and \T{/} (set difference).
+and \T{\textbackslash} (set difference).
 The precedence of operators is as follows:
 postfix operators bind tighter than infix operators.
 Infix operators from higher precedence to lower precedence are:
-\T{\&}, \T{/}, \T{;} and~\T{|}.
+\T{\&}, \T{\textbackslash}, \T{;} and~\T{|}.
 All infix operators are right-associative,
 except set difference which is left-associative.
 
@@ -599,16 +611,51 @@ the effective parameters
 \synt{\NT{expr}_1 \T{,} \ldots \T{,} \NT{expr}_n} are evaluated before
 being bound to formal parameters.
 
-\subsubsection*{Local bindings}
+\subsubsection*{Functions}
+Functions are first class values, as reflected by the anonymous
+function construct \synt{\T{fun} \T{(} \NT{params} \T{)} \T{->} \NT{expr}}.
+Function arity is defined by the length of its formal parameter list
+\synt{\NT{params}}, which can be empty.
+Notice that functions have the usual static scoping semantics:
+variables that appear free in function bodies 
+(\synt{\NT{expr}} above) are bound to
+the value of such free variable at function creation time.
+
+
+\subsubsection*{\label{bindings}Local bindings}
 The local binding construct
 \synt{\T{let} \boption{} \T{rec} \eoption{} \nt{bindings} \T{in} \NT{expr}}
 binds the names defined by \nt{bindings} 
 for evaluating the expression \NT{expr}.
-Both non-recursive and recursive bindings are allowed.
-See the subsection on \ahrefloc{bindings}{bindings}
-in Section~\ref{language:instruction}
-for the syntax and semantics of bindings.
 
+Both non-recursive and recursive bindings are allowed.
+The function binding
+\synt{\NT{id} \T{(} \NT{params} \T{)} \T{=} \NT{expr}} is syntactic sugar
+for \synt{\NT{id} \T{=} \T{fun} \T{(} \NT{params} \T{)} \T{->} \NT{expr}}.
+It is allowed in non-recursive bindings only as there is little point
+in defining recursive function in our setting.
+
+In the following we only consider value bindings \synt{\NT{id} \T{=} \NT{expr}}.
+The construct
+\begin{center}
+\synt{\T{let} \NT{id}_1 \T{=} \NT{expr}_1 \T{and} \ldots \T{and} \NT{id}_n \T{=} \NT{expr}_n} \T{in} \NT{expr}
+\end{center}
+evaluates \synt{\nt{expr}_1,\ldots, \nt{expr}_n},
+and binds the names  \synt{\nt{id}_1,\ldots, \nt{id}_n} to the resulting values.
+
+\aname{letrec}{The} construct
+\begin{center}
+\synt{\T{let} \T{rec} \NT{id}_1 \T{=} \NT{expr}_1 \T{and} \ldots \T{and} \NT{id}_n \T{=} \NT{expr}_n} \T{in} \NT{expr}
+\end{center}
+computes the least fixpoint of the equations
+$\nt{id}_1 = \nt{expr}_1$,\ldots, $\nt{id}_n = \nt{expr}_n$.
+It then binds the names \synt{\nt{id}_1,\ldots, \nt{id}_n} to the
+resulting values.
+The least fixpoint computation applies only to relations, using
+inclusion for ordering.
+Notice that
+\synt{\T{let} \T{rec} \NT{id} \T{=} \T{fun} \T{(} \NT{params} \T{)} \T{->} \NT{expr} \T{in}\ldots} is legal syntax. Such a definition will yield
+a runtime error.
 
 \subsubsection*{Parenthesized expressions}
 The expression
@@ -619,41 +666,25 @@ Instruction are executed for their  effect.
 There are three kind of effects: adding new bindings,
 checking a condition, and specifying relations that are shown in pictures.
 \begin{syntax}
-\NT{instruction} \is{} \T{let} \boption\T{rec}\eoption \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{}
-\alt \T{fun} \NT{fundef} \brepet{} \T{and} \NT{fundef} \erepet{}
+\NT{instruction} \is{} \T{let} \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{}
+\alt \T{let} \T{rec} \NT{valbinding} \brepet{} \T{and} \NT{valbinding} \erepet{}
 \alt \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption
 \alt \T{show} \NT{expr} \T{as} \NT{id}
-\alt \T{show} \brepet \NT{id} \erepet
-\alt \T{unshow} \brepet \NT{id} \erepet
-\sep
-\NT{binding} \is \NT{id} \T{=} \NT{expr}
-\sep
-\NT{fundef} \is \NT{id} \T{(} \NT{params} \T{)} \T{=} \NT{expr}
-\sep
-\NT{params} \is \epsilon
-\alt \NT{id} \brepet{} \T{,} \NT{id} \erepet{}
+\alt \T{show} \NT{id} \brepet \T{,} \NT{id} \erepet
+\alt \T{unshow} \NT{id} \brepet \T{,} \NT{id} \erepet
 \sep
 \NT{check} \is \T{acyclic} \orelse \T{irreflexive} \orelse \T{empty}
 \end{syntax}
 
-\subsubsection*{\label{bindings}Bindings}
+\subsubsection*{Bindings}
 The \T{let} and \T{let}~\T{rec} constructs bind value names for the rest
-of model execution. The construct
-\begin{center}
-\synt{\T{let} \NT{id}_1 \T{=} \NT{expr}_1 \T{and} \ldots \T{and} \NT{id}_n \T{=} \NT{expr}_n}
-\end{center}
-evaluates \synt{\nt{expr}_1,\ldots, \nt{expr}_n},
-and binds the names  \synt{\nt{id}_1,\ldots, \nt{id}_n} to the resulting values.
+of model execution.
+See the subsection on \ahrefloc{bindings}{bindings}
+in Section~\ref{language:expression}
+for additional information on the syntax and semantics of bindings.
 
-\aname{letrec}{The} construct
-\begin{center}
-\synt{\T{let} \T{rec} \NT{id}_1 \T{=} \NT{expr}_1 \T{and} \ldots \T{and} \NT{id}_n \T{=} \NT{expr}_n}
-\end{center}
-computes the least fixpoint of the equations
-$\nt{id}_1 = \nt{expr}_1$,\ldots, $\nt{id}_n = \nt{expr}_n$.
-It then binds the names \synt{\nt{id}_1,\ldots, \nt{id}_n} to the
-resulting values.
 
+Recursive definitions computes fixpoints of relations.
 For instance, the following fragment computes the transitive closure of
 all communication relations:
 \begin{verbatim}
@@ -666,26 +697,12 @@ Notice that the instruction \verb-let complus = (rf|co|fr)+- is equivalent.
 %\emph{i.e.} that they yield an increasing functional.
 %The result of ill-formed definitions is undefined.
 
-\subsubsection*{Function definitions}
-The \T{fun} construct defines functions for the rest
-of model execution:
-\begin{center}
-\synt{\T{fun} \NT{id}_1 \T{(} \NT{params}_1 \T{)} \T{=} \NT{expr}_1 \T{and} \ldots \T{and} \NT{id}_n \T{(} \NT{params}_n \T{)} \T{=} \NT{expr}_n}
-\end{center}
-defines $n$ functions \synt{\NT{id}_1},\ldots , \synt{\NT{id}_n}.
-Function arity is defined by the length of its formal parameter list
-\NT{params}, which can be empty.
-Notice that functions have the usual static scoping semantics:
-variables that appear free in function bodies 
-(\synt{\NT{expr}_1,\ldots,\NT{expr}_n} above) are bound the
-the value of such free variable at function creation time.
-
 There are no recursive functions, as those would not be very useful in
 our limited language. Nevertheless, one may for instance
 write a generic transitive closure
 function by using a local recursive binding:
 \begin{verbatim}
-fun tr(r) = let rec t = r | (t;t) in t
+let tr(r) = let rec t = r | (t;t) in t
 let complus = tr(rf|co|fr)
 \end{verbatim}
 Again notice that the instruction
@@ -710,9 +727,9 @@ command line~option.
 \subsubsection*{Show (and unshow) directives}
 \label{show:def}The constructs:
 \begin{center}
-\synt{\T{show} \brepet \NT{id} \erepet}\quad{and}\quad\synt{\T{unshow} \brepet \NT{id} \erepet}
+\synt{\T{show} \NT{id} \brepet \T{,} \NT{id} \erepet}\quad{and}\quad\synt{\T{unshow} \NT{id} \brepet \T{,} \NT{id} \erepet}
 \end{center}
-take lists of identifiers as arguments.
+take (non-empty, comma separated) lists of identifiers as arguments.
 The \T{show} construct adds the present values of identifiers for being
 shown in pictures.
 The \T{unshow} construct removes the identifiers from shown relations.
@@ -866,8 +883,8 @@ while passing others. Default is \opt{false}.
 When enabled by \opt{-optace true},  \herd{} does not generate candidate
 executions that fail the uniproc test. The default is ``\opt{true}''
 for internal models (except the minimal model), and ``\opt{false}'' for
-text file models. Notice that \opt{-model uniproc}
-and \opt{-model minimal -optpace true} should yield identical results,
+text file models. Notice that \opt{-model uniproc.cat}
+and \opt{-model minimal.cat -optace true} should yield identical results,
 the second being faster.
 Setting \opt{-optace true} can lower the execution time significantly,
 but one should pay attention not to design models that forget the uniproc
