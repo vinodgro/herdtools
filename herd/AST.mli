@@ -26,16 +26,15 @@ type exp =
   | App of exp * exp list
   | Bind  of binding list * exp
   | BindRec  of binding list * exp
+  | Fun of var list * exp
 
 and binding = var * exp
-and fdef = var * var list * exp
 
 type test = Acyclic | Irreflexive | TestEmpty
 
 type ins =
   | Let of binding list
   | Rec of binding list
-  | Fun of fdef list
   | Test of pos * test * exp * string option
   | UnShow of string list
   | Show of string list

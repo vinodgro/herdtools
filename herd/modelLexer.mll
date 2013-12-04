@@ -58,6 +58,7 @@ rule token = parse
 | '='  {  EQUAL }
 | ';'  {  SEMI }
 | ','  { COMMA }
+| "->" { ARROW }
 | '"' ([^'"']* as s) '"' { STRING s } (* '"' *)
 | name as x
     { 

@@ -45,6 +45,7 @@ let pp () =
 %token SEMI UNION INTER COMMA DIFF
 %token STAR PLUS OPT
 %token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN
+%token ARROW
 %type <AST.t> main
 %start main
 
@@ -65,9 +66,8 @@ ins_list:
 | ins ins_list { $1 :: $2 }
 
 ins:
-| LET bind_list { Let $2 }
+| LET pat_bind_list { Let $2 }
 | LET REC bind_list { Rec $3 }
-| FUN fdef_list { Fun $2 }
 | test exp AS VAR { Test(pp (),$1,$2,Some $4) }
 | test exp  { Test(pp (),$1,$2,None) }
 | SHOW exp AS VAR { ShowAs ($2, $4) }
@@ -87,19 +87,21 @@ commaopt:
 | COMMA { () }
 |       { () }
     
+bind:
+| VAR EQUAL exp { ($1,$3) }
+
 bind_list:
 | bind { [$1] }
 | bind AND bind_list { $1 :: $3 }
 
-bind:
-| VAR EQUAL exp { ($1,$3) }
+pat_bind:
+| bind { $1 }
+| VAR LPAR formals RPAR EQUAL exp { ($1,Fun ($3,$6)) }
 
-fdef_list:
-| fdef { [$1] }
-| fdef AND fdef_list { $1 :: $3 }
+pat_bind_list:
+| pat_bind { [$1] }
+| pat_bind AND pat_bind_list { $1 :: $3 }
 
-fdef:
-| VAR LPAR formals RPAR EQUAL exp { $1,$3,$6 }
 
 formals:
 |  { [] }
@@ -110,8 +112,9 @@ formalsN:
 | VAR COMMA formalsN { $1 :: $3 }
 
 exp:
-| LET bind_list IN exp { Bind ($2,$4) }
+| LET pat_bind_list IN exp { Bind ($2,$4) }
 | LET REC bind_list IN exp { BindRec ($3,$5) }
+| FUN LPAR formals RPAR ARROW exp { Fun ($3,$6) }
 | base { $1 }
 
 base:

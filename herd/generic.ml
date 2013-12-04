@@ -94,6 +94,8 @@ module Make
       let rec eval env = function
         | Konst Empty -> empty_rel
         | Var k -> find_env env k
+        | Fun (xs,body) ->
+            Clo {clo_args=xs; clo_env=env; clo_body=body; }
         | Op1 (op,e) ->
             begin
               let v = eval_rel env e in
@@ -142,25 +144,7 @@ module Make
             let env = eval_bds env bds in
             eval env e
         | BindRec (bds,e) ->
-            let rec fix k env vs =
-              if true || (O.debug && O.verbose > 1) then begin
-                let vb_pp =
-                  List.map2
-                    (fun (x,_) v -> x,rt_loc v)
-                    bds vs in
-                MU.pp_failure test conc
-                  (sprintf "Fix %i" k)
-                  vb_pp
-              end ;
-              let env,ws = fix_step env bds in
-              if stabilised vs ws then env
-              else fix (k+1) env ws in
-            let env =
-              fix 0
-                (List.fold_left
-                   (fun env (k,_) -> StringMap.add k empty_rel env)
-                  env bds)
-                (List.map (fun _ -> E.EventRel.empty) bds) in
+            let env = env_rec (fun pp -> pp) bds env in
             eval env e
 
       and eval_rel env e = as_rel (eval env e)
@@ -174,6 +158,28 @@ module Make
           StringMap.add k v (eval_bds env bds)
 
 (* For let rec *)
+      and env_rec pp bds =
+        let rec fix  k env vs =          
+          if O.debug && O.verbose > 1 then begin
+            let vb_pp =
+              List.map2
+                (fun (x,_) v -> x,rt_loc v)
+                bds vs in
+            let vb_pp = pp vb_pp in
+            MU.pp_failure test conc
+              (sprintf "Fix %i" k)
+              vb_pp
+          end ;
+          let env,ws = fix_step env bds in
+          if stabilised vs ws then env
+          else fix (k+1) env ws in
+        fun env ->
+          fix 0
+            (List.fold_left
+               (fun env (k,_) -> StringMap.add k empty_rel env)
+               env bds)
+            (List.map (fun _ -> E.EventRel.empty) bds)
+
       and fix_step env bds = match bds with
       | [] -> env,[]
       | (k,e)::bds ->
@@ -181,7 +187,6 @@ module Make
           let env = StringMap.add k v env in
           let env,vs = fix_step env bds in
           env,(as_rel v::vs) in
-
 
 (* Showing bound variables, (-doshow option) *)
 
@@ -264,36 +269,13 @@ module Make
           let st = doshow bds st in
           run st c
       | Rec bds ->
-          let rec fix k env vs =
-            if O.debug && O.verbose > 1 then begin
-              let vb_pp =
-                List.map2
-                  (fun (x,_) v -> x,rt_loc v)
-                  bds vs@show_to_vbpp st in
-              MU.pp_failure test conc
-                (sprintf "Fix %i" k)
-                vb_pp
-            end ;
-            let env,ws = fix_step env bds in
-            if stabilised vs ws then env
-            else fix (k+1) env ws in
           let env =
-            fix 0
-              (List.fold_left
-                 (fun env (k,_) -> StringMap.add k empty_rel env)
-                 st.env bds)
-              (List.map (fun _ -> E.EventRel.empty) bds) in
+            env_rec
+              (fun pp -> pp@show_to_vbpp st)
+              bds st.env in
           let st = { st with env; } in
           let st = doshow bds st in
           run st c
-      | Fun fdefs ->
-          let env =
-            List.fold_right
-              (fun (f,xs,b) env ->
-                StringMap.add
-                  f (Clo {clo_args=xs; clo_env=st.env; clo_body=b; }) env)
-              fdefs st.env in
-          run { st with env; } c
 
       and run st = function
         | [] ->  Some st 
