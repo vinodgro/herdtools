@@ -18,7 +18,7 @@ let addrpo = addr;po
 let ci0 = ctrlisync | detour
 let ii0 = dd | rfi | rdw
 let cc0 = dd | ctrl | addrpo |
-  ( po-loc / ( rfi | (po-loc;rfi)))   (* po-loc replaced *)
+  ( po-loc \ ( rfi | (po-loc;rfi)))   (* po-loc replaced *)
 let ic0 = 0
 
 (* Fixpoint from i -> c in instructions and transitivity *)
