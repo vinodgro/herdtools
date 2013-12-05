@@ -46,7 +46,7 @@ clean::
 clean::
 	$(OCB) -clean
 
-SVNVERSION=sh -c svnversion 2>/dev/null || echo exported
+SVNVERSION=sh -c "git rev-list --count HEAD" 2>/dev/null || echo exported
 
 .PHONY: config
 
