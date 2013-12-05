@@ -27,19 +27,25 @@ end
 
 exception Error of string
 
+module type Config = sig
+  val memory : Memory.t
+  val cautious : bool
+end
+
 module type S = sig
-  type arch_reg 
+
+  type arch_reg
 
   type flow = Next | Branch of string
   type ins =
       { memo:string ; inputs:arch_reg list ;  outputs:arch_reg list;
         (* Jumps *)
         label:string option ;  branch : flow list ;
-        (* A la ARM conditional execution *) 
+        (* A la ARM conditional execution *)
         cond: bool ;
         comment: bool; }
 
-  val empty_ins : ins 
+  val empty_ins : ins
 
   type t = {
       init : (arch_reg * Constant.v) list ;
@@ -53,12 +59,29 @@ module type S = sig
   val dump_out_reg : int -> arch_reg -> string
   val dump_v : Constant.v -> string
   val addr_cpy_name : string -> int -> string
-  val dump : out_channel -> string -> (arch_reg * RunType.t) list -> int -> t  -> unit
-end
 
-module type Config = sig
-  val memory : Memory.t
-  val cautious : bool
+  val after_dump : out_channel -> string -> int -> t -> unit
+
+  (* TODO: Remove this ugly module *)
+  module Reexport : sig
+    module O : Config
+    module A : I with type arch_reg = arch_reg
+    module V : Constant.S
+
+    module RegSet : MySet.S with type elt = A.arch_reg
+
+    val to_string : ins -> string
+    val trashed_regs : t -> RegSet.t
+    val dump_trashed_reg : A.arch_reg -> string
+    val dump_copies : out_channel -> string -> (A.arch_reg * RunType.t) list -> int -> t -> unit
+    val dump_outputs : out_channel -> int -> t -> RegSet.t -> unit
+    val dump_inputs : out_channel -> t -> RegSet.t -> unit
+    val dump_clobbers : out_channel -> 'a -> unit
+    val dump_save_copies : out_channel -> string -> int -> t -> unit
+
+    val before_dump : out_channel -> string -> (arch_reg * RunType.t) list -> int -> t -> RegSet.t -> unit
+  end
+
 end
 
 module Make(O:Config) (A:I) (V:Constant.S): S
@@ -101,8 +124,8 @@ struct
                 | Concrete _ -> k)
               [] init)) in
     StringSet.elements set
-  
-  
+
+
   exception Internal of string
   let internal msg = raise (Internal msg)
 
@@ -121,7 +144,7 @@ struct
   let escape_percent s =
     Misc.map_string
       (fun c -> match c with
-      | '%' -> "%%" 
+      | '%' -> "%%"
       | _ -> String.make 1 c)
       s
 
@@ -183,8 +206,8 @@ struct
       let n = c - Char.code '0' in
       if 0 <= n && n <= 2 then n
       else internal (sprintf "bad digit '%i'" n)
-    
-    and substring i j = 
+
+    and substring i j =
       try String.sub t.memo i (j-i)
       with _ -> internal (sprintf "substring %i-%i" i j)
 
@@ -193,13 +216,13 @@ struct
       with
       | Not_found -> raise Not_found
       | _ -> internal (sprintf "look_escape %i" i) in
-      
+
 
     let b = Buffer.create 20 in
     let add = Buffer.add_string b in
     let len = String.length t.memo in
 
-    let rec do_rec i = 
+    let rec do_rec i =
       if i < len then
         try
           let j = look_escape i in
@@ -274,7 +297,7 @@ struct
     | Direct -> ()
     end ;
     ()
-    
+
   let dump_save_copies chan indent proc t =
     List.iter
       (fun reg ->
@@ -330,9 +353,9 @@ struct
     RegSet.diff all_trashed (RegSet.of_list t.final)
 
 
-  let dump_inputs chan t trashed =    
+  let dump_inputs chan t trashed =
     let all = all_regs t in
-    let in_outputs = RegSet.union trashed  (RegSet.of_list t.final) in      
+    let in_outputs = RegSet.union trashed  (RegSet.of_list t.final) in
 (*
     eprintf "Outputs in In: %a\n"
       (fun chan rs -> RegSet.pp chan "," pp_reg rs)
@@ -356,7 +379,7 @@ struct
           sprintf "%s \"r\" (%s)" (tag_reg_def reg) (dump_v v)
       | Some (s,_) ->
           sprintf "%s \"r\" (%s)" (tag_reg_def reg) s in
-          
+
     (* Input from state *)
     let ins =
       List.map
@@ -386,26 +409,7 @@ struct
             ("cc"::"memory"::
              List.map A.reg_to_string A.forbidden_regs)))
 
-      
-  let dump chan indent env proc t =
-    let rec dump_ins k ts = match ts with
-    | [] -> ()
-    | t::ts ->
-        begin match t.label with
-        | Some _ -> 
-            fprintf chan "\"%c_litmus_P%i_%i\\n\"\n"  A.comment proc k
-        | None ->
-            fprintf chan "\"%c_litmus_P%i_%i\\n%s\"\n"
-              A.comment proc k
-              (if t.comment then "" else "\\t")
-        end ;
-        fprintf chan "\"%s\\n\"\n" (to_string t) ;
-(*
-        fprintf chan "\"%-20s%c_litmus_P%i_%i\\n\\t\"\n"
-          (to_string t) A.comment proc k ;
-*)
-        dump_ins (k+1) ts in
-    let trashed = trashed_regs t in
+  let before_dump chan indent env proc t trashed =
     RegSet.iter
       (fun reg ->
         let ty = match A.internal_init reg with
@@ -416,22 +420,31 @@ struct
       trashed ;
     if O.cautious then begin
       dump_copies chan indent env proc t
-    end ;
-    fprintf chan "asm __volatile__ (\n" ;
-    fprintf chan "\"\\n\"\n" ;
-    fprintf chan "\"%cSTART _litmus_P%i\\n\"\n" A.comment proc ;
-    begin match t.code with
-    | [] -> fprintf chan "\"\"\n"
-    | code -> dump_ins 0 code
-    end ;
-    fprintf chan "\"%cEND_litmus\\n\\t\"\n" A.comment ;
-    dump_outputs chan proc t trashed ;
-    dump_inputs chan t trashed ;
-    dump_clobbers chan t  ;
-    fprintf chan ");\n" ;
+    end
+
+  let after_dump chan indent proc t =
     if O.cautious then begin
       dump_save_copies chan indent proc t
-    end ;
-    ()
-      
+    end
+
+  (* TODO: Remove this ugly module *)
+  module Reexport = struct
+    module A = A
+    module O = O
+    module V = V
+
+    module RegSet = RegSet
+
+    let to_string = to_string
+    let trashed_regs = trashed_regs
+    let dump_trashed_reg = dump_trashed_reg
+    let dump_copies = dump_copies
+    let dump_outputs = dump_outputs
+    let dump_inputs = dump_inputs
+    let dump_clobbers = dump_clobbers
+    let dump_save_copies = dump_save_copies
+
+    let before_dump = before_dump
+  end
+
 end

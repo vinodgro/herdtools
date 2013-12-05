@@ -11,7 +11,7 @@
 (*********************************************************************)
 
 (* Who am i ? *)
-let arch = Archs.PPCGen
+let arch = `PPCGen
 
 (*************)
 (* Registers *)
@@ -149,7 +149,7 @@ open Printf
     let parse_list =
       List.map (fun (r,s) -> s,Ireg r) iregs @
       List.map (fun (r,s) -> s,Freg r) fregs
-	    
+
     let parse_reg s =
       let s = String.lowercase s in
       try Some (List.assoc s parse_list)
@@ -159,7 +159,7 @@ open Printf
 (************)
 (* Barriers *)
 (************)
-	    
+
   type barrier =
       | Sync
       | Isync
@@ -230,7 +230,7 @@ type instruction =
       opcode^" "^pp_reg r1 ^ ","^pp_reg r2 ^ ","^pp_reg r3
 
     let ppi_index_mode2 opcode r1 r2 =
-      opcode^" "^pp_reg r1 ^ ","^pp_reg r2 
+      opcode^" "^pp_reg r1 ^ ","^pp_reg r2
 
     let ppi_imm_index_mode opcode r1 d r2 =
       opcode^" "^pp_reg r1 ^ ","^pp_idx d ^ "("^pp_reg r2^")"
@@ -270,8 +270,8 @@ type instruction =
 
     | Pb lbl -> "b   " ^ lbl
     | Pbl lbl -> "bl   " ^ lbl
-    | Pbcc(cond, lbl) -> "b"^pp_cond cond ^ "  " ^ lbl 
-    | Pblr -> "blr" 
+    | Pbcc(cond, lbl) -> "b"^pp_cond cond ^ "  " ^ lbl
+    | Pblr -> "blr"
 
     | Pdcbf (r1,r2) -> ppi_rr "dcbf" r1 r2
 
@@ -324,16 +324,16 @@ let fold_regs (f_reg,f_sreg) =
   | Pbcc _
   | Psync
   | Peieio
-  | Pisync 
-  | Plwsync 
+  | Pisync
+  | Plwsync
   | Pbl _
   | Pblr
-  | Pcomment _ 
+  | Pcomment _
   | Pcrnand _ | Pcrand _
     -> c
 
-	
-	(* Map over symbolic regs *)
+
+        (* Map over symbolic regs *)
 let map_regs f_reg f_symb =
 
   let map_reg reg = match reg with
@@ -348,7 +348,7 @@ let map_regs f_reg f_symb =
   (* #include "generated/map.gen" *)
 
   | Plwarx (r1,r2,r3) ->
-      map3 (fun (r1,r2,r3) -> Plwarx (r1,r2,r3)) r1 r2 r3	
+      map3 (fun (r1,r2,r3) -> Plwarx (r1,r2,r3)) r1 r2 r3
   | Pstwcx (r1,r2,r3) ->
       map3 (fun (r1,r2,r3) -> Pstwcx (r1,r2,r3)) r1 r2 r3
   | Pdcbf (r1,r2) ->
@@ -357,9 +357,9 @@ let map_regs f_reg f_symb =
   | Pbcc _
   | Psync
   | Peieio
-  | Pisync 
-  | Plwsync 
-  | Pbl _ 
+  | Pisync
+  | Plwsync
+  | Pbl _
   | Pblr
   | Pcrnand _ | Pcrand _
   | Pcomment _
@@ -411,7 +411,7 @@ include Pseudo.Make
         function _ ->  failwith "shouldn't need this for litmus"
 
       let fold_labels k f = function
-        | Pb lab 
+        | Pb lab
         | Pbl lab
         | Pbcc (_,lab) -> f k lab
         (* XXX there is no label in generated code *)
@@ -427,4 +427,3 @@ include Pseudo.Make
     end)
 
 let get_macro name = raise Not_found
-

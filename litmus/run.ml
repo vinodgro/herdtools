@@ -23,7 +23,13 @@ module type Config = sig
   include RunUtils.Config
 end
 
-module Make(O:Config)(Tar:Tar.S) (T:Test.S) =
+module type Test = sig
+  type test
+  val dump : out_channel -> Name.t -> test -> unit
+  val lines : Name.t -> test -> string list
+end
+
+module Make(O:Config)(Tar:Tar.S)(D:Test) =
   struct
     module RU = RunUtils.Make(O)
 
@@ -129,7 +135,6 @@ module Make(O:Config)(Tar:Tar.S) (T:Test.S) =
       end 
 
 
-    module D = TestDump.Make(T)
 
     let do_c = match O.driver with
     | Driver.C|Driver.XCode -> O.is_out

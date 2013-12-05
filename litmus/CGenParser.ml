@@ -139,14 +139,6 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
     module LU = LexUtils.Make (LexConfig)
     module SL = StateLexer.Make (LexConfig)
 
-    let parse_init lexbuf =
-      call_parser "init" lexbuf SL.token StateParser.init
-
-    let parse_prog lexbuf =
-      let prog = call_parser "prog" lexbuf L.lexer L.parser in
-      let procs = check_procs prog in
-      procs,prog
-
     let parse_cond lexbuf =
       let cond =  call_parser "cond" lexbuf
           SL.token StateParser.constr in

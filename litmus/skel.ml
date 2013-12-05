@@ -18,15 +18,14 @@ and indent2 = Indent.indent2
 and indent3 = Indent.indent3
 and indent4 = Indent.indent4
 
-
 module type Config = sig
   val verbose_prelude : bool
   val verbose_barrier : bool
   val hexa : bool
   val speedcheck : Speedcheck.t
   val driver : Driver.t
-  val safer : Safer.t      
-  val cautious : bool 
+  val safer : Safer.t
+  val cautious : bool
   val preload : Preload.t
   val word : Word.t
   val barrier : Barrier.t
@@ -48,17 +47,24 @@ module type Config = sig
   val signaling : bool
   val syncconst : int
   val morearch : MoreArch.t
+  val carch : Archs.System.t Lazy.t
   val xy : bool
   val pldw : bool
   include DumpParams.Config
 end
 
-module Make(Cfg:Config) (T:Test.S) (O:Indent.S) : sig
+module Make
+         (Cfg:Config)
+         (P:sig type code end)
+         (A:Arch.Base)
+         (T:Test.S with type P.code = P.code and module A = A)
+         (O:Indent.S)
+         (Lang:Language.S) : sig
   val dump : Name.t -> T.t -> unit
 end = struct
   module A = T.A
   module C = T.C
-  open Archs
+  module Lang = Lang(A.Out)
   open Constant
 
 (* Final Conditions *)
@@ -91,7 +97,7 @@ end = struct
     match Cfg.preload with RandomPL -> true
     | NoPL|CustomPL|StaticPL|StaticNPL _ -> false
   let do_custom =
-    match Cfg.preload with CustomPL -> true 
+    match Cfg.preload with CustomPL -> true
     | StaticNPL _|StaticPL|NoPL|RandomPL -> false
   let do_staticpl =
     match Cfg.preload with StaticPL -> true
@@ -107,10 +113,13 @@ end = struct
   let do_timebase = match barrier with
   | TimeBase -> true
   | _ -> false
-  let have_timebase = match A.arch with
-  | ARM -> false
-  | PPCGen
-  | PPC|X86 -> true
+  let rec have_timebase = function
+  | `ARM -> false
+  | `PPCGen
+  | `PPC|`X86 -> true
+  | `C -> have_timebase (Lazy.force Cfg.carch :> Archs.t)
+
+  let have_timebase = have_timebase A.arch
 
   let do_collect_local = match Cfg.collect with
   | Collect.Local|Collect.Both ->
@@ -147,7 +156,7 @@ end = struct
   let do_contiguous = Cfg.contiguous
   let do_prealloc = Cfg.prealloc
   open Launch
-  let launch = Cfg.launch      
+  let launch = Cfg.launch
   let affinity = Cfg.affinity
   let smt = Cfg.smt
   let smtmode = Cfg.smtmode
@@ -159,16 +168,16 @@ end = struct
   let mk_dca test =
     let f test =
       if do_affinity then
-        try      
+        try
           let res = List.assoc "Com" test.T.info in
           let coms =
             try LexAffinity.coms res
-            with _ -> assert false in          
+            with _ -> assert false in
           let nprocs = List.length test.T.code in
           if nprocs <> List.length coms then None
           else if smt > 1 then match smtmode with
           | Smt.No -> None
-          | Smt.Seq|Smt.End -> Some res 
+          | Smt.Seq|Smt.End -> Some res
           else None
         with Not_found -> None
       else None in
@@ -192,14 +201,14 @@ end = struct
   let find_index  v =
     let rec find_rec k = function
       | [] -> assert false
-      | w::ws ->          
+      | w::ws ->
           if String.compare v w = 0 then k
           else find_rec (k+1) ws in
     find_rec 0
 
   let get_final_locs t =
     LocSet.elements
-      (LocSet.of_list (C.locations t.T.condition@t.T.flocs)) 
+      (LocSet.of_list (C.locations t.T.condition@t.T.flocs))
 
   let get_finals_globals t =
     List.filter
@@ -218,8 +227,8 @@ end = struct
   let dump_loc_name loc =  match loc with
   | A.Location_reg (proc,reg) -> A.Out.dump_out_reg  proc reg
   | A.Location_global s -> s
-        
-  let dump_loc_copy loc = "_" ^ dump_loc_name loc ^ "_i" 
+
+  let dump_loc_copy loc = "_" ^ dump_loc_name loc ^ "_i"
   let dump_loc_param loc = "_" ^ dump_loc_name loc
   let dump_val_param loc =  "_val_" ^ loc
 
@@ -249,7 +258,6 @@ end = struct
   | Direct -> sprintf "_a->%s[_i]" a
   | Indirect -> sprintf "*(_a->%s[_i])" a
 
-        
 (* Right value *)
   let dump_a_addr = match memory with
   | Direct -> sprintf "&(_a->%s[_i])"
@@ -271,7 +279,6 @@ end = struct
   | Direct -> sprintf "%s"
   | Indirect -> sprintf "mem_%s"
 
-        
 (* Right value from ctx *)
   let dump_ctx_addr = match memory with
   | Direct -> sprintf "&(ctx.%s[_i])"
@@ -331,7 +338,7 @@ end = struct
     | And (p::ps) ->
         fprintf chan "(%a) && (%a)" dump_prop p dump_prop (And ps)
     | Implies (p1,p2) ->
-        fprintf chan "!(%a) || (%a)" dump_prop p1 dump_prop p2 in      
+        fprintf chan "!(%a) || (%a)" dump_prop p1 dump_prop p2 in
 
     let dump_def p = O.fi "cond = %a;" dump_prop p in
     match c with
@@ -457,7 +464,7 @@ let user2_barrier_def () =
   O.o "inline static void barrier_wait(unsigned int id, unsigned int k, int volatile *b) {" ;
   O.oi "unsigned int x = k % (2*N);" ;
   O.oi "int free = x < N;" ;
-  O.oi "unsigned idx =  k % N;" ;          
+  O.oi "unsigned idx =  k % N;" ;
   O.oi "if (idx == id) {" ;
   O.oii "b[idx] = free;" ;
   O.oi "} else {" ;
@@ -466,63 +473,68 @@ let user2_barrier_def () =
   if Cfg.cautious then O.oi "mcautious();" ;
   O.o "}"
 
-  let dump_read_timebase () =
-    if (do_verbose_barrier || do_timebase) && have_timebase then begin
-      O.o "typedef uint64_t tb_t ;" ;
-      O.o "#define PTB PRIu64" ;
-      O.o "" ;
-      begin match A.arch with
-      | X86 ->
-          O.o "inline static tb_t read_timebase(void) {" ;
-          O.oi "unsigned int a,d;" ;
-          O.oi "asm __volatile__ (\"rdtsc\" : \"=a\" (a), \"=d\" (d));" ;
-          O.oi "return ((tb_t)a) | (((tb_t)d)<<32);" ;
-          O.o "}"
-      | PPCGen
-      | PPC ->
-          O.oi "tb_t r;" ;
-          O.o "inline static tb_t read_timebase(void) {" ;
-          begin match ws with
-          | Word.W32|Word.WXX ->
-              let asm s = O.o (sprintf "\"%s\\n\\t\"" s) in
-              O.oi "uint32_t r1,r2,r3;" ;
-              O.o "asm __volatile__ (" ;
-              asm "0:" ;
-              asm "mftbu %[r1]" ;
-              asm "mftb %[r2]" ;
-              asm "mftbu %[r3]" ;
-              asm "cmpw %[r1],%[r3]" ;
-              asm "bne 0b" ;
-              O.o ":[r1] \"=r\" (r1), [r2] \"=r\" (r2), [r3] \"=r\" (r3)" ;
-              O.o ": :\"memory\" );" ;
-              O.oi "r = r2;" ;
-              O.oi "r |= ((tb_t)r1) << 32;" ;
-              ()
-          | Word.W64->
-              O.oi "asm __volatile__ (\"mftb %[r1]\" :[r1] \"=r\" (r) : : \"memory\");"
-          end ;
-          O.oi "return r;" ;
-          O.o "}"
-      | ARM -> assert false
-      end ;
-    end
+let dump_read_timebase () =
+  if (do_verbose_barrier || do_timebase) && have_timebase then begin
+    O.o "typedef uint64_t tb_t ;" ;
+    O.o "#define PTB PRIu64" ;
+    O.o "" ;
+    let rec aux = function
+    | `X86 ->
+       O.o "inline static tb_t read_timebase(void) {" ;
+       O.oi "unsigned int a,d;" ;
+       O.oi "asm __volatile__ (\"rdtsc\" : \"=a\" (a), \"=d\" (d));" ;
+       O.oi "return ((tb_t)a) | (((tb_t)d)<<32);" ;
+       O.o "}"
+    | `PPCGen
+    | `PPC ->
+       O.oi "tb_t r;" ;
+       O.o "inline static tb_t read_timebase(void) {" ;
+       begin match ws with
+       | Word.W32|Word.WXX ->
+         let asm s = O.o (sprintf "\"%s\\n\\t\"" s) in
+         O.oi "uint32_t r1,r2,r3;" ;
+         O.o "asm __volatile__ (" ;
+         asm "0:" ;
+         asm "mftbu %[r1]" ;
+         asm "mftb %[r2]" ;
+         asm "mftbu %[r3]" ;
+         asm "cmpw %[r1],%[r3]" ;
+         asm "bne 0b" ;
+         O.o ":[r1] \"=r\" (r1), [r2] \"=r\" (r2), [r3] \"=r\" (r3)" ;
+         O.o ": :\"memory\" );" ;
+         O.oi "r = r2;" ;
+         O.oi "r |= ((tb_t)r1) << 32;" ;
+         ()
+       | Word.W64->
+          O.oi "asm __volatile__ (\"mftb %[r1]\" :[r1] \"=r\" (r) : : \"memory\");"
+       end ;
+       O.oi "return r;" ;
+       O.o "}"
+   | `ARM -> assert false
+   | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
+    in
+    aux A.arch
+   end
 
   let lab_ext = if do_numeric_labels then "" else "_lab"
 
   let dump_tb_barrier_def () =
-    let fname =
-      match A.arch with
-      | PPCGen
-      | PPC -> sprintf "_ppc_barrier%s.c" lab_ext
-      | X86 -> sprintf "_x86_barrier%s.c" lab_ext
-      | ARM ->
+    let rec fname =
+      function
+      | `PPCGen
+      | `PPC -> sprintf "_ppc_barrier%s.c" lab_ext
+      | `X86 -> sprintf "_x86_barrier%s.c" lab_ext
+      | `ARM ->
           begin match Cfg.morearch with
           | MoreArch.ARMv6K ->
               Warn.fatal
                 "timebase barrier not supported for ARMv6K" ;
           | _ -> ()
           end ;
-          sprintf "_arm_barrier%s.c" lab_ext in
+          sprintf "_arm_barrier%s.c" lab_ext
+      | `C -> fname (Lazy.force Cfg.carch :> Archs.t)
+    in
+    let fname = fname A.arch in
     ObjUtil.insert_lib_file O.out fname
 
   let dump_user_barrier_vars () = O.oi "int volatile *barrier;"
@@ -584,54 +596,60 @@ let user2_barrier_def () =
 
   let flush_def ()=
     O.o "inline static void cache_flush(void *p) {" ;
-    begin match A.arch with
-    | PPCGen|PPC ->
+    let rec aux = function
+    | `PPCGen|`PPC ->
         O.o "asm __volatile__ (" ;
         asm "dcbf 0,%[p]" ;
         O.o ": : [p] \"r\" (p) : \"memory\");"
-    | X86 ->
+    | `X86 ->
         O.o "asm __volatile__ (" ;
         asm "clflush 0(%[p])" ;
         O.o ": : [p] \"r\" (p) : \"memory\");"
-    | ARM -> (* No cache flush for ARM? *)
+    | `ARM -> (* No cache flush for ARM? *)
         ()
-    end ;
+    | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
+    in
+    aux A.arch ;
     O.o "}"
 
   let touch_def ()=
     O.o "inline static void cache_touch(void *p) {" ;
     O.o "asm __volatile__ (" ;
-    begin match A.arch with
-    | PPCGen|PPC ->
+    let rec aux = function
+    | `PPCGen|`PPC ->
         asm "dcbt 0,%[p]" ;
         O.o ": : [p] \"r\" (p) : \"memory\");"
-    | X86 ->
+    | `X86 ->
         asm "prefetcht0 0(%[p])" ;
         O.o ": : [p] \"r\" (p) : \"memory\");"
-    | ARM ->
+    | `ARM ->
         asm "pld [%[p]]" ;
         O.o ": : [p] \"r\" (p) : \"memory\");"
-    end ;
+    | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
+    in
+    aux A.arch ;
     O.o "}"
 
   let touch_store_def ()=
     O.o "inline static void cache_touch_store(void *p) {" ;
-    begin match A.arch with
-    | PPCGen|PPC ->
+    let rec aux = function
+    | `PPCGen|`PPC ->
         O.o "asm __volatile__ (" ;
         asm "dcbtst 0,%[p]" ;
         O.o ": : [p] \"r\" (p) : \"memory\");" ;
-    | X86 ->
+    | `X86 ->
         O.o "/* Did not find how to announce intention to store for x86 */" ;
         O.o "asm __volatile__ (" ;
         asm "prefetcht0 0(%[p])" ;
         O.o ": : [p] \"r\" (p) : \"memory\");"
-    | ARM ->
+    | `ARM ->
         O.o "/* to get pldw: -mcpu=cortex-a9 -marm */" ;
         O.o "asm __volatile__ (" ;
         asm (if Cfg.pldw then "pldw [%[p]]" else "pld [%[p]]") ;
         O.o ": : [p] \"r\" (p) : \"memory\");"
-    end ;
+    | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
+    in
+    aux A.arch ;
     O.o "}"
 
   let get_prefetch_info test =
@@ -669,32 +687,26 @@ let user2_barrier_def () =
 
   let dumb_one_mbar name fence =
     O.f "inline static void %s(void) {"  name ;
-    O.fi "asm __volatile__ (\"%s\" ::: \"memory\");" fence ;    
+    O.fi "asm __volatile__ (\"%s\" ::: \"memory\");" fence ;
     O.o "}"
 
-  let dump_mbar_def () =    
+  let dump_mbar_def () =
     O.o "" ;
     O.o "/* Full memory barrier */" ;
-    dumb_one_mbar "mbar" 
-      (match A.arch with
-      | PPCGen|PPC -> "sync"
-      | X86 -> "mfence"
-      | ARM ->
+    let rec aux inst = function
+      | `PPCGen|`PPC -> "sync"
+      | `X86 -> "mfence"
+      | `ARM ->
           begin match Cfg.morearch with
           | MoreArch.ARMv6K -> ""
-          | _ -> "dsb"
-          end) ;
+          | _ -> inst
+          end
+      | `C -> aux inst (Lazy.force Cfg.carch :> Archs.t)
+    in
+    dumb_one_mbar "mbar" (aux "dsb" A.arch) ;
     if Cfg.cautious then begin
       O.o "" ;
-      dumb_one_mbar "mcautious" 
-        (match A.arch with
-        | PPCGen|PPC -> "sync"
-        | X86 -> "mfence"
-        | ARM ->
-            begin match Cfg.morearch with
-            | MoreArch.ARMv6K -> ""
-            | _ -> "dmb"
-            end)
+      dumb_one_mbar "mcautious" (aux "dmb" A.arch)
     end
 
 (* All of them *)
@@ -743,8 +755,8 @@ let user2_barrier_def () =
                   | A.Location_reg(p,r),Symbolic s when s = a ->
                       let cpy = A.Out.addr_cpy_name a p in
                       O.fi "%s* *%s ;" (dump_type t) cpy ;
-                      (cpy,a)::k        
-                  | _,_ -> k)                    
+                      (cpy,a)::k
+                  | _,_ -> k)
                   test.T.init k
               else k)
             test.T.globals [] in
@@ -759,7 +771,7 @@ let user2_barrier_def () =
   let ptr_in_outs env test =
     let locs = get_final_locs test in
     List.exists (fun loc -> is_ptr (find_type loc env)) locs
-      
+
   let iter_outs f proc = List.iter (f proc)
 
   let iter_all_outs f test =
@@ -821,7 +833,7 @@ let user2_barrier_def () =
     O.o "}" ;
     O.o ""
 
-  let dump_cond_fun_call test dump_loc dump_val = 
+  let dump_cond_fun_call test dump_loc dump_val =
     let cond = test.T.condition in
     let locs = C.locations cond in
     let plocs = List.map dump_loc locs in
@@ -872,7 +884,7 @@ let user2_barrier_def () =
         O.f "static const int %s_f = %i ;" (dump_loc_name loc) i)
       outs ;
     O.o "" ;
-(* Constant wrappers *)    
+(* Constant wrappers *)
     O.o DefString.hist_defs ;
 (* Checking *)
     if do_collect_local && do_safer then begin
@@ -948,7 +960,7 @@ let user2_barrier_def () =
       O.oi "putc('\\n',stderr);" ;
       O.oi "pm_unlock(_m);" ;
       O.o "}" ;
-      O.o "" 
+      O.o ""
     end ;
 (* Dumping *)
     O.o
@@ -1002,7 +1014,7 @@ let user2_barrier_def () =
       O.fi "int cond = %s;" to_check ;
       O.fi "fprintf(fhist,\"%%s\\n\",%s);" "cond?\"Ok\":\"No\"" ;
       O.oi "fprintf(fhist,\"\\nWitnesses\\n\");" ;
-      O.oi "fprintf(fhist,\"Positive: %\"PCTR\", Negative: %\"PCTR\"\\n\",h->n_pos,h->n_neg);" ;    
+      O.oi "fprintf(fhist,\"Positive: %\"PCTR\", Negative: %\"PCTR\"\\n\",h->n_pos,h->n_neg);" ;
       O.fi "fprintf(fhist,\"Condition %s is %%svalidated\\n\",%s);"
         pp_cond
         (sprintf "%s ? \"\" : \"NOT \"" to_check)
@@ -1017,17 +1029,17 @@ let user2_barrier_def () =
 (* Loops *)
   let loop_test_prelude indent ctx =
     O.fx indent "for (int _i = %ssize_of_test-1 ; _i >= 0 ; _i--) {" ctx
-      
+
   and loop_test_postlude indent = O.ox indent "}"
 
   let loop_proc_prelude indent =
     O.ox indent "for (int _p = N-1 ; _p >= 0 ; _p--) {"
-      
+
   and loop_proc_postlude indent = O.ox indent "}"
 
   and choose_proc_prelude indent =
     O.ox indent "for (int _p = NT-1 ; _p >= 0 ; _p--) {"
-      
+
 (* Safer more, checking globals *)
   let dump_check_vars env test =
     if do_check_globals then begin
@@ -1043,8 +1055,8 @@ let user2_barrier_def () =
                 O.fi "%s* cpy_%s[N] ;"
                   (dump_type (find_type loc env)) (dump_loc_name loc))
               locs
-          end                                   
-      end  
+          end
+      end
     end
 
   let dump_check_globals env test =
@@ -1058,7 +1070,7 @@ let user2_barrier_def () =
 (* LOCALS *)
       List.iter
         (fun (a,t) -> match memory with
-        | Indirect -> 
+        | Indirect ->
             if t=RunType.Int then O.fi "int *mem_%s = _a->mem_%s;" a a
         | Direct ->
             O.fi "%s *%s = _a->%s;" (dump_global_type t) a a)
@@ -1106,12 +1118,12 @@ let user2_barrier_def () =
           O.f "" ;
           O.fi "pb_wait(_a->fst_barrier); " ;
           O.fi "for ( ; ; ) {" ;
-          loop_test_prelude indent2 "" ;      
+          loop_test_prelude indent2 "" ;
           List.iter
             (fun loc ->
               O.fiii "cpy_%s[_id][_i] = %s;"
                 (dump_loc_name loc) (dump_loc loc))
-            locs ;   
+            locs ;
           loop_test_postlude indent2 ;
           O.fii "po_reinit(_a->s_or);" ;
           O.fii "int _found;" ;
@@ -1129,13 +1141,13 @@ let user2_barrier_def () =
           O.oii "if (!po_wait(_a->s_or,_found)) return ;" ;
           O.oi "}" ;
           O.o "}" ;
-          O.o "" ;                                                                      
+          O.o "" ;
           ()
       | _ -> ()
       end
     end
-        
-        
+
+
   let dump_reinit test cpys =
     O.o "/*******************************************************/" ;
     O.o "/* Context allocation, freeing and reinitialization    */" ;
@@ -1184,7 +1196,7 @@ let user2_barrier_def () =
           (List.map
              (fun (a,_) -> sprintf "sizeof(_a->%s[0])" (dump_ctx_tag a))
              test.T.globals) in
-      (* +1 for allignement *)            
+      (* +1 for allignement *)
       let sz = sprintf "(size_of_test+1) * (%s)" sz in
       O.fx indent "_a->mem = malloc_check(%s);" sz ;
       O.ox indent "void * _am = _a->mem;" ;
@@ -1215,7 +1227,7 @@ let user2_barrier_def () =
     begin match memory with
     | Direct -> ()
     | Indirect ->
-        O.oi "if (_a->_p->do_shuffle) {" ;    
+        O.oi "if (_a->_p->do_shuffle) {" ;
         malloc indent2 "_idx" ;
         loop_test_prelude indent2 "" ;
         O.oiii "_a->_idx[_i] = _i;" ;
@@ -1252,7 +1264,7 @@ let user2_barrier_def () =
     | User2 -> malloc2 indent "barrier"
     end ;
     if do_verbose_barrier && have_timebase then begin
-      loop_proc_prelude indent ;      
+      loop_proc_prelude indent ;
       if do_timebase then begin
         malloc indent2 "tb_delta[_p]" ;
         malloc indent2 "tb_count[_p]"
@@ -1292,7 +1304,7 @@ let user2_barrier_def () =
       pb_free "fst_barrier" ;
       match get_finals_globals test with
       | [] -> ()
-      | locs -> 
+      | locs ->
           po_free "s_or" ;
           loop_proc_prelude indent ;
           List.iter
@@ -1372,8 +1384,7 @@ let user2_barrier_def () =
     | NoBarrier|Pthread|User|UserFence|UserFence2 -> ()
     end ;
     O.o "}" ;
-    O.o ""      
-
+    O.o ""
 
   let dump_templates env tname test =
     O.f "/***************/" ;
@@ -1397,14 +1408,13 @@ let user2_barrier_def () =
         if do_collect then O.fi "hist_t *hist = alloc_hist();" ;
         O.fi "parg_t *_b = (parg_t *)_vb;" ;
         O.fi "ctx_t *_a = _b->_a;" ;
-
         if do_affinity then begin
           O.fi "int _ecpu = _b->cpu[_b->th_id];" ;
           if do_verbose_barrier then O.fi "_a->ecpu[%i] = _ecpu;" proc ;
           let fun_name,arg =
             if do_force_affinity then
               "force_one_affinity",sprintf ",AVAIL,_a->_p->verbose,\"%s\"" tname
-            else 
+            else
               "write_one_affinity","" in
           O.fi "%s(_ecpu%s);" fun_name arg
         end ;
@@ -1548,7 +1558,7 @@ let user2_barrier_def () =
               O.fx iloop "tb_t _tb0 = _a->next_tb;"
             end else begin
               O.fx iloop "barrier_wait(barrier,&mySense);" ;
-            end             
+            end
         | Pthread ->
             O.fx iloop "barrier_wait(%i,barrier);" proc ;
             if Cfg.cautious then O.fx iloop "mcautious();"
@@ -1575,34 +1585,36 @@ let user2_barrier_def () =
         end ;
         if do_isync then begin match barrier with
         | User | User2 | UserFence | UserFence2 | TimeBase ->
-            begin match A.arch with
-            | PPCGen
-            | PPC ->
+            let rec aux = function
+            | `PPCGen
+            | `PPC ->
                 O.fx iloop "asm __volatile__ (\"isync\" : : : \"memory\");"
-            | ARM -> 
+            | `ARM ->
                 O.fx iloop "asm __volatile__ (\"isb\" : : : \"memory\");"
-            | X86 -> ()
-            end
+            | `X86 -> ()
+            | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
+            in
+            aux A.arch
         | Pthread|NoBarrier -> ()
         end ;
         let myenv =
           List.fold_right
             (fun (loc,t) k -> match loc with
             | A.Location_reg (p,reg) -> if p = proc then (reg,t)::k else k
-            | A.Location_global _ -> k) env [] in     
+            | A.Location_global _ -> k) env [] in
 (* Dump real code now *)
-        A.Out.dump O.out (Indent.as_string iloop) myenv proc out ;
+        Lang.dump O.out (Indent.as_string iloop) myenv proc out ;
         if do_verbose_barrier && have_timebase  then begin
           if do_timebase then begin
-            O.fx iloop "_a->tb_delta[%i][_i] = _delta;" proc ; 
+            O.fx iloop "_a->tb_delta[%i][_i] = _delta;" proc ;
             O.fx iloop "_a->tb_count[%i][_i] = _count;" proc
           end else begin
             O.fx iloop "_a->tb_start[%i][_i] = _start;" proc
           end
         end ;
 
-        if do_collect then begin          
-          let locs = get_final_locs test in 
+        if do_collect then begin
+          let locs = get_final_locs test in
           O.fx iloop "barrier_wait(barrier,&mySense);" ;
           O.fx iloop "int cond = %s;"
             (dump_cond_fun_call test
@@ -1631,7 +1643,7 @@ let user2_barrier_def () =
             O.fx iloop "}"
           end
         end else if do_collect_local then begin
-          O.fx iloop "barrier_wait(barrier,&mySense);" 
+          O.fx iloop "barrier_wait(barrier,&mySense);"
         end else if do_timebase && have_timebase then begin
 (*          O.fx iloop "barrier_wait(barrier,&mySense);"
             Problematic 4.2W on squale *)
@@ -1656,10 +1668,10 @@ let user2_barrier_def () =
         O.o "}" ;
         O.o "")
       test.T.code
-      
+
 
   let dump_zyva doc cpys env test =
-    let procs = List.map (fun (proc,_) -> proc) test.T.code in    
+    let procs = List.map (fun (proc,_) -> proc) test.T.code in
 
     O.o "typedef struct {" ;
     O.oi "pm_t *p_mutex;" ;
@@ -1674,7 +1686,7 @@ let user2_barrier_def () =
     O.o "} zyva_t;" ;
     O.o "" ;
     O.f "#define NT %s" "N" ;
-    O.o "" ;    
+    O.o "" ;
     O.o "static void *zyva(void *_va) {" ;
 (* Define local vars *)
     O.oi "zyva_t *_a = (zyva_t *) _va;" ;
@@ -1690,7 +1702,7 @@ let user2_barrier_def () =
       if do_safer then
         O.oi "hist_t *hist0=alloc_hist(), *phist[N];"
       else
-        O.oi "hist_t *hist0=alloc_hist(), *phist = NULL, *_tmp;" ;      
+        O.oi "hist_t *hist0=alloc_hist(), *phist = NULL, *_tmp;" ;
     end ;
     begin if do_prealloc then
       O.oi "ctx_t ctx = _a->ctx;"
@@ -1724,14 +1736,14 @@ let user2_barrier_def () =
       end in
 
     if do_affinity then begin
-      O.oii "if (_b->aff_rand) {" ;     
+      O.oii "if (_b->aff_rand) {" ;
       O.oiii "pb_wait(_a->p_barrier);" ;
       do_break indent3 ;
       O.oiii "if (_a->z_id == 0) perm_prefix_ints(&ctx.seed,_a->cpus,_b->ncpus_used,_b->ncpus);" ;
       O.oiii "pb_wait(_a->p_barrier);" ;
-      O.oii "} else {" ;            
+      O.oii "} else {" ;
       do_break indent3 ;
-      O.oii "}" ;            
+      O.oii "}" ;
       ()
     end else begin
       do_break indent2
@@ -1758,7 +1770,7 @@ let user2_barrier_def () =
     | Fixed -> ()
     end ;
 
-    let set_result i _p call =      
+    let set_result i _p call =
       if do_collect_local then
         if do_safer then
           O.fx i "phist[%s] = %s" _p call
@@ -1792,8 +1804,8 @@ let user2_barrier_def () =
 (* Log final states *)
     if do_collect_after then begin
       O.oii "/* Log final states */" ;
-      loop_test_prelude indent2 "_b->" ;    
-      let locs = get_final_locs test in 
+      loop_test_prelude indent2 "_b->" ;
+      let locs = get_final_locs test in
 
 (* Make copies of final locations *)
       if Cfg.cautious then begin match locs with
@@ -1848,16 +1860,16 @@ let user2_barrier_def () =
         locs ;
       O.fiii "add_outcome(hist,1,o,%scond);"
         (if remark_pos test then "" else "!") ;
-      
+
 
 (****************)
-      
+
 (*      dump_condition chan indent3 dump_loc_copy test.T.condition  ; *)
       O.fiii "if (%s) { hist->n_pos++; } else { hist->n_neg++; }"
-        (test_witness test "cond") ; 
+        (test_witness test "cond") ;
       if (do_verbose_barrier) then begin
         O.oiii "if (_b->verbose_barrier) {" ;
-        O.fiv "pp_tb_log(_a->p_mutex,&ctx,_i,%scond);"          
+        O.fiv "pp_tb_log(_a->p_mutex,&ctx,_i,%scond);"
           (if remark_pos test then "" else "!") ;
         O.oiii "}"
       end ;
@@ -1935,9 +1947,7 @@ let user2_barrier_def () =
     O.o "" ;
     cpys
 
-  module D = TestDump.Make(T)
-
-  let dump_report doc _env test = 
+  let dump_report doc _env test =
     O.o "#ifdef ASS" ;
     O.o "static void ass(FILE *out) { }" ;
     O.o "#else" ;
@@ -1952,7 +1962,7 @@ let user2_barrier_def () =
     dstring nice ;
     dstring title ;
     dstring nice ;
-    let xs = D.lines doc test.T.src in
+    let xs = T.D.lines doc test.T.src in
     List.iter dstring xs ;
     O.oi "fprintf(out,\"Generated assembler\\n\");" ;
     O.oi "ass(out);" ;
@@ -1970,12 +1980,12 @@ let user2_barrier_def () =
       O.fx i "%s" "if (!prm.speedcheck) {" ;
       f (Indent.tab i) ;
       O.fx i "}"
-    end else f i 
+    end else f i
 
-  let dump_run doc _env test = 
+  let dump_run doc _env test =
 (* Custom affinity information *)
     let dca,ca = mk_dca test in
-    let affi =        
+    let affi =
       if dca then begin
         let cs,ne =
           try Affi.compute (LexAffinity.coms ca)
@@ -2006,7 +2016,7 @@ let user2_barrier_def () =
     if do_vp then O.oi "if (cmd->prelude) report(out);" ;
 (* Starting time *)
     O.oi "tsc_t start = timeofday();" ;
-(* Parameters recorded in param_t structure *)    
+(* Parameters recorded in param_t structure *)
     O.oi "param_t prm ;" ;
     O.o "/* Set some parameters */" ;
     O.oi "prm.verbose = cmd->verbose;" ;
@@ -2125,7 +2135,7 @@ let user2_barrier_def () =
     if do_affinity then begin
       O.oi "if (cmd->aff_mode == aff_random) {" ;
       O.oii "for (int k = 0 ; k < aff_cpus_sz ; k++) {" ;
-      O.oiii "aff_cpus[k] = all_cpus->cpu[k % all_cpus->sz];" ;        
+      O.oiii "aff_cpus[k] = all_cpus->cpu[k % all_cpus->sz];" ;
       O.oii "}" ;
       if dca then begin
         O.oi "} else if (cmd->aff_mode == aff_custom) {" ;
@@ -2151,7 +2161,7 @@ let user2_barrier_def () =
     O.oi "pthread_t th[n_exe];" ;
     O.oi "zyva_t zarg[n_exe];" ;
     O.oi "pm_t *p_mutex = pm_create();" ;
-    O.oi "pb_t *p_barrier = pb_create(n_exe);" ;    
+    O.oi "pb_t *p_barrier = pb_create(n_exe);" ;
 (* Compute affinity settings *)
     if do_affinity then begin
       O.oi "int next_cpu = 0;" ;
@@ -2172,7 +2182,7 @@ let user2_barrier_def () =
     O.oii "p->p_mutex = p_mutex; p->p_barrier = p_barrier; " ;
     if do_prealloc then O.oii "init(&p->ctx);" ;
     if do_affinity then begin
-      O.oii "p->z_id = k;" ;      
+      O.oii "p->z_id = k;" ;
       O.oii "p->cpus = aff_p;" ;
       O.oii "if (cmd->aff_mode != aff_incr) {" ;
       O.oiii "aff_p += N;" ;
@@ -2234,7 +2244,7 @@ let user2_barrier_def () =
     O.oi "free_hist(hist);" ;
     if do_cores then  O.oi "cpus_free(prm.cm);" ;
 
-(* Print meta-information *)            
+(* Print meta-information *)
     List.iter
       (fun (k,vs) ->
         if k = "Relax" then
@@ -2274,7 +2284,7 @@ let user2_barrier_def () =
         "Observation %s %%s %%\"PCTR\" %%\"PCTR\"\\n"
         doc.Name.name  in
     let obs = "!p_true ? \"Never\" : !p_false ? \"Always\" : \"Sometimes\"" in
-    O.fi "fprintf(out,\"%s\",%s,p_true,p_false) ;" fmt obs;      
+    O.fi "fprintf(out,\"%s\",%s,p_true,p_false) ;" fmt obs;
 (* Show running time *)
     let fmt = sprintf "Time %s %%.2f\\n"  doc.Name.name in
     O.fi "fprintf(out,\"%s\",total / 1000000.0) ;" fmt ;
@@ -2290,7 +2300,7 @@ let user2_barrier_def () =
 
 (* Main *)
 
-  let dump_main doc _env test = 
+  let dump_main doc _env test =
     let dca,_ca = mk_dca test in
     O.o "" ;
 (* Static list of logical processors *)
@@ -2301,7 +2311,7 @@ let user2_barrier_def () =
         ()
     | None|Some _ -> ()
     end ;
-    let outchan = 
+    let outchan =
       match driver with
       | Driver.Shell ->
           O.o "int main(int argc, char **argv) {" ;
@@ -2366,7 +2376,7 @@ let user2_barrier_def () =
           O.oi
             "if (!parse_prefetch(_prefetch_txt,&_prefetch)) fatal(\"parse_prefetch\");"
         with Not_found -> ()
-      end 
+      end
     end ;
     O.fi "cmd_t def = { 0, NUMBER_OF_RUN, SIZE_OF_TEST, STRIDE, AVAIL, 0, %s, %s, %i, AFF_INCR, def_all_cpus, %i, %s, %s, %s, %s, %s, %s, %s, %s};"
       (if do_sync_macro then "SYNC_N" else "0")
@@ -2420,4 +2430,3 @@ let user2_barrier_def () =
     dump_run doc env test ;
     dump_main doc env test
 end
-    

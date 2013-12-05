@@ -46,7 +46,7 @@ module Make(V:Constant.S)(C:Config) =
 (* Arithmetic *)
     let op3regs memo s c rD rA rB =
       let memo =
-        sprintf "%s%s%s" 
+        sprintf "%s%s%s"
           memo (pp_setflags s) (pp_cond c) in
       { empty_ins with
         memo=memo^ " ^o0,^i0,^i1";
@@ -163,7 +163,7 @@ module Make(V:Constant.S)(C:Config) =
         memo = sprintf "subs ^o0,^i0,#%i" i ;
         inputs = [r;] ; outputs = [r;] ; }
 
-    let no_tr lbl = lbl 
+    let no_tr lbl = lbl
 
     let emit_loop k =
       let lbl1 = Label.next_label "L" in

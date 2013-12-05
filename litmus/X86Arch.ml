@@ -27,7 +27,7 @@ module Make(O:Arch.Config)(V:Constant.S) = struct
   | ECX -> "%ecx"
   | EDX -> "%edx"
   | ESI -> "%esi"
-  | EDI -> "%edi" 
+  | EDI -> "%edi"
   | EBP -> "%ebp"
   | Internal i -> sprintf "i%i" i
   | _ -> assert false
@@ -35,13 +35,13 @@ module Make(O:Arch.Config)(V:Constant.S) = struct
   include
       ArchExtra.Make(O)
       (struct
-        module V = V 
+        module V = V
 
-	type arch_reg = reg
-        let arch = Archs.X86
+        type arch_reg = reg
+        let arch = `X86
         let forbidden_regs = []
-	let pp_reg = pp_reg
-	let reg_compare = reg_compare
+        let pp_reg = pp_reg
+        let reg_compare = reg_compare
         let reg_to_string = reg_to_string
         let internal_init r =
           if reg_compare r loop_idx = 0 then Some ("max_loop","int")

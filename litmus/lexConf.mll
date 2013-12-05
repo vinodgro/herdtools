@@ -24,13 +24,13 @@ let set_intkm r arg =
 
 let set_intkm_withfun set arg =
   match Misc.string_of_intkm arg with
-  | Some  x -> set x 
+  | Some  x -> set x
   | None ->
       raise (Error "int[kM] parameter expected")
 
 let set_string r arg = r := arg
 let set_stringo r arg = r := Some arg
- 
+
 let set_int_withfun set arg =
   let x =
     try int_of_string arg
@@ -56,14 +56,16 @@ let set_word tag = match Word.parse tag with
          tag (String.concat "," Word.tags)))
 
 module LexTag(O:ParseTag.Opt) = struct
-  let lexfun opt r =
+  let lexfun_with_fun opt f =
     (fun tag -> match O.parse tag with
-    | Some v -> r := v
+    | Some v -> f v
     | None ->
         raise
           (Arg.Bad
              (sprintf "%s is a bad tag for %s, allowed tag are %s"
                 tag opt (String.concat "," O.tags))))
+
+  let lexfun opt r = lexfun_with_fun opt ((:=) r)
 end
 
 }
@@ -78,9 +80,9 @@ rule main = parse
 | '#' [^'\n']* '\n'
 | blank* '\n'
     { main lexbuf }
-| ("gcc_opts"|"ccopts") arg 
+| ("gcc_opts"|"ccopts") arg
     { set_gccopts arg ; main lexbuf }
-| "gcc" arg 
+| "gcc" arg
     { set_string gcc arg ; main lexbuf }
 | "linkopt" arg
     { set_string linkopt arg ; main lexbuf }
@@ -98,11 +100,11 @@ rule main = parse
     { set_intkm size arg ; main lexbuf }
 | "loop" arg
     { set_intkm_withfun set_timeloop arg ; main lexbuf }
-| "limit" arg 
+| "limit" arg
     { set_bool limit arg ; main lexbuf }
-| "no" arg 
+| "no" arg
     { set_stringo no arg ; main lexbuf }
-| "hint" arg 
+| "hint" arg
     { set_stringo hint arg ; main lexbuf }
 | "affinity" arg
     { let module P = LexTag(Affinity) in
@@ -131,6 +133,9 @@ rule main = parse
     P.lexfun "collect" collect arg ; main lexbuf }
 | "prealloc" arg
    { set_bool prealloc arg ; main lexbuf }
+| "carch" arg
+   { let module P = LexTag(Archs.System) in
+     P.lexfun_with_fun "carch" set_carch arg ; main lexbuf }
 | "os" arg
    { let module P = LexTag(TargetOS) in
    P.lexfun "os" targetos arg ; main lexbuf }
@@ -144,7 +149,7 @@ rule main = parse
    { set_bool verbose_barrier arg ; main lexbuf }
 | ("vp"|"verbose_prelude") arg
    { set_bool_withfun (fun b -> verbose_prelude := Some b) arg ; main lexbuf }
-| "isync" arg 
+| "isync" arg
    { set_bool isync arg ; main lexbuf }
 | ("smtmode"|"smt_mode") arg
    { let module P = LexTag(Smt) in

@@ -12,7 +12,7 @@
 
 
 module type S = sig
-  module A : Arch.S
+  module A : Arch.Base
 
   type prop = (A.location,Constant.v) ConstrGen.prop
   type constr = prop ConstrGen.constr
@@ -25,7 +25,7 @@ end
 
 open ConstrGen
 
-module Make(A : Arch.S) : S with module A = A  = 
+module Make(A : Arch.Base) : S with module A = A  =
   struct
     open Constant
     module A = A

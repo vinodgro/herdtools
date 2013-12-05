@@ -19,13 +19,19 @@ end
 
 module Make
     (O:Config)
-    (T:Test.S)
-    (C:XXXCompile.S with module A = T.A) =
+    (A_complete : Arch.S)
+    (A : Arch.Base
+     with type reg = A_complete.reg
+      and type location = A_complete.location
+      and module Out = A_complete.Out
+    )
+    (T:Test.S with module A = A and type P.code = A_complete.pseudo list)
+    (C:XXXCompile.S with module A = A_complete) =
   struct
     open Printf
     open Constant
 
-    module A = T.A
+    module A = A_complete
     module V = A.V
     module Constr = T.C
     open A.Out
@@ -58,7 +64,7 @@ let rec lblmap_pseudo c m i = match i with
     lblmap_pseudo (c+1) m i
 | A.Macro _ -> assert false
 
-let lblmap_code = 
+let lblmap_code =
   let rec do_rec c m = function
     | [] -> m
     | i::code ->
@@ -76,7 +82,7 @@ let lblmap_code =
     exception CannotIntern
 
     let tr_label_fail m lbl =  sprintf "%i" (StringMap.find lbl m)
-      
+
     let tr_label m lbl =
       try
         tr_label_fail m lbl
@@ -108,7 +114,7 @@ let lblmap_code =
           compile_cond c labf (compile_cond (And cs) labf kt)
       | _ -> raise CannotIntern
 
-    let compile_pseudo_code _env code k =            
+    let compile_pseudo_code _env code k =
       let m =
         if O.numeric_labels then lblmap_code code
         else StringMap.empty in
@@ -149,7 +155,7 @@ let lblmap_code =
       with
       CannotIntern -> [],false
 
-    let compile_code proc env code final =      
+    let compile_code proc env code final =
       let k,cond =
         if O.signaling then
           compile_cond proc final
@@ -157,7 +163,7 @@ let lblmap_code =
 
       let code = compile_pseudo_code env code k in
 
-      let code = 
+      let code =
         if O.timeloop > 0 then C.emit_loop code
         else code in
 
@@ -167,7 +173,7 @@ let lblmap_code =
 
       code,cond
 
-        
+
     module RegSet =
       MySet.Make
         (struct
@@ -207,7 +213,7 @@ let lblmap_code =
           (RegSet.of_list ins.inputs)
           (RegSet.diff live_out
 (* Conditional instruction, a la ARM *)
-             (if ins.cond then RegSet.empty 
+             (if ins.cond then RegSet.empty
                else RegSet.of_list ins.outputs)) in
       (match ins.label with
       | None -> env
@@ -251,7 +257,7 @@ let lblmap_code =
       List.map
         (fun reg ->
           let v = A.find_in_state (A.Location_reg (proc,reg)) init in
-          reg,v) 
+          reg,v)
         inputs
 
     let load_addrs env =
@@ -322,7 +328,7 @@ let lblmap_code =
         StringMap.add a ty env
       with
         Not_found -> StringMap.add a ty env
-            
+
     let add_value v env = match v with
     | Concrete _ -> env
     | Symbolic a -> add_addr_type a RunType.Int env
@@ -333,7 +339,7 @@ let lblmap_code =
           (fun (loc,v) env ->
             let env = add_value v env in
             match loc with
-            | A.Location_global (a) -> 
+            | A.Location_global (a) ->
                 add_addr_type a (typeof v) env
             | _ -> env)
           init StringMap.empty in
@@ -358,7 +364,7 @@ let lblmap_code =
             | (_,RunType.Pointer)
             | (RunType.Pointer,_) -> RunType.Pointer
             | RunType.Int,RunType.Int -> RunType.Int
-            end          
+            end
           | _ -> t)
         final
         (List.fold_right
@@ -368,7 +374,7 @@ let lblmap_code =
                | MiscParser.I -> k
                | MiscParser.P -> RunType.Pointer
                end
-           | _ -> k) 
+           | _ -> k)
            flocs
            RunType.Int)
 
@@ -376,8 +382,8 @@ let lblmap_code =
       List.map
         (fun reg -> reg,type_in_final p reg final flocs)
         t.final
-        
-    let type_outs code final flocs =    
+
+    let type_outs code final flocs =
       List.map
         (fun (p,t) -> p,(t,type_out p t final flocs))
         code
@@ -387,9 +393,9 @@ let lblmap_code =
           { MiscParser.init = init ;
             info = info;
             prog = code;
-            condition = final; 
+            condition = final;
             locations = locs ; _
-	  } = t in
+          } = t in
       let code = mk_templates init code final locs in
       let code_typed = type_outs code final locs in
       { T.init = init;
@@ -400,5 +406,5 @@ let lblmap_code =
         flocs = List.map fst locs ;
         src = t;
       }
-        
+
   end

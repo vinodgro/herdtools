@@ -34,7 +34,7 @@ module type S = sig
 
   val vToName : Constant.v -> string
 
-  include Location.S 
+  include Location.S
   with type loc_reg = I.arch_reg and type loc_global = string
   module Out : Template.S
   with type arch_reg = I.arch_reg
