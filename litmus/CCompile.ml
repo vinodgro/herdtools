@@ -18,7 +18,7 @@ end
 
 module Make
     (O:Config)
-    (T:Test.S with type P.code = CAst.t and type A.reg = string) =
+    (T:Test.S with type P.code = CAst.t and type A.reg = string and type A.loc_reg = string) =
   struct
 
     module A = T.A
@@ -45,7 +45,8 @@ module Make
 
     let add_param {CAst.param_ty; param_name} =
       let ty_of_cty = function
-        | CAst.Int_ptr -> RunType.Pointer
+        (* TODO: Same as line 115 *)
+        | CAst.Int_ptr -> RunType.Int
       in
       StringMap.add param_name (ty_of_cty param_ty)
 
@@ -71,27 +72,49 @@ module Make
         (fun a ty k -> (a,ty)::k)
         env []
 
-    let get_globals proc =
-      let f acc = function
-        | A.Location_reg (p, name) when p = proc -> name :: acc
-        | A.Location_reg _
-        | A.Location_global _ -> acc
-      in
+    let get_local proc f acc = function
+      | A.Location_reg (p, name) when p = proc -> f name acc
+      | A.Location_reg _
+      | A.Location_global _ -> acc
+
+    let get_locals proc =
+      let f = get_local proc Misc.cons in
       List.fold_left f []
 
-    let comp_template proc final =
+    let get_addrs proc =
+      let f acc (x, _) = get_local proc (fun x -> Misc.cons (proc, x)) acc x in
+      List.fold_left f []
+
+     let ins_of_string inputs outputs x =
+       { A.Out.memo = x
+       ; inputs
+       ; outputs
+       ; label = None
+       ; branch = []
+       ; cond = false
+       ; comment = false
+       }
+
+     let string_of_params =
+       let f {CAst.param_name; _} = param_name in
+       List.map f
+
+    let comp_template proc init final code =
+      let addrs = get_addrs proc init in
+      let inputs = string_of_params code.CAst.params in
       { A.Out.init = []
-      ; addrs = []
+      ; addrs
       ; final
-      ; code = []
+      ; code = [ins_of_string inputs final code.CAst.body]
       }
 
-    let comp_code final =
+    let comp_code final init =
       List.fold_left
-        (fun acc (proc, _) ->
-           let final = get_globals proc (C.locations final) in
-           let regs = List.map (fun x -> (x, RunType.Pointer)) final in
-           (proc, (comp_template proc final, regs)) :: acc
+        (fun acc (proc, code) ->
+           let final = get_locals proc (C.locations final) in
+           (* TODO: is it the right type ? *)
+           let regs = List.map (fun x -> (x, RunType.Int)) final in
+           (proc, (comp_template proc init final code, regs)) :: acc
         )
         []
 
@@ -105,7 +128,7 @@ module Make
         } = t in
       { T.init = init;
         info = info;
-        code = comp_code final code;
+        code = comp_code final init code;
         condition = final;
         globals = comp_globals init code;
         flocs = List.map fst locs;

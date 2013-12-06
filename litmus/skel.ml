@@ -1433,7 +1433,7 @@ let dump_read_timebase () =
         | NoBarrier -> ()
         end ;
         O.fi "int _size_of_test = _a->_p->size_of_test;" ;
-        let prf = 
+        let prf =
           List.filter
             (fun (xproc,_,_) -> proc=xproc)
             (Prefetch.parse (get_prefetch_info test)) in
@@ -1441,7 +1441,7 @@ let dump_read_timebase () =
           O.fi "prfone_t *_prft = _a->_p->prefetch->t[%i].t;" proc ;
         if do_staticpl then begin match prf with
         | [] -> ()
-        | _::_ -> 
+        | _::_ ->
             O.oi "unsigned int _static_prefetch = _a->_p->static_prefetch;"
         end ;
         begin match stride with
@@ -1508,7 +1508,7 @@ let dump_read_timebase () =
             | Preload.StaticNPL Preload.One ->
                 iter
                   (fun f loc ->
-                    O.fx iloop "%s(%s);" f loc)  
+                    O.fx iloop "%s(%s);" f loc)
             | Preload.StaticNPL Preload.Two ->
                 iter
                   (fun f loc ->
@@ -1539,7 +1539,7 @@ let dump_read_timebase () =
                   O.fx j "if (rand_k(&(_a->seed),_static_prefetch) == 0) %s(%s);"
                     f loc) ;
               O.fx j "break;" ;
-              O.fx iloop "}" ;          
+              O.fx iloop "}" ;
           end
         end ;
         begin match barrier with
@@ -2355,7 +2355,7 @@ let dump_read_timebase () =
                   (fun loc ->
                     sprintf "{ global_names[%i], none, }"
                       (find_index loc vars))
-                  addrs)) ;            
+                  addrs)) ;
           O.fi "prfproc_t _prf_%i = { %i, _prf_t_%i}; "
             i (List.length addrs) i)
         test.T.code ;
