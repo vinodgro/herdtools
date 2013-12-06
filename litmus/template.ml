@@ -71,6 +71,8 @@ module type S = sig
     module RegSet : MySet.S with type elt = A.arch_reg
 
     val to_string : ins -> string
+    val compile_out_reg : int -> arch_reg -> string
+    val dump_type : ('a * RunType.t) list -> 'a -> string
     val trashed_regs : t -> RegSet.t
     val dump_trashed_reg : A.arch_reg -> string
     val dump_copies : out_channel -> string -> (A.arch_reg * RunType.t) list -> int -> t -> unit
@@ -436,6 +438,8 @@ struct
     module RegSet = RegSet
 
     let to_string = to_string
+    let compile_out_reg = compile_out_reg
+    let dump_type = dump_type
     let trashed_regs = trashed_regs
     let dump_trashed_reg = dump_trashed_reg
     let dump_copies = dump_copies
