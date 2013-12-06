@@ -15,7 +15,7 @@ CFG=conti.cfg saumur.cfg saumur.close.cfg doko.cfg squale.cfg hpcx.cfg \
  odroid-xu.cfg odroid-xu-ubuntu.cfg
 
 
-OCB=ocamlbuild -cflags -w,A-4-9-27-29-45 #-classic-display
+OCB=ocamlbuild -cflags -w,A-4-9-27-29-45 -classic-display
 all: native
 
 install:
@@ -46,7 +46,7 @@ clean::
 clean::
 	$(OCB) -clean
 
-SVNVERSION=sh -c "git rev-list --count HEAD" 2>/dev/null || echo exported
+SVNVERSION=sh -c "git rev-parse HEAD" 2>/dev/null || echo exported
 
 .PHONY: config
 

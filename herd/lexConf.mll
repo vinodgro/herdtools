@@ -122,7 +122,7 @@ and opt = parse
        "through" Model.parse_through Model.tags_through
        through arg }
 | "skipchecks" arg
-   {
+   { 
      let tags = Misc.split_comma arg in
      List.iter
        (fun tag ->
