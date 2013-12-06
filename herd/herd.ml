@@ -148,7 +148,12 @@ let options = [
        (Model.pp_through !through)) ;
   ("-skipcheck",
    Arg.String
-     (fun s -> skipchecks := StringSet.add s !skipchecks),
+     (fun s ->
+       let tags = Misc.split_comma s in
+       List.iter
+         (fun tag ->
+           skipchecks := StringSet.add tag !skipchecks)
+         tags),
    "<name1,...,nameN> do not apply checks, cumulates") ;
   parse_bool "-strictskip" strictskip
    "retain outcomes allowed by ALL skipped checks" ;
