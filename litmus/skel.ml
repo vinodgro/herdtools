@@ -307,9 +307,6 @@ end = struct
   let find_global_type a = find_type (A.Location_global a)
 
 (* Test condition *)
-  let dump_cond_v = function
-    | Concrete i -> sprintf "%i" i
-    | Symbolic s -> dump_val_param s
 
   let remark_pos test = match test.T.condition with
   | ForallStates _ -> false
@@ -322,25 +319,21 @@ end = struct
   | ExistsState _ -> v
   | NotExistsState _ -> "!" ^ v
 
-  let dump_condition dump_loc c =
-    let rec dump_prop chan p = match p with
-    | Atom (LV (loc,v)) ->
-        fprintf chan "%s == %s" (dump_loc loc) (dump_cond_v v)
-    | Atom (LL (loc1,loc2)) ->
-        fprintf chan "%s == %s" (dump_loc loc1) (dump_loc loc2)
-    | Not p -> fprintf chan "!(%a)" dump_prop p
-    | Or [] -> fprintf chan "0"
-    | Or [p] -> dump_prop chan p
-    | Or (p::ps) ->
-        fprintf chan "(%a) || (%a)" dump_prop p dump_prop (Or ps)
-    | And [] -> fprintf chan "1"
-    | And [p] -> dump_prop chan p
-    | And (p::ps) ->
-        fprintf chan "(%a) && (%a)" dump_prop p dump_prop (And ps)
-    | Implies (p1,p2) ->
-        fprintf chan "!(%a) || (%a)" dump_prop p1 dump_prop p2 in
+  module DC =
+    CompCond.Make
+      (struct
+        type v = Constant.v
+        let dump_v = function
+          | Concrete i -> sprintf "%i" i
+          | Symbolic s -> dump_val_param s
 
-    let dump_def p = O.fi "cond = %a;" dump_prop p in
+        type loc = A.location
+        let dump_loc = dump_loc_param
+      end)
+
+
+  let dump_condition dump_loc c =
+    let dump_def p = O.fi "cond = %a;" DC.dump p in
     match c with
     | ForallStates p
     | ExistsState p
@@ -1864,7 +1857,6 @@ let dump_read_timebase () =
 
 (****************)
 
-(*      dump_condition chan indent3 dump_loc_copy test.T.condition  ; *)
       O.fiii "if (%s) { hist->n_pos++; } else { hist->n_neg++; }"
         (test_witness test "cond") ;
       if (do_verbose_barrier) then begin
