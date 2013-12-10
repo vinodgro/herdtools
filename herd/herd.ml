@@ -147,6 +147,9 @@ let options = [
        "what to let through in addtition to valid executions, default %s"
        (Model.pp_through !through)) ;
   ("-skipcheck",
+   Arg.String (fun tag -> skipchecks := StringSet.add tag !skipchecks),
+   "<name> do not apply check, cumulates") ;
+  ("-skipchecks",
    Arg.String
      (fun s ->
        let tags = Misc.split_comma s in
