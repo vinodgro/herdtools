@@ -19,7 +19,11 @@ module Make(Tmpl:Template.S) = struct
       let dump_input x =
         let ty = Tmpl.Reexport.dump_type env x in
         let x = Tmpl.fmt_reg x in
-        out "%s%s* %s = _a->%s;\n" indent ty x x
+        match Tmpl.Reexport.O.memory with
+        | Memory.Direct ->
+            out "%s%s* %s = &_a->%s[_i];\n" indent ty x x
+        | Memory.Indirect ->
+            out "%s%s* %s = _a->%s[_i];\n" indent ty x x
       in
       let dump_output x =
         let outname = Tmpl.Reexport.compile_out_reg proc x in
