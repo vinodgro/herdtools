@@ -31,4 +31,5 @@ params:
 | ty NAME COMMA params { {CAst.param_ty = $1; param_name = $2} :: $4 }
 
 ty:
-| INT STAR { CAst.Int_ptr }
+| INT STAR { RunType.Int }
+| INT STAR STAR { RunType.Pointer }

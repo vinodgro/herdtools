@@ -44,11 +44,7 @@ module Make
     | Constant.Symbolic _ -> RunType.Pointer
 
     let add_param {CAst.param_ty; param_name} =
-      let ty_of_cty = function
-        (* TODO: Same as line 115 *)
-        | CAst.Int_ptr -> RunType.Int
-      in
-      StringMap.add param_name (ty_of_cty param_ty)
+      StringMap.add param_name param_ty
 
     let add_params = List.fold_right add_param
 

@@ -265,7 +265,8 @@ end = struct
         let dump_prog (i, cfun) =
           let f { CAst.params; body; _ } =
             let string_of_ty = function
-              | CAst.Int_ptr -> "int*"
+              | RunType.Int -> "int*"
+              | RunType.Pointer -> "int**"
             in
             let f {CAst.param_ty; param_name} =
               Printf.sprintf "%s %s" (string_of_ty param_ty) param_name

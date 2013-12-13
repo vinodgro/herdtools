@@ -9,11 +9,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* TODO: Remove CAst.ty and use RunType.t instead ? *)
-type ty =
-  | Int_ptr
-
-type param = { param_ty : ty; param_name : string }
+type param = { param_ty : RunType.t; param_name : string }
 
 type body = string
 
