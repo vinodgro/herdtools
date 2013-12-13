@@ -11,19 +11,28 @@
 
 module Make(Tmpl:Template.S) = struct
 
-  let dump chan indent env proc t =
+  let dump chan indent env globEnv proc t =
     let out x = Printf.fprintf chan x in
     out "%s{\n" indent;
     begin
       let indent = "  " ^ indent in
       let dump_input x =
-        let ty = Tmpl.Reexport.dump_type env x in
         let x = Tmpl.fmt_reg x in
+        let ty =
+          let f = function
+            | RunType.Int -> "int*"
+            | RunType.Pointer -> "int**"
+          in
+          try
+            f (List.assoc x globEnv)
+          with
+          | Not_found -> assert false
+        in
         match Tmpl.Reexport.O.memory with
         | Memory.Direct ->
-            out "%s%s* %s = &_a->%s[_i];\n" indent ty x x
+            out "%s%s %s = &_a->%s[_i];\n" indent ty x x
         | Memory.Indirect ->
-            out "%s%s* %s = _a->%s[_i];\n" indent ty x x
+            out "%s%s %s = _a->%s[_i];\n" indent ty x x
       in
       let dump_output x =
         let outname = Tmpl.Reexport.compile_out_reg proc x in

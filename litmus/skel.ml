@@ -1602,8 +1602,13 @@ let dump_read_timebase () =
             (fun (loc,t) k -> match loc with
             | A.Location_reg (p,reg) -> if p = proc then (reg,t)::k else k
             | A.Location_global _ -> k) env [] in
+        let global_env =
+          List.fold_right
+            (fun (loc,t) k -> match loc with
+            | A.Location_reg _ -> k
+            | A.Location_global reg -> (reg,t)::k) env [] in
 (* Dump real code now *)
-        Lang.dump O.out (Indent.as_string iloop) myenv proc out ;
+        Lang.dump O.out (Indent.as_string iloop) myenv global_env proc out ;
         if do_verbose_barrier && have_timebase  then begin
           if do_timebase then begin
             O.fx iloop "_a->tb_delta[%i][_i] = _delta;" proc ;

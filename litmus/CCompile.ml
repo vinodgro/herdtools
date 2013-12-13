@@ -23,6 +23,7 @@ module Make
 
     module A = T.A
     module C = T.C
+    module Generic = Compile.Generic(A)
 
     let add_addr_type a ty env =
       try
@@ -39,10 +40,6 @@ module Make
     | Constant.Concrete _ -> env
     | Constant.Symbolic a -> add_addr_type a RunType.Int env
 
-    let typeof v = match v with
-    | Constant.Concrete _ -> RunType.Int
-    | Constant.Symbolic _ -> RunType.Pointer
-
     let add_param {CAst.param_ty; param_name} =
       StringMap.add param_name param_ty
 
@@ -55,7 +52,7 @@ module Make
             let env = add_value v env in
             match loc with
             | A.Location_global (a) ->
-                add_addr_type a (typeof v) env
+                add_addr_type a (Generic.typeof v) env
             | _ -> env)
           init StringMap.empty in
       let env =
@@ -74,7 +71,7 @@ module Make
       | A.Location_global _ -> acc
 
     let get_locals proc =
-      let f = get_local proc Misc.cons in
+      let f acc (x, ty) = get_local proc (fun x -> Misc.cons (x, ty)) acc x in
       List.fold_left f []
 
     let get_addrs proc =
@@ -104,12 +101,38 @@ module Make
       ; code = [ins_of_string inputs final code.CAst.body]
       }
 
-    let comp_code final init =
+    let get_reg_from_loc = function
+      | A.Location_reg (_, reg) -> reg
+      | A.Location_global reg -> reg
+
+    let locations p final flocs =
+      let module LocMap =
+        MyMap.Make
+          (struct
+            type t = A.location
+            let compare = A.location_compare
+          end)
+      in
+      let locations_atom reg acc = match reg with
+        | ConstrGen.LV (loc, _) ->
+            let reg = get_reg_from_loc loc in
+            LocMap.add loc (Generic.type_in_final p reg final flocs) acc
+        | ConstrGen.LL (loc1, loc2) ->
+            let reg1 = get_reg_from_loc loc1 in
+            let reg2 = get_reg_from_loc loc2 in
+            LocMap.add
+              loc1
+              (Generic.type_in_final p reg1 final flocs)
+              (LocMap.add loc2 (Generic.type_in_final p reg2 final flocs) acc)
+      in
+      let locs = ConstrGen.fold_constr locations_atom final LocMap.empty in
+      LocMap.bindings locs
+
+    let comp_code final init flocs =
       List.fold_left
         (fun acc (proc, code) ->
-           let final = get_locals proc (C.locations final) in
-           (* TODO: is it the right type ? *)
-           let regs = List.map (fun x -> (x, RunType.Int)) final in
+           let regs = get_locals proc (locations proc final flocs) in
+           let final = List.map fst regs in
            (proc, (comp_template proc init final code, regs)) :: acc
         )
         []
@@ -124,7 +147,7 @@ module Make
         } = t in
       { T.init = init;
         info = info;
-        code = comp_code final init code;
+        code = comp_code final init locs code;
         condition = final;
         globals = comp_globals init code;
         flocs = List.map fst locs;

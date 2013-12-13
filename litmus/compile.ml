@@ -17,6 +17,36 @@ module type Config = sig
   val barrier : Barrier.t
 end
 
+module Generic (A : Arch.Base) = struct
+  let typeof = function
+    | Constant.Concrete _ -> RunType.Int
+    | Constant.Symbolic _ -> RunType.Pointer
+
+  let type_in_final p reg final flocs =
+    ConstrGen.fold_constr
+      (fun a t ->
+         let open ConstrGen in
+         match a with
+         | LV (A.Location_reg (q,r),v) when p=q && A.reg_compare reg r = 0 ->
+             begin match typeof v,t with
+             | (_,RunType.Pointer)
+             | (RunType.Pointer,_) -> RunType.Pointer
+             | RunType.Int,RunType.Int -> RunType.Int
+             end
+         | _ -> t)
+      final
+      (List.fold_right
+         (fun (loc,t) k -> match loc with
+            | A.Location_reg (q,r) when p=q && A.reg_compare reg r = 0 ->
+                begin match t with
+                | MiscParser.I -> k
+                | MiscParser.P -> RunType.Pointer
+                end
+            | _ -> k)
+         flocs
+         RunType.Int)
+end
+
 module Make
     (O:Config)
     (A_complete : Arch.S)
@@ -34,6 +64,7 @@ module Make
     module A = A_complete
     module V = A.V
     module Constr = T.C
+    module Generic = Generic(A)
     open A.Out
 
     let rec extract_pseudo ins = match ins with
@@ -314,10 +345,6 @@ let lblmap_code =
             code = code; })
         pecs
 
-    let typeof v = match v with
-    | Concrete _ -> RunType.Int
-    | Symbolic _ -> RunType.Pointer
-
     let add_addr_type a ty env =
       try
         let tz = StringMap.find a env in
@@ -340,7 +367,7 @@ let lblmap_code =
             let env = add_value v env in
             match loc with
             | A.Location_global (a) ->
-                add_addr_type a (typeof v) env
+                add_addr_type a (Generic.typeof v) env
             | _ -> env)
           init StringMap.empty in
       let env =
@@ -354,33 +381,9 @@ let lblmap_code =
         (fun a ty k -> (a,ty)::k)
         env []
 
-    let type_in_final p reg final flocs =
-      ConstrGen.fold_constr
-        (fun a t ->
-          let open ConstrGen in
-          match a with
-          | LV (A.Location_reg (q,r),v) when p=q && A.reg_compare reg r = 0 ->
-            begin match typeof v,t with
-            | (_,RunType.Pointer)
-            | (RunType.Pointer,_) -> RunType.Pointer
-            | RunType.Int,RunType.Int -> RunType.Int
-            end
-          | _ -> t)
-        final
-        (List.fold_right
-           (fun (loc,t) k -> match loc with
-           | A.Location_reg (q,r) when p=q && A.reg_compare reg r = 0 ->
-               begin match t with
-               | MiscParser.I -> k
-               | MiscParser.P -> RunType.Pointer
-               end
-           | _ -> k)
-           flocs
-           RunType.Int)
-
     let type_out p t final flocs =
       List.map
-        (fun reg -> reg,type_in_final p reg final flocs)
+        (fun reg -> reg,Generic.type_in_final p reg final flocs)
         t.final
 
     let type_outs code final flocs =

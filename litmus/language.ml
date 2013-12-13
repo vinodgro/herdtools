@@ -10,5 +10,12 @@
 (*********************************************************************)
 
 module type S = functor (Tmpl:Template.S) -> sig
-  val dump : out_channel -> string -> (Tmpl.arch_reg * RunType.t) list -> int -> Tmpl.t  -> unit
+  val dump :
+    out_channel ->
+    string ->
+    (Tmpl.arch_reg * RunType.t) list ->
+    (string * RunType.t) list ->
+    int ->
+    Tmpl.t ->
+    unit
 end

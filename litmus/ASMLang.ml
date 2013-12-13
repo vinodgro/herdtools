@@ -15,7 +15,7 @@ module Make(Tmpl:Template.S) = struct
   open Tmpl
   open Tmpl.Reexport
 
-  let dump chan indent env proc t =
+  let dump chan indent env _ proc t =
     let rec dump_ins k ts = match ts with
     | [] -> ()
     | t::ts ->
