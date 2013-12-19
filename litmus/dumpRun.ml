@@ -239,10 +239,10 @@ let dump_shell names =
 
       if do_dont then output_line out_chan "rm -f $LOG" ;
       let module O = struct
-      include Cfg
-      include (val (get_arch arch) : ArchConf)
-    end in
-    let module RU = RunUtils.Make(O) in
+        include Cfg
+        include (val (get_arch arch) : ArchConf)
+      end in
+      let module RU = RunUtils.Make(O) in
       RU.report_machine out_chan ;
       output_line out_chan "head -1 comp.sh" ;
       output_line out_chan "echo \"LITMUSOPTS=$LITMUSOPTS\"" ;

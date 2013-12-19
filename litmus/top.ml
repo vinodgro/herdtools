@@ -111,6 +111,15 @@ end = struct
               (String.concat "," (List.map A.pp_reg regs))
 
         let dump_prog (p,is) = Printf.sprintf "P%i" p::List.map fmt_io is
+
+        let dump_prog_lines prog =
+          let pp = List.map dump_prog prog in
+          let pp = Misc.lines_of_prog pp in
+          List.map (Printf.sprintf "%s;") pp
+
+        let print_prog chan prog =
+          let pp = List.map dump_prog prog in
+          Misc.pp_prog chan pp
       end
 
       module P = GenParser.Make(O)(A) (L)
@@ -274,7 +283,16 @@ end = struct
             let params = String.concat ", " (List.map f params) in
             Printf.sprintf "static void P%i(%s) {\n%s\n}\n" i params body
           in
-          Printf.sprintf "P%i" i :: [f cfun]
+          [f cfun]
+
+        let dump_prog_lines prog =
+          let pp = List.map dump_prog prog in
+          let pp = List.concat pp in
+          List.map (Printf.sprintf "%s\n") pp
+
+        let print_prog chan prog =
+          let pp = dump_prog_lines prog in
+          List.iter (Printf.fprintf chan "%s") pp
       end
       module P = CGenParser.Make(O)(Pseudo)(A')(L)
       module T = Test.Make(A')(Pseudo)
