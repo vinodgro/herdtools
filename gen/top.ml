@@ -108,7 +108,7 @@ module StringMap = MyMap.Make(String)
       let valid_edge e = match e.C.E.edge with
       | Rf _ | RfStar _| Fr _ | Ws _ | Hat|Detour _|DetourWs _ -> true
       | Po _ | Fenced _ | Dp _|Rmw -> false
-      | Store -> assert false in
+      | Store| Leave | Back -> assert false in
       (fun n -> valid_edge n.C.C.prev.C.C.edge || valid_edge n.C.C.edge)
     else
       (fun _ -> true)

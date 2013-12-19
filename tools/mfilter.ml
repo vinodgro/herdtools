@@ -20,7 +20,7 @@ let exclude = ref None
 let select = ref []
 let rename = ref []
 let conds = ref []
-
+let inverse = ref false
 
 let options =
   [
@@ -29,6 +29,8 @@ let options =
    "<non-default> be silent");  
   ("-v", Arg.Unit (fun _ -> incr verbose),
    "<non-default> show various diagnostics, repeat to increase verbosity");
+  ("-inverse", Arg.Bool (fun b -> inverse := b),
+   Printf.sprintf "<bool> inverse selection, default %b" !inverse) ;
   ("-excl", Arg.String (fun s -> exclude := Some s),
    "<regexp> exclude tests whose name matches <regexp>");
   ("-select",
@@ -63,6 +65,7 @@ let log = match !logs with
 | _ ->
     eprintf "%s takes at most one argument\n" prog ;
     exit 2
+let inverse = !inverse
 
 module Verbose = struct let verbose = verbose end
 
@@ -108,7 +111,10 @@ let zyva log =
   let test = match log with
   | None -> LL.read_chan "stdin" stdin
   | Some log -> LL.read_name log in
+
+  let is_litmus = test.LogState.is_litmus in
 (* Dumping of log files *)
+
 
   let is_reliable k = match k with
   | Allow|Require|Forbid -> true
@@ -136,7 +142,7 @@ let zyva log =
   let dump_test chan t =
     fprintf chan "Test %s%s\n" t.tname
       (if is_reliable t.kind then " "^LS.pp_kind t.kind else "") ;
-    LS.dump_states chan t.states ;
+    LS.dump_states_cond chan is_litmus t.states ;
     if is_reliable t.kind then begin
       fprintf chan "%s\n" (LS.pp_validation t.validation) ;
       fprintf chan "Witnesses\n" ;
@@ -159,7 +165,7 @@ let zyva log =
 
   let dump_log chan =  Array.iter (dump_test chan) in
 
-  let filtered = LS.filter conds test in
+  let filtered = LS.filter inverse conds test in
   dump_log stdout filtered ;
   flush stdout ;
   ()

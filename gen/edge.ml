@@ -28,6 +28,8 @@ module type S = sig
     | Po of sd*extr*extr | Fenced of fence*sd*extr*extr
     | Dp of dp*sd*extr
     | Store (* Insert a store at thread start *)
+    | Leave (* Leave thread *)
+    | Back  (* Return to thread *)
 (* fancy *)
     | Hat
     | RfStar of ie
@@ -109,6 +111,8 @@ and type dp = F.dp = struct
     | Po of sd*extr*extr | Fenced of fence*sd*extr*extr
     | Dp of dp*sd*extr
     | Store
+    | Leave
+    | Back
     | Hat
     | RfStar of ie
     | Rmw
@@ -139,6 +143,8 @@ let pp_tedge = function
   | Hat -> "Hat"
   | Rmw -> "Rmw"
   | Store -> "Store"
+  | Leave -> "Leave"
+  | Back -> "Back"
 
 let pp_edge e = pp_tedge e.edge ^ pp_aa e.a1 e.a2
 
@@ -168,18 +174,21 @@ let pp_strong sd e1 e2 =
 let pp_dp_default tag sd e = sprintf "%s%s%s" tag (pp_sd sd) (pp_extr e)
 
 exception IsStore of string
+exception IsLeaveBack of string
 
 let do_dir_tgt e = match e with
   | Po(_,_,e)| Fenced(_,_,_,e)|Dp (_,_,e) -> e
   | Rf _| RfStar _ | Hat | Detour _ -> Dir R
   | Ws _|Fr _|Rmw|DetourWs _ -> Dir W
   | Store -> Dir W
+  | Leave|Back -> raise (IsLeaveBack "do_dir_tgt")
 
 and do_dir_src e = match e with
   | Po(_,e,_)| Fenced(_,_,e,_) | Detour e | DetourWs e -> e
   | Dp _|Fr _|Hat|Rmw -> Dir R
   | Ws _|Rf _|RfStar _ -> Dir W
   | Store -> Dir W
+  | Leave|Back -> raise (IsLeaveBack "do_dir_src")
 
 
 let fold_tedges f r =
@@ -204,6 +213,8 @@ let fold_tedges f r =
       (fun dp -> fold_sd (fun sd -> f (Dp (dp,sd,Dir W)))) r in
   let r = f Hat r in
   let r = f Store r in
+  let r = f Leave r in
+  let r = f Back r in
   r
 
 let fold_edges f =
@@ -213,11 +224,16 @@ let fold_edges f =
         (fun a2 ->
           (fold_tedges
              (fun te k ->
-               match a1,do_dir_src te,a2,do_dir_tgt te with
-               | Reserve,Dir W,_,_
-               | _,_,Reserve, Dir W -> k
-               | _ ->
-                   f {a1; a2; edge=te;} k))))
+               match a1,a2,te with
+               | Plain,Plain,(Store|Leave|Back) ->
+                   f {a1; a2; edge=te;} k
+               | _,_,(Store|Leave|Back) -> k
+               | _,_,_ ->
+                   match a1,do_dir_src te,a2,do_dir_tgt te with
+                   | Reserve,Dir W,_,_
+                   | _,_,Reserve, Dir W -> k
+                   | _ ->
+                       f {a1; a2; edge=te;} k))))
 
 let iter_edges f = fold_edges (fun e () -> f e) ()
 
@@ -276,7 +292,7 @@ let do_set_tgt d e = match e  with
   | Fenced(f,sd,src,_) -> Fenced(f,sd,src,Dir d)
   | Dp (dp,sd,_) -> Dp (dp,sd,Dir d) 
   | Rf _ |RfStar _ | Hat
-  | Ws _|Fr _|Rmw|Detour _|DetourWs _|Store -> e
+  | Ws _|Fr _|Rmw|Detour _|DetourWs _|Store|Leave|Back -> e
 
 and do_set_src d e = match e with
   | Po(sd,_,tgt) -> Po(sd,Dir d,tgt)
@@ -284,7 +300,7 @@ and do_set_src d e = match e with
   | Detour _ -> Detour (Dir d)
   | DetourWs _ -> DetourWs (Dir d)
   | Fr _|Hat|Dp _
-  | Ws _|Rf _|RfStar _|Rmw|Store -> e
+  | Ws _|Rf _|RfStar _|Rmw|Store|Leave|Back -> e
 
 let set_tgt d e = { e with edge = do_set_tgt d e.edge ; }
 and set_src d e = { e with edge = do_set_src d e.edge ; }
@@ -293,16 +309,19 @@ let loc_sd e = match e.edge with
   | Fr _|Ws _|Rf _|RfStar _|Hat|Rmw|Detour _|DetourWs _ -> Same
   | Po (sd,_,_) | Fenced (_,sd,_,_) | Dp (_,sd,_) -> sd
   | Store -> Same
+  | Leave|Back -> Same
 
 let get_ie e = match e.edge with
   | Po _|Dp _|Fenced _|Hat|Rmw|Detour _|DetourWs _ -> Int
   | Rf ie|RfStar ie|Fr ie|Ws ie -> ie
   | Store -> Int
+  | Leave|Back -> Ext
 
   let can_precede_dirs  x y = match x.edge,y.edge with
   | (Store,Store) -> false
   | (Store,_) -> get_ie y = Int
   | (_,Store) -> true
+  | ((Leave|Back),_)|(_,(Leave|Back)) -> true
   | _,_ ->
       begin match dir_tgt x,dir_src y with
       | Irr,Irr -> false
@@ -312,7 +331,14 @@ let get_ie e = match e.edge with
 
   let can_precede_atoms x y = x.a2 = y.a2
 
-  let can_precede x y =  can_precede_dirs  x y && can_precede_atoms x y
+  let can_precede_leave_back x y = match x.edge,y.edge with
+  | (Leave|Back),(Rf Ext|RfStar Ext|Fr Ext|Ws Ext) -> true
+  | (Leave|Back),_ -> false
+  | _,_ -> true
+
+  let can_precede x y = 
+    can_precede_dirs  x y && can_precede_atoms x y &&
+    can_precede_leave_back x y
 
 
 (*************************************************************)
@@ -329,7 +355,8 @@ let get_ie e = match e.edge with
 
   let do_expand_edge e f =
     match e.edge with
-    | Rf _ | RfStar _ | Fr _ | Ws _ | Hat |Rmw|Dp _|Store  -> f e
+    | Rf _ | RfStar _ | Fr _ | Ws _ | Hat |Rmw|Dp _|Store|Leave|Back
+      -> f e
     | Detour d ->
         expand_dir d (fun d -> f { e with edge=Detour d;})
     | DetourWs d ->

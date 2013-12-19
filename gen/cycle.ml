@@ -42,6 +42,7 @@ module type S = sig
       mutable prev : node ;
       mutable detour : node ;
       mutable store : node  ;
+      mutable change : node ;
     } 
   val nil : node
 
@@ -114,6 +115,7 @@ module Make (O:Config) (E:Edge.S) :
       mutable prev : node ;
       mutable detour : node ;
       mutable store : node  ;
+      mutable change : node ;
     }
 
   let debug_dir d = match d with W -> "W" | R -> "R"
@@ -134,6 +136,7 @@ let rec nil =
    prev = nil ;
    detour = nil ;
    store = nil ;
+   change = nil ;
   }
 
 let debug_node chan n =
@@ -167,6 +170,7 @@ let do_alloc_node idx e =
    prev = nil ;
    detour = nil ;
    store = nil ;
+   change = nil ;
   }
 
 let alloc_node idx e =
@@ -219,6 +223,24 @@ let remove_store n =
   do_remove_store n ;
   n
 
+  let remove_change n =
+    let rec do_remove m =
+      begin match m.edge.E.edge with
+      | E.Leave|E.Back ->
+          let prv = m.prev and nxt = m.next in
+          prv.next <- nxt ;
+          nxt.prev <- prv ;
+          nxt.change <- m ;
+          ()
+      | _ -> ()
+      end ;        
+      if m.next != n then do_remove m.next in
+    do_remove n ;
+    match n.edge.E.edge with
+      | E.Leave|E.Back -> n.next
+      | _ -> n
+    
+
 let build_cycle =
 
   let rec do_rec idx es = match es with
@@ -234,7 +256,8 @@ let build_cycle =
   fun es ->
     let c = do_rec 0 es in
     set_detours c ;
-    remove_store c
+    let c = remove_store c in
+    remove_change c
 
 
 let find_node p n =
@@ -477,7 +500,7 @@ let set_same_loc st n0 =
             | E.Fr _|E.Rf _|E.RfStar _|E.Ws _
             | E.Hat|E.Rmw|E.Detour _|E.DetourWs _ -> true
             | E.Po _|E.Dp _|E.Fenced _ -> false
-            | E.Store -> assert false) n in
+            | E.Store|E.Leave|E.Back -> assert false) n in
         split_one_loc m
       with Exit -> Warn.fatal "Cannot set write values" in
     set_all_write_val nss ;
@@ -553,8 +576,9 @@ let extract_edges n =
       if m.next == n then []
       else do_rec m.next in
     let k = m.edge::k in
-    if m.store == nil then k
-    else m.store.edge::k in  
+    let k = if m.store != nil then  m.store.edge::k else k in
+    let k = if m.change != nil then  m.change.edge::k else k in
+    k in
   do_rec n
 
 let resolve_edges = function
@@ -587,6 +611,55 @@ let cons_not_nil k1 k2 = match k1 with
 | [] -> k2
 | _::_ -> k1::k2
 
+
+let find_proc t  n = 
+  let rec array_rec j =
+    assert (j < Array.length t) ;
+    list_rec j t.(j)
+
+  and list_rec j = function
+    | [] -> array_rec (j+1)
+    | m::ms -> if n == m then j else list_rec j ms in
+  array_rec 0
+
+let find_back n =
+
+  let rec find_rec k m =
+    let c = m.change in
+    if c == nil then find_next k m
+    else match c.edge.E.edge with
+    | E.Back ->
+        if k = 0 then m
+        else find_next (k-1) m
+    | E.Leave ->
+        find_next (k+1) m
+    | _ -> assert false
+
+  and find_next k m =
+    if m.next == n then Warn.fatal "Non-matching Leave/Back"
+    else find_rec k m.next in
+  find_rec 0 n
+
+      
+let merge_changes n nss =
+  let t = Array.of_list nss in
+  let rec do_rec m =
+    if m.change == nil then do_next m
+    else match m.change.edge.E.edge with
+    | E.Leave ->
+        let i = find_proc t m in
+        let back = find_back m.next in
+        let j = find_proc t back.next in
+        t.(i) <- t.(i) @ t.(j) ;
+        t.(j) <- [] ;
+        do_next m
+    | _ -> do_next m
+
+  and do_next m = if m.next != n then do_rec m.next in
+
+  do_rec n ;
+  List.filter Misc.consp (Array.to_list t)
+          
 let split_procs n =
   let n =
     try find_start_proc n
@@ -605,6 +678,7 @@ let split_procs n =
       [m],cons_not_nil k1 k2 in
   let k1,k2 = do_rec n in
   let nss = cons_not_nil k1 k2 in
+  let nss = merge_changes n nss in
   let rec num_rec k = function
     | [] -> ()
     | ns::nss ->

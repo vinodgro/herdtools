@@ -166,8 +166,8 @@ let pretty_state pref mode with_noccs st =
   Buffer.contents buff
 
 (* Redump log *)
-let dump_state chan st =
-  fprintf chan  "%-8s:>" (Int64.to_string st.p_noccs) ;
+let dump_state chan is_litmus st =
+  if is_litmus then fprintf chan  "%-8s:>" (Int64.to_string st.p_noccs) ;
   hashconsed_iter
     (fun p ->
       let loc,v = HashedPair.as_t p in
@@ -175,9 +175,14 @@ let dump_state chan st =
     st.p_st ;
   output_char chan '\n'
 
-let dump_states chan t =
-  fprintf chan "Histogram (%i states)\n"  (List.length t.p_sts) ;
-  List.iter (dump_state chan) t.p_sts  
+let dump_states_cond chan is_litmus t =
+  if is_litmus then
+    fprintf chan "Histogram (%i states)\n"  (List.length t.p_sts)
+  else
+    fprintf chan "States %i\n"  (List.length t.p_sts) ;
+  List.iter (dump_state chan is_litmus) t.p_sts  
+
+let dump_states chan t = dump_states_cond chan true t
 
 let no_states sts = match sts.p_sts with
   | [] -> true
@@ -327,7 +332,7 @@ let witness_again c sts = match c with
 | Some c ->
     LC.witness c (List.map (fun {p_st=st; p_noccs=c} -> st,c) sts.p_sts)
 
-let filter tbl t =
+let filter inv tbl t =
   let open ConstrGen in
   let xs = t.tests in
   let sz_xs = Array.length xs in
@@ -347,7 +352,9 @@ let filter tbl t =
       | NotExistsState p -> ConstrGen.Not p in
       let sts =
         List.filter
-          (fun st -> LC.check_prop p st.p_st)
+          (fun st ->
+            let b = LC.check_prop p st.p_st in
+            if inv then not b else b)
           x.states.p_sts in
       let sts =
         { p_nouts = comp_nouts sts ;
