@@ -27,6 +27,8 @@ type 'prop constr =
   | ExistsState of 'prop
   | NotExistsState of 'prop
 
+type  ('loc,'v) cond = ('loc,'v) prop constr
+
 let is_existential p = match p with
 | ExistsState _ -> true
 | ForallStates _

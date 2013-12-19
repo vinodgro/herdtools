@@ -319,26 +319,6 @@ end = struct
   | ExistsState _ -> v
   | NotExistsState _ -> "!" ^ v
 
-  module DC =
-    CompCond.Make
-      (struct
-        type v = Constant.v
-        let dump_v = function
-          | Concrete i -> sprintf "%i" i
-          | Symbolic s -> dump_val_param s
-
-        type loc = A.location
-        let dump_loc = dump_loc_param
-      end)
-
-
-  let dump_condition dump_loc c =
-    let dump_def p = O.fi "cond = %a;" DC.dump p in
-    match c with
-    | ForallStates p
-    | ExistsState p
-    | NotExistsState p ->
-        dump_def p
 
   let dump_header test =
     O.o "/* Parameters */" ;
@@ -806,33 +786,35 @@ let dump_read_timebase () =
           do_rem k n rem in
     do_rec [] 0
 
+
+  module DC =
+    CompCond.Make(O)
+      (struct
+        module C = C
+        module V = struct
+          type t = Constant.v
+          let compare = A.V.compare
+          let dump = function
+            | Concrete i -> sprintf "%i" i
+            | Symbolic s -> dump_val_param s
+        end
+        module Loc = struct
+          type t = A.location
+          let compare = A.location_compare
+          let dump = dump_loc_param
+        end
+      end)
+
+
   let dump_cond_fun env test =
     let cond = test.T.condition in
-    let locs = C.locations cond in
-    let plocs =
-      List.map
-        (fun loc ->
-          let t = find_type loc env in
-          sprintf "%s %s" (dump_type t) (dump_loc_param loc))
-        locs in
-    let vals = C.location_values cond in
-    let pvals =
-      List.map (fun loc -> sprintf "void *%s" (dump_val_param loc)) vals in
-    O.f "inline static int final_cond(%s) {"
-      (String.concat "," (plocs@pvals)) ;
-    O.oi "int cond;" ;
-    dump_condition dump_loc_param cond ;
-    O.oi "return cond;" ;
-    O.o "}" ;
-    O.o ""
+    let find_type loc =
+      let t = find_type loc env in
+      dump_type t in
+    DC.fundef find_type cond
 
   let dump_cond_fun_call test dump_loc dump_val =
-    let cond = test.T.condition in
-    let locs = C.locations cond in
-    let plocs = List.map dump_loc locs in
-    let vals = C.location_values cond in
-    let pvals = List.map dump_val vals in
-    sprintf "final_cond(%s)" (String.concat "," (plocs@pvals))
+    DC.funcall (test.T.condition) dump_loc dump_val 
 
   let dump_defs_outs doc env test =
     (* If some of the output registers is of pointer type,

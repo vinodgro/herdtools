@@ -31,6 +31,8 @@ type 'prop constr =
   | ExistsState of 'prop
   | NotExistsState of 'prop
 
+type  ('loc,'v) cond = ('loc,'v) prop constr
+
 val is_existential : 'prop constr -> bool 
 val prop_of : 'prop constr -> 'prop
 
