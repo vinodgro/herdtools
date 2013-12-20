@@ -206,6 +206,10 @@ end = struct
             let utils =
               match utils with
               | [] ->
+                  let module O = struct
+                    include O
+                    let arch = A.arch
+                  end in
                   let module Obj = ObjUtil.Make(O)(Tar) in
                   Obj.dump ()
               | _ -> utils  in
@@ -243,7 +247,7 @@ end = struct
           let pp_global x = x
           let global_compare = String.compare
 
-          let comment = Obj.magic () (* Is it really used ? *)
+          let comment = A.I.comment
           let reg_class _ = assert false (* Unused *)
           let internal_init _ = assert false (* Unused *)
           let reg_to_string x = x
@@ -383,6 +387,10 @@ end = struct
             let utils =
               match utils with
               | [] ->
+                  let module O = struct
+                    include O
+                    let arch = A'.arch
+                  end in
                   let module Obj = ObjUtil.Make(O)(Tar) in
                   Obj.dump ()
               | _ -> utils  in
