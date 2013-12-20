@@ -27,7 +27,7 @@ install:
 	cp _aix_affinity.c _linux_affinity.c _affinity.h $(LIBDIR)
 	cp _ppc_barrier.c  _x86_barrier.c  _arm_barrier.c $(LIBDIR)
 	cp _ppc_barrier_lab.c $(LIBDIR)
-	cp _show.awk _toh.sh $(LIBDIR)
+	cp _show.awk _showC.awk _toh.sh $(LIBDIR)
 	cp $(CFG) $(LIBDIR)
 
 luc: all install
