@@ -1,5 +1,4 @@
-Model
-(* Model for ARM, ie with po-loc ommited from ppo *)
+Power
 
 (* Uniproc *)
 acyclic po-loc | rf | fr | co as uniproc
@@ -18,7 +17,7 @@ let addrpo = addr;po
 (* Initial value *)
 let ci0 = ctrlisync | detour
 let ii0 = dd | rfi | rdw
-let cc0 = dd | ctrl | addrpo (* po-loc deleted *)
+let cc0 = dd | po-loc | ctrl | addrpo
 let ic0 = 0
 
 (* Fixpoint from i -> c in instructions and transitivity *)
@@ -34,14 +33,13 @@ let ppo = RW(ic) | RR(ii)
 (* fences *)
 (**********)
 
-(* ARM *)
-let dmb.st=WW(dmb.st)
-let dsb.st=WW(dsb.st)
-show dmb dsb dmb.st dsb.st
+(* Power *)
+let lwsync = RM(lwsync)|WW(lwsync)
+let eieio = WW(eieio)
+show sync lwsync eieio
 
-(* Common, all arm barriers are strong *)
-let strong = dmb|dsb|dmb.st|dsb.st
-let light = 0
+let strong = sync
+let light = lwsync|eieio
 
 let fence = strong|light
 

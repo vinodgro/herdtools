@@ -5,7 +5,7 @@ J=-j 2
 OCB=ocamlbuild -cflags -w,A-4-9-29-45 -classic-display $(J)
 EXTRAPROGS=
 PROGS=herd.byte
-MDL=x86tso.cat herd.cat ppc.cat sc.cat LL.cat arm.cat atom.cat pretty.cat fulleieio.cat armllh.cat uniproc.cat minimal.cat qualcomm.cat
+MDL=x86tso.cat herd.cat ppc.cat sc.cat LL.cat arm.cat power.cat atom.cat pretty.cat fulleieio.cat armllh.cat uniproc.cat minimal.cat qualcomm.cat
 CFG=apoil.cfg enslip.cfg web.cfg doc.cfg
 DOT=test7.dot doc.dot
 
