@@ -44,3 +44,15 @@ cleandir ()
     erasesrc $f
   done && make clean
 }
+
+extract ()
+{
+  FROM=$1
+  FROMD=$(dirname $FROM)
+  FROMB=$(basename $FROM)
+  TO=$2
+  TOD=$(dirname $TO)
+  TOB=$(basename $TO)
+  ( cd $DIR/../$FROMD && git archive --format=tar HEAD $FROMB ) | \
+  ( cd $EXPORT && mkdir -p $TOD && cd $TOD && tar xmf - && ( mv $FROMB $TOB || true ))
+}
