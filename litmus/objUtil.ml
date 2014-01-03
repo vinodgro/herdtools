@@ -64,6 +64,7 @@ module Make(O:Config)(Tar:Tar.S) =
       | Driver.Shell -> fnames
       | Driver.C|Driver.XCode -> cpy fnames "toh" ".sh" in
       let fnames = match O.arch with
+        | `Cpp
         | `C ->
             cpy' fnames "showC" "show" ".awk"
         | `X86 | `ARM | `PPC | `PPCGen ->

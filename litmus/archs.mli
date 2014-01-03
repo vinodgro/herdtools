@@ -25,7 +25,7 @@ module System : sig
   val pp : t -> string
 end
 
-type t = [ System.t | `C ]
+type t = [ System.t | `C | `Cpp ]
 
 val tags : string list
 val parse : string -> t option

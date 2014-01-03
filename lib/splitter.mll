@@ -57,7 +57,7 @@ rule main_pos = parse
      main start lexbuf
     }
 and main start = parse
-| blank* (alpha|digit)+ as arch
+| blank* (alpha|digit|'+')+ as arch
   blank+
   (testname as tname)
   blank*

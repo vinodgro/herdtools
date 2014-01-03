@@ -43,9 +43,9 @@ module System = struct
   | `ARM -> "ARM"
 end
 
-type t = [ System.t | `C ]
+type t = [ System.t | `C | `Cpp ]
 
-let tags = ["X86";"PPC";"ARM";"PPCGen";"C"]
+let tags = ["X86";"PPC";"ARM";"PPCGen";"C";"C++"]
 
 let parse s = match s with
 | "X86" -> Some `X86
@@ -53,6 +53,7 @@ let parse s = match s with
 | "PPCGen" -> Some `PPCGen
 | "ARM" -> Some `ARM
 | "C" -> Some `C
+| "C++" -> Some `Cpp
 | _ -> None
 
 let lex s = match parse s with
@@ -66,6 +67,7 @@ let pp a = match a with
 | `PPCGen -> "PPCGen"
 | `ARM -> "ARM"
 | `C -> "C"
+| `Cpp -> "C++"
 
 let arm = `ARM
 let ppc = `PPC

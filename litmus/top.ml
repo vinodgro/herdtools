@@ -43,6 +43,7 @@ module type CommonConfig = sig
   val driver : Driver.t
   val crossrun : Crossrun.t
   val gcc : string
+  val cxx : string
   val xy : bool
   val pldw : bool
   val morearch : MoreArch.t
@@ -449,12 +450,20 @@ end = struct
       end in
       let get_cfg = function
       | `PPC, _ | `PPCGen, _ | `X86, _ | `ARM, _ -> Some (module OX : Config)
+      | `Cpp, Some given_carch ->
+          let module OX = struct
+            include OX
+            let gcc = cxx
+            let carch = lazy given_carch
+          end in
+          Some (module OX : Config)
       | `C, Some given_carch ->
           let module OX = struct
             include OX
             let carch = lazy given_carch
           end in
           Some (module OX : Config)
+      | `Cpp, None
       | `C, None -> None
       in
       match get_cfg (arch, OT.carch) with
@@ -462,6 +471,7 @@ end = struct
           let module Cfg = (val cfg : Config) in
           let get_lang = function
           | `PPC | `PPCGen | `X86 | `ARM -> (module ASMLang.Make : Language.S)
+          | `Cpp
           | `C -> (module CLang.Make : Language.S)
           in
           let module Lang = (val (get_lang arch) : Language.S) in
@@ -518,6 +528,7 @@ end = struct
               let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
               X.compile hint avoid_cycle fst cycles hash_env
                 name in_chan out_chan splitted
+          | `Cpp
           | `C ->
               let module Arch' = (val (match Lazy.force Cfg.carch with
                 | `PPC -> (module PPCArch.Make(OC)(V) : Arch.S)

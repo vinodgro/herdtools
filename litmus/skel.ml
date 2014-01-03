@@ -117,6 +117,7 @@ end = struct
   | `ARM -> false
   | `PPCGen
   | `PPC|`X86 -> true
+  | `Cpp
   | `C -> have_timebase (Lazy.force Cfg.carch :> Archs.t)
 
   let have_timebase = have_timebase A.arch
@@ -511,6 +512,7 @@ let dump_read_timebase () =
        O.oi "return r;" ;
        O.o "}"
    | `ARM -> assert false
+   | `Cpp
    | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
     in
     aux A.arch
@@ -532,6 +534,7 @@ let dump_read_timebase () =
           | _ -> ()
           end ;
           sprintf "_arm_barrier%s.c" lab_ext
+      | `Cpp
       | `C -> fname (Lazy.force Cfg.carch :> Archs.t)
     in
     let fname = fname A.arch in
@@ -607,6 +610,7 @@ let dump_read_timebase () =
         O.o ": : [p] \"r\" (p) : \"memory\");"
     | `ARM -> (* No cache flush for ARM? *)
         ()
+    | `Cpp
     | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
     in
     aux A.arch ;
@@ -625,6 +629,7 @@ let dump_read_timebase () =
     | `ARM ->
         asm "pld [%[p]]" ;
         O.o ": : [p] \"r\" (p) : \"memory\");"
+    | `Cpp
     | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
     in
     aux A.arch ;
@@ -647,6 +652,7 @@ let dump_read_timebase () =
         O.o "asm __volatile__ (" ;
         asm (if Cfg.pldw then "pldw [%[p]]" else "pld [%[p]]") ;
         O.o ": : [p] \"r\" (p) : \"memory\");"
+    | `Cpp
     | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
     in
     aux A.arch ;
@@ -701,6 +707,7 @@ let dump_read_timebase () =
           | MoreArch.ARMv6K -> ""
           | _ -> inst
           end
+      | `Cpp
       | `C -> aux inst (Lazy.force Cfg.carch :> Archs.t)
     in
     dumb_one_mbar "mbar" (aux "dsb" A.arch) ;
@@ -1592,6 +1599,7 @@ let dump_read_timebase () =
             | `ARM ->
                 O.fx iloop "asm __volatile__ (\"isb\" : : : \"memory\");"
             | `X86 -> ()
+            | `Cpp
             | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
             in
             aux A.arch

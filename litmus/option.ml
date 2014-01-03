@@ -108,6 +108,7 @@ let smt = ref 2
 let prealloc = ref false
 let speedcheck = ref Speedcheck.NoSpeed
 let gcc = ref "gcc"
+let cxx = ref "g++"
 let linkopt = ref ""
 let targetos = ref TargetOS.Linux
 let gas = ref None
@@ -152,6 +153,8 @@ let armopt =
   { delay = 1024; gccopts = "-O2"; word = Word.WXX; }
 let copt =
   { delay = 2048; gccopts = ""; word = Word.WXX; }
+let cppopt =
+  { delay = 2048; gccopts = ""; word = Word.WXX; }
 
 let get_default arch = match arch with
 | `X86 -> x86opt
@@ -159,6 +162,7 @@ let get_default arch = match arch with
 | `PPC -> ppcopt
 | `ARM -> armopt
 | `C -> copt
+| `Cpp -> cppopt
 
 let replace_config f =
   let g = !mod_config in

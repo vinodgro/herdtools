@@ -57,11 +57,12 @@ let opts =
    "-delay", Arg.Int set_delay,
    begin let get_delay a = Option.get_delay (Option.get_default a) in
    sprintf
-     "set timebase delay (default X86=%i, PPC=%i, ARM=%i, C=%i)"
+     "set timebase delay (default X86=%i, PPC=%i, ARM=%i, C=%i, C++=%i)"
      (get_delay `X86)
      (get_delay `PPC)
      (get_delay `ARM)
      (get_delay `C)
+     (get_delay `Cpp)
    end ;
    argbool "-vb" Option.verbose_barrier
      "show time of loop synchronisation" ;
@@ -112,13 +113,15 @@ let opts =
    "-ccopts", Arg.String set_gccopts,
    begin let get_gccopts a = Option.get_gccopts (Option.get_default a) in
    sprintf
-     "<flags> set gcc compilation flags (default X86=\"%s\", PPC=\"%s\", ARM=\"%s\", C=\"%s\")"
+     "<flags> set gcc compilation flags (default X86=\"%s\", PPC=\"%s\", ARM=\"%s\", C=\"%s\", C++=\"%s\")"
      (get_gccopts `X86)
      (get_gccopts `PPC)
      (get_gccopts `ARM)
      (get_gccopts `C)
+     (get_gccopts `Cpp)
    end ;
    argstring "-gcc" Option.gcc "<name> name of gcc" ;
+   argstring "-cxx" Option.cxx "<name> name of the C++ compiler" ;
    argstring "-linkopt" Option.linkopt "<flags> set gcc link option(s)" ;
    "-gas",
    Arg.Bool set_gas,
@@ -130,11 +133,12 @@ let opts =
    begin let module P = ParseTag.Make(Word) in
    P.parse_withfun "-ws" set_word
      (let get_word a = Option.get_word (Option.get_default a) in
-      sprintf "word_size (default X86=%s, PPC=%s, ARM=%s, C=%s)"
+      sprintf "word_size (default X86=%s, PPC=%s, ARM=%s, C=%s, C++=%s)"
         (Word.pp (get_word `X86))
         (Word.pp (get_word `PPC))
         (Word.pp (get_word `ARM))
         (Word.pp (get_word `C))
+        (Word.pp (get_word `Cpp))
      )
      None
    end ;
@@ -238,6 +242,7 @@ let () =
       let xy = !xy
       let pldw = !pldw
       let gcc = !gcc
+      let cxx = !cxx
       let crossrun = !crossrun
       let driver = !driver
       let sleep = !sleep

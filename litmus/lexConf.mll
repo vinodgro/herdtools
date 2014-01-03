@@ -84,6 +84,8 @@ rule main = parse
     { set_gccopts arg ; main lexbuf }
 | "gcc" arg
     { set_string gcc arg ; main lexbuf }
+| "cxx" arg
+    { set_string cxx arg ; main lexbuf }
 | "linkopt" arg
     { set_string linkopt arg ; main lexbuf }
 | "gas" arg

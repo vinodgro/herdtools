@@ -68,6 +68,7 @@ val smt : int ref
 val prealloc : bool ref
 val speedcheck : Speedcheck.t ref
 val gcc : string ref
+val cxx : string ref
 val linkopt : string ref
 val targetos : TargetOS.t ref
 val gas : bool option ref
