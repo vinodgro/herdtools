@@ -106,9 +106,10 @@ module StringMap = MyMap.Make(String)
   let show_in_cond =
     if O.optcond then
       let valid_edge e = match e.C.E.edge with
-      | Rf _ | RfStar _| Fr _ | Ws _ | Hat|Detour _|DetourWs _ -> true
+      | Rf _ | RfStar _| Fr _ | Ws _ | Hat|Detour _|DetourWs _
+      | Back _|Leave _ -> true
       | Po _ | Fenced _ | Dp _|Rmw -> false
-      | Store| Leave | Back -> assert false in
+      | Store -> assert false in
       (fun n -> valid_edge n.C.C.prev.C.C.edge || valid_edge n.C.C.edge)
     else
       (fun _ -> true)
@@ -518,9 +519,9 @@ let io_of_detour _n = None
     List.map
       (fun ns ->
         match last_edge ns with
-        | Fr _ -> "Fr"
-        | Rf _|RfStar _ -> "Rf"
-        | Ws _ -> "Ws"
+        | Fr _|Leave CFr|Back CFr -> "Fr"
+        | Rf _|RfStar _|Leave CRf|Back CRf -> "Rf"
+        | Ws _|Leave CWs|Back CWs -> "Ws"
         | _ -> assert false)
       nss
 

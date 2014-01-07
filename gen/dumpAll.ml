@@ -128,6 +128,11 @@ module Make(Config:Config) (C:XXXCompile.S)
     | Same -> 's'
     | Diff -> 'd'
 
+  let sig_of_com = function
+    | CRf -> '1'
+    | CFr -> '2'
+    | CWs -> '3'
+
   let sig_of_tedge buff = function
     | Rf ie ->
         Buffer.add_char buff '1' ;
@@ -169,10 +174,12 @@ module Make(Config:Config) (C:XXXCompile.S)
         Buffer.add_char buff (sig_of_dir e)
     | Store ->
         Buffer.add_char buff 'D'
-    | Leave ->
-        Buffer.add_char buff 'E'
-    | Back ->
-        Buffer.add_char buff 'F'
+    | Leave c ->
+        Buffer.add_char buff 'E' ;
+        Buffer.add_char buff (sig_of_com c)
+    | Back c ->
+        Buffer.add_char buff 'F' ;
+        Buffer.add_char buff (sig_of_com c)
 
   let sig_of_atoms buff a1 a2 =
     Buffer.add_char buff

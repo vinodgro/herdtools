@@ -49,3 +49,8 @@ val fold_atom : (atom -> 'a -> 'a) -> 'a -> 'a
 type check =
   | Sc | Uni | Thin | Critical | Free | Ppo | Transitive | Total
 
+(* Com *)
+type com =  CRf | CFr | CWs
+
+val pp_com : com -> string
+val fold_com : (com -> 'a -> 'a) -> 'a -> 'a
