@@ -199,6 +199,9 @@ let () =
       (match Co.choice  with Uni -> true | _ -> false)
     let sta = !Config.sta
     let unrollatomic = !Config.unrollatomic
+    let allow_back = match !Config.mode with
+    | Sc|Critical|Thin -> false
+    | _ -> true
   end in
   let f = match !Config.arch with
   | PPC ->

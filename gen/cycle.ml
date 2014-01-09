@@ -74,6 +74,8 @@ module type Config = sig
   val coherence_decreasing : bool
   val same_loc : bool
   val verbose : int
+(* allow threads s.t start -> end is against com+ *)
+  val allow_back : bool
 end
 
 module Make (O:Config) (E:Edge.S) :
@@ -642,35 +644,50 @@ let merge_changes n nss =
 
   do_rec n ;
   List.filter Misc.consp (Array.to_list t)
-          
-let split_procs n =
-  let n =
-    try find_start_proc n
-    with Exit -> Warn.fatal "Cannot split in procs" in
-  let rec do_rec m =
-    let k1,k2 =
-      if m.next == n then begin
-        if same_proc m.edge then
-          Warn.fatal "%s at proc end" (debug_edge m.edge)
-        else
-          [],[]
-      end else do_rec m.next in
-    if same_proc m.edge then
-      m::k1,k2
-    else
-      [m],cons_not_nil k1 k2 in
-  let k1,k2 = do_rec n in
-  let nss = cons_not_nil k1 k2 in
-  let nss = merge_changes n nss in
-  let rec num_rec k = function
-    | [] -> ()
-    | ns::nss ->
-        List.iter
-          (fun n -> n.evt <- { n.evt with proc = k; })
-          ns ;
-        num_rec (k+1) nss in
-  num_rec 0 nss ;
-  nss
+
+  let value_before v1 v2 =
+    if O.coherence_decreasing then v1 > v2 else v1 < v2
+
+
+  let proc_back ns = match ns with
+  | []|[_] -> false
+  | fst::rem ->
+      let lst = Misc.last rem in
+      let e1 = fst.evt and e2 = lst.evt in
+      e1.loc = e2.loc && value_before e2 e1
+
+  let split_procs n =
+    let n =
+      try find_start_proc n
+      with Exit -> Warn.fatal "Cannot split in procs" in
+    let rec do_rec m =
+      let k1,k2 =
+        if m.next == n then begin
+          if same_proc m.edge then
+            Warn.fatal "%s at proc end" (debug_edge m.edge)
+          else
+            [],[]
+        end else do_rec m.next in
+      if same_proc m.edge then
+        m::k1,k2
+      else
+        [m],cons_not_nil k1 k2 in
+    let k1,k2 = do_rec n in
+    let nss = cons_not_nil k1 k2 in
+    let nss = merge_changes n nss in
+    let rec num_rec k = function
+      | [] -> ()
+      | ns::nss ->
+          List.iter
+            (fun n -> n.evt <- { n.evt with proc = k; })
+            ns ;
+          num_rec (k+1) nss in
+    num_rec 0 nss ;
+    if
+      not O.allow_back &&
+      List.exists proc_back nss
+    then Warn.fatal "Forbidden po vs. com" ;
+    nss
 
 
 (****************************)

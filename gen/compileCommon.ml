@@ -16,6 +16,7 @@ module type Config = sig
   val same_loc : bool
   val sta : bool
   val unrollatomic : int option
+  val allow_back : bool
 end
 
 module type S = sig

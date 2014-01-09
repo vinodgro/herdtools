@@ -8,6 +8,7 @@
 (*  under the terms of the Lesser GNU General Public License.        *)
 (*********************************************************************)
 open Code
+open Printf
 
 
 exception CannotNormalise
@@ -27,27 +28,88 @@ module Make : functor (C:Config) -> functor (E:Edge.S) ->
   end
     =  functor (C:Config) -> functor (E : Edge.S) ->
   struct
+
+    let debug = true
+
 (* Cycles of edges *)
     module CE = struct
       type t =
           { edge : E.edge ; mutable dir : dir ;
-            mutable next : t ; mutable    prev : t; }
+            mutable next : t ; mutable prev : t;
+            mutable matches : t ; }
 
       let e0 = E.parse_edge "Rfi"
 
       let rec nil =
-        { edge = e0; dir=R ;  next = nil ; prev = nil ; }
+        { edge = e0; dir=R ;  next = nil ; prev = nil ; matches = nil ; }
+
+
+      let map f n =
+        let rec do_rec m =
+          let y = f m in
+          let m = m.next in
+          if m == n then [y]
+          else y::do_rec m in
+        do_rec n
+
+      let _edges n = map (fun n -> n.edge) n
+
+      let  _pp n =
+        let xs = map (fun n -> E.pp_edge n.edge) n in
+        String.concat " " xs
+
+      let proc_list (e,o) =
+        let rec do_rec m =
+          if m == o then [o]
+          else m::do_rec m.next in
+        do_rec e
+
+          
+      let _pp_proc c =
+        let ns = proc_list c in
+        let xs = List.map (fun n -> E.pp_edge n.edge) ns in
+        String.concat " " xs
 
       let dir_src e = match E.dir_src e with
       | Dir d -> d
       | Irr -> Warn.fatal "Unresolved direction"
 
+      let find_back n =
 
+        let rec find_rec k m = match m.edge.E.edge with
+        | E.Back _ ->
+            if k = 0 then m
+            else find_next (k-1) m
+        | E.Leave _ ->
+            find_next (k+1) m
+        | _ -> find_next k m
+
+        and find_next k m =
+          (* Cycle is not well formed anyway *)
+          if m.next == n then raise CannotNormalise
+          else find_rec k m.next in
+        find_rec 0 n
+
+      let set_matches n =
+        let rec do_rec m = match m.edge.E.edge with
+        | E.Leave _ ->
+            eprintf "LEAVE [%s]\n" (_pp m);
+            let matches = find_back m.next in
+            eprintf "BACK [%s]\n" (_pp matches);
+            m.matches <- matches ;
+            matches.matches <- m ;
+            do_next m
+        | _ -> do_next m
+        and do_next m = if m.next != n then do_rec m.next in
+        do_rec n
+          
       let mk_cycle es =
         let ms =
           List.map
             (fun e ->
-              { edge=e; dir=dir_src e;next=nil; prev=nil;}) es in
+              { edge=e; dir=dir_src e;
+                next=nil; prev=nil; matches=nil; })
+            es in
 
         let patch = function
           | [] -> assert false
@@ -75,12 +137,19 @@ module Make : functor (C:Config) -> functor (E:Edge.S) ->
 
         let r = patch ms in
         remove_store_dir r ;
+        set_matches r ;
+        if debug then eprintf "CE.cycle returned [%s]\n%!" (_pp r) ;
         r
 
 
 (* Notice, do not halt on stores... *)
-      let same_proc e = try E.get_ie e = Int with E.IsStore _ -> assert false
-      let diff_proc e = try E.get_ie e = Ext with E.IsStore _ -> assert false
+
+      let _same_proc e = try E.get_ie e = Int with E.IsStore _ -> assert false
+      let _diff_proc e = try E.get_ie e = Ext with E.IsStore _ -> assert false
+
+      let ext_com e = match e.E.edge with
+      | E.Rf Ext|E.Fr Ext|E.Ws Ext -> true
+      | _ -> false
 
       exception NotFound
 
@@ -93,39 +162,95 @@ module Make : functor (C:Config) -> functor (E:Edge.S) ->
             else do_rec m in
         do_rec n
 
-      let map f n =
+(* Find skipping Leave/Back *)
+      let find_node_out p n =
         let rec do_rec m =
-          let y = f m in
-          let m = m.next in
-          if m == n then [y]
-          else y::do_rec m in
+          if debug then eprintf "FIND NODE OUT [%s]\n" (_pp m) ;
+          if p m then m
+          else do_next m
+
+        and do_next m =
+          let m = match m.edge.E.edge with
+          | E.Leave _ -> m.matches.next
+          | _ -> m.next in
+          if m == n then raise NotFound
+          else do_rec m in
+        
         do_rec n
+        
+      let _find_edge p = find_node (fun n -> p n.edge)
 
-      let _edges n = map (fun n -> n.edge) n
+      let find_edge_out p = find_node_out (fun n -> p n.edge)
 
-      let _pp n =
-        let xs = map (fun n -> E.pp_edge n.edge) n in
-        String.concat " " xs
+(*  EXP *)
+(*
+      let find_back =
+        find_edge
+          (fun e -> match e.E.edge with E.Back _ -> true | _ -> false)
 
-      let find_edge p = find_node (fun n -> p n.edge)
+      let find_leave =
+        find_edge
+          (fun e -> match e.E.edge with E.Leave _ -> true | _ -> false)
+*)
+(* Find node at outermost level *)
+      let find_out n =
+        let rec do_rec (n0,_ as c0) d m =
+          if debug then
+            eprintf "OUTER %i [%s]\n%!" n0 (_pp m) ; 
+          match m.edge.E.edge with
+          | E.Leave _ -> do_next c0 (d+1) m
+          | E.Back _ ->
+              let c0 =
+                let d = d-1 in
+                let d0,n0 = c0 in
+                if d < d0 then begin 
+                  if debug then
+                    eprintf "CHANGE: %s -> %s\n%!"
+                      (E.pp_edge n0.edge) (E.pp_edge m.next.edge) ;
+                  (d,m.next)
+                end else c0 in
+              do_next c0 (d-1) m
+          | _ -> do_next c0 d m
+        and do_next c d m =
+          if m.next == n then snd c
+          else do_rec c d m.next in
+        do_rec (0,n) 0 n
 
       let find_start_proc n =
+        if debug then eprintf "Start proc [%s]\n%!" (_pp n) ;
+        let n = find_out n in
+        if debug then eprintf "Found out [%s]\n%!" (_pp n) ;
         if
-          diff_proc n.prev.edge
+          ext_com n.prev.edge
         then n
-        else    
-          let n = find_edge diff_proc n in
-          try find_edge same_proc n
-          with NotFound -> n
+        else
+          try
+            let n = find_edge_out ext_com n in n.next
+          with NotFound ->
+            (* "No external communication in cycle" *)
+               raise CannotNormalise
 
       let split_procs n =
-        let n = find_start_proc n in
-        let rec do_rec m =
-          let e = m in  (* n is the entry of a proc *)
-          let o = find_edge diff_proc m in
-          if o.next == n then [(e,o)]
-          else (e,o)::do_rec o.next in
-        do_rec n
+        try
+          let n = find_start_proc n in   (* n is the entry of a proc *)
+          assert (ext_com n.prev.edge) ; 
+          let rec do_rec m =            
+            if debug then eprintf "REC: '%s'\n" (_pp m) ;
+            let e = m in
+            let o = find_edge_out ext_com m in
+            if o.next == n then [(e,o)]
+            else (e,o)::do_rec o.next in
+          let ns = do_rec n in
+          if debug then begin
+            if debug then eprintf "Split -> %!" ;
+            eprintf "[%i]\n" (List.length ns) ;
+            List.iter (fun n -> eprintf "  %s\n" (_pp_proc n)) ns
+          end ;
+          ns
+        with e ->
+          if debug then
+            eprintf "Exc in split_procs: '%s'\n" (Printexc.to_string e) ;
+          raise e
 
       let compare_edges e1 e2 =
         let open E in
@@ -313,7 +438,7 @@ module Make : functor (C:Config) -> functor (E:Edge.S) ->
       let ps = CP.mk_cycle cy in
       let key = CP.pp ps  in
       pp_key key
-      
+        
     let normalise_family cy =
       try
         let ps = CP.mk_cycle cy in
