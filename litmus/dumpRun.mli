@@ -18,6 +18,7 @@ open Answer
 
 module type Config = sig
   val gcc : string
+  val cxx : string
   val index : string option
   val no : string option
   val hint : string option
@@ -41,4 +42,4 @@ end
 
 module Make :
   functor (O:Config) -> functor(Tar : Tar.S) -> functor (CT : OneTest) ->
-  sig val from_files : string list -> unit end   
+  sig val from_files : string list -> unit end

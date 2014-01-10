@@ -19,6 +19,7 @@ open Printf
 
 module type Config = sig
   val gcc : string
+  val cxx : string
   val index : string option
   val no : string option
   val hint : string option
@@ -107,12 +108,13 @@ end = struct
     let module RU = RunUtils.Make(O) in
     let gcc_opts = RU.get_gcc_opts in
     fprintf chan "GCC=%s\n" Cfg.gcc ;
+    fprintf chan "CXX=%s\n" Cfg.cxx ;
     fprintf chan "GCCOPTS=%s\n" gcc_opts ;
     let link_opts = RU.get_link_opts in
     fprintf chan "LINKOPTS=%s\n" link_opts ;
     fprintf chan "SRC=\\\n" ;
     List.iter
-      (fun src -> fprintf chan " %s\\\n" src)
+      (fun (src, _) -> fprintf chan " %s\\\n" src)
       (List.rev sources) ;
     fprintf chan "\n" ;
     ()
@@ -158,12 +160,12 @@ let run_tests names out_chan =
       (fun name (_,docs,srcs,fst,cycles,hash_env) ->
         match CT.from_file hint avoid_cycles fst cycles hash_env
             name out_chan with
-        | Completed (a,doc,src,fst,cycles,hash_env) ->
+        | Completed (a,doc,src,fst,cycles,hash_env,cfg) ->
             begin match exp with
             | None -> ()
             | Some exp -> fprintf exp "%s\n" name
             end ;
-            a,(doc::docs),(src::srcs),fst,cycles,hash_env
+            a,(doc::docs),((src, cfg)::srcs),fst,cycles,hash_env
         | Absent a -> a,docs,srcs,fst,cycles,hash_env
         | Interrupted (a,e) ->
             let msg =  match e with
@@ -252,7 +254,7 @@ let dump_shell names =
 
 
 let dump_shell_cont arch sources utils =
-  let sources = List.map Filename.basename  sources in
+  let sources = List.map (fun (x, y) -> Filename.basename x, y)  sources in
 (* Shell script for sequential compilation *)
   let module O = struct
     include Cfg
@@ -263,6 +265,7 @@ let dump_shell_cont arch sources utils =
     (fun chan ->
       let gcc_opts = RU.get_gcc_opts in
       fprintf chan "GCC=%s\n" Cfg.gcc ;
+      fprintf chan "CXX=%s\n" Cfg.cxx ;
       fprintf chan "GCCOPTS=\"%s\"\n" gcc_opts ;
       let link_opts = RU.get_link_opts  in
       fprintf chan "LINKOPTS=\"%s\"\n" link_opts ;
@@ -282,22 +285,26 @@ let dump_shell_cont arch sources utils =
             else k) utils [] in
       let utils_objs = String.concat " " utils_objs in
       List.iter
-        (fun src ->
+        (fun (src, cfg) ->
+          let compiler = match cfg#compiler with
+            | `CC -> "$GCC"
+            | `CXX -> "$CXX"
+          in
           let exe = Filename.chop_extension src ^ ".exe" in
 (* No more moderate parallelism [blocks on abducens, sh bug ?] *)
           fprintf chan
-            "$GCC $GCCOPTS $LINKOPTS -o %s %s %s\n" exe utils_objs src ;
+            "%s $GCCOPTS $LINKOPTS -o %s %s %s\n" compiler exe utils_objs src ;
           let srcS = Filename.chop_extension src ^ ".s" in
           let srcT = Filename.chop_extension src ^ ".t" in
-          fprintf chan "$GCC $GCCOPTS -S %s && awk -f show.awk %s > %s && /bin/rm %s\n"
-            src srcS srcT srcS ;
+          fprintf chan "%s $GCCOPTS -S %s && awk -f show.awk %s > %s && /bin/rm %s\n"
+            compiler src srcS srcT srcS ;
           ())
         (List.rev sources))
     (Tar.outname (MyName.outname "comp" ".sh")) ;
 (* Add a small README file *)
   Misc.output_protect
     (fun chan ->
-      GD.gen_readme_src chan arch sources)
+      GD.gen_readme_src chan arch (List.map fst sources))
     (Tar.outname (MyName.outname "README" ".txt")) ;
 (* Makefile for parallel compilation *)
   Misc.output_protect
@@ -317,14 +324,24 @@ let dump_shell_cont arch sources utils =
       let src_ext = match Cfg.targetos with
       | TargetOS.Mac -> 'c'
       | TargetOS.Linux|TargetOS.AIX -> 's' in
-      fprintf chan "%%.exe:%%.%c $(UTILS)\n" src_ext ;
-      fprintf chan
-        "\t$(GCC) $(GCCOPTS) $(LINKOPTS) -o $@ $(UTILS) $<\n" ;
-      fprintf chan "\n" ;
-(* .s pattern rule *)
-      fprintf chan "%%.s:%%.c\n" ;
-      fprintf chan "\t$(GCC) $(GCCOPTS) -S $<\n" ;
-      fprintf chan "\n" ;
+      List.iter
+        (fun (name, cfg) ->
+           let name = Filename.chop_extension name in
+           let compiler = match cfg#compiler with
+             | `CC -> "$(GCC)"
+             | `CXX -> "$(CXX)"
+           in
+           fprintf chan "%s.exe:%s.%c $(UTILS)\n" name name src_ext ;
+           fprintf chan
+             "\t%s $(GCCOPTS) $(LINKOPTS) -o $@ $(UTILS) $<\n"
+             compiler;
+           fprintf chan "\n" ;
+           (* .s pattern rule *)
+           fprintf chan "%s.s:%s.c\n" name name;
+           fprintf chan "\t%s $(GCCOPTS) -S $<\n" compiler;
+           fprintf chan "\n" ;
+        )
+        sources;
 (* .t pattern rule *)
       fprintf chan "%%.t:%%.s\n" ;
       fprintf chan "\tawk -f show.awk $< > $@\n" ;
@@ -413,7 +430,7 @@ let dump_c xcode names =
 
 
 let dump_c_cont xcode arch sources utils =
-  let sources = List.map Filename.basename  sources in
+  let sources = List.map (fun (x, y) -> Filename.basename x, y) sources in
 (* Makefile *)
   Misc.output_protect
     (fun chan ->
@@ -448,9 +465,18 @@ let dump_c_cont xcode arch sources utils =
         fprintf chan "\n"
       end ;
 (* .s pattern rule *)
-      fprintf chan "%%.s:%%.c\n" ;
-      fprintf chan "\t$(GCC) -DASS $(GCCOPTS) -S $<\n" ;
-      fprintf chan "\n" ;
+      List.iter
+        (fun (name, cfg) ->
+           let name = Filename.chop_extension name in
+           let compiler = match cfg#compiler with
+             | `CC -> "$(GCC)"
+             | `CXX -> "$(CXX)"
+           in
+           fprintf chan "%s.s:%s.c\n" name name;
+           fprintf chan "\t$%s -DASS $(GCCOPTS) -S $<\n" compiler;
+           fprintf chan "\n"
+        )
+        sources;
 (* .t pattern rule *)
       fprintf chan "%%.t:%%.s\n" ;
       fprintf chan "\tawk -f show.awk $< > $@\n" ;
@@ -462,7 +488,7 @@ let dump_c_cont xcode arch sources utils =
 (* Dependencies *)
       if not xcode then begin
         List.iter
-          (fun src ->
+          (fun (src, _) ->
             let base = Filename.chop_extension src in
             fprintf chan "%s.o: %s.h %s.c\n" base base base)
           sources ;

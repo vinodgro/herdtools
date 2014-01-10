@@ -19,5 +19,6 @@ type answer =
       Archs.t * Name.t * string * string list
         * StringSet.t (* cycles *)
         * info StringMap.t (* name -> hash *)
+        * < compiler : [`CXX | `CC] >
   | Interrupted of Archs.t * exn
   | Absent of Archs.t

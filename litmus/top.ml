@@ -196,6 +196,7 @@ end = struct
             let allocated = Alloc.allocate_regs parsed in
             let compiled = Comp.compile allocated in
             let source = MyName.outname name ".c" in
+            let global_cfg = object method compiler = `CC end in
             let () =
               Misc.output_protect
                 (fun chan ->
@@ -215,7 +216,7 @@ end = struct
                   Obj.dump ()
               | _ -> utils  in
             R.run name out_chan doc allocated source ;
-            Completed (A.arch,doc,source,utils,cycles,hash_env)
+            Completed (A.arch,doc,source,utils,cycles,hash_env,global_cfg)
           end else begin
             W.warn
               "Test %s not performed" doc.Name.name ;
@@ -346,7 +347,7 @@ end = struct
 
       let compile
           hint avoid_cycle utils cycles hash_env
-          name in_chan out_chan splitted  =
+          name in_chan out_chan splitted arch =
         try begin
           let parsed = P.parse in_chan splitted in
           let doc = splitted.Splitter.name in
@@ -377,6 +378,12 @@ end = struct
                   allocated.MiscParser.prog; } in
             let compiled = Comp.compile allocated in
             let source = MyName.outname name ".c" in
+            let global_cfg = match arch with
+              | `Cpp ->
+                  object method compiler = `CXX end
+              | `C | `ARM | `PPC | `PPCGen | `X86 ->
+                  object method compiler = `CC end
+            in
             let () =
               Misc.output_protect
                 (fun chan ->
@@ -396,7 +403,7 @@ end = struct
                   Obj.dump ()
               | _ -> utils  in
             R.run name out_chan doc allocated source ;
-            Completed (A.arch,doc,source,utils,cycles,hash_env)
+            Completed (A.arch,doc,source,utils,cycles,hash_env,global_cfg)
           end else begin
             W.warn
               "Test %s not performed" doc.Name.name ;
@@ -528,8 +535,8 @@ end = struct
               let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
               X.compile hint avoid_cycle fst cycles hash_env
                 name in_chan out_chan splitted
-          | `Cpp
-          | `C ->
+          | (`Cpp as arch)
+          | (`C as arch) ->
               let module Arch' = (val (match Lazy.force Cfg.carch with
                 | `PPC -> (module PPCArch.Make(OC)(V) : Arch.S)
                 | `PPCGen -> (module PPCGenArch.Make(OC)(V) : Arch.S)
@@ -544,7 +551,7 @@ end = struct
               end in
               let module X = Make'(Cfg)(Arch')(LexParse)(Lang) in
               X.compile hint avoid_cycle fst cycles hash_env
-                name in_chan out_chan splitted
+                name in_chan out_chan splitted arch
           in
           aux arch
       | None ->
