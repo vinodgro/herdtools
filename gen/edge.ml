@@ -70,6 +70,9 @@ module type S = sig
 
 (* Internal (same proc) or external edge (different procs) *)
   val get_ie : edge -> ie
+(* More detailed *)
+  type full_ie = IE of ie | LeaveBack
+  val get_full_ie : edge -> full_ie
 
 (* Can e1 target event direction be the same as e2 source event? *)
   val can_precede : edge -> edge -> bool
@@ -319,11 +322,18 @@ let loc_sd e = match e.edge with
   | Store -> Same
   | Leave _|Back _ -> Same
 
-let get_ie e = match e.edge with
+  let get_ie e = match e.edge with
   | Po _|Dp _|Fenced _|Hat|Rmw|Detour _|DetourWs _ -> Int
   | Rf ie|RfStar ie|Fr ie|Ws ie -> ie
   | Store -> Int
   | Leave _|Back _ -> Ext
+
+  type full_ie = IE of ie | LeaveBack
+
+  let get_full_ie e = match e.edge with
+  | Leave _|Back _ -> LeaveBack
+  | _ -> IE (get_ie e)
+
 
   let can_precede_dirs  x y = match x.edge,y.edge with
   | (Store,Store) -> false

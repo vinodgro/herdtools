@@ -18,9 +18,9 @@ let hexa = ['0'-'9' 'a'-'f' 'A'-'F' ]
 let alpha = [ 'a'-'z' 'A'-'Z']
 let name = alpha (alpha|digit)*
 let blank = [' ' '\t']
-let testname  = (alpha|digit|'_' | '/' | '.' | '-')+
+let testname  = (alpha|digit|'_' | '/' | '.' | '-' | '+' | '[' | ']')+
 
-    rule main add env = parse
+rule main add env = parse
 | eof { env }
 |
   ("Cycle=" ([^'\n']+ as cycle) '\n') ?

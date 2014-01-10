@@ -29,7 +29,7 @@ module Make : functor (C:Config) -> functor (E:Edge.S) ->
     =  functor (C:Config) -> functor (E : Edge.S) ->
   struct
 
-    let debug = true
+    let debug = false
 
 (* Cycles of edges *)
     module CE = struct
@@ -93,9 +93,9 @@ module Make : functor (C:Config) -> functor (E:Edge.S) ->
       let set_matches n =
         let rec do_rec m = match m.edge.E.edge with
         | E.Leave _ ->
-            eprintf "LEAVE [%s]\n" (_pp m);
+(*            eprintf "LEAVE [%s]\n" (_pp m); *)
             let matches = find_back m.next in
-            eprintf "BACK [%s]\n" (_pp matches);
+(*            eprintf "BACK [%s]\n" (_pp matches); *)
             m.matches <- matches ;
             matches.matches <- m ;
             do_next m
