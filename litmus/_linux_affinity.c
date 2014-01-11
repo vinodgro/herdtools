@@ -49,24 +49,27 @@ cpus_t *read_affinity(void) {
    go to sleep... */
 
 
+
+const static tsc_t sec = (tsc_t)1000000 ;
+
 static void* loop(void *p)  {
-  int *q = p ;
-  intptr_t r1 = 0, r2=0 ;
-  for (int k = *q ; k >  0 ; k--) { r1 += k ; r2 += k ; }
-  return (void *)(r1-r2) ;
+  tsc_t *q = p ;
+  tsc_t max = *q ;
+  while (timeofday() < max) ;
+  return NULL ;
 }
 
-static void warm_up(int sz, int max) {
+
+static void warm_up(int sz, tsc_t d) {
     pthread_t th[sz];
-    for (int k = 0 ; k < sz ; k++) launch(&th[k], loop, &max) ;
+    d += timeofday() ;
+    for (int k = 0 ; k < sz ; k++) launch(&th[k], loop, &d) ;
     for (int k = 0 ; k < sz ; k++) join(&th[k]) ;
 }
 
-static const int lim_max  = 1000000 ;
-
 cpus_t *read_force_affinity(int n_avail, int verbose) {
   int sz = n_avail <= 1 ? 1 : n_avail ;
-  int max = 4 ;
+  tsc_t max = sec / 10 ;
 
   for ( ; ; ) {
     warm_up(sz+1,max) ;
@@ -77,10 +80,11 @@ cpus_t *read_force_affinity(int n_avail, int verbose) {
       cpus_dump(stderr,r) ;
       fprintf(stderr,"'\n") ;
     }
-    max = max >= lim_max ? max : 2*max ;
     cpus_free(r) ;
   }
 }
+
+
 
 /* Enforcing processor affinity.
    Notice that logical processor numbers may be negative.
@@ -121,15 +125,16 @@ void force_one_affinity(int a, int sz,int verbose, char *name) {
   if (a >= 0) {
     cpu_set_t mask;
     int r ;
-    int max = 4 ;
     CPU_ZERO(&mask) ;
     CPU_SET(a,&mask) ;
     do {
       r = pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) ;
       if (r != 0) {
-        if (verbose) fprintf(stderr,"%s: force %i failed\n",name,a) ;
-        warm_up(sz+1,max) ;
-        max = max >= lim_max ? max : 2*max ;
+        if (verbose)
+          fprintf(stderr,"%s: force %i failed\n",name,a) ;
+        //        tsc_t lim = timeofday()+ sec / 1000 ;
+        //        while (timeofday() < lim) ;
+        warm_up(2,sec/10) ;
       }
     } while (r != 0) ;
   }
