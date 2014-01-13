@@ -69,7 +69,7 @@ static void warm_up(int sz, tsc_t d) {
 
 cpus_t *read_force_affinity(int n_avail, int verbose) {
   int sz = n_avail <= 1 ? 1 : n_avail ;
-  tsc_t max = sec / 10 ;
+  tsc_t max = sec / 100 ;
 
   for ( ; ; ) {
     warm_up(sz+1,max) ;

@@ -54,5 +54,6 @@ extract ()
   TOD=$(dirname $TO)
   TOB=$(basename $TO)
   ( cd $DIR/../$FROMD && git archive --format=tar HEAD $FROMB ) | \
-  ( cd $EXPORT && mkdir -p $TOD && cd $TOD && tar xmf - && ( mv $FROMB $TOB || true ))
+  ( cd $EXPORT && mkdir -p $TOD && cd $TOD && tar xmf - && \
+  ( mv $FROMB $TOB 2> /dev/null || true ))
 }
