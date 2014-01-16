@@ -41,10 +41,11 @@ module Make(Tmpl:Template.S) = struct
       let dump_ins x =
         List.iter dump_input x.Tmpl.inputs;
         out "%s" (Tmpl.Reexport.to_string x);
+        out "\n";
         List.iter dump_output x.Tmpl.outputs
       in
-      let print_start = out "%sasm(\"%cSTART _litmus_P%i\\n\":::);" in
-      let print_end = out "%sasm(\"%cEND _litmus_P%i\\n\":::);" in
+      let print_start = out "%sasm(\"%cSTART _litmus_P%i\\n\":::);\n" in
+      let print_end = out "%sasm(\"%cEND _litmus_P%i\\n\":::);\n" in
       let trashed = Tmpl.Reexport.trashed_regs t in
       Tmpl.Reexport.before_dump chan indent env proc t trashed;
       print_start indent Tmpl.Reexport.A.comment proc;
