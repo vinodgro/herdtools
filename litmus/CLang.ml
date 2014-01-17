@@ -13,7 +13,7 @@ module Make(Tmpl:Template.S) = struct
 
   let dump chan indent env globEnv proc t =
     let out x = Printf.fprintf chan x in
-    out "%s{\n" indent;
+    out "%sdo {\n" indent;
     begin
       let indent = "  " ^ indent in
       let dump_input x =
@@ -38,21 +38,20 @@ module Make(Tmpl:Template.S) = struct
         let outname = Tmpl.Reexport.compile_out_reg proc x in
         out "%s%s = %s;\n" indent outname (Tmpl.fmt_reg x)
       in
+      let print_start = out "%sasm(\"%cSTART _litmus_P%i\\n\");\n" in
+      let print_end = out "%sasm(\"%cEND _litmus_P%i\\n\");\n" in
       let dump_ins x =
         List.iter dump_input x.Tmpl.inputs;
-        out "%s" (Tmpl.Reexport.to_string x);
-        out "\n";
+        print_start indent Tmpl.Reexport.A.comment proc;
+        out "%s\n" (Tmpl.Reexport.to_string x);
+        print_end indent Tmpl.Reexport.A.comment proc;
         List.iter dump_output x.Tmpl.outputs
       in
-      let print_start = out "%sasm(\"%cSTART _litmus_P%i\\n\":::);\n" in
-      let print_end = out "%sasm(\"%cEND _litmus_P%i\\n\":::);\n" in
       let trashed = Tmpl.Reexport.trashed_regs t in
       Tmpl.Reexport.before_dump chan indent env proc t trashed;
-      print_start indent Tmpl.Reexport.A.comment proc;
       List.iter dump_ins t.Tmpl.code;
-      print_end indent Tmpl.Reexport.A.comment proc;
       Tmpl.after_dump chan indent proc t
     end;
-    out "%s}\n" indent
+    out "%s} while(0);\n" indent
 
 end
