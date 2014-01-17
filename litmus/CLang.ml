@@ -13,7 +13,7 @@ module Make(Tmpl:Template.S) = struct
 
   let dump chan indent env globEnv proc t =
     let out x = Printf.fprintf chan x in
-    out "%s{\n" indent;
+    out "%sdo {\n" indent;
     begin
       let indent = "  " ^ indent in
       let dump_input x =
@@ -43,8 +43,7 @@ module Make(Tmpl:Template.S) = struct
       let dump_ins x =
         List.iter dump_input x.Tmpl.inputs;
         print_start indent Tmpl.Reexport.A.comment proc;
-        out "%s" (Tmpl.Reexport.to_string x);
-        out "\n";
+        out "%s\n" (Tmpl.Reexport.to_string x);
         print_end indent Tmpl.Reexport.A.comment proc;
         List.iter dump_output x.Tmpl.outputs
       in
@@ -53,6 +52,6 @@ module Make(Tmpl:Template.S) = struct
       List.iter dump_ins t.Tmpl.code;
       Tmpl.after_dump chan indent proc t
     end;
-    out "%s}\n" indent
+    out "%s} while(0);\n" indent
 
 end
