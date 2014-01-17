@@ -120,7 +120,7 @@ and inside_prog  = parse
 | "\""  { skip_string lexbuf ; inside_prog lexbuf }
 | "<<"|eof
     { true,lexeme_start_p lexbuf } (* boolean -> empty constraint *)
-| "+"
+(* | "+" *) (* Had to erase this to handle C-code, why here ?? *)
 | "final"
 | "forall"
 | ('~' blank* "exists" )
