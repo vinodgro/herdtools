@@ -651,9 +651,8 @@ let make_atomic_load_store es =
             (fun k ew ->
               if E.event_equal ew max then k
               else E.EventRel.add (ew,max) k)
-
             k ws)
-        loc_stores E.EventRel.empty 
+        loc_stores E.EventRel.empty
 
     let fold_mem_finals test es rfm kont res =
       (* We can build those now *)

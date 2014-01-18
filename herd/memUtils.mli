@@ -153,7 +153,11 @@ NOTICE: The generator takes care of placing stores to final state
         S.concrete ->
           (S.event_rel -> 'a -> 'a) -> 'a -> 'a
 
-        
+(* Compute 'co' as a partial order, given thread reads *)
+  val partial_co : S.concrete -> S.event_rel
+
+
+
 (* fold over possibilities when saturating memory order wrt atomicity classes.
      'fold_saturated_mem_order es mem_order kont res'
      - es is the event structure for calculation

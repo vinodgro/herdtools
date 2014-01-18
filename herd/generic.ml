@@ -364,5 +364,11 @@ module Make
               kont conc conc.S.fs vb_pp  res
             else res
         | None -> res in
-      U.apply_process_co test  conc process_co res
+      if O.co then U.apply_process_co test  conc process_co res
+      else
+        let co =
+          if O.optace then conc.S.pco
+          else
+            S.union conc.S.pco (U.partial_co conc) in
+        process_co co res
   end
