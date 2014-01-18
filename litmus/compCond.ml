@@ -9,6 +9,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+open Printf
+
 module type X = sig
   type t
   val compare : t -> t -> int
@@ -206,12 +208,15 @@ module Make (O:Indent.S) (I:I) :
                 "void *%s" (I.V.dump (Constant.Symbolic loc))) vals in
         O.f "inline static int %s(%s) {" funname
           (String.concat "," (plocs@pvals)) ;
-        O.fprintf "%sint cond = " (Indent.as_string Indent.indent) ;
         let p = ConstrGen.prop_of cond in
+(*
+        O.fprintf "%sint cond = " (Indent.as_string Indent.indent) ;
         let _x = Switch.compile p in
         dump p ;
         O.output ";\n" ;
         O.oi "return cond;" ;
+*)
+        Switch.dump (Switch.compile p) ;
         O.o "}" ;
         O.o ""
 

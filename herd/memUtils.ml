@@ -501,6 +501,41 @@ let extract_external r =
       Some pco
     with Exit -> None
 
+let partial_co conc =
+  let pos = conc.S.pos in
+  let rfmap = conc.S.rfmap in
+  let add (w1,w2 as p) k =
+    if E.event_equal w1 w2 then k else p::k in
+  let r = 
+    E.EventRel.fold
+      (fun (e1,e2 as p) k -> match get_dir e1, get_dir e2 with
+      | E.W,E.W -> add p k
+      | E.R,E.R ->
+          begin match
+            find_source rfmap e1,
+            find_source rfmap e2
+          with
+          | S.Store w1,S.Store w2 -> add (w1,w2) k
+          | S.Init,_
+          | _,S.Init -> k
+          end
+      | E.R,E.W ->
+          begin match
+            find_source rfmap e1
+          with
+          | S.Store w1 -> add (w1,e2) k
+          | S.Init -> k
+          end
+      | E.W,E.R ->
+          begin match
+            find_source rfmap e2
+          with
+          | S.Store w2 -> add (e1,w2) k
+          | S.Init -> k
+          end)
+      pos [] in
+  E.EventRel.of_list r
+
 (*************************************)
 (* Final condition invalidation mode *)
 (*************************************)
