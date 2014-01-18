@@ -80,7 +80,7 @@ module Make (O:Indent.S) (I:I) :
 
         let do_or p1 p2 = match p1,p2 with
         | Or ps1,Or ps2 -> Or (ps1@ps2)
-        | (p,And []) | (And [],p) -> p
+        | (p,And []) | (And [],p) -> And []
         | Or ps,p -> Or (ps@[p])
         | p,Or ps -> Or (p::ps)
         | _,_ -> Or [p1;p2]
@@ -209,14 +209,11 @@ module Make (O:Indent.S) (I:I) :
         O.f "inline static int %s(%s) {" funname
           (String.concat "," (plocs@pvals)) ;
         let p = ConstrGen.prop_of cond in
-(*
         O.fprintf "%sint cond = " (Indent.as_string Indent.indent) ;
         let _x = Switch.compile p in
         dump p ;
         O.output ";\n" ;
         O.oi "return cond;" ;
-*)
-        Switch.dump (Switch.compile p) ;
         O.o "}" ;
         O.o ""
 
