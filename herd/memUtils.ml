@@ -284,7 +284,28 @@ let extract_external r =
   and collect_loads es = collect_by_loc es E.is_load
   and collect_stores es = collect_by_loc es E.is_store
   and collect_atomics es = collect_by_loc es E.is_atomic
-      
+
+(* fr to init stores only *)
+  let make_fr_partial conc =
+    let ws_by_loc = collect_mem_stores conc.S.str in
+    let rs_by_loc = collect_mem_loads conc.S.str in
+    let rfm = conc.S.rfmap in
+    let k =
+      LocEnv.fold
+        (fun loc rs k ->
+          List.fold_left
+            (fun k r ->
+              match find_rf r rfm with
+              | S.Init ->
+                  let ws =
+                    try LocEnv.find loc ws_by_loc
+                    with Not_found -> [] in
+                  List.fold_left (fun k w -> (r,w)::k) k ws
+              | S.Store _ -> k)
+            k rs)
+        rs_by_loc [] in
+    E.EventRel.of_list k
+
 (*************)
 (* Atomicity *)
 (*************)
@@ -501,40 +522,6 @@ let extract_external r =
       Some pco
     with Exit -> None
 
-let partial_co conc =
-  let pos = conc.S.pos in
-  let rfmap = conc.S.rfmap in
-  let add (w1,w2 as p) k =
-    if E.event_equal w1 w2 then k else p::k in
-  let r = 
-    E.EventRel.fold
-      (fun (e1,e2 as p) k -> match get_dir e1, get_dir e2 with
-      | E.W,E.W -> add p k
-      | E.R,E.R ->
-          begin match
-            find_source rfmap e1,
-            find_source rfmap e2
-          with
-          | S.Store w1,S.Store w2 -> add (w1,w2) k
-          | S.Init,_
-          | _,S.Init -> k
-          end
-      | E.R,E.W ->
-          begin match
-            find_source rfmap e1
-          with
-          | S.Store w1 -> add (w1,e2) k
-          | S.Init -> k
-          end
-      | E.W,E.R ->
-          begin match
-            find_source rfmap e2
-          with
-          | S.Store w2 -> add (e1,w2) k
-          | S.Init -> k
-          end)
-      pos [] in
-  E.EventRel.of_list r
 
 (*************************************)
 (* Final condition invalidation mode *)

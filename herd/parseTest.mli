@@ -19,7 +19,6 @@ module type Config = sig
   val through : Model.through
   val skipchecks : StringSet.t
   val strictskip : bool
-  val co : bool 
   val check_name : string -> bool
   val check_rename : string -> string option
   include GenParser.Config

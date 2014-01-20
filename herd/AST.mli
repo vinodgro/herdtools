@@ -14,7 +14,10 @@
 type pos = { pos:int; len:int;}
 type direction = Write | Read | WriteRead | Atomic | Plain
 type op2 = Union | Inter | Seq | Diff
-type op1 = Plus | Star | Opt | Select of direction * direction
+type op1 =
+  | Plus | Star | Opt | Select of direction * direction
+  | Inv | Ext | Int
+
 type konst = Empty
 type var = string
 
@@ -41,5 +44,5 @@ type ins =
   | ShowAs of exp * string
 
 (* Name X model definition *)
-type t = string * ins list
+type t = bool * string * ins list
 type pp_t = string * t

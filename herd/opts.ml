@@ -32,7 +32,6 @@ let optace = ref None
 let through = ref Model.ThroughNone
 let skipchecks = ref StringSet.empty
 let strictskip = ref false
-let enumco = ref true
 let show = ref PrettyConf.ShowNone
 let nshow = ref None
 let auto = ref false

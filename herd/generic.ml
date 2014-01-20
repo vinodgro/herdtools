@@ -36,7 +36,7 @@ module Make
     module JU = JadeUtils.Make(O)(S)(B)
     module W = Warn.Make(O)
 (*  Model interpret *)
-    let (pp,model) = O.m
+    let (pp,(withco,_,prog)) = O.m
 
     type v =
       | Rel of S.event_rel
@@ -101,6 +101,9 @@ module Make
               let v = eval_rel env e in
               Rel
                 (match op with
+                | Inv -> E.EventRel.inverse v
+                | Int -> U.internal v
+                | Ext -> U.ext v
                 | Plus -> S.tr v
                 | Star -> S.union (S.tr v) id
                 | Opt -> S.union v id
@@ -281,7 +284,6 @@ module Make
         | [] ->  Some st 
         | i::c -> exec st i c in
 
-      let _,prog = model in
       let show =
         lazy begin
           List.fold_left
@@ -290,6 +292,16 @@ module Make
         end in
       run {env=m; show=show; skipped=StringSet.empty;} prog
         
+    let run_interpret  test conc m id vb_pp kont res =
+      match interpret test conc m id vb_pp with
+      | Some st ->
+          if not O.strictskip || StringSet.equal st.skipped O.skipchecks then
+            let vb_pp = lazy (show_to_vbpp st) in
+            kont conc conc.S.fs vb_pp  res
+          else res
+      | None -> res
+
+
     let check_event_structure test conc kont res =
       let prb = JU.make_procrels conc in
       let pr = prb.JU.pr in
@@ -337,38 +349,38 @@ module Make
            "lfence",prb.JU.lfence;
          ] in
 
-      let process_co co0 res =
-        let co = S.tr co0 in
-        let fr = U.make_fr conc co in
-        let vb_pp =
-          lazy begin
-            if S.O.PC.showfr then
+      if withco then
+        let process_co co0 res =
+          let co = S.tr co0 in
+          let fr = U.make_fr conc co in
+          let vb_pp =
+            lazy begin
+              if S.O.PC.showfr then
               ("fr",fr)::("co",co0)::Lazy.force vb_pp
-            else
-              ("co",co0)::Lazy.force vb_pp
-          end in
+              else
+                ("co",co0)::Lazy.force vb_pp
+            end in
 
-        let m =
-          List.fold_left
-            (fun m (k,v) -> StringMap.add k (Rel v) m)
-            m
-            [
-             "fr", fr; "fre", U.ext fr; "fri", U.internal fr;
-             "co", co; "coe", U.ext co; "coi", U.internal co;
-           ] in
-
-        match interpret test conc m id vb_pp with
-        | Some st ->
-            if not O.strictskip || StringSet.equal st.skipped O.skipchecks then
-              let vb_pp = lazy (show_to_vbpp st) in
-              kont conc conc.S.fs vb_pp  res
-            else res
-        | None -> res in
-      if O.co then U.apply_process_co test  conc process_co res
+          let m =
+            List.fold_left
+              (fun m (k,v) -> StringMap.add k (Rel v) m)
+              m
+              [
+               "fr", fr; "fre", U.ext fr; "fri", U.internal fr;
+               "co", co; "coe", U.ext co; "coi", U.internal co;
+             ] in
+          run_interpret test conc m id vb_pp kont res in
+        U.apply_process_co test  conc process_co res
       else
-        let co =
-          if O.optace then conc.S.pco
-          else
-            S.union conc.S.pco (U.partial_co conc) in
-        process_co co res
+        let co0 = S.tr (conc.S.pco) in
+        let fr0 = U.make_fr_partial conc in
+        let m =
+           List.fold_left
+              (fun m (k,v) -> StringMap.add k (Rel v) m)
+              m
+              [
+               "fr0", fr0;
+               "co0", co0;
+             ] in
+        run_interpret test conc m id vb_pp kont res
   end

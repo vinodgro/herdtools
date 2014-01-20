@@ -18,7 +18,6 @@ module type Config = sig
   val through : Model.through
   val skipchecks : StringSet.t
   val strictskip : bool
-  val co : bool
   val check_name : string -> bool
   val check_rename : string -> string option
   include GenParser.Config
@@ -78,7 +77,6 @@ module Top (C:Config) = struct
         let verbose = C.verbose
         let skipchecks = C.skipchecks
         let strictskip = C.strictskip
-        let co = C.co
         let optace = C.optace
       end in
       match arch with

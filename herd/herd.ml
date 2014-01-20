@@ -183,7 +183,6 @@ let options = [
   "-showone",
   Arg.Bool (fun b -> if b then nshow := Some 1),
   "<bool> alias for -nshow 1";
-  parse_bool "-enumco" enumco "enumerate coherence orders" ;
 
 (************************)
 (* Control dot pitcures *)
@@ -388,7 +387,6 @@ let () =
     let through = !through
     let skipchecks = !skipchecks
     let strictskip = !strictskip
-    let co = !enumco
     let outcomereads = !outcomereads
     let show = !show
 

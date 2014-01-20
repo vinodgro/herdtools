@@ -63,6 +63,8 @@ module Make : functor (S: SemExtra.S) -> sig
    a relation (ie as a transitive relation, not as a successor
    relation *)  
   val make_fr : S.concrete -> S.event_rel -> S.event_rel
+(* Idem, includes loads from init only *)
+  val make_fr_partial : S.concrete -> S.event_rel
 (* Separated by barrier in po *)
   val sep :
       (S.event -> bool) ->
@@ -152,10 +154,6 @@ NOTICE: The generator takes care of placing stores to final state
       S.test ->
         S.concrete ->
           (S.event_rel -> 'a -> 'a) -> 'a -> 'a
-
-(* Compute 'co' as a partial order, given thread reads *)
-  val partial_co : S.concrete -> S.event_rel
-
 
 
 (* fold over possibilities when saturating memory order wrt atomicity classes.

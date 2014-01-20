@@ -69,7 +69,8 @@ let pp = function
   | Jade {jstrongst=false}-> "jade_lightst"
   | X86TSO -> "x86tso"
   | File fname -> fname
-  | Generic (_,(name,_)) -> sprintf "Generic(%s)" name
+  | Generic (_,(co,name,_)) -> sprintf "Generic%s(%s)"
+        (if co then "" else "[withoutco]") name
 
 
 (* What to let through *)
@@ -100,7 +101,6 @@ module type Config = sig
   val verbose : int
   val skipchecks : StringSet.t
   val strictskip : bool
-  val co : bool
   val optace : bool
 end
 

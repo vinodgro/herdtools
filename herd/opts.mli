@@ -30,7 +30,6 @@ val optace : bool option ref
 val through : Model.through ref
 val skipchecks : StringSet.t ref
 val strictskip : bool ref
-val enumco : bool ref
 val show : PrettyConf.show ref
 val nshow :int option ref
 val auto : bool ref
