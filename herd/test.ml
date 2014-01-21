@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-type ('prog,'nice_prog,'start,'state,'constr,'loc) t =
+type ('prog,'nice_prog,'start,'state,'constr,'loc,'locset) t =
     {
      arch : Archs.t ; 
      name : Name.t ;
@@ -21,6 +21,7 @@ type ('prog,'nice_prog,'start,'state,'constr,'loc) t =
      init_state : 'state ;
      cond : 'constr ;
      flocs : 'loc list ;
+     observed : 'locset ;
    }
 
 (* Name and nothing else *)
@@ -40,7 +41,7 @@ module Make(A:Arch.S) =
 
     type result =
         (A.program, A.nice_prog, A.start_points,
-         A.state, A.constr, A.location) t
+         A.state, A.constr, A.location, A.LocSet.t) t
 
 (* Symb register allocation is external, since litmus needs it *)
    module Alloc = SymbReg.Make(A)
@@ -58,6 +59,14 @@ module Make(A:Arch.S) =
 	 } = t in
 
       let prog,starts = Load.load nice_prog in
+      let flocs = List.map fst locs in
+      let observed =
+        let locs = A.LocSet.of_list flocs in
+        ConstrGen.fold_constr
+          (fun a r -> match a with
+          | ConstrGen.LV (loc,_v) -> A.LocSet.add loc r
+          | ConstrGen.LL (l1,l2) -> A.LocSet.add l1 (A.LocSet.add l2 r))
+          final locs in
       {
        arch = A.arch ;
        name = name ;
@@ -67,7 +76,8 @@ module Make(A:Arch.S) =
        start_points = starts ;
        init_state = A.build_state init ;
        cond = final ;
-       flocs = List.map fst locs ;
+       flocs = flocs ;
+       observed = observed ;       
      }
 
 

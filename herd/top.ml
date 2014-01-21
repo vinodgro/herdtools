@@ -68,12 +68,12 @@ module Make(O:Config)(M:XXXMem.S) =
 (* shown executions *)
           shown : int;
 (* registers that read memory *)
-          reads : S.LocSet.t ;
+          reads : S.loc_set;
         }
 
     let start =
       { states = A.StateSet.empty; cands=0; pos=0; neg=0; shown=0;
-        reads = S.LocSet.empty; }
+        reads = A.LocSet.empty; }
 
 (* Check condition *)
     open ConstrGen
@@ -228,7 +228,7 @@ module Make(O:Config)(M:XXXMem.S) =
               shown = if show_exec then c.shown+1 else c.shown;
               reads = 
                 if O.outcomereads then
-                  S.LocSet.union (PU.all_regs_that_read conc.S.str) c.reads
+                  A.LocSet.union (PU.all_regs_that_read conc.S.str) c.reads
                 else c.reads;
             } in
           let r = match O.nshow with
@@ -298,12 +298,12 @@ module Make(O:Config)(M:XXXMem.S) =
 (* Reduce final states, so as to show relevant locations only *)
       let finals =
         let locs = 
-          S.LocSet.union
+          A.LocSet.union
             (S.outcome_locations test)
             c.reads in
         A.StateSet.map
           (fun st ->
-            S.LocSet.fold
+            A.LocSet.fold
               (fun loc r -> A.state_add r loc (A.look_in_state st loc))
               locs A.state_empty)
           c.states in

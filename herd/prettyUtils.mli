@@ -18,5 +18,5 @@ module Make : functor (S:SemExtra.S) -> sig
   val observed : S.test -> S.event_structure -> S.event_set
 
   (* All registers that read from memory *)
-  val all_regs_that_read : S.event_structure -> S.LocSet.t
+  val all_regs_that_read : S.event_structure -> S.loc_set
 end

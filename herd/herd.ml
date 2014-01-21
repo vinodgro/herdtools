@@ -350,18 +350,20 @@ let names = match !names with
 | names -> Some (ReadNames.from_files names StringSet.add StringSet.empty)
 
 (* Read generic model, if any *)
-let model = match !model with
+let model,observed_finals_only = match !model with
 | Some (Model.File fname) ->
     let module P =
       ParseModel.Make
         (struct
           let debug = !debug.Debug.lexer
         end) in
-    begin try Some (Model.Generic (P.parse fname))
+    begin try
+      let _,(b,_,_) as r = P.parse fname in
+      Some (Model.Generic r),not b
     with Misc.Exit ->
       eprintf "Failure of generic model parsing\n" ;
       exit 2 end
-| m -> m
+| m -> m,false
     
 
 (* Read kinds/conds files *)
@@ -397,6 +399,7 @@ let () =
     let check_kind = TblRename.find_value_opt kinds
     let check_cond =  TblRename.find_value_opt conds
 
+    let observed_finals_only = observed_finals_only
     let debug = !debug
     let debuglexer = debug.Debug.lexer
     let verbose = !verbose

@@ -16,6 +16,7 @@ module type Config = sig
   val unroll : int
   val speedcheck : Speed.t
   val debug : Debug.t
+  val observed_finals_only : bool
 end
 
 module type S = sig
@@ -620,38 +621,40 @@ let make_atomic_load_store es =
 
 
 (* Retrieve last store from rfmap *)
-    let get_max_store test es rfm loc =
+    let get_max_store _test _es rfm loc =
       try match S.RFMap.find (S.Final loc) rfm with
-      | S.Store ew -> ew
-      | S.Init -> assert false       (* means no store to loc *)
-      with Not_found ->
+      | S.Store ew -> Some ew
+      | S.Init -> None       (* means no store to loc *)
+      with Not_found -> None
+(*
         let module PP = Pretty.Make(S) in
-        eprintf "Uncomplete rfmap: %s" (A.pp_location loc) ;
-        prerr_endline "" ;
+        eprintf "Uncomplete rfmap: %s\n%!" (A.pp_location loc) ;
 	PP.show_es_rfm test es rfm ;
-         assert false
-
+        assert false
+*)
 (* Store to final state comes last *)
     let last_store test es rfm =
       let loc_stores = U.collect_stores es
       and loc_loads = U.collect_loads es in
       U.LocEnv.fold
         (fun loc ws k -> 
-          let max = get_max_store test es rfm loc in
-          let loads = map_loc_find loc loc_loads in
-          let k =
-            List.fold_left
-              (fun k er -> match S.RFMap.find (S.Load er) rfm with
-              | S.Init -> E.EventRel.add (er,max) k
-              | S.Store my_ew ->
-                  if E.event_equal my_ew max then k
-                  else E.EventRel.add (er,max) k)
-              k loads in
-          List.fold_left
-            (fun k ew ->
-              if E.event_equal ew max then k
-              else E.EventRel.add (ew,max) k)
-            k ws)
+          match get_max_store test es rfm loc with
+          | None -> k
+          | Some max ->
+              let loads = map_loc_find loc loc_loads in
+              let k =
+                List.fold_left
+                  (fun k er -> match S.RFMap.find (S.Load er) rfm with
+                  | S.Init -> E.EventRel.add (er,max) k
+                  | S.Store my_ew ->
+                      if E.event_equal my_ew max then k
+                      else E.EventRel.add (er,max) k)
+                  k loads in
+              List.fold_left
+                (fun k ew ->
+                  if E.event_equal ew max then k
+                  else E.EventRel.add (ew,max) k)
+                k ws)
         loc_stores E.EventRel.empty
 
     let fold_mem_finals test es rfm kont res =
@@ -665,6 +668,18 @@ let make_atomic_load_store es =
       let atomic_load_store = make_atomic_load_store es in
 (* Now generate final stores *)
       let loc_stores = U.collect_mem_stores es in
+      let loc_stores =
+        if C.observed_finals_only then
+          let observed_locs = S.outcome_locations test in        
+(*          eprintf "Observed locs: {%s}\n"
+            (S.LocSet.pp_str "," A.pp_location   observed_locs) ; *)
+          U.LocEnv.fold
+            (fun loc ws k ->
+              if A.LocSet.mem loc observed_locs then
+                U.LocEnv.add loc ws k
+              else k)
+            loc_stores U.LocEnv.empty
+        else loc_stores in
       let possible_finals =
         if C.optace then
           U.LocEnv.fold
