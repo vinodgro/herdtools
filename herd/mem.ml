@@ -31,8 +31,7 @@ module type S = sig
       too_far : bool ; (* some events structures discarded (loop) *)
      }
 
-  val glommed_event_structures :
-      S.test -> result
+  val glommed_event_structures : S.test -> result
 
 
 

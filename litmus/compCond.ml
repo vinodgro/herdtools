@@ -23,7 +23,7 @@ module type I = sig
   module Loc : X with type  t = C.A.location
 end
 
-module Make (O:Indent.S) (I:I) :
+module Make (O:Indent.S) (I:CompCondUtils.I) :
     sig
       val fundef :
           (I.Loc.t -> string) -> (* For types *)
@@ -191,7 +191,14 @@ module Make (O:Indent.S) (I:I) :
         dump_prop
 
       let funname = "final_cond"
+      let funname_other = "final_cond_bis"
 
+      let fundef_other p formals =
+        O.f "inline static int %s(%s) {" funname_other formals ;
+        let x = S.compile p in
+        S.dump Indent.indent x ;
+        O.o "}" ;
+        O.o ""
 
       let fundef find_type cond =
         let locs = I.C.locations cond in
