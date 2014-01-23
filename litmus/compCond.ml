@@ -77,8 +77,8 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
       let funname_other = "final_cond_bis"
 
       let fundef_other p formals =
-        O.f "inline static int %s(%s) {" funname_other formals ;
         let x = S.compile p in
+        O.f "inline static int %s(%s) {" funname_other formals ;
         S.dump Indent.indent x ;
         O.o "}" ;
         O.o ""
