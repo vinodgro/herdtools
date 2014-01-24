@@ -25,21 +25,6 @@ module Make
     module C = T.C
     module Generic = Compile.Generic(A)
 
-    let add_addr_type a ty env =
-      try
-        let tz = StringMap.find a env in
-        let ty =
-          match ty,tz with
-          | RunType.Int,RunType.Int -> RunType.Int
-          | (RunType.Pointer,_)|(_,RunType.Pointer) -> RunType.Pointer in
-        StringMap.add a ty env
-      with
-        Not_found -> StringMap.add a ty env
-
-    let add_value v env = match v with
-    | Constant.Concrete _ -> env
-    | Constant.Symbolic a -> add_addr_type a RunType.Int env
-
     let add_param {CAst.param_ty; param_name} =
       StringMap.add param_name param_ty
 
@@ -49,10 +34,10 @@ module Make
       let env =
         List.fold_right
           (fun (loc,v) env ->
-            let env = add_value v env in
+            let env = Generic.add_value v env in
             match loc with
             | A.Location_global (a) ->
-                add_addr_type a (Generic.typeof v) env
+                Generic.add_addr_type a (Generic.typeof v) env
             | _ -> env)
           init StringMap.empty in
       let env =
