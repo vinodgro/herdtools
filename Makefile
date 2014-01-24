@@ -2,6 +2,8 @@
 SRC=herd gen litmus tools
 PREFIX=$$HOME
 
+default: all
+
 luc all install clean:
 	for d in $(SRC) ; \
 	do $(MAKE) $(MFLAGS) PREFIX=$(PREFIX) -C $$d $@ ; done
