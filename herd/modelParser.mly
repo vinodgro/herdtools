@@ -40,7 +40,7 @@ let pp () =
 %token EMPTY
 %token WITHCO WITHOUTCO
 /* Access direction */
-%token MM  MR  MW WM WW WR RM RW RR INT EXT
+%token MM  MR  MW WM WW WR RM RW RR INT EXT NOID
 /* Plain/Atomic */
 %token AA AP PA PP
 %token SEMI UNION INTER COMMA DIFF
@@ -161,6 +161,7 @@ select:
 | AP { Select (Atomic,Plain) }
 | PA { Select (Plain,Atomic) }
 | PP { Select (Plain,Plain) }
-/* int/ext */
+/* additional filters */
 | EXT { Ext }
 | INT { Int }
+| NOID { NoId }

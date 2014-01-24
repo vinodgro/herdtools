@@ -16,8 +16,10 @@ type direction = Write | Read | WriteRead | Atomic | Plain
 type op2 = Union | Inter | Seq | Diff
 type op1 =
   | Plus | Star | Opt | Select of direction * direction
-  | Inv | Ext | Int
-
+  | Inv  (* Relation inverse *)
+  | Ext  (* External subrelation (events from <> threads) *)
+  | Int  (* Internal subrelation (events from = threads) *)
+  | NoId (* Irreflexive subrelation (<> events, aka r\id) *)
 type konst = Empty
 type var = string
 

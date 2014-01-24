@@ -12,10 +12,11 @@ let invrf=rf -1
 
 (* co observations in test *)
 let obsco =
-  (WW(po-loc)
-  |(rf;RW(po-loc))
-  |(WR(po-loc);invrf)
-  |(rf;RR(po-loc);invrf))\id
+  noid
+    (WW(po-loc)
+    |(rf;RW(po-loc))
+    |(WR(po-loc);invrf)
+    |(rf;RR(po-loc);invrf))
 
 let co = (obsco|co0)+
 let fr = (invrf;co)|fr0

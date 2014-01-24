@@ -104,6 +104,10 @@ module Make
                 | Inv -> E.EventRel.inverse v
                 | Int -> U.internal v
                 | Ext -> U.ext v
+                | NoId ->
+                    E.EventRel.filter
+                      (fun (e1,e2) -> not (E.event_equal e1 e2))
+                      v
                 | Plus -> S.tr v
                 | Star -> S.union (S.tr v) id
                 | Opt -> S.union v id
