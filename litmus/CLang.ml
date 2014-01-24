@@ -33,9 +33,9 @@ module Make(Tmpl:Template.S) = struct
         in
         match Tmpl.Reexport.O.memory with
         | Memory.Direct ->
-            out "%s%s %s = &_a->%s[_i];\n" indent ty x x
+            out "%s%s %s = (%s)&_a->%s[_i];\n" indent ty x ty x
         | Memory.Indirect ->
-            out "%s%s %s = _a->%s[_i];\n" indent ty x x
+            out "%s%s %s = (%s)_a->%s[_i];\n" indent ty x ty x
       in
       let dump_output x =
         let outname = Tmpl.Reexport.compile_out_reg proc x in
