@@ -133,7 +133,14 @@ module Make
         (fun acc (proc, code) ->
            let regs = get_locals proc (locations proc final flocs) in
            let final = List.map fst regs in
-           (proc, (comp_template proc init final code, regs)) :: acc
+           let volatile =
+             let f acc = function
+               | {CAst.volatile = true; param_name; _} -> param_name :: acc
+               | {CAst.volatile = false; _} -> acc
+             in
+             List.fold_left f [] code.CAst.params
+           in
+           (proc, (comp_template proc init final code, (regs, volatile))) :: acc
         )
         []
 

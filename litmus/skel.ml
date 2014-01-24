@@ -292,7 +292,7 @@ end = struct
       test.T.globals @
     List.flatten
       (List.map
-         (fun (proc,(_,outs)) ->
+         (fun (proc,(_,(outs, _))) ->
            List.map
              (fun (reg,t) -> A.Location_reg (proc,reg),t)
              outs)
@@ -776,7 +776,7 @@ let dump_read_timebase () =
 
   let iter_all_outs f test =
     List.iter
-      (fun (proc,(_,outs)) -> iter_outs f proc outs)
+      (fun (proc,(_,(outs,_))) -> iter_outs f proc outs)
       test.T.code
 
   let dump_out_vars test =
@@ -1354,7 +1354,7 @@ let dump_read_timebase () =
       test.T.globals ;
     begin if do_safer && do_collect_after then
       List.iter
-        (fun (proc,(_,outs)) ->
+        (fun (proc,(_,(outs,_))) ->
           List.iter
             (fun (reg,t) ->
               if Cfg.cautious then O.oii "mcautious();" ;
@@ -1401,7 +1401,7 @@ let dump_read_timebase () =
     O.f "} parg_t;" ;
     O.f "" ;
     List.iter
-      (fun (proc,(out,outregs)) ->
+      (fun (proc,(out,(outregs,envVolatile))) ->
         let  do_collect =  do_collect_local && (do_safer || proc=0) in
         O.f "static void *P%i(void *_vb) {" proc ;
         O.fi "mbar();" ;
@@ -1608,7 +1608,7 @@ let dump_read_timebase () =
             | A.Location_reg _ -> k
             | A.Location_global reg -> (reg,t)::k) env [] in
 (* Dump real code now *)
-        Lang.dump O.out (Indent.as_string iloop) myenv global_env proc out ;
+        Lang.dump O.out (Indent.as_string iloop) myenv global_env envVolatile proc out ;
         if do_verbose_barrier && have_timebase  then begin
           if do_timebase then begin
             O.fx iloop "_a->tb_delta[%i][_i] = _delta;" proc ;

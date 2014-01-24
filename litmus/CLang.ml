@@ -11,20 +11,23 @@
 
 module Make(Tmpl:Template.S) = struct
 
-  let dump chan indent env globEnv proc t =
+  let dump chan indent env globEnv envVolatile proc t =
     let out x = Printf.fprintf chan x in
     out "%sdo {\n" indent;
     begin
       let indent = "  " ^ indent in
       let dump_input x =
         let x = Tmpl.fmt_reg x in
+        let volatile = List.exists (Misc.string_eq x) envVolatile in
         let ty =
           let f = function
-            | RunType.Int -> "int*"
-            | RunType.Pointer -> "int**"
+            | (RunType.Int, true) -> "volatile int*"
+            | (RunType.Int, false) -> "int*"
+            | (RunType.Pointer, true) -> "volatile int**"
+            | (RunType.Pointer, false) -> "int**"
           in
           try
-            f (List.assoc x globEnv)
+            f (List.assoc x globEnv, volatile)
           with
           | Not_found -> assert false
         in

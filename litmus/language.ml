@@ -15,6 +15,7 @@ module type S = functor (Tmpl:Template.S) -> sig
     string ->
     (Tmpl.arch_reg * RunType.t) list ->
     (string * RunType.t) list ->
+    string list ->
     int ->
     Tmpl.t ->
     unit

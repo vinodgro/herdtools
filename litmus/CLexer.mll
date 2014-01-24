@@ -27,6 +27,7 @@ rule main = parse
     }
 | '*' { CParser.STAR }
 | "int" { CParser.INT }
+| "volatile" { CParser.VOLATILE }
 | name as x { CParser.NAME x }
 | eof { CParser.EOF }
 | "" { LexMisc.error "CLexer" lexbuf }

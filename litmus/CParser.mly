@@ -9,7 +9,7 @@
 /*  General Public License.                                          */
 /*********************************************************************/
 
-%token EOF COMMA STAR INT
+%token EOF COMMA STAR INT VOLATILE
 %token LPAREN RPAREN
 %token <int> PROC
 %token <string> BODY
@@ -27,8 +27,14 @@ main:
 
 params:
 | { [] }
-| ty NAME { [{CAst.param_ty = $1; param_name = $2}] }
-| ty NAME COMMA params { {CAst.param_ty = $1; param_name = $2} :: $4 }
+| ty NAME
+    { [{CAst.param_ty = $1; volatile = false; param_name = $2}] }
+| VOLATILE ty NAME
+    { [{CAst.param_ty = $2; volatile = true; param_name = $3}] }
+| ty NAME COMMA params
+    { {CAst.param_ty = $1; volatile = false; param_name = $2} :: $4 }
+| VOLATILE ty NAME COMMA params
+    { {CAst.param_ty = $2; volatile = true; param_name = $3} :: $5 }
 
 ty:
 | INT STAR { RunType.Int }

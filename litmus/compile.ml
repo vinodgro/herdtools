@@ -388,7 +388,7 @@ let lblmap_code =
 
     let type_outs code final flocs =
       List.map
-        (fun (p,t) -> p,(t,type_out p t final flocs))
+        (fun (p,t) -> p,(t, (type_out p t final flocs, [])))
         code
 
     let compile t =
