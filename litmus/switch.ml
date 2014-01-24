@@ -146,33 +146,6 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
       | And ps|Or ps -> List.fold_left collect m ps
       | Implies (p1,p2) -> collect (collect m p1) p2
 
-    let choose_loc2 m0 p =
-      let add loc m =
-        let k = try M.find loc m with Not_found -> 0 in
-        M.add loc (k+1) m in
-      let rec do_rec m = function
-      | Atom (LV (loc,_)) -> add loc m
-      | Atom (LL (_,_)) -> raise Cannot
-      | Not p -> do_rec m p
-      | And ps|Or ps -> List.fold_left do_rec m ps
-      | Implies (p1,p2) -> do_rec (do_rec m p1) p2 in
-      let m = do_rec M.empty p in
-      let xs = M.fold (fun loc n k -> (loc,n)::k) m [] in
-      eprintf "*****\n" ;
-      M.iter
-        (fun loc n -> eprintf "%s -> %i\n" (I.Loc.dump loc) n)
-        m ;
-      match xs with
-      | [] -> assert false
-      | p0::rem ->
-          let loc,_ =
-            List.fold_left
-              (fun (_,cx as px) (_,cy as py) ->
-                if cx <= cy then px else py)
-              p0 rem in
-          try
-            loc,M.find loc m0
-          with Not_found -> assert false
 
     let choose_loc m =
       let locs =
@@ -256,7 +229,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
           | And [] -> return true
           | _ -> assert false
           else
-            let loc,vs = if true then choose_loc m else choose_loc2 m p in
+            let loc,vs = choose_loc m in
             let cls =
               Ints.fold
                 (fun v k -> (v,comp (eval_pos loc v p))::k)

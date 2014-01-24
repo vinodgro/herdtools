@@ -9,20 +9,6 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-open Printf
-
-module type X = sig
-  type t
-  val compare : t -> t -> int
-  val dump : t -> string
-end
-
-module type I = sig
-  module C : Constr.S
-  module V : X with type t = Constant.v
-  module Loc : X with type  t = C.A.location
-end
-
 module Make (O:Indent.S) (I:CompCondUtils.I) :
     sig
       val fundef :
@@ -74,14 +60,6 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
         dump_prop
 
       let funname = "final_cond"
-      let funname_other = "final_cond_bis"
-
-      let fundef_other p formals =
-        let x = S.compile p in
-        O.f "inline static int %s(%s) {" funname_other formals ;
-        S.dump Indent.indent x ;
-        O.o "}" ;
-        O.o ""
 
       let fundef find_type cond =
         let locs = I.C.locations cond in
@@ -97,21 +75,16 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
             (fun loc -> Printf.sprintf
                 "void *%s" (I.V.dump (Constant.Symbolic loc))) vals in
         let formals = String.concat "," (plocs@pvals) in          
-        let p = ConstrGen.prop_of cond in
-        let other =
-          try fundef_other p formals ; true
-          with Switch.Cannot -> false in
         O.f "inline static int %s(%s) {" funname formals ;
-        O.fprintf "%sint cond = " (Indent.as_string Indent.indent) ;
-        dump p ;
-        O.output ";\n" ;
-        if other then begin
-          O.fi "int cond_bis = %s(%s);"
-            funname_other
-            (String.concat "," (List.map I.Loc.dump locs)) ;
-          O.oi "assert (cond == cond_bis);"
+        let p = ConstrGen.prop_of cond in
+        begin try
+          let switch_tree = S.compile p in
+          S.dump Indent.indent switch_tree
+        with Switch.Cannot ->
+          O.fprintf "%sreturn " (Indent.as_string Indent.indent) ;
+          dump p ;
+          O.output ";\n"
         end ;
-        O.oi "return cond;" ;
         O.o "}" ;
         O.o ""
 
