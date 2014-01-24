@@ -1,0 +1,9 @@
+"Minimal model" withoutco
+show mfence lfence sfence
+show sync lwsync eieio
+show dmb dsb dsbst dmbst
+show isb isync
+let co=co0+
+let fr=((rf)-1;co)|fr0
+show co,fr
+

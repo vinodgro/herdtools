@@ -38,12 +38,13 @@ let pp () =
 %token <string> STRING
 %token LPAR RPAR
 %token EMPTY
+%token WITHCO WITHOUTCO
 /* Access direction */
-%token MM  MR  MW WM WW WR RM RW RR
+%token MM  MR  MW WM WW WR RM RW RR INT EXT
 /* Plain/Atomic */
 %token AA AP PA PP
 %token SEMI UNION INTER COMMA DIFF
-%token STAR PLUS OPT
+%token STAR PLUS OPT INV
 %token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN
 %token ARROW
 %type <AST.t> main
@@ -54,12 +55,17 @@ let pp () =
 %right SEMI
 %left DIFF
 %right INTER
-%nonassoc STAR PLUS OPT
+%nonassoc STAR PLUS OPT INV
 %%
 
 main:
-| VAR ins_list EOF { $1,$2 }
-| STRING ins_list EOF { $1,$2 }
+| VAR withco ins_list EOF { $2,$1,$3 }
+| STRING withco ins_list EOF { $2,$1,$3 }
+
+withco:
+| WITHCO { true }
+| WITHOUTCO { false }
+|    { true }
 
 ins_list:
 | { [] }
@@ -124,6 +130,7 @@ base:
 | base STAR { Op1(Star,$1) }
 | base PLUS { Op1(Plus,$1) }
 | base OPT { Op1(Opt,$1) }
+| base INV { Op1(Inv,$1) }
 | base SEMI base { do_op Seq $1 $3 }
 | base UNION base { do_op Union $1 $3 }
 | base DIFF base { do_op Diff $1 $3 }
@@ -154,4 +161,6 @@ select:
 | AP { Select (Atomic,Plain) }
 | PA { Select (Plain,Atomic) }
 | PP { Select (Plain,Plain) }
-
+/* int/ext */
+| EXT { Ext }
+| INT { Int }

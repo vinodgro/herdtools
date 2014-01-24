@@ -1,14 +1,36 @@
-"Less Relaxed ARM llh model"
+Model withoutco
+
+(**********************)
+(* Computes co and fr *)
+(**********************)
+let invrf=(rf)-1
+
+(* co observations in test *)
+let obsco =
+  (WW(po-loc)
+  |(rf;RW(po-loc))
+  |(WR(po-loc);invrf)
+  |(rf;RR(po-loc);invrf))\id
+
+
+let co = (obsco|co0)+
+let fr = (invrf;co)|fr0
+show fr
+show co
+let coi = int(co)
+and coe = ext(co)
+and fri = int(fr)
+and fre = ext(fr)
+
 (* Uniproc *)
-let poi = WW(po-loc) | RW(po-loc) | WR(po-loc)
-let complus = fr|rf|co|(co;rf)|(fr;rf)
-irreflexive poi;complus as uniproc
+acyclic po-loc | rf | fr | co as uniproc
 
 (* Utilities *)
 let dd = addr | data
 let rdw = po-loc & (fre;rfe)
 let detour = po-loc & (coe ; rfe)
 let addrpo = addr;po
+#show rdw detour dd addrpo
 (*******)
 (* ppo *)
 (*******)
@@ -17,8 +39,7 @@ let addrpo = addr;po
 (* Initial value *)
 let ci0 = ctrlisync | detour
 let ii0 = dd | rfi | rdw
-let cc0 = dd | ctrl | addrpo
-  | WW(po-loc) | RW(po-loc) | rdw | detour (* po-loc replaced *)
+let cc0 = dd | po-loc | ctrl | addrpo
 let ic0 = 0
 
 (* Fixpoint from i -> c in instructions and transitivity *)
@@ -51,23 +72,22 @@ let light = lwsync|eieio
 let fence = strong|light
 
 
-(* extensions *)
-let ppoext = (rfe;ppo)|(ppo;rfe)|(rfe;ppo;rfe)
-let fenceext = (rfe;fence)|(fence;rfe)|(rfe;fence;rfe)
-
 (* happens before *)
-let hb = ppo | ppoext | fence | fenceext
+let hb = ppo | fence | rfe
 let GHB = hb
+show GHB
 acyclic hb as thinair
 
 (* prop *)
 let hbstar = hb*
-let propbase = (fence|fenceext);hbstar
+let propbase = (fence|(rfe;fence));hbstar
+show propbase
 
 let chapo = rfe|fre|coe|(fre;rfe)|(coe;rfe)
 
 let prop = WW(propbase)| (chapo? ; propbase*; strong; hbstar)
 
+#show prop
 acyclic co|prop as propagation
 irreflexive fre;prop;hbstar as causality
 

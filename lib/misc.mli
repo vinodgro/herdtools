@@ -54,6 +54,7 @@ val string_of_intkm : string -> int option
 val explode : string -> char list
 
 (* Some useful function on lists *)
+val consp : 'a list -> bool
 val cons : 'a -> 'a list -> 'a list
 val last : 'a list -> 'a
 val pp_list :

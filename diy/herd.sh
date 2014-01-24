@@ -1,18 +1,19 @@
 set -e
 DIR=`dirname $0`
-REPOS=svn+ssh://secsvn@svn-sem.cl.cam.ac.uk/WeakMemory
 TMP=/var/tmp
-. $DIR/version.herd.sh
+. $DIR/version.sh
 . $DIR/funs.sh
 NAME=herd-$V
 EXPORT=$TMP/export.$$
 FINAL=$EXPORT/$NAME
 mkdir -p $EXPORT
-( cd $EXPORT &&
-  svn export -N $REPOS/herd $NAME && \
-  svn export -N $REPOS/diy/LICENSE.txt && \
-  ( cd $NAME && /bin/rm lib &&  svn export -N $REPOS/lib && svn export -N $REPOS/litmus.herd/generated ) && \
-  true )
+(
+  extract herd $NAME && \
+  extract diy/LICENSE.txt $NAME//LICENSE.txt && \
+  ( cd $EXPORT/$NAME && /bin/rm lib ) && \
+  extract lib $NAME/lib && \
+  true
+)
 #TMPF=/tmp/$$.txt
 #( cd $FINAL && sed -e 's|MCYCLES=.*|MCYCLES=|' Makefile > $TMPF && mv $TMPF Makefile )
 ( cleandir $FINAL )

@@ -181,6 +181,7 @@ let () =
       | _ -> false)
     let sta = !Config.sta
     let unrollatomic = !Config.unrollatomic
+    let allow_back = true
   end in
   (match !Config.arch with
   | X86 ->

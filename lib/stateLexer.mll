@@ -49,6 +49,7 @@ rule token = parse
 | "\\/" {OR}
 | '~'| "not" { NOT }
 | "true"     { TRUE }
+| "false"     { FALSE }
 | "observed"|"Observed"   { OBSERVED }
 | "and" { TOKAND }
 | "exists"   { EXISTS }

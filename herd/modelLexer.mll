@@ -32,6 +32,7 @@ let () =
      "unshow",UNSHOW;
      "empty",TESTEMPTY;
      "as",AS; "fun", FUN; "in",IN;
+     "withco",WITHCO; "withoutco", WITHOUTCO;
    ]
 
 
@@ -53,6 +54,9 @@ rule token = parse
 | '&'  {  INTER }
 | '*'  {  STAR }
 | '+'  {  PLUS }
+| "-1" { INV }
+| "ext" { EXT }
+| "int" { INT }
 | '\\'  {  DIFF }
 | '?'  {  OPT }
 | '='  {  EQUAL }

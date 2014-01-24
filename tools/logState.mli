@@ -87,7 +87,8 @@ val get_bindings : sts -> (string * string) list list
    - third argument means: show occurence numbers *)
 val pretty_states : string -> OutMode.t -> bool -> sts -> string list
 val dump_states : out_channel -> sts -> unit
-
+(* bool true means litmus log, false memevents log *)
+val dump_states_cond : out_channel -> bool -> sts -> unit
 val no_states : sts -> bool
 val card : sts -> int
 
@@ -120,7 +121,7 @@ val normalize : string -> bool ->
 (* Conditions for from logs *)
 val revalidate : LogConstr.constr option -> sts -> validation
 val witness_again : LogConstr.constr option -> sts -> Int64.t * Int64.t
-val filter : LogConstr.constr TblRename.t -> t -> test array
+val filter : bool -> LogConstr.constr TblRename.t -> t -> test array
 val count_outcomes : t -> int
 
 (* Union logs *)

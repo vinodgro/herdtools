@@ -25,6 +25,7 @@ module Make
       open Code
       open E
 
+      let pp_com c = String.lowercase (pp_com c)
       let edge_name = function
         | Po (Same,_,_) -> Some "pos"
         | Po (Diff,_,_) -> Some "po"
@@ -33,11 +34,16 @@ module Make
         | Rf Int -> Some "rfi"
         | Ws Int -> Some "wsi"
         | Fr Int -> Some "fri"
+        | Rf Ext -> Some "rfe"
+        | Ws Ext -> Some "wse"
+        | Fr Ext -> Some "fre"
         | Detour e ->
             Some (sprintf "det%s" (String.lowercase (pp_extr e)))
         | DetourWs e ->
             Some (sprintf "det%sw" (String.lowercase (pp_extr e)))
         | Store -> Some "sto"
+        | Leave c -> Some ("["^pp_com c)
+        | Back c -> Some (pp_com c^"]")
         | _ -> None
 
       let atom_name = function
@@ -98,14 +104,19 @@ module Make
       | [] -> xss
       | _  -> xs::xss
 
-      let rec po_list es = match  es with
+      let rec do_po_list d es = match  es with
       | [] -> [],[]
       | e::es ->
-          let xs,xss = po_list es in
-          match E.get_ie e with
-          | Ext -> [],add_list xs xss
-          | Int -> (e::xs),xss
+          let d = match e.E.edge with
+          | E.Leave _ -> d+1
+          | E.Back _ -> d-1
+          | _ -> d in
+          let xs,xss = do_po_list d es in
+          match E.get_full_ie e with
+          | E.IE Ext when d <= 0 -> [],add_list xs xss
+          | E.IE _|E.LeaveBack -> (e::xs),xss
 
+      let po_list = do_po_list 0
             
       let new_namer es =
         let xs,xss = po_list es in

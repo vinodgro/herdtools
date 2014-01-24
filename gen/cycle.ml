@@ -74,6 +74,8 @@ module type Config = sig
   val coherence_decreasing : bool
   val same_loc : bool
   val verbose : int
+(* allow threads s.t start -> end is against com+ *)
+  val allow_back : bool
 end
 
 module Make (O:Config) (E:Edge.S) :
@@ -219,6 +221,14 @@ let remove_store n =
   do_remove_store n ;
   n
 
+let check_balance = 
+  let rec do_rec r = function
+    | [] -> r = 0
+    | e::es ->
+        do_rec (match e.E.edge with E.Back _ -> r-1 | E.Leave _ -> r+1 | _ -> r) es in
+  do_rec 0
+
+
 let build_cycle =
 
   let rec do_rec idx es = match es with
@@ -232,9 +242,11 @@ let build_cycle =
       cons_cycle n (do_rec idx es) in
 
   fun es ->
+    if not (check_balance es) then Warn.fatal "Leave/Back are not balanced" ;
     let c = do_rec 0 es in
     set_detours c ;
-    remove_store c
+    let c = remove_store c in
+    c
 
 
 let find_node p n =
@@ -474,7 +486,7 @@ let set_same_loc st n0 =
         let m = 
           find_node
             (fun m -> match m.prev.edge.E.edge with
-            | E.Fr _|E.Rf _|E.RfStar _|E.Ws _
+            | E.Fr _|E.Rf _|E.RfStar _|E.Ws _|E.Leave _|E.Back _
             | E.Hat|E.Rmw|E.Detour _|E.DetourWs _ -> true
             | E.Po _|E.Dp _|E.Fenced _ -> false
             | E.Store -> assert false) n in
@@ -553,8 +565,8 @@ let extract_edges n =
       if m.next == n then []
       else do_rec m.next in
     let k = m.edge::k in
-    if m.store == nil then k
-    else m.store.edge::k in  
+    let k = if m.store != nil then  m.store.edge::k else k in
+    k in
   do_rec n
 
 let resolve_edges = function
@@ -575,10 +587,10 @@ let make es =
 
 let find_start_proc n =
   if
-    not (same_proc n.prev.edge)
+    diff_proc n.prev.edge
   then n
   else    
-    let n = find_edge (fun n -> not (same_proc n)) n in
+    let n = find_edge (fun n -> diff_proc n) n in
     try find_edge same_proc n
     with Exit -> n
 
@@ -587,33 +599,95 @@ let cons_not_nil k1 k2 = match k1 with
 | [] -> k2
 | _::_ -> k1::k2
 
-let split_procs n =
-  let n =
-    try find_start_proc n
-    with Exit -> Warn.fatal "Cannot split in procs" in
+
+let find_proc t  n = 
+  let rec array_rec j =
+    assert (j < Array.length t) ;
+    list_rec j t.(j)
+
+  and list_rec j = function
+    | [] -> array_rec (j+1)
+    | m::ms -> if n == m then j else list_rec j ms in
+  array_rec 0
+
+let find_back n =
+
+  let rec find_rec k m = match m.edge.E.edge with
+  | E.Back _ ->
+      if k = 0 then m
+      else find_next (k-1) m
+  | E.Leave _ ->
+      find_next (k+1) m
+  | _ -> find_next k m
+
+  and find_next k m =
+    if m.next == n then Warn.fatal "Non-matching Leave/Back"
+    else find_rec k m.next in
+  find_rec 0 n
+
+      
+let merge_changes n nss =
+  let t = Array.of_list nss in
   let rec do_rec m =
-    let k1,k2 =
-      if m.next == n then begin
-        if same_proc m.edge then
-          Warn.fatal "%s at proc end" (debug_edge m.edge)
-        else
-          [],[]
-      end else do_rec m.next in
-    if same_proc m.edge then
-      m::k1,k2
-    else
-      [m],cons_not_nil k1 k2 in
-  let k1,k2 = do_rec n in
-  let nss = cons_not_nil k1 k2 in
-  let rec num_rec k = function
-    | [] -> ()
-    | ns::nss ->
-        List.iter
-          (fun n -> n.evt <- { n.evt with proc = k; })
-          ns ;
-        num_rec (k+1) nss in
-  num_rec 0 nss ;
-  nss
+    match m.edge.E.edge with
+    | E.Leave _ ->
+        let i = find_proc t m in
+        let back = find_back m.next in
+        let j = find_proc t back.next in
+        if i=j then Warn.fatal "Useless Leave/Back" ;
+        t.(i) <- t.(i) @ t.(j) ;
+        t.(j) <- [] ;
+        do_next m
+    | _ -> do_next m
+
+  and do_next m = if m.next != n then do_rec m.next in
+
+  do_rec n ;
+  List.filter Misc.consp (Array.to_list t)
+
+  let value_before v1 v2 =
+    if O.coherence_decreasing then v1 > v2 else v1 < v2
+
+
+  let proc_back ns = match ns with
+  | []|[_] -> false
+  | fst::rem ->
+      let lst = Misc.last rem in
+      let e1 = fst.evt and e2 = lst.evt in
+      e1.loc = e2.loc && value_before e2 e1
+
+  let split_procs n =
+    let n =
+      try find_start_proc n
+      with Exit -> Warn.fatal "Cannot split in procs" in
+    let rec do_rec m =
+      let k1,k2 =
+        if m.next == n then begin
+          if same_proc m.edge then
+            Warn.fatal "%s at proc end" (debug_edge m.edge)
+          else
+            [],[]
+        end else do_rec m.next in
+      if same_proc m.edge then
+        m::k1,k2
+      else
+        [m],cons_not_nil k1 k2 in
+    let k1,k2 = do_rec n in
+    let nss = cons_not_nil k1 k2 in
+    let nss = merge_changes n nss in
+    let rec num_rec k = function
+      | [] -> ()
+      | ns::nss ->
+          List.iter
+            (fun n -> n.evt <- { n.evt with proc = k; })
+            ns ;
+          num_rec (k+1) nss in
+    num_rec 0 nss ;
+    if
+      not O.allow_back &&
+      List.exists proc_back nss
+    then Warn.fatal "Forbidden po vs. com" ;
+    nss
 
 
 (****************************)

@@ -578,6 +578,10 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
       not (is_even e1 e2) &&
       get_posy e1 < get_posy e2 in
 
+    let back = false in
+    let is_back e1 e2 = back && get_posx_int e1 <  get_posx_int e2 in
+
+
     let xorigin=1.0 in
     
 (* Size of one step, horizontal *)
@@ -913,7 +917,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
             (pp_node_eiid ew)
 	    (pp_node_eiid er)
 	    "rf"
-            (last_thread ew er || is_up ew er)
+            (last_thread ew er || is_up ew er || is_back ew er)
             (is_even ew er)
       | S.Final _,S.Store ew -> 
 	  if PC.showfinalrf then
@@ -945,7 +949,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
                 (if (try "mo" = String.sub label 0 2 with Invalid_argument _ -> false) && E.is_mem_store e && E.is_mem_store e' then "" (*"penwidth=10.0"*) else "")
 (* Extra attributes, overrides nothing *)
 	        ""
-                (last_thread e e' || is_up e e') (is_even e e'))
+                (last_thread e e' || is_up e e' || is_back e e') (is_even e e'))
             vbs)
         vbss
     end ;

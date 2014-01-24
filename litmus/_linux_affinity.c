@@ -49,24 +49,27 @@ cpus_t *read_affinity(void) {
    go to sleep... */
 
 
+
+const static tsc_t sec = (tsc_t)1000000 ;
+
 static void* loop(void *p)  {
-  int *q = p ;
-  intptr_t r1 = 0, r2=0 ;
-  for (int k = *q ; k >  0 ; k--) { r1 += k ; r2 += k ; }
-  return (void *)(r1-r2) ;
+  tsc_t *q = p ;
+  tsc_t max = *q ;
+  while (timeofday() < max) ;
+  return NULL ;
 }
 
-static void warm_up(int sz, int max) {
+
+static void warm_up(int sz, tsc_t d) {
     pthread_t th[sz];
-    for (int k = 0 ; k < sz ; k++) launch(&th[k], loop, &max) ;
+    d += timeofday() ;
+    for (int k = 0 ; k < sz ; k++) launch(&th[k], loop, &d) ;
     for (int k = 0 ; k < sz ; k++) join(&th[k]) ;
 }
 
-static const int lim_max  = 1000000 ;
-
 cpus_t *read_force_affinity(int n_avail, int verbose) {
   int sz = n_avail <= 1 ? 1 : n_avail ;
-  int max = 4 ;
+  tsc_t max = sec / 100 ;
 
   for ( ; ; ) {
     warm_up(sz+1,max) ;
@@ -77,10 +80,11 @@ cpus_t *read_force_affinity(int n_avail, int verbose) {
       cpus_dump(stderr,r) ;
       fprintf(stderr,"'\n") ;
     }
-    max = max >= lim_max ? max : 2*max ;
     cpus_free(r) ;
   }
 }
+
+
 
 /* Enforcing processor affinity.
    Notice that logical processor numbers may be negative.
@@ -117,19 +121,36 @@ void write_one_affinity(int a) {
   }
 }
 
+/* Get the number of present cpus, fragile */
+
+static const char *present = "/sys/devices/system/cpu/present" ;
+
+static int get_present(void) {
+  FILE *fp = fopen(present,"r") ;
+  if (fp == NULL) return -1 ;
+  int r1,r2 ;
+  int n = fscanf(fp,"%d-%d\n",&r1,&r2) ;
+  fclose(fp) ;
+  if (n != 2) return -1 ;
+  return r2-r1+1 ;
+}
+
 void force_one_affinity(int a, int sz,int verbose, char *name) {
   if (a >= 0) {
     cpu_set_t mask;
     int r ;
-    int max = 4 ;
     CPU_ZERO(&mask) ;
     CPU_SET(a,&mask) ;
     do {
       r = pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) ;
       if (r != 0) {
-        if (verbose) fprintf(stderr,"%s: force %i failed\n",name,a) ;
-        warm_up(sz+1,max) ;
-        max = max >= lim_max ? max : 2*max ;
+        if (verbose)
+          fprintf(stderr,"%s: force %i failed\n",name,a) ;
+        int nwarm = get_present() ;
+        if (verbose > 1)
+          fprintf(stderr,"%s: present=%i\n",name,nwarm) ;
+        if (nwarm < 0) nwarm = sz+1 ;
+        warm_up(nwarm,sec/100) ;
       }
     } while (r != 0) ;
   }

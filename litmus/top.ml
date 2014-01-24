@@ -146,8 +146,12 @@ end = struct
             Warn.user_error "Unconsistent hashes for test %s, previous file %s"
               tname ohash.filename
           end else begin
-            W.warn  "Duplicate occurrence of test %s (%s,%s)"
-              tname ohash.filename hash.filename
+            if  ohash.filename <> hash.filename then
+              W.warn  "Duplicate occurrence of test %s (%s,%s)"
+                tname ohash.filename hash.filename
+            else
+              W.warn "File %s is referenced more then once"
+                ohash.filename     
           end ;
           false
         with Not_found ->  true

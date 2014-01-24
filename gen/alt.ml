@@ -92,12 +92,16 @@ module Make(C:XXXCompile.S)
         | Ext,_|_,Ext -> true 
 
 (* Check altenance of com/po *)              
-    let choice_critical e1 e2 = match e1.edge,e2.edge with
+    let choice_critical e1 e2 =
+      let r = 
+        match e1.edge,e2.edge with
 (* Two cases of allowed com composition *)
-    | Ws _,Rf _
-    | Fr _,Rf _ -> true
+        | (Ws _|Leave CWs|Back CWs|Fr _|Leave CFr|Back CFr),
+          (Rf _|Leave CRf|Back CRf) -> true
 (* Otherwise require alternance *)
-    | _,_ ->  C.E.get_ie e1 <> C.E.get_ie e2
+        | _,_ ->  C.E.get_ie e1 <> C.E.get_ie e2 in
+(*      eprintf "Choice: %s %s -> %b\n" (C.E.pp_edge e1) (C.E.pp_edge e2) r ; *)
+      r
 
     let choice_uni e1 e2 =  match e1.edge,e2.edge with
     | (Ws _,Ws _)
@@ -209,16 +213,22 @@ module Make(C:XXXCompile.S)
     let rec c_minprocs_es c = function
       | [] -> c
       | e::es ->
-          let c = match get_ie e with
-          | Int -> c
-          | Ext -> c+1 in
+          let c = match e.C.E.edge with
+          | Back _|Leave _ -> c
+          | _ ->
+              match get_ie e with
+              | Int -> c
+              | Ext -> c+1 in
           c_minprocs_es c es
 
     let rec c_minprocs_suff c = function
       | [] -> c
       | (_,es)::suff -> c_minprocs_suff (c_minprocs_es c es) suff
             
-    let minprocs suff = c_minprocs_suff 0 suff
+    let minprocs suff =
+      let r = c_minprocs_suff 0 suff in
+      if O.verbose > 3 then eprintf "MIN [%s] => %i\n" (pp_ess suff) r ;
+      r
 
 
     let rec c_minint_es c = function
@@ -271,7 +281,10 @@ module Make(C:XXXCompile.S)
             (n = 0 || (n > 0 && O.upto)) &&
             can_prefix prefix (can_precede safes po_safe) suff
           then begin
-              f0 po_safe (prefix@suff) k
+            try f0 po_safe (prefix@suff) k
+            with e ->
+              eprintf "Exc in F0: '%s'\n" (Printexc.to_string e) ;
+              raise e
           end else k in
         if n <= 0 then k
         else f_rec n suff k
@@ -537,6 +550,6 @@ module Make(C:XXXCompile.S)
     let gen ?(relax=relax) ?(safe=safe) n =
       try secret_gen relax safe n
       with e ->
-        eprintf "Exc: %s\n" (Printexc.to_string e) ;
+        eprintf "Exc: '%s'\n" (Printexc.to_string e) ;
         raise e
   end

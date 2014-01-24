@@ -45,7 +45,7 @@ let hexanum = "0x" hexa+
 let alpha = [ 'a'-'z' 'A'-'Z']
 let name = alpha (alpha|digit)*
 let blank = [' ' '\t']
-let testname  = (alpha|digit|'_' | '/' | '.' | '-' | '+')+
+let testname  = (alpha|digit|'_' | '/' | '.' | '-' | '+' | '[' | ']')+
 let nl = '\n'|"\r\n"
 
 rule main  mk islitmus rem = parse

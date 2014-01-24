@@ -356,6 +356,14 @@ module Make
 (***************)
 
     let check_event_structure test conc =
+
+      if E.EventSet.exists
+          (fun x ->
+            (is_that_fence B.DSBST x || is_that_fence B.DMBST x))
+          conc.S.str.E.events
+      then
+        Warn.user_error "ST qualifier not handled by CAV12" ;
+      
       let pr = MU.make_procrels is_isync conc in
       if O.debug && O.verbose > 0 then begin
         let module PP = Pretty.Make(S) in

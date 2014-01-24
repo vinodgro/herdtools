@@ -49,6 +49,7 @@ module type Config = sig
   val verbose : int
   val skipchecks : StringSet.t
   val strictskip : bool
+  val optace : bool
 end
 
 (* Defaults *)

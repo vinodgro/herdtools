@@ -284,7 +284,28 @@ let extract_external r =
   and collect_loads es = collect_by_loc es E.is_load
   and collect_stores es = collect_by_loc es E.is_store
   and collect_atomics es = collect_by_loc es E.is_atomic
-      
+
+(* fr to init stores only *)
+  let make_fr_partial conc =
+    let ws_by_loc = collect_mem_stores conc.S.str in
+    let rs_by_loc = collect_mem_loads conc.S.str in
+    let rfm = conc.S.rfmap in
+    let k =
+      LocEnv.fold
+        (fun loc rs k ->
+          List.fold_left
+            (fun k r ->
+              match find_rf r rfm with
+              | S.Init ->
+                  let ws =
+                    try LocEnv.find loc ws_by_loc
+                    with Not_found -> [] in
+                  List.fold_left (fun k w -> (r,w)::k) k ws
+              | S.Store _ -> k)
+            k rs)
+        rs_by_loc [] in
+    E.EventRel.of_list k
+
 (*************)
 (* Atomicity *)
 (*************)
@@ -500,6 +521,7 @@ let extract_external r =
             ppoloc in
       Some pco
     with Exit -> None
+
 
 (*************************************)
 (* Final condition invalidation mode *)

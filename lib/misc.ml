@@ -113,6 +113,9 @@ let explode s =
 (******************)
 (* List utilities *)
 (******************)
+let consp = function
+  | [] -> false
+  | _::_ -> true
 
 let cons x xs = x::xs
 

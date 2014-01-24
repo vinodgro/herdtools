@@ -22,7 +22,7 @@ open ConstrGen
 %token <string> NAME
 %token <int> NUM
 
-%token TRUE
+%token TRUE FALSE
 %token EQUAL PLUS_DISJ
 %token FINAL FORALL EXISTS OBSERVED TOKAND NOT AND OR IMPLIES CASES WITH
 %token LOCATIONS STAR
@@ -173,6 +173,8 @@ prop:
     {And []}
 | TRUE
     {And []}
+| FALSE
+    {Or []}
 | atom_prop
     { Atom $1 }
 | NOT prop 

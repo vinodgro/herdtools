@@ -307,9 +307,6 @@ end = struct
   let find_global_type a = find_type (A.Location_global a)
 
 (* Test condition *)
-  let dump_cond_v = function
-    | Concrete i -> sprintf "%i" i
-    | Symbolic s -> dump_val_param s
 
   let remark_pos test = match test.T.condition with
   | ForallStates _ -> false
@@ -322,30 +319,6 @@ end = struct
   | ExistsState _ -> v
   | NotExistsState _ -> "!" ^ v
 
-  let dump_condition dump_loc c =
-    let rec dump_prop chan p = match p with
-    | Atom (LV (loc,v)) ->
-        fprintf chan "%s == %s" (dump_loc loc) (dump_cond_v v)
-    | Atom (LL (loc1,loc2)) ->
-        fprintf chan "%s == %s" (dump_loc loc1) (dump_loc loc2)
-    | Not p -> fprintf chan "!(%a)" dump_prop p
-    | Or [] -> fprintf chan "0"
-    | Or [p] -> dump_prop chan p
-    | Or (p::ps) ->
-        fprintf chan "(%a) || (%a)" dump_prop p dump_prop (Or ps)
-    | And [] -> fprintf chan "1"
-    | And [p] -> dump_prop chan p
-    | And (p::ps) ->
-        fprintf chan "(%a) && (%a)" dump_prop p dump_prop (And ps)
-    | Implies (p1,p2) ->
-        fprintf chan "!(%a) || (%a)" dump_prop p1 dump_prop p2 in
-
-    let dump_def p = O.fi "cond = %a;" dump_prop p in
-    match c with
-    | ForallStates p
-    | ExistsState p
-    | NotExistsState p ->
-        dump_def p
 
   let dump_header test =
     O.o "/* Parameters */" ;
@@ -813,33 +786,35 @@ let dump_read_timebase () =
           do_rem k n rem in
     do_rec [] 0
 
+
+  module DC =
+    CompCond.Make(O)
+      (struct
+        module C = C
+        module V = struct
+          type t = Constant.v
+          let compare = A.V.compare
+          let dump = function
+            | Concrete i -> sprintf "%i" i
+            | Symbolic s -> dump_val_param s
+        end
+        module Loc = struct
+          type t = A.location
+          let compare = A.location_compare
+          let dump = dump_loc_param
+        end
+      end)
+
+
   let dump_cond_fun env test =
     let cond = test.T.condition in
-    let locs = C.locations cond in
-    let plocs =
-      List.map
-        (fun loc ->
-          let t = find_type loc env in
-          sprintf "%s %s" (dump_type t) (dump_loc_param loc))
-        locs in
-    let vals = C.location_values cond in
-    let pvals =
-      List.map (fun loc -> sprintf "void *%s" (dump_val_param loc)) vals in
-    O.f "inline static int final_cond(%s) {"
-      (String.concat "," (plocs@pvals)) ;
-    O.oi "int cond;" ;
-    dump_condition dump_loc_param cond ;
-    O.oi "return cond;" ;
-    O.o "}" ;
-    O.o ""
+    let find_type loc =
+      let t = find_type loc env in
+      dump_type t in
+    DC.fundef find_type cond
 
   let dump_cond_fun_call test dump_loc dump_val =
-    let cond = test.T.condition in
-    let locs = C.locations cond in
-    let plocs = List.map dump_loc locs in
-    let vals = C.location_values cond in
-    let pvals = List.map dump_val vals in
-    sprintf "final_cond(%s)" (String.concat "," (plocs@pvals))
+    DC.funcall (test.T.condition) dump_loc dump_val 
 
   let dump_defs_outs doc env test =
     (* If some of the output registers is of pointer type,
@@ -1869,7 +1844,6 @@ let dump_read_timebase () =
 
 (****************)
 
-(*      dump_condition chan indent3 dump_loc_copy test.T.condition  ; *)
       O.fiii "if (%s) { hist->n_pos++; } else { hist->n_neg++; }"
         (test_witness test "cond") ;
       if (do_verbose_barrier) then begin

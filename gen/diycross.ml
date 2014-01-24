@@ -190,6 +190,7 @@ let () =
       let eprocs = !Config.eprocs
       let nprocs = !Config.nprocs
       let neg = !Config.neg
+      let allow_back = false
     end in
     let module V = SymbConstant in
     let open Archs in

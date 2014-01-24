@@ -67,3 +67,12 @@ type check =  Sc | Uni | Thin | Critical | Free | Ppo | Transitive | Total
 
 
 
+(* Com relation *)
+type com =  CRf | CFr | CWs
+
+let pp_com = function
+  | CRf -> "Rf"
+  | CFr -> "Fr"
+  | CWs -> "Ws"
+
+let fold_com f r = f CRf (f CFr (f CWs r))

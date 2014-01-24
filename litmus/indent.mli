@@ -24,6 +24,7 @@ module type S =
   sig
     val out : out_channel
 
+    val fprintf :  ('a, out_channel, unit, unit) format4 -> 'a
     val fx : t ->  ('a, out_channel, unit, unit) format4 -> 'a
     val f :  ('a, out_channel, unit, unit) format4 -> 'a
     val fi : ('a, out_channel, unit, unit) format4 -> 'a
@@ -32,6 +33,7 @@ module type S =
     val fiv : ('a, out_channel, unit, unit) format4 -> 'a
     val fv : ('a, out_channel, unit, unit) format4 -> 'a
 
+    val output : string -> unit
     val ox : t -> string -> unit
     val oy : t -> string -> unit        
     val o : string -> unit

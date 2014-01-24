@@ -27,6 +27,7 @@ let indent5 = tab indent4
 module type S = sig
   val out : out_channel
 
+  val fprintf :  ('a, out_channel, unit, unit) format4 -> 'a
   val fx : t ->  ('a, out_channel, unit, unit) format4 -> 'a
   val f :  ('a, out_channel, unit, unit) format4 -> 'a
   val fi : ('a, out_channel, unit, unit) format4 -> 'a
@@ -35,6 +36,7 @@ module type S = sig
   val fiv : ('a, out_channel, unit, unit) format4 -> 'a
   val fv : ('a, out_channel, unit, unit) format4 -> 'a
       
+  val output : string -> unit
   val ox : t -> string -> unit        
   val oy : t -> string -> unit        
   val o : string -> unit
@@ -49,6 +51,8 @@ module Make (Chan : sig val out : out_channel end) = struct
   open Printf
   let out = Chan.out
 
+  let fprintf fmt = Printf.fprintf Chan.out fmt
+
   let fx indent fmt =
     output_string Chan.out indent ;    
     kfprintf (fun chan -> output_char chan '\n')
@@ -60,6 +64,8 @@ module Make (Chan : sig val out : out_channel end) = struct
   let fiii fmt = fx indent3 fmt
   let fiv fmt = fx indent4 fmt
   let fv fmt = fx indent5 fmt
+
+  let output s = output_string Chan.out s
 
   let ox i s =
    output_string Chan.out i ;

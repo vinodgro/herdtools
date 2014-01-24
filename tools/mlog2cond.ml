@@ -18,7 +18,7 @@ let verbose = ref 0
 let logs = ref []
 let forall = ref false
 let optcond = ref false
-
+let acceptempty = ref false
 let options =
   [
   
@@ -32,7 +32,9 @@ let options =
    ("-optcond", Arg.Bool (fun b -> optcond := b),
     sprintf
       "<bool> optimise conditions, default %b" !optcond);
-
+   ("-acceptempty", Arg.Bool (fun b -> acceptempty := b),
+    sprintf
+      "<bool> output enmpty conditions, default %b" !acceptempty);
   ]
 
 let prog =
@@ -68,7 +70,7 @@ module LL =
       let ok = select_name
     end)
 
-
+let acceptempty = !acceptempty
 let quant = if !forall then "forall" else "exists"
 let zyva log =
   let test = match log with
@@ -87,7 +89,9 @@ let zyva log =
   let dump_test chan t =
     let bdss = LS.get_bindings t.states in
     match bdss with
-    | [] -> ()
+    | [] ->
+        if acceptempty then
+          fprintf chan "%s \"%s false\"\n" t.tname quant
     | _ ->
         fprintf chan "%s\n" (pp_cond t.tname bdss) in
 

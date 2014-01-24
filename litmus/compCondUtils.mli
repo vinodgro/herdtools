@@ -1,8 +1,7 @@
 (*********************************************************************)
-(*                        Memevents                                  *)
+(*                        Diy                                        *)
 (*                                                                   *)
-(* Jade Alglave, Luc Maranget, INRIA Paris-Rocquencourt, France.     *)
-(* Susmit Sarkar, Peter Sewell, University of Cambridge, UK.         *)
+(* Luc Maranget, INRIA Paris-Rocquencourt, France.                   *)
 (*                                                                   *)
 (*  Copyright 2013 Institut National de Recherche en Informatique et *)
 (*  en Automatique and the authors. All rights reserved.             *)
@@ -10,13 +9,16 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-module Make : functor (S:SemExtra.S) -> sig
-  (* Organize events, first by proc, then by po *)
-  val make_by_proc_and_poi : S.event_structure -> S.event_set list list
+(* Input signature for CompCond.Make and Switch.Make *)
 
-  (* Observed read events *)
-  val observed : S.test -> S.event_structure -> S.event_set
+module type X = sig
+  type t
+  val compare : t -> t -> int
+  val dump : t -> string
+end
 
-  (* All registers that read from memory *)
-  val all_regs_that_read : S.event_structure -> S.loc_set
+module type I = sig
+  module C : Constr.S
+  module V : X with type t = Constant.v
+  module Loc : X with type  t = C.A.location
 end
