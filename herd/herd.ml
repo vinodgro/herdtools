@@ -411,7 +411,7 @@ let () =
       | Some (Model.Minimal b) -> b
       | Some (Model.Generic _|Model.File _) -> false
       | _ -> true
-
+    let initwrites = true
     let outputdir = !outputdir
     let suffix = !suffix
     let dumpes = !dumpes

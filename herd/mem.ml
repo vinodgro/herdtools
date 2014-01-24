@@ -13,6 +13,7 @@
 module type Config = sig
   val verbose : int
   val optace : bool
+  val initwrites : bool
   val unroll : int
   val speedcheck : Speed.t
   val debug : Debug.t
@@ -143,6 +144,54 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
       too_far : bool ; (* some events structures discarded (loop) *)
      }
 
+(* All locations from init state, a bit contrieved *)
+    let get_all_locs_init init =
+      let locs =
+        List.fold_left
+          (fun locs (loc,v) ->
+            let locs =
+              match loc with
+              | A.Location_global _ -> loc::locs
+              | A.Location_reg _ -> locs in
+            let locs = match v with
+            | A.V.Val (Constant.Symbolic _) -> A.Location_global v::locs
+            | _ -> locs in
+            locs)
+          [] (A.state_to_list init) in
+      A.LocSet.of_list locs
+            
+    let get_all_mem_locs test =
+      let locs_final =
+        A.LocSet.filter
+          (function
+            | A.Location_global _ -> true
+            | A.Location_reg _ -> false)
+          test.Test.observed
+      and locs_init = get_all_locs_init test.Test.init_state in
+      let locs = A.LocSet.union locs_final locs_init in
+      let locs =
+        List.fold_left
+          (fun locs (_,code) ->
+            List.fold_left
+              (fun locs (_,ins) ->
+                A.fold_addrs
+                  (fun x ->
+                    let loc = A.maybev_to_location x in
+                    A.LocSet.add loc)
+                  locs ins)
+              locs code)
+          locs
+        test.Test.start_points in
+      let env =
+        A.LocSet.fold
+          (fun loc env ->
+            try
+              let v = A.look_in_state test.Test.init_state loc in
+              (loc,v)::env
+            with A.LocUndetermined -> assert false)
+          locs [] in
+      env
+
     let glommed_event_structures (test:S.test) =
       let p = test.Test.program in
       let starts = test.Test.start_points in
@@ -204,11 +253,15 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 	let evts_proc = jump_start proc code in
 	evts_proc |*| evts in
 
+      let add_inits env =
+        if C.initwrites then EM.initwrites env
+        else EM.zeroT in
+
       let set_of_all_instr_events =
 	List.fold_right
 	  add_events_for_a_processor
 	  starts
-	  (EM.zeroT) in
+	  (add_inits (get_all_mem_locs test)) in
 
       let rec index xs i = match xs with
       | [] ->
@@ -422,9 +475,14 @@ let compatible_locs_mem e1 e2 =
 
 (* refrain from being subtle: match a load with all compatible
    stores, and there may be many *)
+
+(* First consider loads from init, in the initwrite case
+   nothing to consider, as the initial stores should present
+   as events *)
+    let init = if C.initwrites then [] else [S.Init]
     let map_load_init loads =
       E.EventSet.fold 
-        (fun load k -> (load,[S.Init])::k)
+        (fun load k -> (load,init)::k)
         loads [] 
 
 (* Consider all stores that may feed a load
@@ -514,6 +572,7 @@ let compatible_locs_mem e1 e2 =
     let solve_mem test es rfm cns kont res =
       let loads =  E.EventSet.filter E.is_mem_load es.E.events
       and stores = E.EventSet.filter E.is_mem_store es.E.events in
+      eprintf "Stores: %a\n"E.debug_events stores ;
       let compat_locs = compatible_locs_mem in
       solve_mem_or_res test es rfm cns kont res
         loads stores compat_locs add_mem_eqs

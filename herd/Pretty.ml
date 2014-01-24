@@ -130,7 +130,6 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
       else bodytext in
     escape_label dm pp
 
-
       (* Pretty printing and display *)
 
 
@@ -151,10 +150,11 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
     fprintf chan "no_solns [shape=box] %a" pp_color "red" ;
     fprintf chan "[label=\" %s\\l\"]\n}\n" msg
 
-  let pp_instruction dm m chan iiid =
-    let instruction = iiid.A.inst in 
-    fprintf chan
-      "%s" (a_pp_instruction dm m instruction)
+  let pp_instruction dm m chan iiid = match iiid with
+  | None -> fprintf chan "Iniy"
+  | Some iiid ->
+      let instruction = iiid.A.inst in 
+      fprintf chan "%s" (a_pp_instruction dm m instruction)
 
   let extra_thick = "setlinewidth(3)" 
 
@@ -519,10 +519,12 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
 
   let pp_node_eiid e = sprintf "eiid%i" e.E.eiid
 
-  let pp_node_ii chan ii =
-    fprintf chan "proc:%i poi:%i"
-      ii.A.proc
-      ii.A.program_order_index
+  let pp_node_ii chan ii = match ii with
+  | None -> fprintf chan "proc:?? poi:??"
+  | Some ii ->
+      fprintf chan "proc:%i poi:%i"
+        ii.A.proc
+        ii.A.program_order_index
 
 (*
   This complex function is not meant to be used directly,
@@ -548,13 +550,17 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
 (************************)
 (* Position computation *)
 (************************)
-    let max_proc = 
-      E.EventSet.fold (fun e n -> max (E.proc_of e) n)  es.E.events 0  in
+    let max_proc = Misc.last (E.procs_of es) in
     (* Collect events (1) by proc, then (2) by poi *)
     let events_by_proc_and_poi = PU.make_by_proc_and_poi es in
     let maxy,envy =  order_events es events_by_proc_and_poi in
 
-    let get_posx_int e = E.proc_of e in
+    let get_proc e = match E.proc_of e with
+    | Some p -> p
+    | None -> (-1) in
+
+    let get_posx_int e = get_proc e in
+
     let get_posx e = float_of_int (get_posx_int e) in
 
     let get_posy e =
@@ -615,8 +621,8 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
      *)
 
     let last_thread e e' =
-      e.E.iiid.A.proc = e'.E.iiid.A.proc &&
-      e.E.iiid.A.proc = max_proc in  
+      let p = get_proc e and p' = get_proc e' in
+      p = p' && p = max_proc in  
 
 
 (* Position of events *)
@@ -763,7 +769,10 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
                     let e0 =
                       try E.EventSet.choose evts
                       with Not_found -> assert false in
-                    let ins = e0.E.iiid.A.inst in
+                    let ins =
+                      match e0.E.iiid with
+                      | Some iiid -> iiid.A.inst
+                      | None -> assert false in
                     a_pp_instruction dm mmode ins
                   else "" in
                 fprintf chan "subgraph cluster_proc%i_poi%i" n m ;
@@ -846,7 +855,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
             let lbl = match PC.graph with
             | Graph.Free ->
                 if PC.showthread then
-                  sprintf "po:%i" (E.proc_of e)
+                  sprintf "po:%i" (get_proc e)
                 else "po"
             | Graph.Columns|Graph.Cluster ->
                 "po" in

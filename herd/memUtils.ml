@@ -61,8 +61,10 @@ module Make(S : SemExtra.S) = struct
 (* View of a proc *)
 (******************)
 
+
   let proc_view_event p e =
-    E.proc_of e = p || E.is_mem_store e
+    (match E.proc_of e with Some q -> q = p | None -> false) ||
+    E.is_mem_store e
 
   let proc_view_event2 p (e1,e2) =
     proc_view_event p e1 && proc_view_event p e2

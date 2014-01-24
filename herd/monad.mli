@@ -71,6 +71,10 @@ module type S =
 
     val assign : A.V.v -> A.V.v -> unit t
     val commit :  A.inst_instance_id -> unit t
+
+    val initwrites : (A.location * A.V.v) list -> unit t
+
+(* Read out monad *)
     type evt_struct
     type output = VC.cnstrnts * evt_struct
 
