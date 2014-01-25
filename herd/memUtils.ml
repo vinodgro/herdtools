@@ -481,6 +481,31 @@ let extract_external r =
 (* Compute write serialization precursor *)
 (*****************************************)
 
+ (* We asssume unicity of init write event to x,
+    as a defensive measure, works when no init write exists *)
+  let rec find_init = function
+    | []  -> raise Not_found
+    | e::es ->
+        if E.is_mem_store_init e then e
+        else find_init es
+
+(* Init store to loc is co-before stores to x *)
+  let compute_pco_init es =
+    let stores = collect_mem_stores es in
+    let xs =
+      LocEnv.fold
+        (fun _loc ews k ->
+          try
+            let ei = find_init ews in
+            List.fold_left
+              (fun k ew ->
+                if E.event_equal ei ew then k
+                else (ei,ew)::k)
+              k ews
+          with Not_found -> k)
+        stores [] in
+    E.EventRel.of_list xs
+
   let compute_pco rfmap ppoloc =
     try
       let pco = 

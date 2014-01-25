@@ -55,6 +55,7 @@ module type S = sig
 
 (* relative to memory *)
   val is_mem_store : event -> bool
+  val is_mem_store_init : event -> bool
   val is_mem_load : event ->  bool
   val is_mem : event -> bool
   val is_atomic : event -> bool
@@ -108,6 +109,7 @@ module type S = sig
 
 (* relative to memory *)
   val mem_stores_of : EventSet.t -> EventSet.t
+  val mem_stores_init_of : EventSet.t -> EventSet.t
   val mem_loads_of : EventSet.t -> EventSet.t
   val mem_of : EventSet.t -> EventSet.t
   val atomics_of : EventSet.t -> EventSet.t
@@ -356,6 +358,10 @@ module Make (AI:Arch.S) :  S with module A = AI =
     | Access (W,A.Location_global _,_) -> true
     | _ -> false
 
+    let is_mem_store_init e = match e.iiid with
+    | None -> true
+    | Some _ -> false
+
     let is_mem_load e = match e.action with
     | Access (R,A.Location_global _,_) -> true
     | _ -> false
@@ -447,6 +453,7 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
 (* relative to memory *)
     let mem_stores_of = EventSet.filter is_mem_store 
+    let mem_stores_init_of = EventSet.filter is_mem_store_init
     let mem_loads_of es = EventSet.filter is_mem_load es
     let mem_of es = EventSet.filter is_mem es
     let atomics_of es = EventSet.filter is_atomic es

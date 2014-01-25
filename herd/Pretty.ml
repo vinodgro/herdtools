@@ -151,7 +151,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
     fprintf chan "[label=\" %s\\l\"]\n}\n" msg
 
   let pp_instruction dm m chan iiid = match iiid with
-  | None -> fprintf chan "Iniy"
+  | None -> fprintf chan "Init"
   | Some iiid ->
       let instruction = iiid.A.inst in 
       fprintf chan "%s" (a_pp_instruction dm m instruction)
@@ -266,6 +266,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
       [ "lwfence"; "lwf"; "ffence"; "ff";
         "implied"; "mfence"; "dmb"; "lwsync"; "eieio" ; "sync" ; "dmb-cumul" ; "dsb"; 
         "dmb.st"; "dsb.st" ;
+        "dmbst"; "dsbst" ;
         "dsb-cumul"; "sync-cumul"; "lwsync-cumul";
 	"sync_cumul" ; "lwsync_cumul" ;
         "syncext";"lwsyncext";"dmbext";"dsbext";]
@@ -358,6 +359,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
       | e::es -> do_make_posy (y -. 1.0) (E.EventMap.add e y env) es in
     do_make_posy (y -. s) env es
 
+
   let order_events es by_proc_and_poi =
     let iico =
       S.union es.E.intra_causality_data es.E.intra_causality_control in
@@ -378,7 +380,6 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
     let rs = List.mapi (fun k es -> k,es) rs in
     let env = List.fold_left (make_posy max) E.EventMap.empty rs in
     max,env
-      
       
 
 (*******************************)
@@ -520,9 +521,9 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
   let pp_node_eiid e = sprintf "eiid%i" e.E.eiid
 
   let pp_node_ii chan ii = match ii with
-  | None -> fprintf chan "proc:?? poi:??"
+  | None -> ()
   | Some ii ->
-      fprintf chan "proc:%i poi:%i"
+      fprintf chan "proc:%i poi:%i\\l"
         ii.A.proc
         ii.A.program_order_index
 
@@ -554,19 +555,35 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
     (* Collect events (1) by proc, then (2) by poi *)
     let events_by_proc_and_poi = PU.make_by_proc_and_poi es in
     let maxy,envy =  order_events es events_by_proc_and_poi in
-
+    let inits = E.mem_stores_init_of es.E.events in
+    let n_inits = float_of_int (E.EventSet.cardinal inits) in
+    let _,init_envx =
+      E.EventSet.fold
+        (fun e (k,env) ->
+          k+1,
+          E.EventMap.add e (float_of_int (k * (max_proc+1)) /.n_inits) env)
+        inits (0,E.EventMap.empty) in
+    let maxy =
+      if E.EventSet.is_empty inits then maxy
+      else maxy +. 1.0 in
     let get_proc e = match E.proc_of e with
     | Some p -> p
     | None -> (-1) in
 
     let get_posx_int e = get_proc e in
 
-    let get_posx e = float_of_int (get_posx_int e) in
+    let get_posx e =
+      if E.is_mem_store_init e then
+        try E.EventMap.find e init_envx
+        with Not_found -> assert false
+      else
+        float_of_int (get_posx_int e) in
 
     let get_posy e =
-      try E.EventMap.find e envy
-      with Not_found -> 10.0 in
-
+      if E.is_mem_store_init e then maxy
+      else
+        try E.EventMap.find e envy
+        with Not_found -> 10.0 in
 
     let is_even e1 e2 =
       let d =  abs (get_posx_int e1 - get_posx_int e2) in
@@ -673,7 +690,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
     let pp_event color chan e =
       let act = pp_action e in
       if not PC.squished then begin
-        fprintf chan "%s [label=\"%s%s\\l%a\\l%a\""
+        fprintf chan "%s [label=\"%s%s\\l%a%a\""
 	  (pp_node_eiid e) (pp_node_eiid_label e)
 	  (escape_label dm act)  pp_node_ii e.E.iiid
 	  (pp_instruction dm m) e.E.iiid ;
@@ -726,6 +743,14 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
   es.E.atomicity ;
  *)
 
+(* Init events, if any *)
+      if not (E.EventSet.is_empty inits) then begin
+        pl "" ;
+        pl "/* init events */" ;
+        E.EventSet.iter
+          (fun ew -> pp_event "blue" chan ew)
+          inits 
+      end ;
       pl "" ;
       pl "/* the unlocked events */" ;
       Misc.iteri 

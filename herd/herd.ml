@@ -400,6 +400,7 @@ let () =
     let check_cond =  TblRename.find_value_opt conds
 
     let observed_finals_only = observed_finals_only
+    let initwrites = observed_finals_only
     let debug = !debug
     let debuglexer = debug.Debug.lexer
     let verbose = !verbose
@@ -411,7 +412,6 @@ let () =
       | Some (Model.Minimal b) -> b
       | Some (Model.Generic _|Model.File _) -> false
       | _ -> true
-    let initwrites = true
     let outputdir = !outputdir
     let suffix = !suffix
     let dumpes = !dumpes

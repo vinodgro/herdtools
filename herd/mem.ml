@@ -13,11 +13,11 @@
 module type Config = sig
   val verbose : int
   val optace : bool
-  val initwrites : bool
   val unroll : int
   val speedcheck : Speed.t
   val debug : Debug.t
   val observed_finals_only : bool
+  val initwrites : bool
 end
 
 module type S = sig
@@ -763,13 +763,16 @@ let make_atomic_load_store es =
             with Not_found -> S.RFMap.add (S.Final loc) S.Init k)
           loc_loads rfm in      
       try 
+        let pco0 =
+          if C.initwrites then U.compute_pco_init es
+          else E.EventRel.empty in
         let pco =
           if not C.optace then
-            E.EventRel.empty
+            pco0
           else
             match U.compute_pco rfm ppoloc with
             | None -> raise Exit
-            | Some pco -> pco in
+            | Some pco -> E.EventRel.union pco0 pco in
 (* Cross product *)
    
         Misc.fold_cross
