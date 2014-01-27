@@ -572,7 +572,7 @@ let compatible_locs_mem e1 e2 =
     let solve_mem test es rfm cns kont res =
       let loads =  E.EventSet.filter E.is_mem_load es.E.events
       and stores = E.EventSet.filter E.is_mem_store es.E.events in
-      eprintf "Stores: %a\n"E.debug_events stores ;
+(*      eprintf "Stores: %a\n"E.debug_events stores ; *)
       let compat_locs = compatible_locs_mem in
       solve_mem_or_res test es rfm cns kont res
         loads stores compat_locs add_mem_eqs

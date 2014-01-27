@@ -8,7 +8,7 @@
 (**********************)
 (* Computes co and fr *)
 (**********************)
-let invrf=rf -1
+let invrf=(rf)-1
 
 (* co observations in test *)
 let obsco =
@@ -19,7 +19,7 @@ let obsco =
     |(rf;RR(po-loc);invrf))
 
 let co = (obsco|co0)+
-let fr = (invrf;co)|fr0
+let fr = (invrf;co)
 show fr
 show co
 let coi = int(co)
