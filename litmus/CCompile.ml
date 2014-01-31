@@ -110,7 +110,12 @@ module Make
               (Generic.type_in_final p reg1 final flocs)
               (LocMap.add loc2 (Generic.type_in_final p reg2 final flocs) acc)
       in
+      let locations_flocs acc = function
+        | (x, MiscParser.I) -> LocMap.add x RunType.Int acc
+        | (x, MiscParser.P) -> LocMap.add x RunType.Pointer acc
+      in
       let locs = ConstrGen.fold_constr locations_atom final LocMap.empty in
+      let locs = List.fold_left locations_flocs locs flocs in
       LocMap.bindings locs
 
     let comp_code final init flocs =
