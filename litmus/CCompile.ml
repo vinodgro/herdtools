@@ -119,8 +119,8 @@ module Make
       LocMap.bindings locs
 
     let comp_code final init flocs =
-      List.fold_left
-        (fun acc (proc, code) ->
+      List.map
+        (fun (proc, code) ->
            let regs = get_locals proc (locations proc final flocs) in
            let final = List.map fst regs in
            let volatile =
@@ -130,9 +130,8 @@ module Make
              in
              List.fold_left f [] code.CAst.params
            in
-           (proc, (comp_template proc init final code, (regs, volatile))) :: acc
+           (proc, (comp_template proc init final code, (regs, volatile)))
         )
-        []
 
     let compile t =
       let
