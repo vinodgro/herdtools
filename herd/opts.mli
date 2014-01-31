@@ -27,6 +27,7 @@ val model : Model.t option  ref
 val unroll : int ref
 val speedcheck : Speed.t ref
 val optace : bool option ref
+val initwrites : bool option ref
 val through : Model.through ref
 val skipchecks : StringSet.t ref
 val strictskip : bool ref
@@ -76,6 +77,7 @@ module PP : sig
   val showfinalrf : bool ref
   val showinitrf : bool ref
   val showfr : bool ref
+  val showinitwrites : bool ref
   val dotheader : string option ref
   val brackets : bool ref
   val showobserved : bool ref

@@ -121,6 +121,7 @@ module type S = sig
   val showfinalrf : bool
   val showinitrf : bool
   val showfr : bool
+  val showinitwrites : bool
   val dotheader : string option
   val brackets : bool
   val showobserved : bool

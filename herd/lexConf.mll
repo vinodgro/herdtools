@@ -135,6 +135,8 @@ and opt = parse
    { lex_int unroll arg }
 | "optace" arg
    { lex_bool_fun (fun b ->  optace := Some b) arg }
+| "initwrites" arg
+   { lex_bool_fun (fun b ->  initwrites := Some b) arg }
 | "speedcheck" arg
     { lex_tag "speedcheck" Speed.parse Speed.tags speedcheck arg }
 (* Control output *)
@@ -201,6 +203,7 @@ and opt = parse
 | "showfinalrf" arg { lex_bool PP.showfinalrf arg }
 | "showinitrf" arg { lex_bool PP.showinitrf arg }
 | "showfr" arg { lex_bool PP.showfr arg }
+| "showinitwrites" arg { lex_bool PP.showinitwrites arg }
 | "showthread" arg { lex_bool PP.showthread arg }
 | "showlegend" arg { lex_bool PP.showlegend arg }
 | "brackets" arg { lex_bool PP.brackets arg }

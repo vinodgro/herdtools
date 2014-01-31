@@ -27,7 +27,7 @@ and coe = ext(co)
 and fri = int(fr)
 and fre = ext(fr)
 
-acyclic po-loc | rf | fr | co as uniproc
+acyclic co as uniproc
 
 (* Utilities *)
 let dd = addr | data

@@ -556,12 +556,18 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
     let events_by_proc_and_poi = PU.make_by_proc_and_poi es in
     let maxy,envy =  order_events es events_by_proc_and_poi in
     let inits = E.mem_stores_init_of es.E.events in
-    let n_inits = float_of_int (E.EventSet.cardinal inits) in
+    let n_inits = E.EventSet.cardinal inits in
     let _,init_envx =
+      let delta = if max_proc >= n_inits then 1.0 else  0.75 in
+      let w1 = float_of_int max_proc
+      and w2 = float_of_int (n_inits-1) *. delta in
+      let shift = (w1 -. w2) /. 2.0 in
       E.EventSet.fold
         (fun e (k,env) ->
           k+1,
-          E.EventMap.add e (float_of_int (k * (max_proc+1)) /.n_inits) env)
+          let x =  shift +. (float_of_int k) *. delta in
+(*          eprintf "k=%i, x=%f\n" k x ; *)
+          E.EventMap.add e x env)
         inits (0,E.EventMap.empty) in
     let maxy =
       if E.EventSet.is_empty inits then maxy
@@ -993,11 +999,18 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
 (* get rid of register events before dumping *)
 (*********************************************)
 
+  let select_non_init =
+    if PC.showinitwrites then
+      fun _ -> true
+    else 
+      fun e -> not (E.is_mem_store_init e)
   let select_event = match PC.showevents with
   | AllEvents -> (fun _ -> true)
   | MemEvents -> E.is_mem
   | NonRegEvents ->
       (fun e -> E.is_mem e || E.is_barrier e || E.is_commit e)
+
+  let select_event = let open Misc in select_event &&& select_non_init
 
   let select_events = E.EventSet.filter select_event
   let select_rel =

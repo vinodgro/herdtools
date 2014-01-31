@@ -161,7 +161,9 @@ let options = [
   parse_bool "-strictskip" strictskip
    "retain outcomes allowed by ALL skipped checks" ;
   "-optace", Arg.Bool (fun b -> optace := Some b),
-    "<bool> optimize axiomatic candidate generation, default true except for the minimal model and all generic models";
+    "<bool> optimize axiomatic candidate generation, default is true except for the minimal model and all generic models";
+  "-initwrites", Arg.Bool (fun b -> initwrites := Some b),
+    "<bool> represent init writes as write events, default is false except for specifically tagged generic models";
   parse_tag "-show"
     (fun tag -> match PrettyConf.parse_show tag with
     | None -> false
@@ -261,6 +263,8 @@ let options = [
     "show read-from edges to final state in pictures" ;
   parse_bool "-showfr" PP.showfr 
     "show from-read edges in pictures" ;
+  parse_bool "-showinitwrites" PP.showinitwrites
+    "show init write events in pictures" ;
  "-unshow",
   Arg.String
     (fun tag ->
@@ -350,7 +354,7 @@ let names = match !names with
 | names -> Some (ReadNames.from_files names StringSet.add StringSet.empty)
 
 (* Read generic model, if any *)
-let model,observed_finals_only = match !model with
+let model,model_enumco = match !model with
 | Some (Model.File fname) ->
     let module P =
       ParseModel.Make
@@ -359,11 +363,11 @@ let model,observed_finals_only = match !model with
         end) in
     begin try
       let _,(b,_,_) as r = P.parse fname in
-      Some (Model.Generic r),not b
+      Some (Model.Generic r),b
     with Misc.Exit ->
       eprintf "Failure of generic model parsing\n" ;
       exit 2 end
-| m -> m,false
+| m -> m,true
     
 
 (* Read kinds/conds files *)
@@ -399,8 +403,10 @@ let () =
     let check_kind = TblRename.find_value_opt kinds
     let check_cond =  TblRename.find_value_opt conds
 
-    let observed_finals_only = observed_finals_only
-    let initwrites = observed_finals_only
+    let observed_finals_only = not model_enumco
+    let initwrites = match !initwrites with
+    | None -> not model_enumco
+    | Some b -> b
     let debug = !debug
     let debuglexer = debug.Debug.lexer
     let verbose = !verbose
@@ -450,6 +456,7 @@ let () =
       let showfinalrf = !PP.showfinalrf
       let showinitrf = !PP.showinitrf
       let showfr = !PP.showfr
+      let showinitwrites = !PP.showinitwrites
       let brackets = !PP.brackets
       let showobserved = !PP.showobserved
       let movelabel = !PP.movelabel
