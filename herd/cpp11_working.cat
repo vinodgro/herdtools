@@ -1,0 +1,44 @@
+"C++11"
+
+(* Uniproc/Coherence check *)
+let com = rf | fr | co
+acyclic (po-loc | com) as uniproc
+
+(*Thin air check*)
+(*Should this be checked?*)
+let dep = data | addr
+acyclic dep as thin
+
+(*We probably need an empty set constructor*)
+let rmw = (R & ~R)
+
+(*Fences are B, this is for the set of all barriers(fences)*)
+let fence = B
+
+(* These are useful auxilliary definitions. The constraints that arise
+   from memory orders can usually be applied to a single action, or to
+   a fence-action pair. These definitions allow us to combine those
+   cases.
+*)
+let idf = (po; [fence])?
+let fid = ([fence]; po)?
+
+(*synchronizes with*)
+let rsco = ((co ; [rmw]) | coi*) & ~(coe ; [~rmw] ; co)
+let sw = ext & ([rel]; fid; rsco; rf; idf; [acq])
+
+(*hb is just as transitive closure of po union sw (as we don't have consumes)*)
+let hb = (po | sw)+
+acyclic hb
+
+let dr = ([W * M] | [M * W]) & loc & 
+         ([na * _] | [_ * na]) &
+         ext &
+         ~hb & ~(hb^-1)
+
+(*consistent reads from (must read from most recent read in happens before)*)
+irreflexive(fr;hb)
+
+show sw
+show dr
+empty dr as dataRace 

@@ -1,0 +1,8 @@
+OpenCL MP
+"Fre PodWR Fre PodWR"
+{ x=0; y=0; }
+ P0                                | P1                                  ;
+ x = 1                             | r1 = y.load(mo_acquire,S_workgroup) ;
+ y.store(1,mo_release,S_workgroup) | r2 = x                              ;
+
+exists (1:r1 = 1 /\ 1:r2 = 0)

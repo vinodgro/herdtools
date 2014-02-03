@@ -1,0 +1,29 @@
+"GPU_PTX"
+
+(* Uniproc check *)
+let com = rf | fr | co
+let po_llh = (WM(po-loc) | MW(po-loc))
+acyclic po_llh | com as uniproc_llh
+
+let dep = addr | data
+acyclic dep | rf as thin
+
+let ppo = dep
+
+let sys_fence = membar.sys
+let gl_fence  = membar.gl  | sys_fence
+let cta_fence = membar.cta | gl_fence
+
+acyclic 
+  ppo | cta_fence | (rf & int-cta)    | (co & int-cta)    | (fr & int-cta)
+  as cta_constraint
+
+acyclic
+  ppo | gl_fence  | (rf & int-device) | (co & int-device) | (fr & int-device) 
+  as gl_constraint
+
+acyclic 
+  ppo | sys_fence | rf                | co                | fr             
+  as sys_constraint
+
+

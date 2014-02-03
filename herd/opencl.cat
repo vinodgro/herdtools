@@ -1,0 +1,29 @@
+"OpenCL"
+
+(* Currently this is identical to the C++11 model. *)
+
+(* Uniproc/Coherence check *)
+let com = rf | fr | co
+acyclic po-loc | com
+
+(*synchronizes with*)
+let sw = ((co;rfe) & F[mo_release]F[mo_acquire](unv)) |   (*release sequence, coherence order followed by a release acquires*)
+          (F[mo_release]F[mo_acquire](unv) & rfe)         (*If an acquire externel reads from a release*)
+
+(*hb is just as defined in the 2011 paper*)
+let hb = (po | sw)+
+
+(*data race*)
+
+let dr = (WM(loc) | MW(loc)) &                               (*loc is the relation of all events to the same location*)
+         (F[non_atomic]F[](unv) | F[]F[non_atomic](unv)) &   (*At lease one is non-atomic*)
+	 MM(tid) &                                           (*tid relates all events in different threads*)
+	 (~(hb | (hb^-1)))                                     (*Make sure they are not in happens before*)
+
+(*creating an acyclic global happens before with fr is the same as consistent reads from mapping we think*)
+let GHB = po | fr | sw
+acyclic GHB
+
+show sw
+(*show dr*)
+empty dr

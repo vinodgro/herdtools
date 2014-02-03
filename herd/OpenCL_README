@@ -1,0 +1,23 @@
+This file describes the preliminary OpenCL model in Herd.
+
+The model can be found in opencl.cat, (best viewed in ocaml mode)
+
+The model is based on the C++11 model, so see CPP11_README for more information.
+
+-----
+
+Done list:
+
+* Register OpenCL as one of the herd architectures.
+
+* Allow memory_scopes in instructions.
+
+* Allow (a * b) notation in models. This is short for F[a]F[b](unv).
+
+Todo list:
+
+* AllBarrier.mli (and hence AllBarrier.ml) contains a list of fence types. Acquire, release, acq_rel, and SC fences are all included. There are a *lot* more fence types for OpenCL: {local,global}×{acquire,release,acq_rel,SC}×{workitem_scope,workgroup_scope,device_scope,all_svn_devices_scope}. So these probably need adding.
+
+* Allow variables to be declared as global/local.
+
+* Add global/local/private memory regions.
