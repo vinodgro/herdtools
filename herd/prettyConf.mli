@@ -53,6 +53,7 @@ module type S = sig
   val verbose : int
   val dotcom : dotcom option
   val gv : bool
+  val evince : bool
   val dotmode : dotmode
   val showevents : showevents
   val texmacros : bool
@@ -81,6 +82,7 @@ module type S = sig
   val showlegend : bool
   val showfinalrf : bool
   val showinitrf : bool
+  val showpoloc : bool
   val showfr : bool
   val dotheader : string option
   val brackets : bool

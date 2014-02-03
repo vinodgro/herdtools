@@ -19,6 +19,8 @@ module type S =
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE      (* X86 *)
+      | FENCE_ACQ | FENCE_REL | FENCE_ACQ_REL | FENCE_SC (*C++11 fences*)
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
     val a_to_b : a -> b
     val pp_isync : string
   end
@@ -27,3 +29,6 @@ module type S =
 module FromPPC : functor(B:PPCBarrier.S) -> S with type a = B.a
 module FromARM : functor(B:ARMBarrier.S) -> S with type a = B.a
 module FromX86 : functor(B:X86Barrier.S) -> S with type a = B.a
+module FromCPP11    : functor(B:CPP11Barrier.S)   -> S with type a = B.a
+module FromOpenCL   : functor(B:OpenCLBarrier.S)  -> S with type a = B.a
+module FromGPU_PTX  : functor(B:GPU_PTXBarrier.S) -> S with type a = B.a

@@ -302,10 +302,28 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 		    {E.eiid = eiid1 ;
 		     E.iiid = ii;
                      E.atomic = atomic;
+		     E.atrbs = [];
 		     E.action = E.Access (E.R, loc, v)})
 		 acc_inner)) (eiid,Evt.empty)	
 
+      let do_read_loc_atrb atomic loc ii atrb =
+	fun eiid ->
+	  V.fold_over_vals
+	    (fun v (eiid1,acc_inner) ->
+	      (eiid1+1,
+	       Evt.add 
+		 (v, [],
+		  trivial_event_structure
+		    {E.eiid = eiid1 ;
+		     E.iiid = ii;
+                     E.atomic = atomic;
+		     E.atrbs = atrb;
+		     E.action = E.Access (E.R, loc, v)})
+		 acc_inner)) (eiid,Evt.empty)	
+
+
       let read_loc = do_read_loc false
+      let read_loc_atrb = do_read_loc_atrb false
 
       let read_reg r ii = do_read_loc false (A.Location_reg (ii.A.proc,r)) ii
       and read_mem a ii = do_read_loc false (A.Location_global a) ii
@@ -321,9 +339,24 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 		{E.eiid = eiid ;
 		 E.iiid = ii;
                  E.atomic = atomic ;
+		 E.atrbs = [];
 		 E.action = E.Access (E.W, loc, v)}))
+
+      let do_write_loc_atrb atomic loc v ii atrbs =
+	fun eiid ->
+	  (eiid+1,
+	   Evt.singleton
+	     ((), [],
+	      trivial_event_structure
+		{E.eiid = eiid ;
+		 E.iiid = ii;
+                 E.atomic = atomic ;
+		 E.atrbs = atrbs;
+		 E.action = E.Access (E.W, loc, v)}))
+
 	    
       let write_loc = do_write_loc false
+      let write_loc_atrb = do_write_loc_atrb false
 
       let write_reg r v ii =
 	do_write_loc false (A.Location_reg (ii.A.proc,r)) v ii
@@ -331,6 +364,17 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 	do_write_loc false (A.Location_global a) v ii
       and write_mem_atomic a v ii =
         do_write_loc true (A.Location_global a) v ii
+
+      let create_barrier_atrb : A.barrier -> A.inst_instance_id -> A.atrb list -> unit t
+	  = fun b ii atrb->
+	    fun eiid ->
+	      (eiid+1,
+	       Evt.singleton
+		 ((), [],
+		  trivial_event_structure
+		    {E.eiid = eiid ;  E.iiid = ii; E.atomic = false ;
+		     E.action = E.Barrier b;
+		     E.atrbs = atrb;}))
 
       let create_barrier : A.barrier -> A.inst_instance_id -> unit t
 	  = fun b ii ->
@@ -340,7 +384,9 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 		 ((), [],
 		  trivial_event_structure
 		    {E.eiid = eiid ;  E.iiid = ii; E.atomic = false ;
-		     E.action = E.Barrier b;}))
+		     E.action = E.Barrier b;
+		     E.atrbs = [];}))
+
 
       let any_op mk_v mk_c =
 	(fun eiid_next -> 
@@ -404,7 +450,8 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 		{E.eiid = eiid ;
 		 E.iiid = ii;
                  E.atomic = false ;
-		 E.action = E.Commit;}))
+		 E.action = E.Commit;
+		 E.atrbs = [];}))
 
       let get_output = 
 	fun et -> 

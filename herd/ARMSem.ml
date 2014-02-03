@@ -34,6 +34,7 @@ module Make (C:Sem.Config)(V:Value.S)
         dmb
         
     let barriers = dsb
+    let atrb = [] (* this line not used ...? *)
     let isync = Some { barrier = ARMBase.ISB;pp = "isb";}
  
 (* Semantics proper *)

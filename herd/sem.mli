@@ -22,6 +22,9 @@ module type Semantics =
     val barriers : pp_barrier list
     val isync : pp_barrier option
 
+(* architecture defined atributes*)
+    val atrb : string list
+
 (* Instruction semantics, highly arch dependant *)
     val build_semantics  : 
     int list (*really proc list*) -> instruction -> A.inst_instance_id -> branch M.t

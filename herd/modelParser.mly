@@ -35,16 +35,21 @@ let pp () =
 %}
 %token EOF
 %token <string> VAR
+%token <string> LOCVAR
+%token <string * AST.ext_int * AST.scope> SCOPEVAR
 %token <string> STRING
-%token LPAR RPAR
-%token EMPTY
+%token LPAR RPAR LBRAC RBRAC
+%token EMPTY UNDERSCORE
 /* Access direction */
-%token MM  MR  MW WM WW WR RM RW RR
+%token MM  MR  MW WM WW WR RM RW RR F
 /* Plain/Atomic */
 %token AA AP PA PP
-%token SEMI UNION INTER COMMA DIFF
-%token STAR PLUS OPT
+%token SEMI UNION INTER COMMA HAT
+%token STAR PLUS OPT COMP BACKSLASH NEGONE TWO LOC INT EXT
+/*Scopes*/
+%token WI SG WG KER DEV
 %token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN
+%token REQUIRES PROVIDES
 %token ARROW
 %type <AST.t> main
 %start main
@@ -52,9 +57,9 @@ let pp () =
 /* Precedences */
 %right UNION
 %right SEMI
-%left DIFF
 %right INTER
-%nonassoc STAR PLUS OPT
+%left BACKSLASH
+%nonassoc STAR PLUS OPT COMP HAT
 %%
 
 main:
@@ -68,11 +73,16 @@ ins_list:
 ins:
 | LET pat_bind_list { Let $2 }
 | LET REC bind_list { Rec $3 }
-| test exp AS VAR { Test(pp (),$1,$2,Some $4) }
-| test exp  { Test(pp (),$1,$2,None) }
+| test_type test exp AS VAR { Test(pp (),$2,$3,Some $5,$1) }
+| test_type test exp  { Test(pp (),$2,$3,None,$1) }
 | SHOW exp AS VAR { ShowAs ($2, $4) }
 | SHOW var_list { Show $2 }
 | UNSHOW var_list { UnShow $2 }
+
+test_type:
+|          { Provides }
+| PROVIDES { Provides }
+| REQUIRES { Requires }
 
 test:
 | ACYCLIC { Acyclic }
@@ -111,6 +121,15 @@ formalsN:
 | VAR { [$1] }
 | VAR COMMA formalsN { $1 :: $3 }
 
+setexp:
+| VAR { Var $1 }
+| UNDERSCORE { Var "_" }
+| COMP setexp { Op1(Comp,$2) }
+| setexp UNION setexp { do_op Union $1 $3 }
+| setexp INTER setexp { do_op Inter $1 $3 }
+| setexp BACKSLASH setexp { Op(Inter, [$1; Op1(Comp,$3)]) }
+| LPAR setexp RPAR { $2 }
+
 exp:
 | LET pat_bind_list IN exp { Bind ($2,$4) }
 | LET REC bind_list IN exp { BindRec ($3,$5) }
@@ -121,13 +140,23 @@ base:
 | EMPTY { Konst Empty }
 | select LPAR exp RPAR { Op1 ($1,$3) }
 |  exp0 { $1 }
+| LBRAC setexp STAR setexp RBRAC {Cartesian ($2, $4)}
+| LBRAC setexp RBRAC {Op (Inter, [Cartesian ($2, $2); Var "id"])}
+| LBRAC setexp HAT TWO RBRAC {Cartesian ($2, $2)}
 | base STAR { Op1(Star,$1) }
 | base PLUS { Op1(Plus,$1) }
 | base OPT { Op1(Opt,$1) }
+| COMP base { Op1(Comp,$2) }
+| base HAT NEGONE { Op1(Inverse,$1) }
 | base SEMI base { do_op Seq $1 $3 }
 | base UNION base { do_op Union $1 $3 }
-| base DIFF base { do_op Diff $1 $3 }
+| base BACKSLASH base { do_op Diff $1 $3 }
 | base INTER base { do_op Inter $1 $3 }
+| LOCVAR { Op(Inter, [Var $1; Var "loc"]) }
+| SCOPEVAR { 
+    let (x,ext_int,sc) = $1 in
+    Op(Inter, [Var x; Konst (Scope_op (sc, ext_int))])
+  }
 | LPAR exp RPAR { $2 }
 
 exp0:
@@ -154,4 +183,14 @@ select:
 | AP { Select (Atomic,Plain) }
 | PA { Select (Plain,Atomic) }
 | PP { Select (Plain,Plain) }
+/*Generic Filters */
+| F LBRAC filter_list_empty RBRAC F LBRAC filter_list_empty RBRAC
+   { Select (Filter $3, Filter $7)}
 
+filter_list_empty:
+|  {[]}
+| filter_list {$1}
+
+filter_list:
+| VAR {[$1]}
+| VAR COMMA filter_list {$1::$3}

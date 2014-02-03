@@ -547,3 +547,5 @@ include Pseudo.Make
 
 let get_macro _name = raise Not_found
 
+type atrb = None
+let pp_atrb a = Warn.fatal "X86 does not have attributes"

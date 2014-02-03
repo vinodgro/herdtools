@@ -22,8 +22,10 @@ module Make (C:Sem.Config)(V:Value.S)
     let lwsync = {barrier=PPC.Lwsync; pp="lwsync";}
     let eieio = {barrier=PPC.Eieio; pp="eieio";}
     let barriers = [sync;lwsync;eieio;]
+    let atrb = []
         
-    let  isync = Some {barrier=PPC.Isync; pp="isync";}         
+    let  isync = Some {barrier=PPC.Isync; pp="isync";}
+      
 
 
 (****************************)	  

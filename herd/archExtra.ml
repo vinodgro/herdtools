@@ -20,8 +20,10 @@ module type I = sig
   module V : Value.S
 
   type arch_reg
+  type arch_atrb
   val pp_reg : arch_reg -> string
   val reg_compare : arch_reg -> arch_reg -> int
+  val pp_atrb : arch_atrb -> string
 
   type arch_instruction
 
@@ -176,19 +178,20 @@ module Make(C:Config) (I:I) : S with module I = I
 
   let undetermined_vars_in_loc l =  match l with
   | Location_reg _ -> None
-  | Location_global a ->
+  | Location_global a | Location_shared (_,a) ->
       if I.V.is_var_determined a then None
       else Some a
 
 
   let simplify_vars_in_loc soln l = match l with
   | Location_reg _  -> l
-  | Location_global a ->
+  | Location_global a | Location_shared (_,a) ->
       Location_global (I.V.simplify_var soln a)
 
   let map_loc fv loc = match loc with
   | Location_reg _ -> loc
-  | Location_global a -> Location_global (fv a)
+  | Location_global a | Location_shared (_,a) -> 
+      Location_global (fv a)
 
 (***************************************************)
 (* State operations, implemented with library maps *)

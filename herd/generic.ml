@@ -12,6 +12,10 @@
 
 open Printf
 
+(*
+exception Requires_clause_failure of string (* not sure where to put this! *)
+*)
+
 module type Config = sig
   val m : AST.pp_t
   include Model.Config
@@ -39,6 +43,7 @@ module Make
     let (pp,model) = O.m
 
     type v =
+      | Set of S.event_set 
       | Rel of S.event_rel
       | Clo of closure
 
@@ -53,13 +58,25 @@ module Make
       with
       | Not_found -> Warn.user_error "unbound var: %s" k
 
+    let is_rel = function
+      | Rel _ -> true
+      | _ -> false
+
+    let is_set = function
+      | Set _ -> true
+      | _ -> false
+
     let as_rel = function
       | Rel r -> r
-      | Clo _ ->  Warn.user_error "relation expected"
+      | _ ->  Warn.user_error "relation expected"
+
+    let as_set = function
+      | Set s -> s
+      | _ -> Warn.user_error "set expected"
 
     let as_clo = function
       | Clo c -> c
-      | Rel _ -> Warn.user_error "closure expected"
+      | _ -> Warn.user_error "closure expected"
 
 
     let rec stabilised vs ws = match vs,ws with
@@ -85,49 +102,72 @@ module Make
     let interpret test conc m id vb_pp =
 
       let is_dir = function
+	| Unv_Set -> (fun e -> true)
+	| Bar_Set -> E.is_barrier
         | WriteRead -> E.is_mem
         | Write -> E.is_mem_store
         | Read -> E.is_mem_load
         | Atomic -> E.is_atomic
+	| Filter s -> E.sat_filter s
         | Plain -> fun e -> not (E.is_atomic e) in
 
       let rec eval env = function
         | Konst Empty -> empty_rel
+        | Konst (Scope_op (sc,External)) ->  
+	    Rel (U.ext_scope sc conc.S.unv test.Test.scope_tree)
+        | Konst (Scope_op (sc,Internal)) -> 
+	    Rel (U.int_scope sc conc.S.unv test.Test.scope_tree)
         | Var k -> find_env env k
+        | Cartesian (e1,e2) ->
+          let v1 = eval_set env e1 in
+          let v2 = eval_set env e2 in
+          Rel (E.EventRel.cartesian v1 v2)
         | Fun (xs,body) ->
             Clo {clo_args=xs; clo_env=env; clo_body=body; }
         | Op1 (op,e) ->
             begin
-              let v = eval_rel env e in
-              Rel
-                (match op with
-                | Plus -> S.tr v
-                | Star -> S.union (S.tr v) id
-                | Opt -> S.union v id
-                | Select (s1,s2) ->
-                    let f1 = is_dir s1 and f2 = is_dir s2 in
-                    S.restrict f1 f2 v)
+              let v = eval env e in
+              match op with
+              | Plus -> Rel (S.tr (as_rel v))
+              | Star -> Rel (S.union (S.tr (as_rel v)) id)
+              | Opt -> Rel (S.union (as_rel v) id)
+	      | Comp -> begin
+                match v with
+                  | Set s -> Set (E.EventSet.diff conc.S.str.E.events s)
+                  | Rel r -> Rel (S.comp conc.S.unv r)
+                end
+	      | Inverse -> Rel (S.inverse (as_rel v))
+              | Select (s1,s2) ->
+                  let f1 = is_dir s1 and f2 = is_dir s2 in
+                  Rel (S.restrict f1 f2 (as_rel v))
             end
         | Op (op,es) ->
             begin
-              let vs = List.map (eval_rel env) es in
-              let v = match op with
-              | Union -> S.unions vs
-              | Seq -> S.seqs vs
-              | Diff ->
-                  begin match vs with
-                  | [] -> assert false
-                  | v::vs ->
-                      List.fold_left E.EventRel.diff v vs
-                  end
-              | Inter ->
-                  begin match vs with
-                  | [] -> assert false
-                  | v::vs ->
-                      List.fold_left E.EventRel.inter v vs
-                  end in
-              Rel v
-            end
+              let vs = List.map (eval env) es in
+              if List.for_all is_rel vs then begin
+                match op with
+                  | Union -> Rel (S.unions (List.map as_rel vs))
+                  | Seq -> Rel (S.seqs (List.map as_rel vs))
+                  | Inter ->
+                    begin match vs with
+                      | [] -> assert false
+                      | v::vs ->
+                        List.fold_left (fun v z -> 
+                          Rel (E.EventRel.inter (as_rel v) (as_rel z))) v vs
+                    end
+              end else if List.for_all is_set vs then begin
+                match op with
+                  | Union -> Set (E.EventSet.unions (List.map as_set vs))
+                  | Seq -> assert false
+                  | Inter ->
+                    begin match vs with
+                      | [] -> assert false
+                      | v::vs ->
+                        List.fold_left (fun v z -> 
+                          Set (E.EventSet.inter (as_set v) (as_set z))) v vs
+                    end
+              end else assert false
+            end 
         | App (f,es) ->
             let f = eval_clo env f in
             let vs = List.map (eval env) es in
@@ -148,6 +188,7 @@ module Make
             eval env e
 
       and eval_rel env e = as_rel (eval env e)
+      and eval_set env e = as_set (eval env e) 
       and eval_clo env e = as_clo (eval env e)
 
 (* For let *)
@@ -196,6 +237,7 @@ module Make
         if StringSet.is_empty to_show then st
         else
           let show = lazy begin
+            (* JPW: This might be wrong now that x could represent a set. *)
             StringSet.fold
               (fun x show  ->
                 StringMap.add x (rt_loc (eval_rel st.env (Var x))) show)
@@ -228,7 +270,7 @@ module Make
               (rt_loc (eval_rel st.env e)) (Lazy.force st.show)
           end in
           run { st with show; } c
-      | Test (pos,t,e,name) ->
+      | Test (pos,t,e,name,test_type) ->
           let skip_this_check =
             match name with
             | Some name -> StringSet.mem name O.skipchecks
@@ -250,7 +292,8 @@ module Make
                 { st with
                   skipped = StringSet.add (Misc.as_some name) st.skipped;}
                 c
-            end else begin
+            end 
+            else begin
               if (O.debug && O.verbose > 0) then begin
                 let pp = String.sub pp pos.pos pos.len in
                 MU.pp_failure test conc
@@ -258,6 +301,27 @@ module Make
                   (show_to_vbpp st)
               end ;
               None
+            (*
+            else begin
+              if (O.debug && O.verbose > 0) then begin
+                let pp = String.sub pp pos.pos pos.len in
+                let prov_or_req = match test_type with
+                  | Provides -> "Provides"
+                  | Requires -> "Requires"
+                in
+                MU.pp_failure test conc
+                  (sprintf "%s: Failure of %s clause '%s'" 
+                    test.Test.name.Name.name prov_or_req pp)
+                  (show_to_vbpp st)
+              end ;
+              match test_type with
+                | Provides -> None
+                | Requires ->
+                  let pp = String.sub pp pos.pos pos.len in
+                  raise (Requires_clause_failure (sprintf 
+                    "%s: Failure of Requires clause '%s'" 
+                    test.Test.name.Name.name pp))
+            *)
             end
           else begin
             W.warn "Skipping check %s" (Misc.as_some name) ;
@@ -290,16 +354,21 @@ module Make
         end in
       run {env=m; show=show; skipped=StringSet.empty;} prog
         
-    let check_event_structure test conc kont res =
+    let check_event_structure test atrb conc kont res =
       let prb = JU.make_procrels conc in
       let pr = prb.JU.pr in
       let vb_pp = lazy (JU.vb_pp_procrels prb) in
-      let evts = E.EventSet.filter E.is_mem conc.S.str.E.events in
+      let evts = (* E.EventSet.filter E.is_mem *) conc.S.str.E.events in
       let id =
         E.EventRel.of_list
           (List.rev_map
              (fun e -> e,e)
              (E.EventSet.elements evts)) in
+
+      let arch_vars = List.map (fun x -> 
+        (x, E.EventSet.filter (E.sat_filter_single x) conc.S.str.E.events)
+      ) atrb in
+
 (* Initial env *)
       let m =
         List.fold_left
@@ -308,8 +377,10 @@ module Make
           ["id",id;
            "atom",conc.S.atomic_load_store;
            "po",S.restrict E.is_mem E.is_mem conc.S.po;
+           "unv", conc.S.unv;
            "pos", conc.S.pos;
-           "po-loc", conc.S.pos;
+           "po-loc", conc.S.pos; (* is this right? *)
+           "loc", S.restrict_rel E.same_location conc.S.unv;
            "addr", pr.S.addr;
            "data", pr.S.data;
            "ctrl", pr.S.ctrl;
@@ -318,6 +389,8 @@ module Make
            "rf", pr.S.rf;
            "rfe", U.ext pr.S.rf;
            "rfi", U.internal pr.S.rf;
+           "ext", U.ext conc.S.unv;
+           "int", U.internal conc.S.unv;
 (* Power fences *)
            "lwsync", prb.JU.lwsync;
            "eieio", prb.JU.eieio;
@@ -335,7 +408,25 @@ module Make
            "mfence",prb.JU.mfence;
            "sfence",prb.JU.sfence;
            "lfence",prb.JU.lfence;
+(* PTX fences *)
+	   "membar.cta", prb.JU.membar_cta;
+	   "membar.gl", prb.JU.membar_gl;
+	   "membar.sys", prb.JU.membar_sys;
          ] in
+
+      let m =
+        List.fold_left
+          (fun m (k,v) -> StringMap.add k (Set v) m)
+          m
+          (arch_vars @ [
+           "_", evts;
+           "R", E.EventSet.filter E.is_mem_load evts;
+           "W", E.EventSet.filter E.is_mem_store evts;
+           "M", E.EventSet.filter E.is_mem evts;
+	   "B", E.EventSet.filter E.is_barrier evts;
+           "P", E.EventSet.filter (fun e -> not (E.is_atomic e)) evts;
+           "A", E.EventSet.filter E.is_atomic evts;
+         ]) in
 
       let process_co co0 res =
         let co = S.tr co0 in

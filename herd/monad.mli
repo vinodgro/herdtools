@@ -50,11 +50,14 @@ module type S =
     val tooFar : string -> unit t
 
     val read_loc : A.location -> A.inst_instance_id -> A.V.v t
+    val read_loc_atrb : A.location -> A.inst_instance_id -> A.atrb list -> A.V.v t
     val read_reg : A.reg -> A.inst_instance_id -> A.V.v t
     val read_mem : A.global_loc -> A.inst_instance_id -> A.V.v t
     val read_mem_atomic : A.global_loc -> A.inst_instance_id -> A.V.v t
 
     val write_loc : A.location -> A.V.v -> A.inst_instance_id -> unit t
+    val write_loc_atrb : A.location -> A.V.v -> A.inst_instance_id -> A.atrb list -> unit t
+
     val write_reg : A.reg -> A.V.v -> A.inst_instance_id -> unit t
     val write_mem : A.global_loc -> A.V.v -> A.inst_instance_id -> unit t
     val write_mem_atomic : A.global_loc -> A.V.v -> A.inst_instance_id -> unit t
@@ -63,6 +66,7 @@ module type S =
 	A.reg -> Op.op -> A.V.v -> A.V.v ->  A.inst_instance_id -> unit t
 	
     val create_barrier : A.barrier -> A.inst_instance_id -> unit t
+    val create_barrier_atrb : A.barrier -> A.inst_instance_id -> A.atrb list -> unit t
 
     val op1 : Op.op1 -> A.V.v -> A.V.v t
     val op : Op.op -> A.V.v -> A.V.v -> A.V.v t

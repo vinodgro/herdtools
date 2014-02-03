@@ -21,6 +21,8 @@ type ('prog,'nice_prog,'start,'state,'constr, 'loc) t =
      init_state : 'state ;
      cond : 'constr ;
      flocs : 'loc list ;
+     scope_tree : MiscParser.scope_tree ;
+     mem_map : MiscParser.mem_space_map ;
    }
 
 val simple_name :

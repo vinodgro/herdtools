@@ -125,10 +125,11 @@ and inside_prog  = parse
 | "forall"
 | ('~' blank* "exists" )
 | "exists"
+| "cases" (* not sure if this line should still be here *)
 | "observed"|"Observed"
 | "locations"
    { false,lexeme_start_p lexbuf }
- (* name is for longuest match to avoid confusion, in case of eg. forallx *)
+ (* name is for longest match to avoid confusion, in case of eg. forallx *)
 | (name | _)  { inside_prog lexbuf }
 | "" { error "inside_prog" lexbuf }
 

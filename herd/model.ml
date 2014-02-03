@@ -104,5 +104,6 @@ end
 
 let get_default_model a = match a with
 | Archs.X86 -> X86TSO
-| Archs.PPC|Archs.ARM -> Misc.as_some (parse "herd")
+| Archs.PPC|Archs.ARM|Archs.CPP11|Archs.OpenCL|Archs.GPU_PTX 
+            -> Misc.as_some (parse "herd")
 

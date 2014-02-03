@@ -50,7 +50,7 @@ let fenceext = (rfe;fence)|(fence;rfe)|(rfe;fence;rfe)
 let hb = ppo | ppoext | fence | fenceext
 let GHB = hb
 show GHB
-acyclic hb
+(*acyclic hb*)
 
 (* prop *)
 let hbstar = hb*

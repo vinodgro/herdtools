@@ -443,3 +443,6 @@ include Pseudo.Make
     end)
 
 let get_macro _name = raise Not_found
+
+type atrb = None
+let pp_atrb a = Warn.fatal "ARM does not have attributes"

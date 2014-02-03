@@ -28,8 +28,10 @@ module type S = sig
   type event = {
       eiid : eiid;
       iiid : A.inst_instance_id; 
-      atomic : bool ;
-      action : action;  } 
+      atomic : bool;
+      action : action;  
+      atrbs : A.atrb list;
+  } 
 
 (* Only basic printing is here *)
   val pp_dirn : dirn -> string
@@ -72,6 +74,8 @@ module type S = sig
 
 (* Store/Load to memory or register *)
   val is_store : event -> bool
+  val sat_filter: string list -> event -> bool
+  val sat_filter_single: string -> event -> bool
   val is_load : event -> bool
 
 (* Barriers *)
@@ -256,7 +260,9 @@ module Make (AI:Arch.S) :  S with module A = AI =
 	eiid : eiid;
 	iiid : A.inst_instance_id; 
         atomic : bool ;
-	action : action;  } 
+	action : action;   
+        atrbs : A.atrb list;
+    } 
 
     let pp_eiid e =
       if e.eiid < 26 then
@@ -311,12 +317,15 @@ module Make (AI:Arch.S) :  S with module A = AI =
     let location_compare e1 e2 = match location_of e1,location_of e2 with
     | Some loc1,Some loc2 -> 
 	A.location_compare loc1 loc2
-    | _,_ -> assert false
+
+	(*barrier events are getting in here and breaking!*)
+    | _,_ -> -1     (* JPW: I think the "-1" ought to be an "assert false" *)
 
 (* Visible locations *)
     let is_visible_location  = function 
       | A.Location_global _ -> true
       | A.Location_reg _ -> false
+      | A.Location_shared _ -> true
 
     let same_location e1 e2 = location_compare e1 e2 = 0
 
@@ -414,6 +423,21 @@ module Make (AI:Arch.S) :  S with module A = AI =
    let is_commit e = match e.action with
    | Commit -> true
    | _ -> false
+
+   let list_contains el list =
+     List.exists (fun a -> (A.pp_atrb a) = el) list
+
+   (*
+   let sat_filter s e =      
+      let filtered = 
+        List.filter (fun atrb -> list_contains atrb e.atrbs) s in
+      (List.length filtered) = (List.length s)
+   *)
+   let sat_filter_single s e =
+      list_contains s e.atrbs
+
+   let sat_filter s e =
+      List.for_all (fun (atrb) -> list_contains atrb e.atrbs) s
 
 (******************************)
 (* Build structures of events *)

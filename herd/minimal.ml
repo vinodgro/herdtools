@@ -54,6 +54,7 @@ module Make (O:Cfg) (S:Sem.Semantics)
       | ThroughAll -> false
       else false
 
+    let show_poloc = S.O.PC.showpoloc
     let show_fr = S.O.PC.showfr
 
 (***********************************************)
@@ -124,6 +125,9 @@ module Make (O:Cfg) (S:Sem.Semantics)
           ("addr",pr.S.addr)::
           ("ctrl",E.EventRel.diff pr.S.ctrl pr.S.ctrlisync)::
           ("ctrl" ^ pp_isync S.isync,pr.S.ctrlisync)::
+          ("pos",
+          (if show_poloc then
+            S.rt conc.S.pos else E.EventRel.empty))::          
           all_barriers conc pr
         end  in
       let proc_ws ws0 res =

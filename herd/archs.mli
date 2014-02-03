@@ -15,6 +15,9 @@ type t =
   | X86
   | PPC
   | ARM
+  | CPP11
+  | OpenCL
+  | GPU_PTX
 
 val tags : string list
 val parse : string -> t option
@@ -25,4 +28,7 @@ val pp : t -> string
 val arm : t
 val ppc : t
 val x86 : t
+val cpp11 : t
+val opencl : t
+val gpu_ptx : t
 

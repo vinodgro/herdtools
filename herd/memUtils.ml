@@ -11,6 +11,7 @@
 (*********************************************************************)
 
 open Printf
+open AST
 
 module Make(S : SemExtra.S) = struct
 
@@ -179,6 +180,89 @@ module Make(S : SemExtra.S) = struct
   let ext r = E.EventRel.filter (fun (e1,e2) -> not (E.same_proc e1 e2)) r
   let internal r = E.EventRel.filter (fun (e1,e2) -> E.same_proc e1 e2) r
       
+(*Scope operations*)
+
+  let get_proc_loc_tuple scope_tree num = 
+    (*Mutable variables... Sorry I'm not great at this 
+    functional thing!*)
+    let rd = ref (-1) in
+    let rk = ref (-1) in
+    let rbl = ref (-1) in
+    let rw = ref (-1) in
+    let rt = ref (-1) in    
+    let search scope_tree =
+      for dev = 0 to (List.length scope_tree)-1 do
+	let device = List.nth scope_tree dev in
+	for ker = 0 to (List.length device)-1 do
+	  let kernel = (List.nth device ker) in
+	  for i = 0 to (List.length kernel)-1 do
+	    let warps = (List.nth kernel i) in
+	    for j = 0 to (List.length warps)-1 do
+	      let threads = (List.nth  warps j) in
+	      for k = 0 to (List.length threads)-1 do	    
+		let proc_num = (List.nth threads k) in
+		if proc_num == num then
+		  begin 
+		    rd := dev;
+		    rk := ker;
+		    rbl := i;
+		    rw := j;
+		    rt := k;		
+		  end
+	      done
+	    done
+	  done
+	done
+      done
+    in
+    search scope_tree;
+    (!rd,!rk, !rbl, !rw, !rt)
+  
+  (* JPW: The following is my attempt at a more functional
+     implementation. I haven't tested it properly though... *)
+  let get_proc_loc_tuple scope_tree num = 
+    let result = ref (-1,-1,-1,-1,-1) in
+    List.iteri (fun dev -> 
+      List.iteri (fun ker -> 
+        List.iteri (fun cta -> 
+          List.iteri (fun wrp -> 
+            List.iter (fun thd ->
+              if thd = num then
+                result := (dev,ker,cta,wrp,thd)
+            )
+          )
+        )
+      )
+    ) scope_tree; 
+    !result
+
+  let inside_scope e1 e2 s scope_tree =
+    let d1,k1,wg1,sg1,t1 = get_proc_loc_tuple scope_tree (E.proc_of e1)
+    in 
+    let d2,k2,wg2,sg2,t2 = get_proc_loc_tuple scope_tree (E.proc_of e2)
+    in
+    match s with
+    | Device     -> d1 = d2
+    | Kernel     -> d1 = d2 && k1 = k2
+    | Work_Group -> d1 = d2 && k1 = k2 && wg1 = wg2
+    | Sub_Group  -> d1 = d2 && k1 = k2 && wg1 = wg2 && sg1 = sg2
+    | Work_Item  -> d1 = d2 && k1 = k2 && wg1 = wg2 && sg1 = sg2 && t1 = t2
+
+  let ext_scope scope r scope_tree = 
+    let scope_tree = match scope_tree with
+    | MiscParser.Scope_tree s -> s
+    | _ -> Warn.fatal "ext_scope function requires a scope tree"
+    in
+    E.EventRel.filter 
+      (fun (e1,e2) -> not (inside_scope e1 e2 scope scope_tree)) r 
+
+  let int_scope scope r scope_tree = 
+    let scope_tree = match scope_tree with
+    | MiscParser.Scope_tree s -> s
+    | _ -> Warn.fatal "int_scope function requires a scope tree"
+    in
+    E.EventRel.filter 
+      (fun (e1,e2) -> inside_scope e1 e2 scope scope_tree) r
 
 (* po-separation *)
   let sep is_sep is_applicable evts =

@@ -65,6 +65,8 @@ module Make(O:Config)(M:XXXMem.S) =
 (* NB: pos and neg are w.r.t. proposition *)
           pos : int ;
           neg : int ;
+(* number of executions that fail Requires clauses *)
+          failed_requires : int ;
 (* shown executions *)
           shown : int;
 (* registers that read memory *)
@@ -72,7 +74,8 @@ module Make(O:Config)(M:XXXMem.S) =
         }
 
     let start =
-      { states = A.StateSet.empty; cands=0; pos=0; neg=0; shown=0;
+      { states = A.StateSet.empty; cands=0; pos=0; neg=0; 
+        failed_requires=0; shown=0;
         reads = S.LocSet.empty; }
 
 (* Check condition *)
@@ -115,7 +118,7 @@ module Make(O:Config)(M:XXXMem.S) =
     let open_dot test =
       match O.outputdir with
       | None ->
-          if S.O.PC.gv then
+          if S.O.PC.gv || S.O.PC.evince then
             begin try
               let f,chan = Filename.open_temp_file "herd" ".dot" in
               Some (chan,f)
@@ -225,6 +228,7 @@ module Make(O:Config)(M:XXXMem.S) =
               states = A.StateSet.add fsc c.states;
               pos = if ok then c.pos+1 else c.pos;
               neg = if ok then c.neg else c.neg+1;
+              failed_requires = if failed_req then c.failed_requires+1 else c.failed_requires;
               shown = if show_exec then c.shown+1 else c.shown;
               reads = 
                 if O.outcomereads then
@@ -265,7 +269,7 @@ module Make(O:Config)(M:XXXMem.S) =
               (fun (_i,_cs,es) -> PP.dump_es chan test es)
               rfms ;
             close_dot ochan ;
-            if S.O.PC.gv then begin
+            if S.O.PC.gv || S.O.PC.evince then begin
               let module SH = Show.Make(S.O.PC) in
               SH.show_file fname
             end ;

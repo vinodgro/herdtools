@@ -21,6 +21,8 @@ type ('prog,'nice_prog,'start,'state,'constr,'loc) t =
      init_state : 'state ;
      cond : 'constr ;
      flocs : 'loc list ;
+     scope_tree : MiscParser.scope_tree ;
+     mem_map : MiscParser.mem_space_map ;
    }
 
 (* Name and nothing else *)
@@ -55,6 +57,8 @@ module Make(A:Arch.S) =
            prog = nice_prog ;
            condition = final ; 
            locations = locs ;
+	   scope_tree = scope_tree ;
+	   mem_space_map = mem_map ;
 	 } = t in
 
       let prog,starts = Load.load nice_prog in
@@ -68,6 +72,8 @@ module Make(A:Arch.S) =
        init_state = A.build_state init ;
        cond = final ;
        flocs = List.map fst locs ;
+       scope_tree = scope_tree ;
+       mem_map = mem_map ;
      }
 
 

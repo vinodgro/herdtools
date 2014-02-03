@@ -109,6 +109,9 @@ let options = [
   ( "-gv",
     Arg.Unit (fun _ -> PP.gv := true),
     "<non-default>  fork gv to show output graphs") ;
+  ( "-evince",
+    Arg.Unit (fun _ -> PP.evince := true),
+    "<non-default>  fork evince to show output graphs") ;
   ("-unroll",
    Arg.Int (fun x -> unroll := x),
    sprintf "<int> branch unrolling upper limit, default %i" !unroll);
@@ -258,6 +261,8 @@ let options = [
     "show read-from edges from initial state in pictures" ;
   parse_bool "-showfinalrf" PP.showfinalrf
     "show read-from edges to final state in pictures" ;
+  parse_bool "-showpoloc" PP.showpoloc
+    "show po edges with identical locations explicitely" ;
   parse_bool "-showfr" PP.showfr 
     "show from-read edges in pictures" ;
  "-unshow",
@@ -417,6 +422,7 @@ let () =
       let dotmode = !PP.dotmode
       let dotcom = !PP.dotcom
       let gv = !PP.gv
+      let evince = !PP.evince
       let showevents = !PP.showevents
       let texmacros = !PP.texmacros
       let hexa = !PP.hexa
@@ -445,6 +451,7 @@ let () =
       let showlegend = !PP.showlegend
       let showfinalrf = !PP.showfinalrf
       let showinitrf = !PP.showinitrf
+      let showpoloc = !PP.showpoloc
       let showfr = !PP.showfr
       let brackets = !PP.brackets
       let showobserved = !PP.showobserved

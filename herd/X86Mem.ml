@@ -60,7 +60,7 @@ module S = S
               let m = m
               include ModelConfig
              end)(S)(AllBarrier.FromX86(B)) in
-        X.check_event_structure test
+        X.check_event_structure test []
     | File _ -> assert false
     | m ->
         Warn.fatal "Model %s not implemented for X86" (Model.pp m)

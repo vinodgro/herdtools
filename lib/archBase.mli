@@ -23,11 +23,15 @@ module type S = sig
   (***********************************************)
 
   type reg
+
   val pc : reg (* Program counter *)
 
   val parse_reg : string -> reg option
   val pp_reg : reg -> string
   val reg_compare : reg -> reg -> int
+
+  type atrb
+  val pp_atrb : atrb -> string
 
 (*
   type reservation 

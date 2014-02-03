@@ -12,10 +12,12 @@
 
 (* Syntax tree of model definition *)
 type pos = { pos:int; len:int;}
-type direction = Write | Read | WriteRead | Atomic | Plain
+type direction = Write | Read | WriteRead | Atomic | Plain | Filter of string list | Unv_Set | Bar_Set
 type op2 = Union | Inter | Seq | Diff
-type op1 = Plus | Star | Opt | Select of direction * direction
-type konst = Empty
+type op1 = Plus | Star | Opt | Comp | Inverse | Select of direction * direction
+type ext_int = External | Internal
+type scope = Device | Kernel | Work_Group | Sub_Group | Work_Item
+type konst = Empty | Scope_op of scope * ext_int
 type var = string
 
 type exp =
@@ -23,6 +25,7 @@ type exp =
   | Var of var
   | Op1 of op1 * exp
   | Op of op2 * exp list
+  | Cartesian of exp * exp
   | App of exp * exp list
   | Bind  of binding list * exp
   | BindRec  of binding list * exp
@@ -32,10 +35,13 @@ and binding = var * exp
 
 type test = Acyclic | Irreflexive | TestEmpty
 
+type test_type = Provides | Requires
+
+
 type ins =
   | Let of binding list
   | Rec of binding list
-  | Test of pos * test * exp * string option
+  | Test of pos * test * exp * string option * test_type
   | UnShow of string list
   | Show of string list
   | ShowAs of exp * string

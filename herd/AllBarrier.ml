@@ -19,6 +19,8 @@ module type S =
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
+      | FENCE_ACQ | FENCE_REL | FENCE_ACQ_REL | FENCE_SC
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
     val a_to_b : a -> b
     val pp_isync : string
   end
@@ -32,6 +34,8 @@ module FromPPC(B:PPCBarrier.S) = struct
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
+      | FENCE_ACQ | FENCE_REL | FENCE_ACQ_REL | FENCE_SC
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
 
   let a_to_b a = match B.a_to_b a with
   | B.LWSYNC -> LWSYNC
@@ -50,6 +54,8 @@ module FromARM(AB:ARMBarrier.S) = struct
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
+      | FENCE_ACQ | FENCE_REL | FENCE_ACQ_REL | FENCE_SC
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
 
   let a_to_b a = match AB.a_to_b a with
   | AB.DSB ARMBase.SY -> DSB
@@ -71,6 +77,8 @@ module FromX86(XB:X86Barrier.S) = struct
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
+      | FENCE_ACQ | FENCE_REL | FENCE_ACQ_REL | FENCE_SC
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
 
   let a_to_b a = match XB.a_to_b a with
   | XB.MFENCE -> MFENCE
@@ -79,3 +87,68 @@ module FromX86(XB:X86Barrier.S) = struct
 
   let pp_isync = "???"
 end
+
+module FromCPP11(CB:CPP11Barrier.S) = struct
+
+  type a = CB.a
+
+  type b =
+      | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
+      | DSB | DMB | ISB               (* ARM barrier *)
+      | DSBST | DMBST
+      | MFENCE | SFENCE | LFENCE
+      | FENCE_ACQ | FENCE_REL | FENCE_ACQ_REL | FENCE_SC
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
+
+  let a_to_b a = match CB.a_to_b a with
+  | CB.Fence  CPP11Base.Acq -> FENCE_ACQ
+  | CB.Fence CPP11Base.Rel -> FENCE_REL
+  | CB.Fence CPP11Base.Acq_Rel -> FENCE_ACQ_REL
+  | CB.Fence CPP11Base.SC -> FENCE_SC
+  | _ -> Warn.fatal "C++11 fences with relaxed or non atomic order are not supported"
+
+  let pp_isync = "???"
+end
+
+module FromOpenCL(OB:OpenCLBarrier.S) = struct
+
+  type a = OB.a
+
+  type b =
+      | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
+      | DSB | DMB | ISB               (* ARM barrier *)
+      | DSBST | DMBST
+      | MFENCE | SFENCE | LFENCE
+      | FENCE_ACQ | FENCE_REL | FENCE_ACQ_REL | FENCE_SC
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
+
+  let a_to_b a = match OB.a_to_b a with
+  | OB.Fence (OpenCLBase.Acq,     OpenCLBase.S_device) -> FENCE_ACQ
+  | OB.Fence (OpenCLBase.Rel,     OpenCLBase.S_device) -> FENCE_REL
+  | OB.Fence (OpenCLBase.Acq_Rel, OpenCLBase.S_device) -> FENCE_ACQ_REL
+  | OB.Fence (OpenCLBase.SC,      OpenCLBase.S_device) -> FENCE_SC
+  | _ -> Warn.fatal "OpenCL fences with relaxed or non atomic order are not supported"
+
+  let pp_isync = "???"
+end
+
+module FromGPU_PTX(CB:GPU_PTXBarrier.S) = struct
+
+  type a = CB.a
+
+  type b =
+      | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
+      | DSB | DMB | ISB               (* ARM barrier *)
+      | DSBST | DMBST
+      | MFENCE | SFENCE | LFENCE
+      | FENCE_ACQ | FENCE_REL | FENCE_ACQ_REL | FENCE_SC
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
+
+  let a_to_b a = match CB.a_to_b a with
+  | CB.Fence GPU_PTXBase.CTA -> MEMBAR_CTA
+  | CB.Fence GPU_PTXBase.GL  -> MEMBAR_GL
+  | CB.Fence GPU_PTXBase.SYS -> MEMBAR_SYS
+
+  let pp_isync = "???"
+end
+

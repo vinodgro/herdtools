@@ -22,6 +22,7 @@ module Make (C:Sem.Config)(V : Value.S)
     let sfence = {barrier=X86.Sfence; pp="sfence";}
     let lfence = {barrier=X86.Lfence; pp="lfence";}
     let barriers = [mfence; lfence;sfence;]
+    let atrb = []
     let isync = None
 
 (* semantics proper *)

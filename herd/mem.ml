@@ -571,6 +571,12 @@ let compatible_locs_mem e1 e2 =
 	  E.same_location e1 e2 &&
           E.EventRel.mem (e1,e2) po_iico_data)
 
+(*Adding the universal set, there's probably a better way to do it...
+by Tyler Sorensen*)
+    let make_unv es = 
+      E.EventRel.cartesian es.E.events es.E.events
+
+
 (* Store is before rfm load successor *)
     let store_load rfm =
       S.RFMap.fold
@@ -726,6 +732,7 @@ let make_atomic_load_store es =
                    rfmap = rfm ;
                    fs = fsc ;
                    po = po_iico ;
+		   unv = make_unv es;
 	           pos = ppoloc ;
                    pco = pco ;
                  

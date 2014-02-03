@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+open AST
+open MiscParser
 module Make : functor (S: SemExtra.S) -> sig
 
 (*************)
@@ -53,6 +55,11 @@ module Make : functor (S: SemExtra.S) -> sig
   val same_source :  S.concrete -> S.event -> S.event -> bool
   val ext : S.event_rel -> S.event_rel
   val internal : S.event_rel -> S.event_rel
+
+  (*scope operations*)
+  val ext_scope : scope -> S.event_rel -> scope_tree -> S.event_rel
+  val int_scope : scope -> S.event_rel -> scope_tree -> S.event_rel
+  
 
 (* RF/FR relations for memory *)
   val make_rf_from_rfmap : S.rfmap -> S.event_rel

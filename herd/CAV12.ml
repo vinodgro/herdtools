@@ -51,6 +51,7 @@ module Make
           | MFENCE|LFENCE|SFENCE
             -> true
           | ISYNC|ISB -> false
+	  | _ -> Warn.fatal "unrecognized fence in CAV12.ml is_fence"
           end
       | None -> false
 
