@@ -20,14 +20,12 @@ module Make(Tmpl:Template.S) = struct
         let x = Tmpl.fmt_reg x in
         let volatile = List.exists (Misc.string_eq x) envVolatile in
         let ty =
-          let f = function
-            | (RunType.Int, true) -> "volatile int*"
-            | (RunType.Int, false) -> "int*"
-            | (RunType.Pointer, true) -> "volatile int**"
-            | (RunType.Pointer, false) -> "int**"
+          let f t = function
+            | true -> "volatile " ^ RunType.dump t ^ "*"
+            | false -> RunType.dump t ^ "*"
           in
           try
-            f (List.assoc x globEnv, volatile)
+            f (List.assoc x globEnv) volatile
           with
           | Not_found -> assert false
         in

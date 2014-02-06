@@ -19,8 +19,8 @@ end
 
 module Generic (A : Arch.Base) = struct
   let typeof = function
-    | Constant.Concrete _ -> RunType.Int
-    | Constant.Symbolic _ -> RunType.Pointer
+    | Constant.Concrete _ -> RunType.Ty "int"
+    | Constant.Symbolic _ -> RunType.Pointer "int"
 
   let type_in_final p reg final flocs =
     ConstrGen.fold_constr
@@ -29,9 +29,9 @@ module Generic (A : Arch.Base) = struct
          match a with
          | LV (A.Location_reg (q,r),v) when p=q && A.reg_compare reg r = 0 ->
              begin match typeof v,t with
-             | (_,RunType.Pointer)
-             | (RunType.Pointer,_) -> RunType.Pointer
-             | RunType.Int,RunType.Int -> RunType.Int
+             | (_,RunType.Pointer _)
+             | (RunType.Pointer _,_) -> RunType.Pointer "int"
+             | RunType.Ty _,RunType.Ty _ -> RunType.Ty "int"
              end
          | _ -> t)
       final
@@ -40,26 +40,26 @@ module Generic (A : Arch.Base) = struct
             | A.Location_reg (q,r) when p=q && A.reg_compare reg r = 0 ->
                 begin match t with
                 | MiscParser.I -> k
-                | MiscParser.P -> RunType.Pointer
+                | MiscParser.P -> RunType.Pointer "int"
                 end
             | _ -> k)
          flocs
-         RunType.Int)
+         (RunType.Ty "int"))
 
     let add_addr_type a ty env =
       try
         let tz = StringMap.find a env in
         let ty =
           match ty,tz with
-          | RunType.Int,RunType.Int -> RunType.Int
-          | (RunType.Pointer,_)|(_,RunType.Pointer) -> RunType.Pointer in
+          | RunType.Ty _,RunType.Ty _ -> RunType.Ty "int"
+          | (RunType.Pointer _,_)|(_,RunType.Pointer _) -> RunType.Pointer "int" in
         StringMap.add a ty env
       with
         Not_found -> StringMap.add a ty env
 
     let add_value v env = match v with
     | Constant.Concrete _ -> env
-    | Constant.Symbolic a -> add_addr_type a RunType.Int env
+    | Constant.Symbolic a -> add_addr_type a (RunType.Ty "int") env
 end
 
 module Make
@@ -374,7 +374,7 @@ let lblmap_code =
         List.fold_right
           (fun (_,t) ->
             List.fold_right
-              (fun (_,a) -> Generic.add_addr_type a RunType.Int)
+              (fun (_,a) -> Generic.add_addr_type a (RunType.Ty "int"))
               t.addrs)
           code env in
       StringMap.fold

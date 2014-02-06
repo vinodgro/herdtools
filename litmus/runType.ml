@@ -12,4 +12,6 @@
 
 type t = Ty of string | Pointer of string
 
-val dump : t -> string
+let dump = function
+  | Ty x -> x
+  | Pointer x -> x ^ "*"

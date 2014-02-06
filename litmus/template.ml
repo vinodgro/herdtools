@@ -248,10 +248,8 @@ struct
   let copy_name s = sprintf "_tmp_%s" s
 
   let dump_type env reg =
-    try match List.assoc reg env with
-    | RunType.Int -> "int"
-    | RunType.Pointer -> "void *"
-    with Not_found -> "int"
+    try RunType.dump (List.assoc reg env) with
+      | Not_found -> "int"
 
 
   let dump_addr a = match O.memory with

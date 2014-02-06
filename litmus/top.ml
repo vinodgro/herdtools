@@ -151,7 +151,7 @@ end = struct
                 tname ohash.filename hash.filename
             else
               W.warn "File %s is referenced more then once"
-                ohash.filename     
+                ohash.filename
           end ;
           false
         with Not_found ->  true
@@ -281,10 +281,7 @@ end = struct
         type code = CAst.t
         let dump_prog (i, cfun) =
           let f { CAst.params; body; _ } =
-            let string_of_ty = function
-              | RunType.Int -> "int*"
-              | RunType.Pointer -> "int**"
-            in
+            let string_of_ty ty = RunType.dump ty ^ "*" in
             let f {CAst.param_ty; param_name} =
               Printf.sprintf "%s %s" (string_of_ty param_ty) param_name
             in

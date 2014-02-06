@@ -37,5 +37,5 @@ params:
     { {CAst.param_ty = $2; volatile = true; param_name = $3} :: $5 }
 
 ty:
-| INT STAR { RunType.Int }
-| INT STAR STAR { RunType.Pointer }
+| NAME STAR { RunType.Ty $1 }
+| NAME STAR STAR { RunType.Pointer $1 }
