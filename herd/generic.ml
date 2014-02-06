@@ -134,7 +134,7 @@ module Make
 	      | Comp -> begin
                 match v with
                   | Set s -> Set (E.EventSet.diff conc.S.str.E.events s)
-                  | Rel r -> Rel (S.comp conc.S.unv r)
+                  | Rel r -> Rel (S.comp r conc.S.unv)
                 end
 	      | Inverse -> Rel (S.inverse (as_rel v))
               | Select (s1,s2) ->
@@ -166,7 +166,12 @@ module Make
                         List.fold_left (fun v z -> 
                           Set (E.EventSet.inter (as_set v) (as_set z))) v vs
                     end
-              end else assert false
+              end else 
+		  begin
+		    printf "Unable to operate on values of different types (set and relation)";
+		    assert false
+		  end
+
             end 
         | App (f,es) ->
             let f = eval_clo env f in
