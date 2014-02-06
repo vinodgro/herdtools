@@ -166,7 +166,12 @@ module Make
                         List.fold_left (fun v z -> 
                           Set (E.EventSet.inter (as_set v) (as_set z))) v vs
                     end
-              end else assert false
+              end else 
+		  begin
+		    printf "Unable to operate on values of different types (set and relation)";
+		    assert false
+		  end
+
             end 
         | App (f,es) ->
             let f = eval_clo env f in
