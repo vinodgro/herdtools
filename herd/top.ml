@@ -66,7 +66,9 @@ module Make(O:Config)(M:XXXMem.S) =
           pos : int ;
           neg : int ;
 (* number of executions that fail Requires clauses *)
+          (*
           failed_requires : int ;
+          *)
 (* shown executions *)
           shown : int;
 (* registers that read memory *)
@@ -75,7 +77,7 @@ module Make(O:Config)(M:XXXMem.S) =
 
     let start =
       { states = A.StateSet.empty; cands=0; pos=0; neg=0; 
-        failed_requires=0; shown=0;
+        (*failed_requires=0;*) shown=0;
         reads = S.LocSet.empty; }
 
 (* Check condition *)
@@ -228,7 +230,7 @@ module Make(O:Config)(M:XXXMem.S) =
               states = A.StateSet.add fsc c.states;
               pos = if ok then c.pos+1 else c.pos;
               neg = if ok then c.neg else c.neg+1;
-              failed_requires = if failed_req then c.failed_requires+1 else c.failed_requires;
+              (*failed_requires = if failed_req then c.failed_requires+1 else c.failed_requires;*)
               shown = if show_exec then c.shown+1 else c.shown;
               reads = 
                 if O.outcomereads then
