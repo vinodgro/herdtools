@@ -134,7 +134,7 @@ module Make
 	      | Comp -> begin
                 match v with
                   | Set s -> Set (E.EventSet.diff conc.S.str.E.events s)
-                  | Rel r -> Rel (S.comp conc.S.unv r)
+                  | Rel r -> Rel (S.comp r conc.S.unv)
                 end
 	      | Inverse -> Rel (S.inverse (as_rel v))
               | Select (s1,s2) ->
