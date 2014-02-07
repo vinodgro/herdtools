@@ -9,7 +9,7 @@
 /*  General Public License.                                          */
 /*********************************************************************/
 
-%token EOF COMMA STAR INT VOLATILE
+%token EOF COMMA STAR VOLATILE
 %token LPAREN RPAREN
 %token <int> PROC
 %token <string> BODY

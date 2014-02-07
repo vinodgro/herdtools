@@ -31,16 +31,16 @@ typedef uint64_t count_t;
 typedef struct outs_t {
   struct outs_t *next,*down ;
   count_t c ;
-  int k ;
+  intmax_t k ;
   int show ;
 } outs_t ;
 
 void free_outs(outs_t *p) ;
-outs_t *add_outcome_outs(outs_t *p, int *o, int sz, count_t v, int show) ;
+outs_t *add_outcome_outs(outs_t *p, intmax_t *o, int sz, count_t v, int show) ;
 count_t finals_outs(outs_t *p) ;
 count_t sum_outs(outs_t *p) ;
-typedef void dump_outcome(FILE *chan, int *o, count_t c, int show) ;
-void dump_outs (FILE *chan, dump_outcome *dout,outs_t *p, int *buff, int sz) ;
+typedef void dump_outcome(FILE *chan, intmax_t *o, count_t c, int show) ;
+void dump_outs (FILE *chan, dump_outcome *dout,outs_t *p, intmax_t *buff, int sz) ;
 outs_t *merge_outs(outs_t *p,outs_t *q, int sz) ;
 int same_outs(outs_t *p,outs_t *q) ;
 #endif

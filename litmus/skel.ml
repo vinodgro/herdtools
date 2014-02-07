@@ -764,7 +764,7 @@ let dump_read_timebase () =
     | A.Location_global s -> sprintf "%s" s in
 
     let pp_fmt loc = match find_type loc env with
-    | RunType.Ty _ -> if Cfg.hexa then "0x%x" else "%i"
+    | RunType.Ty _ -> if Cfg.hexa then "0x%\"PRIxMAX\"" else "%\"PRIiMAX\""
     | RunType.Pointer _ -> "%s" in
 
     String.concat " "
@@ -848,7 +848,7 @@ let dump_read_timebase () =
     let outs = get_final_locs test in
     let nouts = List.length outs in
     O.f "#define NOUTS %i" nouts ;
-    O.o "typedef int outcome_t[NOUTS];" ;
+    O.o "typedef intmax_t outcome_t[NOUTS];" ;
     O.o "" ;
     Misc.iteri
       (fun i loc ->
@@ -935,7 +935,7 @@ let dump_read_timebase () =
     end ;
 (* Dumping *)
     O.o
-      "static void do_dump_outcome(FILE *fhist, int *o, count_t c, int show) {" ;
+      "static void do_dump_outcome(FILE *fhist, intmax_t *o, count_t c, int show) {" ;
     let fmt_var = fmt_outcome outs env in
     let fmt ="\"%-6\"PCTR\"%c>" ^ fmt_var ^ "\\n\"" in
     let args =
