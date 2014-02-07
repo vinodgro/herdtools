@@ -235,7 +235,9 @@ let get_loc e = match E.location_of e with
 
 and get_value e = match e.E.action with
 | E.Access (_,_,v) -> v
-| E.Barrier _|E.Commit -> assert false
+| _ -> 
+  printf "Tried to get value of Barrier/Commit/Lock/Unlock/RMW.\n"; 
+  assert false
 
 
 

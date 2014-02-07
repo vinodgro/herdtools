@@ -19,9 +19,14 @@ module type S = sig
   type eiid = int
 	
   type dirn = R | W  
+  
+  type lock_outcome = Locked | Blocked
     
   type action = 
     | Access of dirn * A.location * A.V.v
+    | RMW of A.location * A.V.v * A.V.v
+    | Lock of A.location * lock_outcome
+    | Unlock of A.location
     | Barrier of A.barrier
     | Commit
 
@@ -251,8 +256,13 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
     type dirn = R | W  
       
+    type lock_outcome = Locked | Blocked
+    
     type action = 
-      | Access of dirn * A.location * V.v
+      | Access of dirn * A.location * A.V.v
+      | RMW of A.location * A.V.v * A.V.v
+      | Lock of A.location * lock_outcome
+      | Unlock of A.location
       | Barrier of A.barrier
       | Commit
 
@@ -290,6 +300,18 @@ module Make (AI:Arch.S) :  S with module A = AI =
           (pp_location withparen l) 
           (if e.atomic then "*" else "")
 	  (V.pp_v v)
+    | RMW (l,v1,v2) ->
+      Printf.sprintf "RMW(%s,%s,%s)"
+        (pp_location withparen l)
+        (V.pp_v v1)
+        (V.pp_v v2)
+    | Lock (l,o) ->
+      Printf.sprintf "Lock(%s,%s)"
+        (pp_location withparen l)
+        (match o with Locked -> "Locked" | Blocked -> "Blocked")
+    | Unlock l ->
+      Printf.sprintf "Unlock(%s)"
+        (pp_location withparen l)
     | Barrier b      -> A.pp_barrier b
     | Commit -> "Commit"
 
@@ -654,13 +676,28 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
     let undetermined_vars_in_action a =
       match a with
-      | Access (_,l,v) -> 
-	  let undet_loc = match A.undetermined_vars_in_loc l with
-	  | None -> V.ValueSet.empty
-	  | Some v -> V.ValueSet.singleton v in
+        | Access (_,l,v) -> 
+          let undet_loc = match A.undetermined_vars_in_loc l with
+	    | None -> V.ValueSet.empty
+	    | Some v -> V.ValueSet.singleton v in
 	  if V.is_var_determined v then undet_loc
 	  else V.ValueSet.add v undet_loc
-      | Barrier _|Commit -> V.ValueSet.empty
+        | RMW(l,v1,v2) ->
+          let undet_loc = match A.undetermined_vars_in_loc l with
+	    | None -> V.ValueSet.empty
+	    | Some v -> V.ValueSet.singleton v in
+          let undet_loc = 
+	    (if V.is_var_determined v1 then undet_loc 
+	     else V.ValueSet.add v1 undet_loc) in
+          let undet_loc =
+            (if V.is_var_determined v2 then undet_loc
+	     else V.ValueSet.add v2 undet_loc) in
+          undet_loc
+        | Lock(l,_) | Unlock(l) -> 
+          (match A.undetermined_vars_in_loc l with
+	    | None -> V.ValueSet.empty
+	    | Some v -> V.ValueSet.singleton v)          
+        | Barrier _ | Commit -> V.ValueSet.empty
 
     let undetermined_vars_in_event e =
       undetermined_vars_in_action e.action
@@ -674,7 +711,17 @@ module Make (AI:Arch.S) :  S with module A = AI =
       match a with
       | Access (d,l,v) -> 
 	  Access (d,A.simplify_vars_in_loc soln l,V.simplify_var soln v)
-      | Barrier _|Commit -> a
+      | RMW(l,v1,v2) ->
+        let l' = A.simplify_vars_in_loc soln l in
+        let [v1';v2'] = List.map (V.simplify_var soln) [v1;v2] in
+        RMW(l',v1',v2')
+      | Lock(l,o) ->
+        let l' = A.simplify_vars_in_loc soln l in
+        Lock(l',o)
+      | Unlock(l) ->
+        let l' = A.simplify_vars_in_loc soln l in
+        Unlock l'
+      | Barrier _ | Commit -> a
 
     let simplify_vars_in_event soln e = 
       {e with action = simplify_vars_in_action soln e.action}

@@ -45,7 +45,7 @@ module Make (C:Sem.Config)(V:Value.S)
       | OpenCL.Pload(loc,reg,mo,scope) ->
         (* Todo: do something with the scope parameter *)
 	M.unitT (OpenCL.maybev_to_location loc) >>=
-	(fun loc -> M.read_loc_atrb loc ii [Mem_order mo; Mem_scope scope]) >>= 
+	(fun loc -> M.read_loc_atrb loc ii [OpenCL.Mem_order mo; OpenCL.Mem_scope scope]) >>= 
 	  (fun v -> M.write_reg reg v ii) >>! 
 	  B.Next
 
@@ -53,7 +53,7 @@ module Make (C:Sem.Config)(V:Value.S)
         (* Todo: do something with the scope parameter *)
 	(M.unitT (OpenCL.maybev_to_location l)) >>|
 	    (M.unitT (V.intToV (constant_to_int v))) >>=
-	(fun (loc, vv) -> M.write_loc_atrb loc vv ii [Mem_order mo; Mem_scope scope]) >>! B.Next
+	(fun (loc, vv) -> M.write_loc_atrb loc vv ii [OpenCL.Mem_order mo; OpenCL.Mem_scope scope]) >>! B.Next
 
 
       | OpenCL.Pfence(mo,scope) ->

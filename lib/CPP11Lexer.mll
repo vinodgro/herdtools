@@ -38,6 +38,9 @@ rule token = parse
 | "fence" { FENCE }
 | "load"  { LD }
 | "store"    { ST }
+| "lock"  { LOCK }
+| "RMW"  { RMW }
+| "unlock"    { UNLOCK }
 | name as x
   { match CPP11.parse_reg x with
   | Some r -> ARCH_REG r

@@ -291,21 +291,6 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 	  intra_causality_control = E.EventRel.empty ;
 	  atomicity = E.Atomicity.empty ; }
 
-      let do_read_loc atomic loc ii =
-	fun eiid ->
-	  V.fold_over_vals
-	    (fun v (eiid1,acc_inner) ->
-	      (eiid1+1,
-	       Evt.add 
-		 (v, [],
-		  trivial_event_structure
-		    {E.eiid = eiid1 ;
-		     E.iiid = ii;
-                     E.atomic = atomic;
-		     E.atrbs = [];
-		     E.action = E.Access (E.R, loc, v)})
-		 acc_inner)) (eiid,Evt.empty)	
-
       let do_read_loc_atrb atomic loc ii atrb =
 	fun eiid ->
 	  V.fold_over_vals
@@ -322,25 +307,12 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 		 acc_inner)) (eiid,Evt.empty)	
 
 
-      let read_loc = do_read_loc false
+      let read_loc loc ii = do_read_loc_atrb false loc ii []
       let read_loc_atrb = do_read_loc_atrb false
 
-      let read_reg r ii = do_read_loc false (A.Location_reg (ii.A.proc,r)) ii
-      and read_mem a ii = do_read_loc false (A.Location_global a) ii
-      and read_mem_atomic a ii = do_read_loc true (A.Location_global a) ii 
-
-
-      let do_write_loc atomic loc v ii =
-	fun eiid ->
-	  (eiid+1,
-	   Evt.singleton
-	     ((), [],
-	      trivial_event_structure
-		{E.eiid = eiid ;
-		 E.iiid = ii;
-                 E.atomic = atomic ;
-		 E.atrbs = [];
-		 E.action = E.Access (E.W, loc, v)}))
+      let read_reg r ii = do_read_loc_atrb false (A.Location_reg (ii.A.proc,r)) ii []
+      and read_mem a ii = do_read_loc_atrb false (A.Location_global a) ii []
+      and read_mem_atomic a ii = do_read_loc_atrb true (A.Location_global a) ii [] 
 
       let do_write_loc_atrb atomic loc v ii atrbs =
 	fun eiid ->
@@ -355,16 +327,54 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 		 E.action = E.Access (E.W, loc, v)}))
 
 	    
-      let write_loc = do_write_loc false
+      let write_loc loc v ii = do_write_loc_atrb false loc v ii []
       let write_loc_atrb = do_write_loc_atrb false
 
       let write_reg r v ii =
-	do_write_loc false (A.Location_reg (ii.A.proc,r)) v ii
+	do_write_loc_atrb false (A.Location_reg (ii.A.proc,r)) v ii []
       and write_mem a v ii =
-	do_write_loc false (A.Location_global a) v ii
+	do_write_loc_atrb false (A.Location_global a) v ii []
       and write_mem_atomic a v ii =
-        do_write_loc true (A.Location_global a) v ii
+        do_write_loc_atrb true (A.Location_global a) v ii []
 
+      let do_rmw_loc_atrb loc v1 v2 ii atrbs =
+	fun eiid ->
+	  (eiid+1,
+	   Evt.singleton
+	     ((), [],
+	      trivial_event_structure
+		{E.eiid = eiid ;
+		 E.iiid = ii;
+                 E.atomic = true ;
+		 E.atrbs = atrbs;
+		 E.action = E.RMW (loc, v1, v2)}))
+
+      let rmw_loc loc v1 v2 ii = do_rmw_loc_atrb loc v1 v2 ii []
+      let rmw_loc_atrb = do_rmw_loc_atrb
+
+      let lock_loc loc ii eiid =
+        let mk_es lock_outcome = 
+          ((), [],
+	   trivial_event_structure
+	     {E.eiid = eiid ;
+	      E.iiid = ii;
+              E.atomic = true ;
+	      E.atrbs = [];
+	      E.action = E.Lock (loc, lock_outcome)})
+        in
+	(eiid+2, Evt.add (mk_es E.Locked) (Evt.add (mk_es E.Blocked) Evt.empty))
+
+      let unlock_loc loc ii eiid =
+	(eiid+1,
+	 Evt.singleton
+	   ((), [],
+	    trivial_event_structure
+	      {E.eiid = eiid ;
+	       E.iiid = ii;
+               E.atomic = true ;
+	       E.atrbs = [];
+	       E.action = E.Unlock (loc)}))
+          
       let create_barrier_atrb : A.barrier -> A.inst_instance_id -> A.atrb list -> unit t
 	  = fun b ii atrb->
 	    fun eiid ->
@@ -376,17 +386,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 		     E.action = E.Barrier b;
 		     E.atrbs = atrb;}))
 
-      let create_barrier : A.barrier -> A.inst_instance_id -> unit t
-	  = fun b ii ->
-	    fun eiid ->
-	      (eiid+1,
-	       Evt.singleton
-		 ((), [],
-		  trivial_event_structure
-		    {E.eiid = eiid ;  E.iiid = ii; E.atomic = false ;
-		     E.action = E.Barrier b;
-		     E.atrbs = [];}))
-
+      let create_barrier b ii = create_barrier_atrb b ii []
 
       let any_op mk_v mk_c =
 	(fun eiid_next -> 

@@ -102,7 +102,7 @@ module Make
     let interpret test conc m id vb_pp =
 
       let is_dir = function
-	| Unv_Set -> (fun e -> true)
+	| Unv_Set -> (fun _ -> true)
 	| Bar_Set -> E.is_barrier
         | WriteRead -> E.is_mem
         | Write -> E.is_mem_store
@@ -155,6 +155,7 @@ module Make
                         List.fold_left (fun v z -> 
                           Rel (E.EventRel.inter (as_rel v) (as_rel z))) v vs
                     end
+              (* Todo: I think Diff is missing here *)
               end else if List.for_all is_set vs then begin
                 match op with
                   | Union -> Set (E.EventSet.unions (List.map as_set vs))
@@ -166,6 +167,7 @@ module Make
                         List.fold_left (fun v z -> 
                           Set (E.EventSet.inter (as_set v) (as_set z))) v vs
                     end
+              (* Todo: I think Diff is missing here *)
               end else 
 		  begin
 		    printf "Unable to operate on values of different types (set and relation)";

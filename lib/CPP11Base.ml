@@ -96,19 +96,24 @@ type store_op = SymbConstant.v
 
 
 type instruction = 
-| Pstore of loc*store_op*mem_order 
-| Pload  of loc*reg*mem_order
-| Pincr  of loc*mem_order
-| Pfence of mem_order
+| Pstore  of loc*store_op*mem_order 
+| Pload   of loc*reg*mem_order
+| Pincr   of loc*mem_order
+| Prmw    of loc*store_op*store_op*mem_order
+| Plock   of loc
+| Punlock of loc
+| Pfence  of mem_order
 
 include Pseudo.Make
     (struct
       type ins = instruction
       type reg_arg = reg
       let get_naccesses = function 
-	| Pstore _
-	| Pload _ -> 1
-	| _ -> 0
+	| Pstore _ | Pload _ -> 1
+	| _ -> 0 
+       (* JPW: maybe locks/unlocks/RMWs should return something other
+          than 0, but I'm not sure whether this function is
+          used, so I'll leave them at 0 *)
 
       (* I don't think we have labels yet... *)
       let fold_labels k _ = function 
@@ -138,6 +143,12 @@ let dump_instruction i = match i with
     | _ -> sprintf("%s = %s.load(%s)") (pp_reg reg) (pp_addr loc) (pp_mem_order mo))
   | Pincr(loc,mo) ->
     sprintf "%s.incr(%s)" (pp_addr loc) (pp_mem_order mo)
+  | Prmw(loc,sop1,sop2,mo) ->
+    sprintf("RMW(%s,%s,%s,%s)") (pp_addr loc) (pp_sop sop1) (pp_sop sop2) (pp_mem_order mo)
+  | Plock(loc) ->
+    sprintf("Lock(%s)") (pp_addr loc)
+  | Punlock(loc) ->
+    sprintf("Unlock(%s)") (pp_addr loc)
   | Pfence mo ->  sprintf("fence(%s)") (pp_mem_order mo)
    
 (* We don't have symbolic registers. This should be enough *)
