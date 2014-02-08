@@ -99,7 +99,7 @@ type instruction =
 | Pstore  of loc*store_op*mem_order 
 | Pload   of loc*reg*mem_order
 | Pincr   of loc*mem_order
-| Prmw    of loc*store_op*store_op*mem_order
+| Prmw    of loc*store_op*store_op*mem_order*mem_order
 | Plock   of loc
 | Punlock of loc
 | Pfence  of mem_order
@@ -143,8 +143,8 @@ let dump_instruction i = match i with
     | _ -> sprintf("%s = %s.load(%s)") (pp_reg reg) (pp_addr loc) (pp_mem_order mo))
   | Pincr(loc,mo) ->
     sprintf "%s.incr(%s)" (pp_addr loc) (pp_mem_order mo)
-  | Prmw(loc,sop1,sop2,mo) ->
-    sprintf("RMW(%s,%s,%s,%s)") (pp_addr loc) (pp_sop sop1) (pp_sop sop2) (pp_mem_order mo)
+  | Prmw(loc,sop1,sop2,mo_success,mo_failure) ->
+    sprintf("RMW(%s,%s,%s,%s,%s)") (pp_addr loc) (pp_sop sop1) (pp_sop sop2) (pp_mem_order mo_success) (pp_mem_order mo_failure)
   | Plock(loc) ->
     sprintf("Lock(%s)") (pp_addr loc)
   | Punlock(loc) ->

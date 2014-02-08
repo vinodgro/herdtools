@@ -63,8 +63,8 @@ instr:
     {Plock ($3)}
   | UNLOCK LPAR loc RPAR
     {Punlock ($3)}
-  | RMW LPAR loc COMMA store_op COMMA store_op COMMA MEMORDER RPAR
-    {Prmw ($3,$5,$7,$9)}
+  | RMW LPAR loc COMMA store_op COMMA store_op COMMA MEMORDER COMMA MEMORDER RPAR
+    {Prmw ($3,$5,$7,$9,$11)}
 
 store_op :
 | NUM { Concrete $1 }

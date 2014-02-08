@@ -337,20 +337,22 @@ Monad.S with module A = A and type evt_struct = E.event_structure
       and write_mem_atomic a v ii =
         do_write_loc_atrb true (A.Location_global a) v ii []
 
-      let do_rmw_loc_atrb loc v1 v2 ii atrbs =
-	fun eiid ->
-	  (eiid+1,
-	   Evt.singleton
-	     ((), [],
-	      trivial_event_structure
-		{E.eiid = eiid ;
-		 E.iiid = ii;
-                 E.atomic = true ;
-		 E.atrbs = atrbs;
-		 E.action = E.RMW (loc, v1, v2)}))
+      let do_rmw_loc loc v1 v2 ii atrbs_success atrbs_failure eiid =
+        let mk_es a atrbs =
+          ((), [],
+	   trivial_event_structure
+	     {E.eiid = eiid ;
+	      E.iiid = ii;
+              E.atomic = true ;
+	      E.atrbs = atrbs;
+	      E.action = a})
+          in
+	  (eiid+2,
+	   Evt.add (mk_es (E.RMW (loc, v1, v2)) atrbs_success)  
+             (Evt.add (mk_es (E.Access (E.R, loc, v1)) atrbs_failure) 
+                Evt.empty))
 
-      let rmw_loc loc v1 v2 ii = do_rmw_loc_atrb loc v1 v2 ii []
-      let rmw_loc_atrb = do_rmw_loc_atrb
+      let rmw_loc = do_rmw_loc
 
       let lock_loc loc ii eiid =
         let mk_es lock_outcome = 

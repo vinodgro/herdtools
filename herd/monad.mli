@@ -58,8 +58,9 @@ module type S =
     val write_loc : A.location -> A.V.v -> A.inst_instance_id -> unit t
     val write_loc_atrb : A.location -> A.V.v -> A.inst_instance_id -> A.atrb list -> unit t
 
-    val rmw_loc : A.location -> A.V.v -> A.V.v -> A.inst_instance_id -> unit t
-    val rmw_loc_atrb : A.location -> A.V.v -> A.V.v -> A.inst_instance_id -> A.atrb list -> unit t
+    val rmw_loc : 
+      A.location -> A.V.v -> A.V.v -> A.inst_instance_id 
+      -> A.atrb list -> A.atrb list -> unit t
 
     val lock_loc : A.location -> A.inst_instance_id -> unit t
     val unlock_loc : A.location -> A.inst_instance_id -> unit t

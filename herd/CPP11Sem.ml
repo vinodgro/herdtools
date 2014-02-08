@@ -55,11 +55,11 @@ module Make (C:Sem.Config)(V:Value.S)
 	(M.unitT (CPP11.maybev_to_location l)) >>=
 	(fun loc -> M.unlock_loc loc ii) >>! B.Next
 
-      | CPP11.Prmw(l,v1,v2,mo) ->
+      | CPP11.Prmw(l,v1,v2,mo_success,mo_failure) ->
 	(M.unitT (CPP11.maybev_to_location l)) >>|
 	    (M.unitT (V.intToV (constant_to_int v1))) >>|
             (M.unitT (V.intToV (constant_to_int v2))) >>=
-	(fun ((loc, v1), v2) -> M.rmw_loc_atrb loc v1 v2 ii [mo]) >>! B.Next
+	(fun ((loc, v1), v2) -> M.rmw_loc loc v1 v2 ii [mo_success] [mo_failure]) >>! B.Next
 
       | CPP11.Pfence(mo) ->
         (* Todo: should it really be "SC" below? Should it not be "mo"? *)
