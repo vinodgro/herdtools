@@ -1,6 +1,7 @@
 "GPU_PTX"
 
 (* Uniproc check *)
+(* Allows ll hazard, as does the hardware (intentially? Vinod said it is not intential!) *)
 let com = rf | fr | co
 let po_llh = (WM(po-loc) | MW(po-loc))
 acyclic po_llh | com as uniproc_llh
@@ -14,16 +15,18 @@ let sys_fence = membar.sys
 let gl_fence  = membar.gl  | sys_fence
 let cta_fence = membar.cta | gl_fence
 
-acyclic 
-  ppo | cta_fence | (rf & int-cta)    | (co & int-cta)    | (fr & int-cta)
-  as cta_constraint
+(*Should to be able to say 'acyclic' in functions*)
+let scope(r,s) = (r & s)
 
-acyclic
-  ppo | gl_fence  | (rf & int-device) | (co & int-device) | (fr & int-device) 
-  as gl_constraint
+(*scope/fence parameterized rmo*)
+let rmo(s,fence) = scope((ppo | fence | rf | co | fr), s)
 
-acyclic 
-  ppo | sys_fence | rf                | co                | fr             
-  as sys_constraint
+let cta_constraint = rmo(int-cta, cta_fence)
+let gl_constraint = rmo(int-device, gl_fence)
+let sys_constraint = rmo([_*_], sys_fence)
 
+acyclic cta_constraint
+acyclic gl_constraint
+acyclic sys_constraint
 
+show cta_constraint
