@@ -17,7 +17,7 @@ module type S = sig
 end
 
 module Make
-    (A:Arch.S)
+    (A:Fence.S)
     (E:Edge.S with type dp = A.dp and type fence=A.fence) : S with type edge = E.edge = struct
 
       type edge = E.edge

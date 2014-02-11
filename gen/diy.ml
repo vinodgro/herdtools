@@ -22,7 +22,7 @@ module type DiyConfig = sig
   val upto : bool
 end
 
-module Make(C:XXXCompile.S)(O:DiyConfig) = struct
+module Make(C:Builder.S)(O:DiyConfig) = struct
 
 open C.E
 open C.R
@@ -201,17 +201,18 @@ let () =
     let unrollatomic = !Config.unrollatomic
     let allow_back = match !Config.mode with
     | Sc|Critical|Thin -> false
-    | _ -> true
+    | _ -> true          
   end in
+  let module T = Top.Make(Co) in
   let f = match !Config.arch with
   | PPC ->
-      let module M = Make(PPCCompile.Make(V)(C)(PPCArch.Config))(Co) in
+      let module M = Make(T(PPCCompile.Make(V)(C)(PPCArch.Config)))(Co) in
     M.go
   | X86 ->
-    let module M = Make(X86Compile.Make(V)(C))(Co) in
+    let module M = Make(T(X86Compile.Make(V)(C)))(Co) in
     M.go
   | ARM ->
-      let module M = Make(ARMCompile.Make(V)(C))(Co) in
+      let module M = Make(T(ARMCompile.Make(V)(C)))(Co) in
       M.go in
   try
     f !Config.size relax_list safe_list one_list ;

@@ -28,50 +28,26 @@ module type Config = sig
   val optcoherence : bool
 end
 
-module Make (O:Config) (C:XXXCompile.S) : sig
-
-  module A : Arch.S
-
-  type test
-  type edge = C.E.edge
-
-(* Returns resolved edges of test *)
-  val extract_edges : test -> edge list
-
-(* Build up test, test structure includes
-   name & comment given as first two arguments,
-   third argument is the last minute check *)
-  type info = (string * string) list
-
-  type check = edge list list -> bool
-  val make_test :
-      string -> ?com:string -> ?info:info -> ?check:check -> edge list -> test
-(* Build test from cycle *)
-  val test_of_cycle :
-      string -> ?com:string -> ?info:info -> ?check:check -> edge list ->
-       C.C.node -> test  
-(* Dump the given test *)
-  val dump_test : test -> unit
-  val dump_test_channel : out_channel -> test -> unit
-
-
-(* Combination of make_test/dump_test *)
-(*
-  val compile :
-      string -> ?com:string -> ?info:MiscParser.info ->
-        ?check:check -> edge list -> unit
-*)
-
-end
+module Make (O:Config) (Comp:XXXCompile.S) : Builder.S 
 = struct
 
 (* Config *)
 
-  module A = C.A
-  module Run = Run.Make(O)(C)
+  module A = Comp.A
+  let parse_fence = Comp.parse_fence
 
-  open C.E
-  type edge = C.E.edge
+  module E = Comp.E
+  module R = Comp.R
+  module C = Comp.C
+
+  let ppo = Comp.ppo
+
+  module Run = Run.Make(O)(Comp)
+
+  open E
+  type edge = E.edge
+  type node = C.node
+  type relax = R.relax
 
   type info = (string * string) list
   type final =
@@ -105,12 +81,12 @@ module StringMap = MyMap.Make(String)
 
   let show_in_cond =
     if O.optcond then
-      let valid_edge e = match e.C.E.edge with
+      let valid_edge e = match e.E.edge with
       | Rf _ | RfStar _| Fr _ | Ws _ | Hat|Detour _|DetourWs _
       | Back _|Leave _ -> true
       | Po _ | Fenced _ | Dp _|Rmw -> false
       | Store -> assert false in
-      (fun n -> valid_edge n.C.C.prev.C.C.edge || valid_edge n.C.C.edge)
+      (fun n -> valid_edge n.C.prev.C.edge || valid_edge n.C.edge)
     else
       (fun _ -> true)
 
@@ -120,8 +96,8 @@ module StringMap = MyMap.Make(String)
   | Some r ->
       let m,fs = finals in
       if show_in_cond n then
-        C.C.EventMap.add n.C.C.evt (A.Reg (p,r)) m,
-        add_final_v p r (Ints.singleton n.C.C.evt.C.C.v) fs
+        C.EventMap.add n.C.evt (A.Reg (p,r)) m,
+        add_final_v p r (Ints.singleton n.C.evt.C.v) fs
       else finals
   | None -> finals
 
@@ -129,122 +105,122 @@ module StringMap = MyMap.Make(String)
     if ov <= 0 then init,[],st
     else
       let loc_ov = sprintf "%s%i" loc ov in
-      let _,init,i,st = C.emit_load st p init loc_ov in
+      let _,init,i,st = Comp.emit_load st p init loc_ov in
       let init,is,st = emit_overload st p init (ov-1) loc in
       init,i@is,st
 
-  let insert_overload n = match n.C.C.edge.C.E.edge with
+  let insert_overload n = match n.C.edge.E.edge with
   | Po (_,Dir R,Dir (W|R)) -> true
   | _ -> false
 
   type prev_load =
     | No       (* Non-existent or irrelevant *)
-    | Yes of C.E.dp * C.A.arch_reg
+    | Yes of E.dp * A.arch_reg
 
 
 (* Encodes load of first non-initial vakue in chain,
    can poll on value in place of checking it *)
-  let do_poll n = match O.poll,n.C.C.prev.C.C.edge.C.E.edge,n.C.C.evt.C.C.v with
+  let do_poll n = match O.poll,n.C.prev.C.edge.E.edge,n.C.evt.C.v with
   | true,Rf Ext,1 -> true
   | _,_,_ -> false
 
   let emit_access ro_prev st p init n =
     let init,ip,st = match O.overload with
     | Some ov  when insert_overload n ->
-        emit_overload st p init ov n.C.C.evt.C.C.loc
+        emit_overload st p init ov n.C.evt.C.loc
     | _ -> init,[],st in
     let o,init,i,st = match ro_prev with
     | No ->
         let open Config in
         begin match
-          O.fno,n.C.C.evt.C.C.dir,n.C.C.prev.C.C.prev.C.C.edge.C.E.edge,
-          n.C.C.prev.C.C.edge.C.E.edge,
-          n.C.C.edge.C.E.edge
+          O.fno,n.C.evt.C.dir,n.C.prev.C.prev.C.edge.E.edge,
+          n.C.prev.C.edge.E.edge,
+          n.C.edge.E.edge
         with
-        | (FnoPrev|FnoBoth|FnoOnly),R,_,Rf _, C.E.Fenced _->
-            let r,init,i,st = C.emit_fno st p init n.C.C.evt.C.C.loc in
+        | (FnoPrev|FnoBoth|FnoOnly),R,_,Rf _, E.Fenced _->
+            let r,init,i,st = Comp.emit_fno st p init n.C.evt.C.loc in
             Some r,init,i,st
-        | (FnoBoth|FnoOnly),R,Rf _, C.E.Fenced _,_->
-            let r,init,i,st = C.emit_fno st p init n.C.C.evt.C.C.loc in
+        | (FnoBoth|FnoOnly),R,Rf _, E.Fenced _,_->
+            let r,init,i,st = Comp.emit_fno st p init n.C.evt.C.loc in
             Some r,init,i,st
         | _ ->
             if do_poll n then
               let r,init,i,st =
-                C.emit_load_one st p init n.C.C.evt.C.C.loc in
+                Comp.emit_load_one st p init n.C.evt.C.loc in
               Some r,init,i,st
             else
-              C.emit_access st p init n.C.C.evt
+              Comp.emit_access st p init n.C.evt
         end
-    | Yes (dp,r1) -> C.emit_access_dep st p init n.C.C.evt dp r1 in    
+    | Yes (dp,r1) -> Comp.emit_access_dep st p init n.C.evt dp r1 in    
     o,init,ip@i,st
 
 let edge_to_prev_load o e = match o with
 | None -> No
 | Some r ->
-    begin match e.C.E.edge with
+    begin match e.E.edge with
     | Dp (dp,_,_) -> Yes (dp,r)
     | _ -> No
     end
 
 let get_fence n =
   let open Config in 
-  match O.fno,n.C.C.edge.C.E.edge with
-  | FnoOnly,C.E.Fenced (fe,_,_,_) ->
-      begin match n.C.C.evt.C.C.dir,n.C.C.next.C.C.evt.C.C.dir with
+  match O.fno,n.C.edge.E.edge with
+  | FnoOnly,E.Fenced (fe,_,_,_) ->
+      begin match n.C.evt.C.dir,n.C.next.C.evt.C.dir with
       | R,R -> None
       | _,_ -> Some fe
       end
-  | _, C.E.Fenced (fe,_,_,_) ->  Some fe
+  | _, E.Fenced (fe,_,_,_) ->  Some fe
   | _,_ -> None
         
 let rec compile_stores st p i ns k = match ns with
 | [] -> i,k,st
 | n::ns ->
-    let sto = n.C.C.store in
-    if sto == C.C.nil then
+    let sto = n.C.store in
+    if sto == C.nil then
       compile_stores st p i ns k
     else
-      let _,i,c,st = C.emit_access st p i sto.C.C.evt in
+      let _,i,c,st = Comp.emit_access st p i sto.C.evt in
       let i,k,st = compile_stores st p i ns k in
       i,(c@k),st
 
 let rec compile_proc loc_writes st p ro_prev init ns = match ns with
-| [] -> init,[],(C.C.EventMap.empty,[]),st
+| [] -> init,[],(C.EventMap.empty,[]),st
 | n::ns ->
     let open Config in
     begin match
       O.fno,
-      n.C.C.evt.C.C.dir,n.C.C.prev.C.C.edge.C.E.edge,
-      n.C.C.next.C.C.evt.C.C.dir,ns with
+      n.C.evt.C.dir,n.C.prev.C.edge.E.edge,
+      n.C.next.C.evt.C.dir,ns with
     | FnoAll,R,_,_,_ ->
         begin match  ro_prev with
         | No -> ()
         | Yes _ -> Warn.fatal "Dependency to fno"
         end ;
-        let o,init,i,st = C.emit_fno st p init n.C.C.evt.C.C.loc in
+        let o,init,i,st = Comp.emit_fno st p init n.C.evt.C.loc in
         let init,is,finals,st =
           compile_proc loc_writes
-            st p (edge_to_prev_load (Some o) n.C.C.edge)
+            st p (edge_to_prev_load (Some o) n.C.edge)
             init ns in
         init,
-        i@(match get_fence n with Some fe -> C.emit_fence fe::is  | _ -> is),
-        (if StringSet.mem n.C.C.evt.C.C.loc loc_writes then
+        i@(match get_fence n with Some fe -> Comp.emit_fence fe::is  | _ -> is),
+        (if StringSet.mem n.C.evt.C.loc loc_writes then
           add_final p (Some o) n finals
         else finals),
         st
     | (FnoRf,R,Rf _,d,m::ns)
     | (_,R,RfStar _,d,m::ns) ->
-        let o1,init,i1,lab,st = C.emit_open_fno st p init n.C.C.evt.C.C.loc in
+        let o1,init,i1,lab,st = Comp.emit_open_fno st p init n.C.evt.C.loc in
         let o2,init,i2,st =
-          emit_access (edge_to_prev_load (Some o1) n.C.C.edge) st p init m in
-        let init,i3,st = C.emit_close_fno st p init lab o1 n.C.C.evt.C.C.loc in
+          emit_access (edge_to_prev_load (Some o1) n.C.edge) st p init m in
+        let init,i3,st = Comp.emit_close_fno st p init lab o1 n.C.evt.C.loc in
         let init,is,finals,st =
           compile_proc loc_writes
-            st p (edge_to_prev_load o2 m.C.C.edge)
+            st p (edge_to_prev_load o2 m.C.edge)
             init ns in
         init,
         i1@
-        (match  get_fence n  with Some fe -> [C.emit_fence fe] | _ -> [])@
+        (match  get_fence n  with Some fe -> [Comp.emit_fence fe] | _ -> [])@
         (match d with R -> i2@i3@is | W -> i3@i2@is),
         add_final p (Some o1) n (add_final p o2 m finals),
         st
@@ -252,12 +228,12 @@ let rec compile_proc loc_writes st p ro_prev init ns = match ns with
         let o,init,i,st = emit_access ro_prev st p init n in
         let init,is,finals,st =
           compile_proc loc_writes
-            st p (edge_to_prev_load o n.C.C.edge)
+            st p (edge_to_prev_load o n.C.edge)
             init ns in
         init,
-        i@(match get_fence n with Some fe -> C.emit_fence fe::is  | _ -> is),
+        i@(match get_fence n with Some fe -> Comp.emit_fence fe::is  | _ -> is),
         (if
-          StringSet.mem n.C.C.evt.C.C.loc loc_writes && not (do_poll n)
+          StringSet.mem n.C.evt.C.loc loc_writes && not (do_poll n)
         then
           add_final p o n finals
         else finals),
@@ -270,14 +246,14 @@ let rec compile_proc loc_writes st p ro_prev init ns = match ns with
 (*************)
 
 let last_observation st p i x v =
-  let r,i,c,_st = C.emit_load st p i x in
+  let r,i,c,_st = Comp.emit_load st p i x in
   i,c,add_final_v p r v []
 
 let rec straight_observer st p i x = function
   | [] -> i,[],[]
   | [v] -> last_observation st p i x v
   | v::vs ->
-      let r,i,c,st = C.emit_load st p i x in
+      let r,i,c,st = Comp.emit_load st p i x in
       let i,cs,fs = straight_observer st p i x vs in
       i,c@cs,add_final_v p r v fs
 
@@ -285,8 +261,8 @@ let rec fenced_observer st p i x = function
   | [] -> i,[],[]
   | [v] -> last_observation st p i x v
   | v::vs ->
-      let r,i,c,st = C.emit_load st p i x in
-      let f = [C.emit_fence C.stronger_fence] in
+      let r,i,c,st = Comp.emit_load st p i x in
+      let f = [Comp.emit_fence Comp.stronger_fence] in
       let i,cs,fs = fenced_observer st p i x vs in
       i,c@f@cs,add_final_v p r v fs
 
@@ -294,14 +270,14 @@ let rec fenced_observer st p i x = function
 let loop_observer st p i x = function
   | []|[_] -> i,[],[]        
   | v::vs ->
-      let r,i,c,st = C.emit_load_not_zero st p i x in
+      let r,i,c,st = Comp.emit_load_not_zero st p i x in
       let rec do_loop st i prev_r = function
         | [] ->  assert false
         | [v] ->
-            let r,i,c,_st = C.emit_load_not_eq st p i x prev_r in
+            let r,i,c,_st = Comp.emit_load_not_eq st p i x prev_r in
             i,c,add_final_v p r v []
         | v::vs ->
-            let r,i,c,st = C.emit_load_not_eq st p i x prev_r in
+            let r,i,c,st = Comp.emit_load_not_eq st p i x prev_r in
             let i,cs,fs = do_loop st i r vs in
             i,c@cs,add_final_v p r v fs in
       let i,cs,fs = do_loop st i r vs in
@@ -462,17 +438,17 @@ exception NoObserver
   let comp_loc_writes n0 =
     let rec do_rec n =
       let k =
-        if n.C.C.next == n0 then StringSet.empty
-        else do_rec n.C.C.next in
+        if n.C.next == n0 then StringSet.empty
+        else do_rec n.C.next in
       let k =
-        if n.C.C.store != C.C.nil then
-          StringSet.add n.C.C.store.C.C.evt.C.C.loc k
+        if n.C.store != C.nil then
+          StringSet.add n.C.store.C.evt.C.loc k
         else k in
       let k = 
-        match n.C.C.evt.C.C.dir with
-        | W -> StringSet.add n.C.C.evt.C.C.loc k
+        match n.C.evt.C.dir with
+        | W -> StringSet.add n.C.evt.C.loc k
         | R -> k in
-      if is_detour n.C.C.edge  then StringSet.add n.C.C.evt.C.C.loc k
+      if is_detour n.C.edge  then StringSet.add n.C.evt.C.loc k
       else k in
     do_rec n0
 
@@ -484,7 +460,7 @@ exception NoObserver
 (* In thread/Out thread *)
 type pt = { ploc:Code.loc ; pdir:Code.dir; }
 
-let io_of_node n = {ploc=n.C.C.evt.C.C.loc; pdir=n.C.C.evt.C.C.dir;}
+let io_of_node n = {ploc=n.C.evt.C.loc; pdir=n.C.evt.C.dir;}
 
 let io_of_thread n = match n with
 | []|[_] -> None
@@ -513,7 +489,7 @@ let io_of_detour _n = None
 (*  Most of placement computation is now by litmus *)
 
   let last_edge ns =
-    let n = Misc.last ns in n.C.C.edge.C.E.edge
+    let n = Misc.last ns in n.C.edge.E.edge
 
   let compile_coms nss =
     List.map
@@ -529,15 +505,15 @@ let io_of_detour _n = None
 (* Local check of coherence *)
 
   let do_add_load st p i f x v =
-    let r,i,c,st = C.emit_load st p i x in
+    let r,i,c,st = Comp.emit_load st p i x in
     i,c,add_final_v p r (Ints.singleton v) f,st
 
   let do_add_loop st p i f x v w =
-    let r,i,c,st = C.emit_load_not_value st p i x v in
+    let r,i,c,st = Comp.emit_load_not_value st p i x v in
     i,c,add_final_v p r (Ints.singleton w) f,st
 
 
-  let is_load_init e = e.C.C.evt.C.C.dir = R && e.C.C.evt.C.C.v = 0
+  let is_load_init e = e.C.evt.C.dir = R && e.C.evt.C.v = 0
 
   let do_observe_local st p i code f x prev_v v =
     let open Config in
@@ -547,7 +523,7 @@ let io_of_detour _n = None
         i,code@c,f,st
     | Config.Fenced ->
         let i,c,f,st = do_add_load st p i f x v in
-        let c = C.emit_fence C.stronger_fence::c in
+        let c = Comp.emit_fence Comp.stronger_fence::c in
         i,code@c,f,st
     | Loop ->
         let i,c,f,st = do_add_loop st p i f x prev_v v in
@@ -555,15 +531,15 @@ let io_of_detour _n = None
 
   let add_co_local_check lsts ns st p i code f =
     let lst = Misc.last ns in
-    match lst.C.C.edge.C.E.edge with
+    match lst.C.edge.E.edge with
     | Ws _|Fr _
     | DetourWs _ when not (is_load_init lst) ->
-        let x = lst.C.C.evt.C.C.loc and v = lst.C.C.next.C.C.evt.C.C.v
-        and prev_v = lst.C.C.evt.C.C.v in
+        let x = lst.C.evt.C.loc and v = lst.C.next.C.evt.C.v
+        and prev_v = lst.C.evt.C.v in
         let all_lst =
           try StringMap.find x lsts
-          with Not_found -> C.C.evt_null in
-        if C.C.OrderedEvent.compare all_lst lst.C.C.next.C.C.evt = 0
+          with Not_found -> C.evt_null in
+        if C.OrderedEvent.compare all_lst lst.C.next.C.evt = 0
         then
           i,code,(A.Loc x,Ints.singleton v)::f,st
         else
@@ -591,18 +567,18 @@ let io_of_detour _n = None
   let build_detour lsts st p i n =
     let open Config in
     let i,c0,f,st = match O.do_observers with
-    | Local -> begin match n.C.C.edge.C.E.edge with
+    | Local -> begin match n.C.edge.E.edge with
       | DetourWs (Dir W) ->          
-          do_observe_local_before st p i [] [] n.C.C.evt.C.C.loc
-            n.C.C.prev.C.C.prev.C.C.evt.C.C.v n.C.C.prev.C.C.evt.C.C.v
+          do_observe_local_before st p i [] [] n.C.evt.C.loc
+            n.C.prev.C.prev.C.evt.C.v n.C.prev.C.evt.C.v
       | DetourWs (Dir R) ->          
-          do_observe_local_before st p i [] [] n.C.C.evt.C.C.loc
-            n.C.C.prev.C.C.prev.C.C.evt.C.C.v n.C.C.prev.C.C.evt.C.C.v
+          do_observe_local_before st p i [] [] n.C.evt.C.loc
+            n.C.prev.C.prev.C.evt.C.v n.C.prev.C.evt.C.v
       | _ -> i,[],[],st 
     end
     | _ -> i,[],[],st in
 
-    let _,i,c,st = C.emit_access st p i n.C.C.evt in
+    let _,i,c,st = Comp.emit_access st p i n.C.evt in
     let c = c0@c in
     match O.do_observers with
     | Local ->
@@ -636,7 +612,7 @@ let last_map cos =
         loc,r)
       cos in
   List.fold_left
-    (fun m (loc,lst) -> StringMap.add loc lst.C.C.evt m)
+    (fun m (loc,lst) -> StringMap.add loc lst.C.evt m)
     StringMap.empty lsts
 
 (******************************************)
@@ -646,9 +622,9 @@ let last_map cos =
   let compile_cycle ok n =
     let open Config in
     Label.reset () ;
-    let splitted =  C.C.split_procs n in
+    let splitted =  C.split_procs n in
  (* Split before, as  proc numbers added by side effet.. *)
-    let cos0 = C.C.coherence n in    
+    let cos0 = C.coherence n in    
     let lsts = match O.do_observers with
     | Config.Local when O.optcoherence -> last_map cos0
     | _ -> StringMap.empty in       
@@ -657,7 +633,7 @@ let last_map cos =
         (fun (loc,ns) ->
           loc,
           List.map
-            (List.map (fun (n,obs) -> n.C.C.evt.C.C.v,obs))
+            (List.map (fun (n,obs) -> n.C.evt.C.v,obs))
             ns)
         cos0 in
             
@@ -672,7 +648,7 @@ let last_map cos =
                 (fun chan ->
                   Misc.pp_list chan ","
                     (fun chan (n,obs) ->
-                      fprintf chan "%i{%s}" n.C.C.evt.C.C.v
+                      fprintf chan "%i{%s}" n.C.evt.C.v
                         (Ints.pp_str "," (sprintf "%i") obs)
                     )))
             vs)
@@ -681,7 +657,7 @@ let last_map cos =
     end ;
     let loc_writes = comp_loc_writes n in
     let rec do_rec p i = function
-      | [] -> List.rev i,[],(C.C.EventMap.empty,[]),[]
+      | [] -> List.rev i,[],(C.EventMap.empty,[]),[]
       | n::ns ->
           let i,c,(m,f),st = compile_proc loc_writes A.st0 p No i n in
           let i,c,st = compile_stores st p i n c in
@@ -692,13 +668,13 @@ let last_map cos =
                 match O.do_observers with
                 | Local -> add_co_local_check lsts n st p i c f
                 | Avoid|Accept|Enforce -> i,c,f,st in
-          let i,c,_ = C.postlude st p i c in
-          let ds = C.C.get_detours_from_list n in
+          let i,c,_ = Comp.postlude st p i c in
+          let ds = C.get_detours_from_list n in
           let i,cds,fds = build_detours lsts (p+1) i ds in
           let i,cs,(ms,fs),ios = do_rec (p+1+List.length cds) i ns in
           let io = io_of_thread n in
           let iod = List.map io_of_detour ds in
-          i,c::(cds@cs),(C.C.union_map m ms,f@fds@fs),(io::iod)@ios in
+          i,c::(cds@cs),(C.union_map m ms,f@fds@fs),(io::iod)@ios in
     let i,obsc,f =
       match O.cond with
       | Unicond -> [],[],[]
@@ -713,7 +689,7 @@ let last_map cos =
             O.nprocs <= 0 ||
             (if O.eprocs then len = O.nprocs else len <= O.nprocs)
           then
-            let ess = List.map (List.map (fun n -> n.C.C.edge)) splitted in
+            let ess = List.map (List.map (fun n -> n.C.edge)) splitted in
             if ok ess then
               let i,cs,(m,fs),ios = do_rec (List.length obsc) i splitted in
               if
@@ -721,8 +697,8 @@ let last_map cos =
                   (fun (_,loc) -> (loc:string) = Code.ok)
                   i
               then
-                (C.A.Loc Code.ok,"1")::i,obsc@cs,
-                (m,(C.A.Loc Code.ok,Ints.singleton 1)::f@fs),ios
+                (A.Loc Code.ok,"1")::i,obsc@cs,
+                (m,(A.Loc Code.ok,Ints.singleton 1)::f@fs),ios
               else
                 i,obsc@cs,(m,f@fs),ios
             else Warn.fatal "Last minute check"
@@ -732,7 +708,7 @@ let last_map cos =
           | Unicond ->
               let evts =
                 List.map
-                  (List.map (fun n -> n.C.C.evt))
+                  (List.map (fun n -> n.C.evt))
                   splitted in
               let f = Run.run evts m in
               i,c,Forall f
@@ -844,7 +820,7 @@ let make_test name ?com ?info ?check es =
   try
     if O.verbose > 1 then eprintf "**Test %s**\n" name ;
     if O.verbose > 2 then eprintf "**Cycle %s**\n" (pp_edges es) ;
-    let es,c = C.C.make es in
+    let es,c = C.make es in
     test_of_cycle name ?com ?info ?check es c
   with
   | Misc.Fatal msg ->
