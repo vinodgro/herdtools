@@ -205,6 +205,7 @@ let () =
     | ARM ->
         let module M = Make(C)(T(ARMCompile.Make(V)(C))) in
         M.zyva
+    | C -> assert false
     end pp_es
         with
         | Misc.Exit -> ()

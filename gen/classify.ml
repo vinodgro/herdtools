@@ -147,5 +147,6 @@ let () =
       M.zyva
   | ARM ->
       let module M = Build(ARMArch.Make(V)) in
-      M.zyva)
+      M.zyva
+  | C -> assert false)
     stdin

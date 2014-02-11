@@ -42,18 +42,14 @@ module Make (O:Config) (Comp:XXXCompile.S) : Builder.S
 
   let ppo = Comp.ppo
 
-  module Run = Run.Make(O)(Comp)
-
   open E
   type edge = E.edge
   type node = C.node
   type relax = R.relax
 
   type info = (string * string) list
-  type final =
-    | Exists of A.final
-    | Forall of (A.location * Code.v) list list
-    | Locations of A.location list
+
+  module F = Final.Make(O)(Comp)
 
   type test =
       {
@@ -63,7 +59,7 @@ module Make (O:Config) (Comp:XXXCompile.S) : Builder.S
        edges : edge list ;
        init : A.init ;
        prog : A.pseudo list list ;
-       final : final ;
+       final : F.final ;
      }
 
   let extract_edges {edges=es; _} = es
@@ -78,28 +74,6 @@ module StringMap = MyMap.Make(String)
 (***************)
 (* Compilation *)
 (***************)
-
-  let show_in_cond =
-    if O.optcond then
-      let valid_edge e = match e.E.edge with
-      | Rf _ | RfStar _| Fr _ | Ws _ | Hat|Detour _|DetourWs _
-      | Back _|Leave _ -> true
-      | Po _ | Fenced _ | Dp _|Rmw -> false
-      | Store -> assert false in
-      (fun n -> valid_edge n.C.prev.C.edge || valid_edge n.C.edge)
-    else
-      (fun _ -> true)
-
-  let add_final_v p r v finals = (A.Reg (p,r),v)::finals
-
-  let add_final p o n finals = match o with
-  | Some r ->
-      let m,fs = finals in
-      if show_in_cond n then
-        C.EventMap.add n.C.evt (A.Reg (p,r)) m,
-        add_final_v p r (Ints.singleton n.C.evt.C.v) fs
-      else finals
-  | None -> finals
 
   let rec emit_overload st p init ov loc =
     if ov <= 0 then init,[],st
@@ -205,7 +179,7 @@ let rec compile_proc loc_writes st p ro_prev init ns = match ns with
         init,
         i@(match get_fence n with Some fe -> Comp.emit_fence fe::is  | _ -> is),
         (if StringSet.mem n.C.evt.C.loc loc_writes then
-          add_final p (Some o) n finals
+          F.add_final p (Some o) n finals
         else finals),
         st
     | (FnoRf,R,Rf _,d,m::ns)
@@ -222,7 +196,7 @@ let rec compile_proc loc_writes st p ro_prev init ns = match ns with
         i1@
         (match  get_fence n  with Some fe -> [Comp.emit_fence fe] | _ -> [])@
         (match d with R -> i2@i3@is | W -> i3@i2@is),
-        add_final p (Some o1) n (add_final p o2 m finals),
+        F.add_final p (Some o1) n (F.add_final p o2 m finals),
         st
     | _ ->
         let o,init,i,st = emit_access ro_prev st p init n in
@@ -235,7 +209,7 @@ let rec compile_proc loc_writes st p ro_prev init ns = match ns with
         (if
           StringSet.mem n.C.evt.C.loc loc_writes && not (do_poll n)
         then
-          add_final p o n finals
+          F.add_final p o n finals
         else finals),
         st
     end
@@ -247,7 +221,7 @@ let rec compile_proc loc_writes st p ro_prev init ns = match ns with
 
 let last_observation st p i x v =
   let r,i,c,_st = Comp.emit_load st p i x in
-  i,c,add_final_v p r v []
+  i,c,F.add_final_v p r v []
 
 let rec straight_observer st p i x = function
   | [] -> i,[],[]
@@ -255,7 +229,7 @@ let rec straight_observer st p i x = function
   | v::vs ->
       let r,i,c,st = Comp.emit_load st p i x in
       let i,cs,fs = straight_observer st p i x vs in
-      i,c@cs,add_final_v p r v fs
+      i,c@cs,F.add_final_v p r v fs
 
 let rec fenced_observer st p i x = function
   | [] -> i,[],[]
@@ -264,7 +238,7 @@ let rec fenced_observer st p i x = function
       let r,i,c,st = Comp.emit_load st p i x in
       let f = [Comp.emit_fence Comp.stronger_fence] in
       let i,cs,fs = fenced_observer st p i x vs in
-      i,c@f@cs,add_final_v p r v fs
+      i,c@f@cs,F.add_final_v p r v fs
 
 
 let loop_observer st p i x = function
@@ -275,13 +249,13 @@ let loop_observer st p i x = function
         | [] ->  assert false
         | [v] ->
             let r,i,c,_st = Comp.emit_load_not_eq st p i x prev_r in
-            i,c,add_final_v p r v []
+            i,c,F.add_final_v p r v []
         | v::vs ->
             let r,i,c,st = Comp.emit_load_not_eq st p i x prev_r in
             let i,cs,fs = do_loop st i r vs in
-            i,c@cs,add_final_v p r v fs in
+            i,c@cs,F.add_final_v p r v fs in
       let i,cs,fs = do_loop st i r vs in
-      i,c@cs,add_final_v p r v fs
+      i,c@cs,F.add_final_v p r v fs
 
 let rec split_last = function
   | [] -> assert false
@@ -328,7 +302,7 @@ let min_max xs =
 
   
 
-exception NoObserver
+  exception NoObserver
 
   let build_observer st p i x vs =
     let vs,f =
@@ -506,11 +480,11 @@ let io_of_detour _n = None
 
   let do_add_load st p i f x v =
     let r,i,c,st = Comp.emit_load st p i x in
-    i,c,add_final_v p r (Ints.singleton v) f,st
+    i,c,F.add_final_v p r (Ints.singleton v) f,st
 
   let do_add_loop st p i f x v w =
     let r,i,c,st = Comp.emit_load_not_value st p i x v in
-    i,c,add_final_v p r (Ints.singleton w) f,st
+    i,c,F.add_final_v p r (Ints.singleton w) f,st
 
 
   let is_load_init e = e.C.evt.C.dir = R && e.C.evt.C.v = 0
@@ -703,18 +677,17 @@ let last_map cos =
                 i,obsc@cs,(m,f@fs),ios
             else Warn.fatal "Last minute check"
           else  Warn.fatal "Too many procs" in
-        let r =
+        let f =
           match O.cond with
           | Unicond ->
-              let evts =
+              let evts = 
                 List.map
                   (List.map (fun n -> n.C.evt))
                   splitted in
-              let f = Run.run evts m in
-              i,c,Forall f
-          | Cycle -> i,c,Exists f
-          | Observe ->i,c,Locations (List.map fst f) in
-        r,(compile_prefetch_ios (List.length obsc) ios,compile_coms splitted)
+              F.run evts m
+          | Cycle -> F.check f
+          | Observe -> F.observe f in
+        (i,c,f),(compile_prefetch_ios (List.length obsc) ios,compile_coms splitted)
 
 
 (********)
@@ -762,32 +735,9 @@ let fmt_cols =
     let pp = fmt_cols code in
     Misc.pp_prog chan pp
 
-  let dump_state fs =
-    String.concat " /\\ " 
-      (List.map
-         (fun (r,vs) ->
-           match Ints.as_singleton vs with
-           | Some v ->
-               sprintf "%s=%i" (A.pp_location r) v
-           | None ->
-               let pp =
-                 Ints.pp_str " \\/ "
-                   (fun v -> sprintf "%s=%i" (A.pp_location r) v)
-                   vs in
-               sprintf "(%s)" pp)             
-         fs)
+ 
 
-  let dump_final chan tst = match tst.final with
-  | Exists fs ->
-      fprintf chan "%sexists\n" (if !Config.neg then "~" else "") ;
-      fprintf chan "(%s)\n" (dump_state fs)
-  | Forall ffs ->
-      fprintf chan "forall\n" ;
-      fprintf chan "%s\n" (Run.dump_cond ffs)
-  | Locations locs ->
-      fprintf chan "locations [%s]\n"
-        (String.concat ""
-           (List.map (fun loc -> sprintf "%s;" (A.pp_location loc)) locs))
+  let dump_final chan tst = F.dump_final chan tst.final
 
   let dump_test_channel chan t =
     fprintf chan "%s %s\n" (Archs.pp A.arch) t.name ;

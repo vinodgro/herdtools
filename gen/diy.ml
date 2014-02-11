@@ -213,7 +213,8 @@ let () =
     M.go
   | ARM ->
       let module M = Make(T(ARMCompile.Make(V)(C)))(Co) in
-      M.go in
+      M.go
+  | C -> assert false in
   try
     f !Config.size relax_list safe_list one_list ;
     exit 0
