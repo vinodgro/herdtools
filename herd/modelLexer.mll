@@ -33,6 +33,7 @@ let () =
      "empty",TESTEMPTY;
      "as",AS; "fun", FUN; "in",IN;
      "provides",PROVIDES; "requires",REQUIRES;
+     "withco",WITHCO; "withoutco", WITHOUTCO;
    ]
 
 let scopes = Hashtbl.create 101
@@ -85,12 +86,12 @@ rule token = parse
 | "ext-" (name as sc) { 
   let scope = try Hashtbl.find scopes sc with Not_found ->
   Warn.fatal "Expression \"ext-%s\" contains invalid scope \"%s\"." sc sc in
-  SCOPEVAR ("_",AST.External,scope) 
+  SCOPEVAR ("unv",AST.External,scope) 
   }
 | "int-" (name as sc) { 
   let scope = try Hashtbl.find scopes sc with Not_found ->
   Warn.fatal "Expression \"int-%s\" contains invalid scope \"%s\"." sc sc in
-  SCOPEVAR ("_",AST.Internal,scope) 
+  SCOPEVAR ("unv",AST.Internal,scope) 
   }
 | name as x
     { 

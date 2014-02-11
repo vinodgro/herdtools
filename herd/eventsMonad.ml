@@ -284,12 +284,14 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 (* trivial event_structure with just one event
    and no relation *)
 
-      let trivial_event_structure e =
-	{ E.procs = [] ;
-	  events = E.EventSet.singleton e ;
+      let do_trivial es =
+      	{ E.procs = [] ;
+	  events = es ;
 	  intra_causality_data = E.EventRel.empty ;
 	  intra_causality_control = E.EventRel.empty ;
 	  atomicity = E.Atomicity.empty ; }
+
+      let trivial_event_structure e = do_trivial (E.EventSet.singleton e)
 
       let do_read_loc_atrb atomic loc ii atrb =
 	fun eiid ->
@@ -300,7 +302,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 		 (v, [],
 		  trivial_event_structure
 		    {E.eiid = eiid1 ;
-		     E.iiid = ii;
+		     E.iiid = Some ii;
                      E.atomic = atomic;
 		     E.atrbs = atrb;
 		     E.action = E.Access (E.R, loc, v)})
@@ -321,7 +323,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 	     ((), [],
 	      trivial_event_structure
 		{E.eiid = eiid ;
-		 E.iiid = ii;
+		 E.iiid = Some ii;
                  E.atomic = atomic ;
 		 E.atrbs = atrbs;
 		 E.action = E.Access (E.W, loc, v)}))
@@ -342,7 +344,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
           ((), [],
 	   trivial_event_structure
 	     {E.eiid = eiid ;
-	      E.iiid = ii;
+	      E.iiid = Some ii;
               E.atomic = true ;
 	      E.atrbs = atrbs;
 	      E.action = a})
@@ -359,7 +361,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
           ((), [],
 	   trivial_event_structure
 	     {E.eiid = eiid ;
-	      E.iiid = ii;
+	      E.iiid = Some ii;
               E.atomic = true ;
 	      E.atrbs = [];
 	      E.action = E.Lock (loc, lock_outcome)})
@@ -372,7 +374,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 	   ((), [],
 	    trivial_event_structure
 	      {E.eiid = eiid ;
-	       E.iiid = ii;
+	       E.iiid = Some ii;
                E.atomic = true ;
 	       E.atrbs = [];
 	       E.action = E.Unlock (loc)}))
@@ -384,7 +386,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 	       Evt.singleton
 		 ((), [],
 		  trivial_event_structure
-		    {E.eiid = eiid ;  E.iiid = ii; E.atomic = false ;
+		    {E.eiid = eiid ;  E.iiid = Some ii; E.atomic = false ;
 		     E.action = E.Barrier b;
 		     E.atrbs = atrb;}))
 
@@ -450,10 +452,29 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 	     ((), [],
 	      trivial_event_structure
 		{E.eiid = eiid ;
-		 E.iiid = ii;
+		 E.iiid = Some ii;
                  E.atomic = false ;
 		 E.action = E.Commit;
 		 E.atrbs = [];}))
+
+      let initwrites env =
+        fun eiid ->
+          let eiid,es =
+            List.fold_left
+              (fun (eiid,es) (loc,v) ->
+                let ew =
+                  {E.eiid = eiid ;
+		   E.iiid = None ;
+                   E.atomic = false ;
+		   E.atrbs = [] ;
+ 		   E.action = E.Access (E.W, loc, v) ;} in
+                (eiid+1,ew::es))
+              (eiid,[]) env in
+          let es = E.EventSet.of_list es in
+(*          Printf.eprintf "Init writes %a\n" E.debug_events es; *)
+          eiid,
+          Evt.singleton ((),[],do_trivial es) 
+
 
       let get_output = 
 	fun et -> 

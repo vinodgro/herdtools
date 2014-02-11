@@ -1,42 +1,62 @@
 "C++11"
 
 
-
-
 (* MB: This file includes a version of the C/C++11 memory model. It
-   follows my model, but differs in some details. The main one is
-   initialisation: in C/C++11, one can introduce undefined behaviour by
-   reading from an uninitialised variable. In Herd, all-location
+   follows the Lem model, but differs in some details. The main one is
+   initialisation: in C/C++11, one can introduce undefined behaviour
+   by reading from an uninitialised variable. In Herd, all-location
    intialisation is built in. That simplifies some of the model
-   somewhat. The treatment of thin air values is another difference. In
-   C/C++11, the rules that forbid thin-air values in executions are
-   broken, so my model leaves such restrictions out. Here, there is a
-   question of whether we should follow that approach, or forbid thin air
-   in the ususal Herd way.
+   somewhat. The treatment of thin air values is another
+   difference. In C/C++11, the rules that forbid thin-air values in
+   executions are broken, so my model leaves such restrictions
+   out. Here, there is a question of whether we should follow that
+   approach, or forbid thin air in the ususal Herd way. Finally,
+   program order is total in Herd, whereas sb can be partial in the
+   Lem model.
 
-   [ Question: Does the built-in initialisation result in actions that
-   the axioms of the model can talk about? Is there an initialisation
-   write at each location in a parent thread? Is there a Herd relation
-   or set that identifies these actions?  ]
+   This file is still work in progress. Where possible, restrictions
+   are expressed in a way that is natural for Herd. This can look
+   quite different to the Lem definitions that make up the C/C++11
+   model. Throughout the file, definitions carry comments that name
+   the definitons of the Lem model that most closely relate.
+*)
 
-   This file is still work in progress. I have added features that are
-   common between OpenCL and C/C++11 first. Where possible,
-   restrictions are expressed in a way that is natural for Herd. This
-   can look quite different to the Lem definitions that make up the
-   C/C++11 model. Throughout the file, definitions carry comments that
-   name the definitons of the Lem model that most closely relate.
+(* 
+   TS: I made a .cfg (conf file) for running C++11 tests. To run, just
+   use: 
+   ./herd -conf cpp11.conf .litmus_file
 
-   I have tried to provide rationale for the definitions, as well as
-   comments that discuss small changes to the model. There are
-   therefore quite a few comments.
+   Other useful command line args:
+   -show all (shows all allowed executions)
+   -show prop (shows all executions violating the constraint)
+
+   -evince (forks evince to display executions specified by -show arg, works well on ubuntu)
+   -gv (forks gv to display executions specified by -show arg)
+
+   There are C++11 tests in the CPP11Tests directory
+
+   if you use -o DIRECTORY to save .dot files of the executions,
+   they should be compiled using 'neato', not 'dot'   
 *)
 
 
+
 (* Temproary concessions to the syntax *)
-(*We want both syntax i.e. [] identity + the child proof version*)
-let rmw = R (* not done yet *)
+(* We want both syntax i.e. [] identity + the child proof version *)
+let emps = W & ~W (* empty set -- there must be a better way. *)
+let rmw = emps    (* not done yet *)
+let ls = emps     (* successful lock *)
+let lk = emps     (* any lock *)
+let ul = emps     (* unlock. JPW: These should be added to the CPP11 list of atrbs. *)
+let lo = co
+let I = emps
+(* end - Temporary hacks*)
 
 
+
+(* SC atomics have acquire and release semantics. *)
+let cacq = acq | sc
+let crel = rel | sc
 
 
 (* MB: What exactly are these reations? *)
@@ -57,14 +77,14 @@ store(&x,y,release)
 Tyler: Are you working on the instruction semantics? Have you implemented any sort of dependencies?
 
 The existing dependency calculation for other Herd models is probably ONLY from reads to other actions. That might be ok. We can't tell right now.
-
 *)
 let dd = data | addr
 
 
 (* Thin air check: It is not clear whether to check this. *)
 (*
-acyclic dd as thin
+let deps = dd | rf
+acyclic deps as thin
 *)
 
 
@@ -77,12 +97,14 @@ acyclic dd as thin
 let idf = (po; [B])?
 let fid = ([B]; po)?
 
+(* MB: This is present to expose a possible bug in Herd where program
+   order does not relate fences to other actions in the same thread. *)
+(*let bugr = po*)
+(*show bugr*)
+let pp_asw = asw \ (asw;po)
+show pp_asw
 
 (*C: release_acquire_fenced_synchronizes_with, hypothetical_release_sequence_set, release_sequence_set *)
-(* MB to self:
-     double check the fence cases...
-     This is missing locks, and the initialisation asw edges.
-*)
 
 (* jade: in the second bit, maybe we also want to say: co ; [~rmw] ;
    coe? to not impose that the first one only is a coe. in any case i
@@ -98,22 +120,22 @@ let niw s = ~(coe; s ;co | co; s ;coe) (*no intervening write belonging to the
 set s*)
 let rsco = (co ; [rmw] | coi) & (niw [~rmw]) 
 
-MB: The "co; s ;coe" case is intentionally absent. This definition looks strange because it's the extension of "co successors" to rmws on other threads. There's a refeerence I can provide to the justificeation for this. Perhaps we can strengthen this to make it more symmetrical?
-
-MB: non-intervening
-let ni s r = ~(r; s ;r | r; s ;r)
-
+   MB: The "co; s ;coe" case is intentionally absent. This definition
+   looks strange because it's the extension of "co successors" to rmws on
+   other threads. There's a reference I can provide to the justificeation
+   for this. Perhaps we can strengthen this to make it more symmetrical?
 *)
-let rsco = ((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co)
-let sw = ext & ([rel]; fid; rsco; rf; idf; [acq])
 
 
-(* MB: simple happens-before
-(* C: no_consume_hb, consistent_hb *)
-(* hb is just as transitive closure of po union sw (as we don't have consumes) *)
-let hb = (po | sw)+
+let rs = [crel]; fid; [~na]; (((co ; [rmw]) | coi | [W]) & ~(coe ; [~rmw] ; co))
+let swra = ext & (rs; rf; idf; [cacq])
+let swul = ext & ([ul]; lo; [lk])
+let asw = ([I * ~I]) & ~([I * ~I];po)
+let sw = asw | swul | swra
 
-*)
+(* C: no_consume_hb *)
+(* simple_hb applies to the programs that don't have consumes *)
+let simple_hb = (po | sw)+
 
 
 (* C: with_consume_cad_set, dependency_ordered_before
@@ -121,17 +143,17 @@ let hb = (po | sw)+
    Note that the consume memory order does not support fence-style
    synchronisation.
 *)
-let cad = (rfi | dd)+
-(*let con = acq (* JPW: consume not included yet *)*)
-let dob = ext & ([rel]; rsco; rf; [con]; cad?)
+let cad = ((rf & po) | dd)+
+let dob = (ext & ([W]; rs; rf; [con])); cad?
 
 
-(* C: happens_before, inter_thread_happens_before *)
+(* C: happens_before, inter_thread_happens_before, consistent_hb *)
 let ithbr = sw | dob | sw;po
 let ithb = (ithbr | po;ithbr)+
 let hb = po | ithb
-
-acyclic hb
+show sw
+show dob
+provides acyclic hb as hbAcyclic
 
 
 
@@ -142,21 +164,22 @@ let hbl = hb & loc
 let pol = po & loc
 (*acyclic (rfe | hb) as thinair (* Too strong! This kills thin-air *)*)
 
-(* START *)
-irreflexive rfe;hb as thinAirLike
-
-let prop = rf*;hb
-acyclic co|prop as propagation
-
-irreflexive fre;prop as causality
-
 let com = rf | fr | co
 
-acyclic (pol | com) as uniproc
+(* START *)
+(*
+provides irreflexive rfe;hb as thinAirLike
 
+let prop = rf*;hb
+provides acyclic co|prop as propagation
+
+provides irreflexive fre;prop as causality
+
+provides acyclic (pol | com) as uniproc
+*)
 (* Question: Is the model with the restrictions from START above the
    same as the model with the following hbuniproc? *)
-acyclic (hbl | com) as hbuniproc
+provides acyclic (hbl | com) as hbuniproc
 
 (* MB: Above is an adjustment of the standard uniproc:
 
@@ -245,13 +268,6 @@ acyclic (hbl | com) as hbuniproc
    |       \v
    W --rf-> R
 
-
-
-
-
-
-   
-
 *)
 
 
@@ -260,28 +276,28 @@ acyclic (hbl | com) as hbuniproc
 
 
 (* C: visible_side_effect_set *)
-(*jade: i wonder if we need this at all? couldn't we obtain the same kind of
-property via uniproc(MB: , AND causality), or the rf being well-formed? (which is included in herd
-by default)
+(*jade: i wonder if we need this at all? couldn't we obtain the same
+  kind of property via uniproc(MB: AND causality), or the rf being
+  well-formed? (which is included in herd by default)
 
-
-  MB: quite possibly true. I find it hard to think about simplifications that involve hb, it is such a complicated relation.
- *)
-let vse = [W * R] & hb-loc & ~(hb-loc; [W]; hb-loc)
+  MB: quite possibly true. I find it hard to think about
+  simplifications that involve hb, it is such a complicated relation.
+*)
+let vse = [W];hbl;[R] & ~(hbl; [W]; hbl)
+show vse
 
 (* C: consistent_non_atomic_rf -- must read from vse: *)
-let narf = rf; [~A]
-let narfvse = narf | ~(vse^-1)
-acyclic narfvse
+let narf = rf; [na]
+let narfvse = narf;~(vse^-1)
+provides irreflexive narfvse as nonAtomicRfConsistent
 
 
-(* MB: This looks like a better way than using vses, but I don't think it is exactly the same.
+(* The following might be the same as consistent reads from mapping:
 
-(*creating an acyclic global happens before with fr is the same as consistent reads from mapping we think
-jade: we do? I would think not quite. I would suggest:
-- acyclic(hb) 
-- irrefl(fr;hb) 
-judging from the Power model*)
+acyclic (hb) 
+irrefl (fr;hb) 
+
+This is taken from the Power model:
 let GHB = hb | fr
 acyclic GHB
 *)
@@ -292,15 +308,13 @@ acyclic GHB
    We assume there are initialisation writes at every location. That
    means we don't need a det-read style restriction.
 *)
-(*let detrf = R*)
 
 
 (* C: consistent_atomic_rf -- acyclicity of hb union rf for atomic reads: *)
-let arf = rf; [A]
+let arf = rf; [~na]
 let hbarf = hb | arf
-acyclic hbarf (*jade: arf and hbarf are funky names =)*)
-
-
+provides acyclic hbarf as atomicRfConsistent
+(*jade: arf and hbarf are funky names =)*)
 
 
 (* C: rmw_atomicity
@@ -313,7 +327,7 @@ acyclic hbarf (*jade: arf and hbarf are funky names =)*)
    and wries.
 
    This restriction is simplified by the knowledge that all locations
-   are already initialised. A more faithful version would be:
+   are already initialised. A more faithful version might be:
 
 let rmwrf = rf; [rmw]
 let comax = co; [rmw] & ~(co;co)
@@ -395,92 +409,116 @@ let schb = [sc]; hb; [sc]
 
 (* Then the constraints on the SC order are as given below.
 
-   The three components probably overlap, which is unfortunate. We should think about simplifications of this...
+   The three components probably overlap, which is unfortunate. We
+   should think about simplifications of this...
 *)
 let sc = schb | scco | scfr
-acyclic sc
+provides acyclic sc as scConsistent
+show sc
 
 
 
+(* C: locks_only_consistent_lo *)
+provides irreflexive lo;hb as hbAgreesLo
 
-(* C: locks_only_consistent_locks
-
-   Is lock-order just co at mutex locations? if so, I can express the
-   restrictions on locks easily:
-*)
-
-let ls = acq (* successful lock *)
-let lk = acq (* any lock *)
-let ul = acq (* unlock. JPW: These should be added to the CPP11 list of atrbs. *)
-
-(* MB; I need to restrict this sort of thing to the locks, and the other co to the accesses. Two different relations would be nicer. *)
-
-irreflexive co;hb as hbAgreesLo
-
-(* Below, it might be nice to be able to write:
-
-subset(R1,R2) = irrefl R1^-1;~R2
-
-...or even have baked in the sugar:
-
-provides R1 subseteq R2
-
-or
-
-provides R1 implies R2
-
-(?)
-
-*)
-
-let mv = [ls]; co^-1; [ls]; ~(co; [ul]; co)
-irreflexive mv as consistentLo
+(* C: locks_only_consistent_locks *)
+let mv = [ls]; lo^-1; [ls]; ~(lo; [ul]; lo)
+provides irreflexive mv as consistentLo
 
 
 (* C: data_races *)
 let dr = ([W * M] | [M * W]) &
          loc & 
-         ([~A * _] | [_ * ~A]) &
+         ([na * _] | [_ * na]) &
          ext &
          ~hb & ~(hb^-1)
 
 (* C: unsequenced_races
 
-   MB: We have to talk about location-kinds here. I don't know what
-   infrastructure there is for that...
+   MB: Lem talks about location-kinds here. I believe we would like to
+   avoid that in Herd, so in the proofs of equivalence, we will need
+   to assume the existance of a good location-kind map.
 *)
 let ur = ([W * M] | [M * W]) &
          loc &
          int &
-         ~(0?) & (* MB: not the identity. Is there a better way? *)
-(* JW: I reckon ~[_] should also do the job. (The underscore represents the universal set of events.) *)
+         ~[_] &
          ~po & ~(po^-1)
 
 
 
 (* C: locks_only_good_mutex_use, locks_only_bad_mutexes *)
-let bl = ([ls]; (po & co); [lk]) & ~(co; [ul]; co)
+let bl = ([ls]; (po & lo); [lk]) & ~(lo; [ul]; lo)
 
 (* This seems to say the right thing, but it is a bit complicated! *)
-let lu = ~([ls]; (po & co & ~(co; [ul]; co))); [ul]
+let lu = ~([ls]; (po & lo & ~(lo; [ul]; lo))); [ul]
 
 
 
-show sw
 show dr
 show ur
 show bl
+(*
+  MB: The behaviour of requires was not quite right. Herd threw an
+  exeption on a violation, so for now these are commented out.
+
 requires empty dr as dataRace 
 requires empty ur as unsequencedRace 
 requires empty bl as badLock
 requires empty lu as badUnlock
+*)
 
 (* MB: TODO
 
- The lack of initialisation writes comes to mind, also lock ord\
-er is written as co at the moment, it would be nicer if it was really lo. There\
- are no location-kinds in Herd at the moment either, I think I need them somewh\
-ere. Also think about indeterminately sequenced atomics.  *)
+ The lack of initialisation writes is still a problem. I need changes to Herd to deal with that. At a minimum, those changes would a name to the set of initialisation writes. Then I could define asw from there.
 
-(* a silly requirement, just to check how provides/requires works.*)
-(*requires empty unv as impossible_requirement*)
+Lock order is defined as co at the moment, it will be nicer if it was really a separate lo.
+*)
+
+
+(********************************)
+(* Trying out functions in herd.*)
+
+(* Note that arguments to functions
+   must be enclosed in parentheses. So you must write "f(x)", not 
+   "f x". Same for formal parameters: write "fun (x) -> e" not 
+   "fun x -> e". *)
+
+(* Top-level functions *)
+let twice(r) = r ; r (* note "(r)" not "r" *)
+let rfrf = twice(rf)
+show rfrf
+
+(* Inner functions *)
+let rfrfrf = 
+  let thrice(r) = r ; r ; r in 
+  thrice(rf)
+show rfrfrf
+
+(* Can't write the following, because in function application,
+   which is written f(x), the "f" must be a variable, not an
+   expression that evaluates to a variable. *)
+(*
+let rfrfrfrf = (fun (r) -> r ; r ; r ; r) (rf) 
+*)
+
+(* But we can write this: *)
+let fourtimes = fun (r) -> r ; r ; r ; r
+let rfrfrfrf = fourtimes(rf) 
+show rfrfrfrf
+
+(* Multiple arguments *)
+let swap (r,s) = s ; r
+let rfpo = swap(po,rf)
+(*show rfpo*)
+
+
+
+(* Here are a list of functions that might be useful above. *)
+
+(* non-intervening set *)
+let ni(s,r) = ~(r; [s] ;r)
+
+let irrefl_then_subset(r1,r2) = r1^-1;~r2
+
+let max_preds(r) = r & ~(r; r)

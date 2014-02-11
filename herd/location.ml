@@ -42,6 +42,8 @@ module type S = sig
   val pp_location : location -> string
   val location_compare : location -> location -> int
   val location_equal : location -> location -> bool
+
+  module LocSet : MySet.S with type elt = location
 end
 
 module Make(C:Config)(A:I) : S
@@ -99,4 +101,11 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
       else A.global_compare s s1 
 
     let location_equal l1 l2 = location_compare l1 l2 = 0
+
+    module LocSet =
+      MySet.Make
+        (struct
+          type t = location
+          let compare = location_compare
+        end)
   end

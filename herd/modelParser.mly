@@ -40,6 +40,7 @@ let pp () =
 %token <string> STRING
 %token LPAR RPAR LBRAC RBRAC
 %token EMPTY UNDERSCORE
+%token WITHCO WITHOUTCO
 /* Access direction */
 %token MM  MR  MW WM WW WR RM RW RR F
 /* Plain/Atomic */
@@ -63,8 +64,13 @@ let pp () =
 %%
 
 main:
-| VAR ins_list EOF { $1,$2 }
-| STRING ins_list EOF { $1,$2 }
+| VAR withco ins_list EOF { $2,$1,$3 }
+| STRING withco ins_list EOF { $2,$1,$3 }
+
+withco:
+| WITHCO { true }
+| WITHOUTCO { false }
+|    { true }
 
 ins_list:
 | { [] }

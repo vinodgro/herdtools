@@ -27,6 +27,7 @@ val model : Model.t option  ref
 val unroll : int ref
 val speedcheck : Speed.t ref
 val optace : bool option ref
+val initwrites : bool option ref
 val through : Model.through ref
 val skipchecks : StringSet.t ref
 val strictskip : bool ref
@@ -46,8 +47,8 @@ module PP : sig
   open PrettyConf
   val dotmode : dotmode ref
   val dotcom : dotcom option ref
-  val gv : bool ref
   val evince : bool ref
+  val gv : bool ref
   val showevents : showevents ref
   val texmacros : bool ref
   val hexa : bool ref
@@ -78,6 +79,7 @@ module PP : sig
   val showinitrf : bool ref
   val showpoloc : bool ref
   val showfr : bool ref
+  val showinitwrites : bool ref
   val dotheader : string option ref
   val brackets : bool ref
   val showobserved : bool ref

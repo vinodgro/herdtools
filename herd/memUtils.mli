@@ -177,6 +177,9 @@ NOTICE: The generator takes care of placing stores to final state
 (*****************************************)
 (* Compute write serialization precursor *)
 (*****************************************)
+(* Iniital pco: account for init stores *)
+  val compute_pco_init : S.event_structure -> S.event_rel
+(* Assumes complete uniproc and hence may fail (because of Init in rfmap *)
   val compute_pco : S.rfmap -> S.event_rel -> S.event_rel option
 
 (***************************)

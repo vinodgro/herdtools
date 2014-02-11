@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-type ('prog,'nice_prog,'start,'state,'constr, 'loc) t =
+type ('prog,'nice_prog,'start,'state,'constr, 'loc, 'locset) t =
     {
      arch : Archs.t ; 
      name : Name.t ;
@@ -21,18 +21,19 @@ type ('prog,'nice_prog,'start,'state,'constr, 'loc) t =
      init_state : 'state ;
      cond : 'constr ;
      flocs : 'loc list ;
+     observed : 'locset ;
      scope_tree : MiscParser.scope_tree ;
      mem_map : MiscParser.mem_space_map ;
    }
 
 val simple_name :
-    ('prog,'nice_prog,'start,'state,'constr, 'loc) t -> string
+    ('prog,'nice_prog,'start,'state,'constr, 'loc, 'locset) t -> string
 val readable_name :
-    ('prog,'nice_prog,'start,'state,'constr, 'loc) t -> string
+    ('prog,'nice_prog,'start,'state,'constr, 'loc, 'locset) t -> string
 val very_readable_name :
-    ('prog,'nice_prog,'start,'state,'constr, 'loc) t -> string
+    ('prog,'nice_prog,'start,'state,'constr, 'loc, 'locset) t -> string
 val basename :
-    ('prog,'nice_prog,'start,'state,'constr, 'loc) t -> string
+    ('prog,'nice_prog,'start,'state,'constr, 'loc, 'locset) t -> string
 
 
 module Make(A:Arch.S) : sig
@@ -43,7 +44,8 @@ module Make(A:Arch.S) : sig
        A.start_points,
        A.state,
        A.constr, 
-       A.location
+       A.location,
+       A.LocSet.t
       ) t
        
   val build : Name.t -> A.pseudo MiscParser.t -> result

@@ -16,6 +16,8 @@ module type Config = sig
   val unroll : int
   val speedcheck : Speed.t
   val debug : Debug.t
+  val observed_finals_only : bool
+  val initwrites : bool
 end
 
 module type S = sig
@@ -30,8 +32,7 @@ module type S = sig
       too_far : bool ; (* some events structures discarded (loop) *)
      }
 
-  val glommed_event_structures :
-      S.test -> result
+  val glommed_event_structures : S.test -> result
 
 
 
@@ -143,6 +144,54 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
       too_far : bool ; (* some events structures discarded (loop) *)
      }
 
+(* All locations from init state, a bit contrieved *)
+    let get_all_locs_init init =
+      let locs =
+        List.fold_left
+          (fun locs (loc,v) ->
+            let locs =
+              match loc with
+              | A.Location_global _ -> loc::locs
+              | A.Location_reg _ -> locs in
+            let locs = match v with
+            | A.V.Val (Constant.Symbolic _) -> A.Location_global v::locs
+            | _ -> locs in
+            locs)
+          [] (A.state_to_list init) in
+      A.LocSet.of_list locs
+            
+    let get_all_mem_locs test =
+      let locs_final =
+        A.LocSet.filter
+          (function
+            | A.Location_global _ -> true
+            | A.Location_reg _ -> false)
+          test.Test.observed
+      and locs_init = get_all_locs_init test.Test.init_state in
+      let locs = A.LocSet.union locs_final locs_init in
+      let locs =
+        List.fold_left
+          (fun locs (_,code) ->
+            List.fold_left
+              (fun locs (_,ins) ->
+                A.fold_addrs
+                  (fun x ->
+                    let loc = A.maybev_to_location x in
+                    A.LocSet.add loc)
+                  locs ins)
+              locs code)
+          locs
+        test.Test.start_points in
+      let env =
+        A.LocSet.fold
+          (fun loc env ->
+            try
+              let v = A.look_in_state test.Test.init_state loc in
+              (loc,v)::env
+            with A.LocUndetermined -> assert false)
+          locs [] in
+      env
+
     let glommed_event_structures (test:S.test) =
       let p = test.Test.program in
       let starts = test.Test.start_points in
@@ -204,11 +253,15 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 	let evts_proc = jump_start proc code in
 	evts_proc |*| evts in
 
+      let add_inits env =
+        if C.initwrites then EM.initwrites env
+        else EM.zeroT in
+
       let set_of_all_instr_events =
 	List.fold_right
 	  add_events_for_a_processor
 	  starts
-	  (EM.zeroT) in
+	  (add_inits (get_all_mem_locs test)) in
 
       let rec index xs i = match xs with
       | [] ->
@@ -235,9 +288,7 @@ let get_loc e = match E.location_of e with
 
 and get_value e = match e.E.action with
 | E.Access (_,_,v) -> v
-| _ -> 
-  printf "Tried to get value of Barrier/Commit/Lock/Unlock/RMW.\n"; 
-  assert false
+| E.Barrier _|E.Commit -> assert false
 
 
 
@@ -424,9 +475,14 @@ let compatible_locs_mem e1 e2 =
 
 (* refrain from being subtle: match a load with all compatible
    stores, and there may be many *)
+
+(* First consider loads from init, in the initwrite case
+   nothing to consider, as the initial stores should present
+   as events *)
+    let init = if C.initwrites then [] else [S.Init]
     let map_load_init loads =
       E.EventSet.fold 
-        (fun load k -> (load,[S.Init])::k)
+        (fun load k -> (load,init)::k)
         loads [] 
 
 (* Consider all stores that may feed a load
@@ -516,6 +572,7 @@ let compatible_locs_mem e1 e2 =
     let solve_mem test es rfm cns kont res =
       let loads =  E.EventSet.filter E.is_mem_load es.E.events
       and stores = E.EventSet.filter E.is_mem_store es.E.events in
+(*      eprintf "Stores: %a\n"E.debug_events stores ; *)
       let compat_locs = compatible_locs_mem in
       solve_mem_or_res test es rfm cns kont res
         loads stores compat_locs add_mem_eqs
@@ -628,40 +685,41 @@ let make_atomic_load_store es =
 
 
 (* Retrieve last store from rfmap *)
-    let get_max_store test es rfm loc =
+    let get_max_store _test _es rfm loc =
       try match S.RFMap.find (S.Final loc) rfm with
-      | S.Store ew -> ew
-      | S.Init -> assert false       (* means no store to loc *)
-      with Not_found ->
+      | S.Store ew -> Some ew
+      | S.Init -> None       (* means no store to loc *)
+      with Not_found -> None
+(*
         let module PP = Pretty.Make(S) in
-        eprintf "Uncomplete rfmap: %s" (A.pp_location loc) ;
-        prerr_endline "" ;
+        eprintf "Uncomplete rfmap: %s\n%!" (A.pp_location loc) ;
 	PP.show_es_rfm test es rfm ;
-         assert false
-
+        assert false
+*)
 (* Store to final state comes last *)
     let last_store test es rfm =
       let loc_stores = U.collect_stores es
       and loc_loads = U.collect_loads es in
       U.LocEnv.fold
         (fun loc ws k -> 
-          let max = get_max_store test es rfm loc in
-          let loads = map_loc_find loc loc_loads in
-          let k =
-            List.fold_left
-              (fun k er -> match S.RFMap.find (S.Load er) rfm with
-              | S.Init -> E.EventRel.add (er,max) k
-              | S.Store my_ew ->
-                  if E.event_equal my_ew max then k
-                  else E.EventRel.add (er,max) k)
-              k loads in
-          List.fold_left
-            (fun k ew ->
-              if E.event_equal ew max then k
-              else E.EventRel.add (ew,max) k)
-
-            k ws)
-        loc_stores E.EventRel.empty 
+          match get_max_store test es rfm loc with
+          | None -> k
+          | Some max ->
+              let loads = map_loc_find loc loc_loads in
+              let k =
+                List.fold_left
+                  (fun k er -> match S.RFMap.find (S.Load er) rfm with
+                  | S.Init -> E.EventRel.add (er,max) k
+                  | S.Store my_ew ->
+                      if E.event_equal my_ew max then k
+                      else E.EventRel.add (er,max) k)
+                  k loads in
+              List.fold_left
+                (fun k ew ->
+                  if E.event_equal ew max then k
+                  else E.EventRel.add (ew,max) k)
+                k ws)
+        loc_stores E.EventRel.empty
 
     let fold_mem_finals test es rfm kont res =
       (* We can build those now *)
@@ -674,6 +732,18 @@ let make_atomic_load_store es =
       let atomic_load_store = make_atomic_load_store es in
 (* Now generate final stores *)
       let loc_stores = U.collect_mem_stores es in
+      let loc_stores =
+        if C.observed_finals_only then
+          let observed_locs = S.outcome_locations test in        
+(*          eprintf "Observed locs: {%s}\n"
+            (S.LocSet.pp_str "," A.pp_location   observed_locs) ; *)
+          U.LocEnv.fold
+            (fun loc ws k ->
+              if A.LocSet.mem loc observed_locs then
+                U.LocEnv.add loc ws k
+              else k)
+            loc_stores U.LocEnv.empty
+        else loc_stores in
       let possible_finals =
         if C.optace then
           U.LocEnv.fold
@@ -699,13 +769,16 @@ let make_atomic_load_store es =
             with Not_found -> S.RFMap.add (S.Final loc) S.Init k)
           loc_loads rfm in      
       try 
+        let pco0 =
+          if C.initwrites then U.compute_pco_init es
+          else E.EventRel.empty in
         let pco =
           if not C.optace then
-            E.EventRel.empty
+            pco0
           else
             match U.compute_pco rfm ppoloc with
             | None -> raise Exit
-            | Some pco -> pco in
+            | Some pco -> E.EventRel.union pco0 pco in
 (* Cross product *)
    
         Misc.fold_cross

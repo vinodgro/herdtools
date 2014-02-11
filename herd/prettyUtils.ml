@@ -12,8 +12,8 @@
 
 
 module Make(S : SemExtra.S) = struct
+  module A = S.A
   module E = S.E
-
 
   module IntMap =
     Map.Make
@@ -25,12 +25,16 @@ module Make(S : SemExtra.S) = struct
   let int_map_find k m =
     try IntMap.find k m
     with Not_found -> []
+
+  let get_poi e = match E.progorder_of e with
+  | Some x -> x
+  | None -> assert false
         
   let progorder_as_list es  =
     let by_po =
       E.EventSet.fold
         (fun e k ->
-          let poi = E.progorder_of e in
+          let poi = get_poi e in
           let es_poi = int_map_find  poi k in
           IntMap.add poi (e::es_poi) k)
         es IntMap.empty in
@@ -60,14 +64,14 @@ module Make(S : SemExtra.S) = struct
                     (fun e k ->
                       if E.is_reg_store e i then
                         let rloc =  Misc.as_some (E.location_of e) in
-                        if S.LocSet.mem rloc locs then
-                          S.LocSet.add rloc k
+                        if A.LocSet.mem rloc locs then
+                          A.LocSet.add rloc k
                         else k
                       else k)
-                    es S.LocSet.empty in
-                if S.LocSet.is_empty wr then r
+                    es A.LocSet.empty in
+                if A.LocSet.is_empty wr then r
                 else
-                  let locs = S.LocSet.diff locs wr
+                  let locs = A.LocSet.diff locs wr
                   and obs =
                     let read = E.EventSet.filter E.is_mem_load es in
                     E.EventSet.union obs read in
@@ -94,13 +98,13 @@ module Make(S : SemExtra.S) = struct
                       (fun e k ->
                         if E.is_reg_store e i then
                           let rloc =  Misc.as_some (E.location_of e) in
-                          S.LocSet.add rloc k
+                          A.LocSet.add rloc k
                         else k)
-                      es S.LocSet.empty
-                  else S.LocSet.empty in
-                S.LocSet.union locs wr in
+                      es A.LocSet.empty
+                  else A.LocSet.empty in
+                A.LocSet.union locs wr in
           find_rec ess)
-        xss (S.LocSet.empty) in
+        xss (A.LocSet.empty) in
     locs
 
 end

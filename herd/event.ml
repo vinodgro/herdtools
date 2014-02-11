@@ -32,7 +32,7 @@ module type S = sig
 
   type event = {
       eiid : eiid;
-      iiid : A.inst_instance_id; 
+      iiid : A.inst_instance_id option; 
       atomic : bool;
       action : action;  
       atrbs : A.atrb list;
@@ -48,9 +48,9 @@ module type S = sig
 (* Procs and program ordre *)
 (***************************)
 
-  val proc_of       : event -> A.proc
+  val proc_of       : event -> A.proc option
   val same_proc     : event -> event -> bool
-  val progorder_of  : event -> A.program_order_index
+  val progorder_of  : event -> A.program_order_index option
 
 (* Is e1 before e2 w.r.t. prog order ? Nothing assumed on e1 and a2 *)
   val po_strict : event -> event -> bool
@@ -62,6 +62,7 @@ module type S = sig
 
 (* relative to memory *)
   val is_mem_store : event -> bool
+  val is_mem_store_init : event -> bool
   val is_mem_load : event ->  bool
   val is_mem : event -> bool
   val is_atomic : event -> bool
@@ -117,6 +118,7 @@ module type S = sig
 
 (* relative to memory *)
   val mem_stores_of : EventSet.t -> EventSet.t
+  val mem_stores_init_of : EventSet.t -> EventSet.t
   val mem_loads_of : EventSet.t -> EventSet.t
   val mem_of : EventSet.t -> EventSet.t
   val atomics_of : EventSet.t -> EventSet.t
@@ -268,7 +270,7 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
     type event = {
 	eiid : eiid;
-	iiid : A.inst_instance_id; 
+	iiid : A.inst_instance_id option; 
         atomic : bool ;
 	action : action;   
         atrbs : A.atrb list;
@@ -355,10 +357,18 @@ module Make (AI:Arch.S) :  S with module A = AI =
     | Some v1,Some v2 -> A.V.compare v1 v2 = 0
     | _,_ -> assert false
 
-    let proc_of e = (e.iiid.A.proc : int)
-    let same_proc e1 e2 = Misc.int_eq (proc_of e1) (proc_of e2)
+    let proc_of e = match e.iiid with
+    | Some i -> Some i.A.proc
+    | None -> None
 
-    let progorder_of e = (e.iiid.A.program_order_index : int)
+    let same_proc e1 e2 = match proc_of e1, proc_of e2 with
+    | Some p1,Some p2 -> Misc.int_eq p1 p2
+    | (None,Some _)|(Some _,None) -> false
+    | None,None -> false (* ??? *)
+
+    let progorder_of e = match e.iiid with
+    | Some i -> Some i.A.program_order_index
+    | None -> None
 
 	
 (************************)
@@ -378,6 +388,10 @@ module Make (AI:Arch.S) :  S with module A = AI =
     let is_mem_store e = match e.action with
     | Access (W,A.Location_global _,_) -> true
     | _ -> false
+
+    let is_mem_store_init e = match e.iiid with
+    | None -> true
+    | Some _ -> false
 
     let is_mem_load e = match e.action with
     | Access (R,A.Location_global _,_) -> true
@@ -485,6 +499,7 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
 (* relative to memory *)
     let mem_stores_of = EventSet.filter is_mem_store 
+    let mem_stores_init_of = EventSet.filter is_mem_store_init
     let mem_loads_of es = EventSet.filter is_mem_load es
     let mem_of es = EventSet.filter is_mem es
     let atomics_of es = EventSet.filter is_atomic es
@@ -625,7 +640,9 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
     let proj_events es =
       ProjSet.proj
-	(fun e -> [proc_of e]) (procs_of es) es.events
+	(fun e -> match proc_of e with
+        | Some p -> [p]
+        | None -> []) (procs_of es) es.events
 
 (*
   let proj_syncs es =
@@ -645,21 +662,29 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
     let proc_of_pair (e1,e2) =
       let p1 = proc_of e1 and p2 = proc_of e2 in
-      if Misc.int_eq p1 p2 then
-        [p1]
-      else
-        []
+      match p1,p2 with
+      | Some p1,Some p2 ->
+          if Misc.int_eq p1 p2 then [p1]
+          else []
+      | _,_ -> []
 
     let proj_rel es rel =
       ProjRel.proj proc_of_pair (procs_of es) rel
 
     let proj_proc_view es rel =
       let proc_of (e1,e2) =
-	let p1 = proc_of e1 and p2 = proc_of e2 in
-	if Misc.int_eq p1 p2 then [p1]
-	else if is_mem_store e1 then [p2]
-	else if is_mem_store e2 then [p1]
-	else [] (* Can occur for X86CC -> no projected relation *) in
+       let p1 = proc_of e1 and p2 = proc_of e2 in
+       match p1,p2 with
+       | Some p1, Some p2 ->
+           if Misc.int_eq p1 p2 then [p1]
+           else if is_mem_store e1 then [p2]
+           else if is_mem_store e2 then [p1]
+           else [] (* Can occur for X86CC -> no projected relation *)
+      | None,Some p2 ->
+           if is_mem_store e1 then [p2] else []
+      | Some p1,None ->
+          if is_mem_store e2 then [p1] else []
+      | None,None -> [] in
       ProjRel.proj proc_of (procs_of es) rel
 
 
@@ -839,12 +864,18 @@ let (=|=) = check_disjoint para_comp
 (*************************************************************)	      
 (* Add together event structures from different instructions *)
 (*************************************************************)	      
+    let different_ins i1 i2 =  match i1,i2 with
+    | Some i1,Some i2 -> A.inst_instance_compare i1 i2 <> 0
+    | None,Some _
+    | Some _,None
+    | None,None -> true
+
 
     let disjoint_iiis es1 es2 =
       EventSet.for_all
 	(fun e1 ->
 	  EventSet.for_all
-	    (fun e2 -> A.inst_instance_compare e1.iiid e2.iiid <> 0)
+	    (fun e2 -> different_ins e1.iiid e2.iiid)
 	    es2.events)
 	es1.events
 

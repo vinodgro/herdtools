@@ -84,6 +84,7 @@ module type S = sig
   val showinitrf : bool
   val showpoloc : bool
   val showfr : bool
+  val showinitwrites : bool
   val dotheader : string option
   val brackets : bool
   val showobserved : bool

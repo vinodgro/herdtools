@@ -150,7 +150,9 @@ and type concrete = S.concrete
 
     let relevant_to_proc xe i =
       let x = xe.event in
-      if proc_eq (E.proc_of x) i then locally_relevant xe
+      let px = match E.proc_of x with
+      | Some px -> px | None -> assert false  in
+      if proc_eq px i then locally_relevant xe
       else
         match xe.nature with
         | Prop j -> proc_eq i j

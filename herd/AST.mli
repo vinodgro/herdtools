@@ -47,5 +47,5 @@ type ins =
   | ShowAs of exp * string
 
 (* Name X model definition *)
-type t = string * ins list
+type t = bool * string * ins list
 type pp_t = string * t

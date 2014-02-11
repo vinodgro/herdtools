@@ -182,7 +182,9 @@ let get_macro _name = Warn.fatal "C++11 get_macro has not been implemented"
 let is_data _reg _ins = Warn.fatal "C++11 is_data has not been implemented"
 
 let map_addrs _f _ins = Warn.fatal "C++11 map_addrs has not been implemented"
-let fold_addrs _f _c _ins = Warn.fatal "C++11 fold_addrs has not been implemented"
+
+(*This is how PPC and ARM did it...*)
+let fold_addrs _f c _ins = c
 
 let pp_instruction _m _ins = Warn.fatal "C++11 pp_instruction has not been implemented"
 

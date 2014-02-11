@@ -308,6 +308,7 @@ let map_regs f_reg _f_symb =
 
       (*Zero registers*)
   | Pmembar _  -> ins
+  
 
 (* GPU operation to change memory into shared or global locations *)
 let to_shared s1 s2 = sprintf "cvta.to.shared %s, %s;" s1 s2
@@ -325,7 +326,9 @@ let get_macro _name = Warn.fatal "GPU_PTX get_macro has not been implemented"
 let is_data _reg _ins = Warn.fatal "GPU_PTX is_data has not been implemented"
 
 let map_addrs _f _ins = Warn.fatal "GPU_PTX map_addrs has not been implemented"
-let fold_addrs _f _c _ins = Warn.fatal "GPU_PTX fold_addrs has not been implemented"
+
+"ARM and PPC do the same..."
+let fold_addrs f c ins = c
 
 let pp_instruction _m _ins = Warn.fatal "GPU_PTX dump_instruction has not been implemented"
 

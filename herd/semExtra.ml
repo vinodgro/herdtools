@@ -45,11 +45,11 @@ module type S = sig
 
   type test =
       (program, nice_prog, start_points,
-       state, constr, location) Test.t
+       state, constr, location, A.LocSet.t) Test.t
 
 (* Get list of locations observed in outcomes *)
-  module LocSet : MySet.S with type elt = location
-  val outcome_locations : test -> LocSet.t
+  type loc_set = A.LocSet.t
+  val outcome_locations : test -> loc_set
 
   type event = E.event
 
@@ -190,27 +190,13 @@ module Make(C:Config) (A:Arch.S) : S with module A = A =
     type start_points = A.start_points
 
     type test =
-      (program, nice_prog, start_points, state, constr, location) Test.t
-
-    module LocSet =
-      MySet.Make
-        (struct
-          type t = location
-          let compare = A.location_compare
-        end)
+      (program, nice_prog, start_points,
+       state, constr, location, A.LocSet.t) Test.t
 
     module T = Test.Make(A)
 (* List of relevant location *)
-    let outcome_locations t =
-      let c = T.find_our_constraint t in
-      let locs = LocSet.of_list t.Test.flocs in
-      let locs =
-        ConstrGen.fold_constr
-          (fun a r -> match a with
-          | ConstrGen.LV (loc,_v) -> LocSet.add loc r
-          | ConstrGen.LL (l1,l2) -> LocSet.add l1 (LocSet.add l2 r))
-          c locs in
-      locs
+    type loc_set = A.LocSet.t
+    let outcome_locations t = t.Test.observed
 
     type event = E.event
 

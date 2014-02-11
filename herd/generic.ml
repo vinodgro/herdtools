@@ -40,7 +40,7 @@ module Make
     module JU = JadeUtils.Make(O)(S)(B)
     module W = Warn.Make(O)
 (*  Model interpret *)
-    let (pp,model) = O.m
+    let (pp,(withco,_,prog)) = O.m
 
     type v =
       | Set of S.event_set 
@@ -93,7 +93,20 @@ module Make
           show : S.event_rel StringMap.t Lazy.t ;
           skipped : StringSet.t ; }
 
-    let rt_loc = if O.verbose <= 1 then S.rt else (fun x -> x)
+  let select_event = match S.O.PC.showevents with
+  | AllEvents -> (fun _ -> true)
+  | MemEvents -> E.is_mem
+  | NonRegEvents -> (fun e -> E.is_mem e || E.is_barrier e || E.is_commit e
+  )
+
+  let select_rel =
+    E.EventRel.filter (fun (e1,e2) -> select_event e1 && select_event e2)
+
+    let rt_loc = if O.verbose <= 1 then 
+	(fun rel -> 
+	  let filtered_rel = select_rel rel in
+	  S.rt filtered_rel)
+      else (fun x -> x)
 
     let show_to_vbpp st =
       StringMap.fold (fun tag v k -> (tag,v)::k)   (Lazy.force st.show) []
@@ -155,6 +168,18 @@ module Make
                         List.fold_left (fun v z -> 
                           Rel (E.EventRel.inter (as_rel v) (as_rel z))) v vs
                     end
+
+		  (*TS: Not an efficient way to implement Diff, but it shouldn't be used that often*)
+		  | Diff -> 
+                    begin match vs with
+                      | [] -> assert false
+                      | v::vs ->			
+                        List.fold_left (fun v z -> 
+			  let comp = Rel (S.comp (as_rel z) conc.S.unv)
+			  in 
+                          Rel (E.EventRel.inter (as_rel v) (as_rel comp))) v vs
+                    end
+
               (* Todo: I think Diff is missing here *)
               end else if List.for_all is_set vs then begin
                 match op with
@@ -352,7 +377,6 @@ module Make
         | [] ->  Some st 
         | i::c -> exec st i c in
 
-      let _,prog = model in
       let show =
         lazy begin
           List.fold_left
@@ -383,7 +407,12 @@ module Make
           StringMap.empty
           ["id",id;
            "atom",conc.S.atomic_load_store;
-           "po",S.restrict E.is_mem E.is_mem conc.S.po;
+	   (*TS: lifting the restriction from po, for C++11 model*)
+           (*"po",S.restrict E.is_mem E.is_mem conc.S.po;*)
+           "po", conc.S.po;
+           "asw", S.restrict E.is_mem_store_init
+	     (fun x -> not (E.is_mem_store_init x)) 
+	     conc.S.unv ;
            "unv", conc.S.unv;
            "pos", conc.S.pos;
            "po-loc", conc.S.pos; (* is this right? *)
@@ -433,6 +462,7 @@ module Make
 	   "B", E.EventSet.filter E.is_barrier evts;
            "P", E.EventSet.filter (fun e -> not (E.is_atomic e)) evts;
            "A", E.EventSet.filter E.is_atomic evts;
+	   "I", E.EventSet.filter E.is_mem_store_init evts;
          ]) in
 
       let process_co co0 res =

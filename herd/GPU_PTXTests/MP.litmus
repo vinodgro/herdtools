@@ -25,6 +25,6 @@ exists
 (1:r1=1 /\ 1:r3=0)
 
 scopeTree
-(device (kernel(cta(warp P0)))) (device(kernel(cta(warp P1))))
+(device (kernel(cta(warp P0)) (cta(warp P1))))
 
 x:shared, y:global
