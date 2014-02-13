@@ -84,6 +84,9 @@ module type S = sig
 (* Expansion of Irr directions *)
   val expand_edges : edge list -> (edge list -> 'a -> 'a) -> 'a -> 'a
 
+(* Resolve Irr directions and unspecified atom *)
+  val resolve_edges : edge list -> edge list
+
 (* Possible interpretation of edge sequence as an edge *)
   val compact_sequence : edge list -> edge list -> edge -> edge -> edge list list
 (* Utilities *)
@@ -427,6 +430,54 @@ let loc_sd e = match e.edge with
 
   let expand_edges es f = do_expand_edges (List.rev es) f []
 
+(* resolve *)
+  let resolve_pair e1 e2 =
+    let e1,e2 =
+      let d1 = dir_tgt e1 and d2 = dir_src e2 in
+      match d1,d2 with
+      | Irr,Dir d -> set_tgt d e1,e2
+      | Dir d,Irr -> e1,set_src d e2
+      | _,_ -> e1,e2 in
+    let a1 = e1.a2 and a2 = e2.a1 in
+    match a1,a2 with
+    | None,Some _ -> { e1 with a2 = a2;},e2
+    | Some _,None -> e1, { e2 with a1 = a1}
+    | _,_ -> e1,e2
+
+  let merge_dir d1 d2 = match d1,d2 with
+  | (Irr,Dir d)|(Dir d,Irr) -> d
+  | Dir d1,Dir d2 -> assert (d1=d2) ; d1
+  | Irr,Irr -> assert false
+
+  let merge_atom a1 a2 = match a1,a2 with
+  | None,Some _ -> a2
+  | Some _,None -> a1
+  | None,None -> None
+  | Some a1,Some a2 -> assert (F.compare_atom a1 a2 = 0) ; Some a1
+
+  let merge_pair e1 e2 =
+    let tgt = merge_dir (dir_tgt e1) (dir_tgt e2)
+    and src = merge_dir (dir_src e1) (dir_src e2) in
+    let e = set_tgt tgt (set_src src e1) in
+    { e with a1 = merge_atom e1.a1 e2.a1; a2 = merge_atom e1.a2 e2.a2; }
+
+ 
+  let resolve_edges es = match es with
+  | []|[_] -> es
+  | fst::es ->
+     let rec do_rec p = function
+     | [] -> 
+         let p,fst = resolve_pair p fst in
+         fst,p,[]
+     | e::es ->
+         let p,e = resolve_pair p e in
+         let fst,q,es = do_rec e es in
+         fst,p,q::es in
+     let fst1,fst2,es = do_rec fst es in
+     let fst = merge_pair fst1 fst2 in
+     fst::es
+     
+(* compact *)
   let seq_sd e1 e2 = match loc_sd e1,loc_sd e2 with
   | Same,Same -> Same
   | _,_ -> Diff

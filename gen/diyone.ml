@@ -55,13 +55,14 @@ module Make(O:Config) (M:Builder.S) =
         let module Namer = Namer.Make(M.A)(M.E) in
         let module Normer = Normaliser.Make(O)(M.E) in
         fun _name es ->
+	  let es = M.E.resolve_edges es in
           let base,es = Normer.normalise_family es in
           let name = Namer.mk_name base es in
           dump_file name es
       else
         fun name  -> match name with
-        | None -> dump_stdout
-        | Some name -> dump_file name
+        | None -> fun es -> dump_stdout (M.E.resolve_edges es)
+        | Some name -> fun es -> dump_file name (M.E.resolve_edges es)
 
     let parse_line s =
       try

@@ -52,7 +52,7 @@ module Make(Config:Config) (T:Builder.S)
     if Config.canonical_only then
       let module Normer = Normaliser.Make(Config)(T.E) in
       fun cy ->
-        let ncy = Normer.normalise cy in
+        let ncy = Normer.normalise (T.E.resolve_edges cy) in
         if Config.verbose > 0 then
           eprintf "Changed %s -> %s\n"
             (T.E.pp_edges cy)
