@@ -37,7 +37,7 @@ module Make(Config:Config) (T:Builder.S)
       end)
 
   type edge = T.edge
-  type relax = T.relax
+
 
 (* Families *)
 

@@ -194,13 +194,15 @@ let () =
       let module T = Top.Make(Co) in
       let module M = Build(T(ARMCompile.Make(V)(C))) in
       M.zyva
-  | C -> assert false
-(*
-  | C -> 
-      let module T = CCompile.Make(V)(C) in
+  | C ->
+      let module CoC = struct
+        include Co
+        include C
+        let typ = !Config.typ
+      end in
+      let module T = CCompile.Make(CoC) in
       let module M = Build(T) in
       M.zyva
-*)
 )
     pp_es
 

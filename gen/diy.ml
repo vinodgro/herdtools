@@ -28,11 +28,11 @@ open C.E
 open C.R
 
 let parse_fence s k =  match s with
-  | One f -> C.parse_fence f::k
+  | One f -> C.E.parse_fence f::k
   | Seq [] -> k
   | Seq (fs) ->
       List.fold_right
-        (fun s k -> C.parse_fence s::k)
+        (fun s k -> C.E.parse_fence s::k)
         fs k
 
 let parse_relaxs = List.map parse_relax
@@ -214,7 +214,14 @@ let () =
   | ARM ->
       let module M = Make(T(ARMCompile.Make(V)(C)))(Co) in
       M.go
-  | C -> assert false in
+  | C ->
+      let module CoC = struct
+        include Co
+        include C
+        let typ = !Config.typ
+      end in
+      let module M = Make(CCompile.Make(CoC))(Co) in
+      M.go in
   try
     f !Config.size relax_list safe_list one_list ;
     exit 0

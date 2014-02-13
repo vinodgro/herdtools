@@ -54,3 +54,6 @@ type com =  CRf | CFr | CWs
 
 val pp_com : com -> string
 val fold_com : (com -> 'a -> 'a) -> 'a -> 'a
+
+(* Info in tests *)
+type info = (string * string) list

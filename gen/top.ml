@@ -34,9 +34,9 @@ module Make (O:Config) (Comp:XXXCompile.S) : Builder.S
 (* Config *)
 
   module A = Comp.A
-  let parse_fence = Comp.parse_fence
-
   module E = Comp.E
+  type check = Comp.check
+
   module R = Comp.R
   module C = Comp.C
 
@@ -45,9 +45,6 @@ module Make (O:Config) (Comp:XXXCompile.S) : Builder.S
   open E
   type edge = E.edge
   type node = C.node
-  type relax = R.relax
-
-  type info = (string * string) list
 
   module F = Final.Make(O)(Comp)
 
@@ -55,7 +52,7 @@ module Make (O:Config) (Comp:XXXCompile.S) : Builder.S
       {
        name : string ;
        com : string ;
-       info : info ;
+       info : Code.info ;
        edges : edge list ;
        init : A.init ;
        prog : A.pseudo list list ;
@@ -64,12 +61,9 @@ module Make (O:Config) (Comp:XXXCompile.S) : Builder.S
 
   let extract_edges {edges=es; _} = es
 
-(********)
-(* Util *)
-(********)
+(* Utilities *)
 
-module StringSet = MySet.Make(String)
-module StringMap = MyMap.Make(String)
+module U = TopUtils.Make(O)(Comp)
 
 (***************)
 (* Compilation *)
@@ -92,11 +86,8 @@ module StringMap = MyMap.Make(String)
     | Yes of E.dp * A.arch_reg
 
 
-(* Encodes load of first non-initial vakue in chain,
+(* Encodes load of first non-initial value in chain,
    can poll on value in place of checking it *)
-  let do_poll n = match O.poll,n.C.prev.C.edge.E.edge,n.C.evt.C.v with
-  | true,Rf Ext,1 -> true
-  | _,_,_ -> false
 
   let emit_access ro_prev st p init n =
     let init,ip,st = match O.overload with
@@ -118,7 +109,7 @@ module StringMap = MyMap.Make(String)
             let r,init,i,st = Comp.emit_fno st p init n.C.evt.C.loc in
             Some r,init,i,st
         | _ ->
-            if do_poll n then
+            if U.do_poll n then
               let r,init,i,st =
                 Comp.emit_load_one st p init n.C.evt.C.loc in
               Some r,init,i,st
@@ -207,7 +198,7 @@ let rec compile_proc loc_writes st p ro_prev init ns = match ns with
         init,
         i@(match get_fence n with Some fe -> Comp.emit_fence fe::is  | _ -> is),
         (if
-          StringSet.mem n.C.evt.C.loc loc_writes && not (do_poll n)
+          StringSet.mem n.C.evt.C.loc loc_writes && not (U.do_poll n)
         then
           F.add_final p o n finals
         else finals),
@@ -409,73 +400,7 @@ let min_max xs =
 
   let check_writes p i cos = check_rec p i cos
 
-  let comp_loc_writes n0 =
-    let rec do_rec n =
-      let k =
-        if n.C.next == n0 then StringSet.empty
-        else do_rec n.C.next in
-      let k =
-        if n.C.store != C.nil then
-          StringSet.add n.C.store.C.evt.C.loc k
-        else k in
-      let k = 
-        match n.C.evt.C.dir with
-        | W -> StringSet.add n.C.evt.C.loc k
-        | R -> k in
-      if is_detour n.C.edge  then StringSet.add n.C.evt.C.loc k
-      else k in
-    do_rec n0
-
-(******************)
-(* Prefetch hints *)
-(******************)
-
-
-(* In thread/Out thread *)
-type pt = { ploc:Code.loc ; pdir:Code.dir; }
-
-let io_of_node n = {ploc=n.C.evt.C.loc; pdir=n.C.evt.C.dir;}
-
-let io_of_thread n = match n with
-| []|[_] -> None
-| n0::rem ->
-    Some (io_of_node n0,io_of_node (Misc.last rem))
-
-let io_of_detour _n = None
-
-  let compile_prefetch_ios =
-    let rec do_rec p = function
-      | [] -> []
-      | None::rem -> do_rec (p+1) rem
-      | Some (i,o)::rem ->
-          let k = do_rec (p+1) rem in
-          if i.ploc = o.ploc then k
-          else
-            sprintf "%i:%s=F" p i.ploc::
-            sprintf "%i:%s=%s" p o.ploc
-              (match o.pdir with W -> "W" | R -> "T")::k in
-    fun fst ios -> String.concat "," (do_rec fst ios)
-
-(******************)
-(* Affinity hints *)
-(******************)
-
-(*  Most of placement computation is now by litmus *)
-
-  let last_edge ns =
-    let n = Misc.last ns in n.C.edge.E.edge
-
-  let compile_coms nss =
-    List.map
-      (fun ns ->
-        match last_edge ns with
-        | Fr _|Leave CFr|Back CFr -> "Fr"
-        | Rf _|RfStar _|Leave CRf|Back CRf -> "Rf"
-        | Ws _|Leave CWs|Back CWs -> "Ws"
-        | _ -> assert false)
-      nss
-
-
+  
 (* Local check of coherence *)
 
   let do_add_load st p i f x v =
@@ -487,7 +412,7 @@ let io_of_detour _n = None
     i,c,F.add_final_v p r (Ints.singleton w) f,st
 
 
-  let is_load_init e = e.C.evt.C.dir = R && e.C.evt.C.v = 0
+
 
   let do_observe_local st p i code f x prev_v v =
     let open Config in
@@ -505,20 +430,18 @@ let io_of_detour _n = None
 
   let add_co_local_check lsts ns st p i code f =
     let lst = Misc.last ns in
-    match lst.C.edge.E.edge with
-    | Ws _|Fr _
-    | DetourWs _ when not (is_load_init lst) ->
-        let x = lst.C.evt.C.loc and v = lst.C.next.C.evt.C.v
-        and prev_v = lst.C.evt.C.v in
-        let all_lst =
-          try StringMap.find x lsts
-          with Not_found -> C.evt_null in
-        if C.OrderedEvent.compare all_lst lst.C.next.C.evt = 0
-        then
-          i,code,(A.Loc x,Ints.singleton v)::f,st
-        else
-          do_observe_local st p i code f x prev_v v
-    | _ -> i,code,f,st
+    if U.check_here lst then
+      let x = lst.C.evt.C.loc and v = lst.C.next.C.evt.C.v
+      and prev_v = lst.C.evt.C.v in
+      let all_lst =
+        try StringMap.find x lsts
+        with Not_found -> C.evt_null in
+      if C.OrderedEvent.compare all_lst lst.C.next.C.evt = 0
+      then
+        i,code,(A.Loc x,Ints.singleton v)::f,st
+      else
+        do_observe_local st p i code f x prev_v v
+    else i,code,f,st
 
 (**********)
 (* Detour *)
@@ -560,34 +483,12 @@ let io_of_detour _n = None
         i,c,f
     | _ -> i,c,f
 
-let rec build_detours lsts p i ns = match ns with
-| [] -> i,[],[]
-| n::ns ->
-    let i,c,f = build_detour lsts A.st0 p i n in
-    let i,cs,fs = build_detours lsts (p+1) i ns in
-    i,c::cs,f@fs
-
-(****************************)
-(* Last in coherence orders *)
-(****************************)
-
-
-let rec find_last = function
-  | [] -> assert false
-  | [xs] -> Misc.last xs
-  | _::xss -> find_last xss
-
-
-let last_map cos =
-  let lsts =
-    List.map
-      (fun (loc,xss) ->
-        let r,_ = find_last xss in
-        loc,r)
-      cos in
-  List.fold_left
-    (fun m (loc,lst) -> StringMap.add loc lst.C.evt m)
-    StringMap.empty lsts
+  let rec build_detours lsts p i ns = match ns with
+  | [] -> i,[],[]
+  | n::ns ->
+      let i,c,f = build_detour lsts A.st0 p i n in
+      let i,cs,fs = build_detours lsts (p+1) i ns in
+      i,c::cs,f@fs
 
 (******************************************)
 (* Compile cycle, ie generate test proper *)
@@ -597,39 +498,13 @@ let last_map cos =
     let open Config in
     Label.reset () ;
     let splitted =  C.split_procs n in
- (* Split before, as  proc numbers added by side effet.. *)
+    (* Split before, as  proc numbers added by side effet.. *)
     let cos0 = C.coherence n in    
-    let lsts = match O.do_observers with
-    | Config.Local when O.optcoherence -> last_map cos0
-    | _ -> StringMap.empty in       
-    let cos =
-      List.map
-        (fun (loc,ns) ->
-          loc,
-          List.map
-            (List.map (fun (n,obs) -> n.C.evt.C.v,obs))
-            ns)
-        cos0 in
-            
-(*    let co = flatten_co cos in *)
-    if O.verbose > 1 then begin
-      eprintf "COHERENCE: " ;
-      Misc.pp_list stderr ""
-        (fun chan (x,vs) ->
-          fprintf chan "<%s:%a>" x
-            (fun chan ->
-              Misc.pp_list chan "|"
-                (fun chan ->
-                  Misc.pp_list chan ","
-                    (fun chan (n,obs) ->
-                      fprintf chan "%i{%s}" n.C.evt.C.v
-                        (Ints.pp_str "," (sprintf "%i") obs)
-                    )))
-            vs)
-        cos0 ;
-      eprintf "\n%!"
-    end ;
-    let loc_writes = comp_loc_writes n in
+    let lsts = U.last_map cos0 in
+    let cos = U.compute_cos cos0 in
+    if O.verbose > 1 then U.pp_coherence cos0 ;
+    let loc_writes = U.comp_loc_writes n in
+
     let rec do_rec p i = function
       | [] -> List.rev i,[],(C.EventMap.empty,[]),[]
       | n::ns ->
@@ -646,8 +521,8 @@ let last_map cos =
           let ds = C.get_detours_from_list n in
           let i,cds,fds = build_detours lsts (p+1) i ds in
           let i,cs,(ms,fs),ios = do_rec (p+1+List.length cds) i ns in
-          let io = io_of_thread n in
-          let iod = List.map io_of_detour ds in
+          let io = U.io_of_thread n in
+          let iod = List.map U.io_of_detour ds in
           i,c::(cds@cs),(C.union_map m ms,f@fds@fs),(io::iod)@ios in
     let i,obsc,f =
       match O.cond with
@@ -687,7 +562,9 @@ let last_map cos =
               F.run evts m
           | Cycle -> F.check f
           | Observe -> F.observe f in
-        (i,c,f),(compile_prefetch_ios (List.length obsc) ios,compile_coms splitted)
+        (i,c,f),
+        (U.compile_prefetch_ios (List.length obsc) ios,
+         U.compile_coms splitted)
 
 
 (********)
@@ -737,8 +614,6 @@ let fmt_cols =
 
  
 
-  let dump_final chan tst = F.dump_final chan tst.final
-
   let dump_test_channel chan t =
     fprintf chan "%s %s\n" (Archs.pp A.arch) t.name ;
     if t.com <>  "" then fprintf chan "\"%s\"\n" t.com ;
@@ -748,7 +623,7 @@ let fmt_cols =
     Hint.dump O.hout t.name t.info ;
     dump_init chan t.init ;
     dump_code chan t.prog ;
-    dump_final chan t ;
+    F.dump_final chan t.final ;
     ()
 
 let dump_test ({ name = name; _ } as t) =
@@ -776,8 +651,5 @@ let make_test name ?com ?info ?check es =
   | Misc.Fatal msg ->
       Warn.fatal "Test %s [%s] failed:\n%s" name (pp_edges es) msg
   
-
- type check = edge list list -> bool
-
 
 end

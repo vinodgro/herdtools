@@ -22,11 +22,10 @@ end
 module type S = sig
   module A : Arch.S
 
-  val parse_fence : string -> A.fence
-
   module E : Edge.S
   with type fence = A.fence
   and type dp = A.dp
+  type check = E.edge list list -> bool
 
   module R : Relax.S
   with type fence = A.fence
@@ -42,16 +41,8 @@ module Make(C:Config) (A:Arch.S) =
 struct
   module A = A 
 
-  let fences_pp =
-    A.fold_all_fences
-      (fun f k -> (A.pp_fence f,f)::k)
-      []
-
-  let parse_fence s =
-    try List.assoc s fences_pp
-    with Not_found -> Warn.fatal "%s is not a fence" s
-
   module E =  Edge.Make(A)
+  type check = E.edge list list -> bool
 
   let () =
     if C.list_edges then begin

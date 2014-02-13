@@ -11,8 +11,6 @@
 open Printf
 open Code
 
-let rev = "$Rev: 9696 $"
-
 module type S = sig
   type edge
 

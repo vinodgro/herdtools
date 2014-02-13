@@ -14,5 +14,9 @@ module type S = sig
   module E : Edge.S
   with type fence = A.fence
   and type dp = A.dp
+  module R : Relax.S
+  with type fence = A.fence
+  and type dp = A.dp
+  and type edge = E.edge
   module C : Cycle.S with type edge=E.edge
 end

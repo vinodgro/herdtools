@@ -11,14 +11,16 @@
 (* Signature of test builder *)
 module type S = sig
 
-  include CompileCommon.S
+  include ArchRun.S
 
+        
   val ppo : (R.relax -> 'a -> 'a) -> 'a -> 'a
+
 
   type test
   type node = C.node
   type edge = E.edge
-  type relax
+  type check = edge list list -> bool
 
 (* Returns resolved edges of test *)
   val extract_edges : test -> edge list
@@ -26,14 +28,12 @@ module type S = sig
 (* Build up test, test structure includes
    name & comment given as first two arguments,
    third argument is the last minute check *)
-  type info = (string * string) list
 
-  type check = edge list list -> bool
   val make_test :
-      string -> ?com:string -> ?info:info -> ?check:check -> edge list -> test
+      string -> ?com:string -> ?info:Code.info -> ?check:check -> edge list -> test
 (* Build test from cycle *)
   val test_of_cycle :
-      string -> ?com:string -> ?info:info -> ?check:check -> edge list ->
+      string -> ?com:string -> ?info:Code.info -> ?check:check -> edge list ->
        node -> test  
 (* Dump the given test *)
   val dump_test : test -> unit

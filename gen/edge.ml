@@ -48,6 +48,7 @@ module type S = sig
   val pp_edge : edge -> string
   val compare : edge -> edge -> int
 
+  val parse_fence : string -> fence
   val parse_edge : string -> edge
   val parse_edges : string -> edge list
 
@@ -285,6 +286,15 @@ let fold_pp_edges f =
       | Plain,Plain -> f s k
       | _,_ -> k)
     t
+
+ let fences_pp =
+    F.fold_all_fences
+      (fun f k -> (F.pp_fence f,f)::k)
+      []
+
+  let parse_fence s =
+    try List.assoc s fences_pp
+    with Not_found -> Warn.fatal "%s is not a fence" s
 
 let parse_edge s = 
   try Hashtbl.find t s
