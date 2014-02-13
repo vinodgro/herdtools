@@ -120,9 +120,12 @@ module Make (Config:Config) (M:Builder.S) =
       let rs = parse_relaxs s in
       List.fold_right (fun r k -> M.R.edges_of r :: k) rs []
 
+(*
     module V = VarAtomic.Make(Config)(M.E) 
 
     let varatom_ess ess = List.map V.varatom_es ess
+*)
+    let varatom_ess ess = ess
 
     let expand_edge es = M.E.expand_edges es Misc.cons
     let expand_edges ess =
@@ -205,7 +208,14 @@ let () =
     | ARM ->
         let module M = Make(C)(T(ARMCompile.Make(V)(C))) in
         M.zyva
-    | C -> assert false
+    | C ->
+        let module CoC = struct
+          include C
+          let typ = !Config.typ
+        end in
+        let module T = CCompile.Make(CoC) in
+        let module M = Make(C)(T) in
+        M.zyva
     end pp_es
         with
         | Misc.Exit -> ()

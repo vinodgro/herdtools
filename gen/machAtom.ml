@@ -8,16 +8,25 @@
 (*  under the terms of the Lesser GNU General Public License.        *)
 (*********************************************************************)
 
-(* Argument for run module *)
-module type S = sig
-  module A : ArchLoc.S
-  module E : Edge.S
-  with type fence = A.fence
-  and type dp = A.dp
-  and type atom = A.atom
-  module R : Relax.S
-  with type fence = A.fence
-  and type dp = A.dp
-  and type edge = E.edge
-  module C : Cycle.S with type edge=E.edge
-end
+(* Atomicity of events *)
+type atom = Atomic | Reserve
+
+let default_atom = Atomic
+
+open Code
+
+let applies_atom a d = match a,d with
+| Reserve,Dir W -> false
+| _,_ -> true
+
+let sig_of_atom = function
+  | Atomic -> 'A'
+  | Reserve -> 'B'
+
+let pp_atom = function
+  | Atomic -> "A"
+  | Reserve -> "R"
+
+let compare_atom = Pervasives.compare
+
+let fold_atom f r = f Reserve (f Atomic r)

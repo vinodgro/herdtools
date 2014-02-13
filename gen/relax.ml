@@ -133,18 +133,18 @@ and type edge = E.edge
           match r with
           | ERS [e] -> E.pp_edge e
           | ERS
-              [{edge=Rf Ext; a1=Plain;a2=Plain;};
-               {edge=Fenced _;a1=Plain; a2=Plain;} as e] ->
+              [{edge=Rf Ext; a1=None;a2=None;};
+               {edge=Fenced _;a1=None; a2=None;} as e] ->
                  sprintf "AC%s" (pp_edge e)
-          | ERS [{edge=Fenced _; a1=Plain;a2=Plain;} as e;
-                 {edge=Rf Ext; a1=Plain; a2=Plain;}] ->
+          | ERS [{edge=Fenced _; a1=None;a2=None;} as e;
+                 {edge=Rf Ext; a1=None; a2=None;}] ->
                    sprintf "BC%s" (pp_edge e)
-          | ERS [{edge=Rf Ext; a1=Plain; a2=Plain;};
-                 {edge=Fenced _; a1=Plain; a2=Plain;} as e;
-                 {edge=Rf Ext; a1=Plain; a2=Plain;}] ->
+          | ERS [{edge=Rf Ext; a1=None; a2=None;};
+                 {edge=Fenced _; a1=None; a2=None;} as e;
+                 {edge=Rf Ext; a1=None; a2=None;}] ->
                    sprintf "ABC%s" (pp_edge e)
-          | ERS [{edge=Dp _; a1=Plain; a2=Plain;} as e;
-                 {edge=Rf Ext; a1=Plain; a2=Plain;}] ->
+          | ERS [{edge=Dp _; a1=None; a2=None;} as e;
+                 {edge=Rf Ext; a1=None; a2=None;}] ->
                    sprintf "BC%s" (pp_edge e) 
           | ERS es ->
               sprintf "[%s]" (String.concat "," (List.map pp_edge es))
@@ -305,15 +305,15 @@ and type edge = E.edge
           let open E in
           match r with
           | ERS
-              [{edge=Rf Code.Ext; a1=Plain; a2=Plain;};
-               {edge=Fenced _; a1=Plain; a2=Plain;}]
+              [{edge=Rf Code.Ext; a1=None; a2=None;};
+               {edge=Fenced _; a1=None; a2=None;}]
           | ERS
-              [{edge=Fenced _; a1=Plain; a2=Plain;};
-               {edge=Rf Code.Ext; a1=Plain; a2=Plain;};]
+              [{edge=Fenced _; a1=None; a2=None;};
+               {edge=Rf Code.Ext; a1=None; a2=None;};]
           | ERS
-              [{edge=Rf Code.Ext; a1=Plain; a2=Plain;};
-               {edge=Fenced _; a1=Plain; a2=Plain;};
-               {edge=Rf Code.Ext; a1=Plain; a2=Plain;};]      
+              [{edge=Rf Code.Ext; a1=None; a2=None;};
+               {edge=Fenced _; a1=None; a2=None;};
+               {edge=Rf Code.Ext; a1=None; a2=None;};]      
             -> true
           | _ -> false
 

@@ -25,6 +25,8 @@ module type S = sig
   module E : Edge.S
   with type fence = A.fence
   and type dp = A.dp
+  and type atom = A.atom
+
   type check = E.edge list list -> bool
 
   module R : Relax.S

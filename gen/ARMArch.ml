@@ -12,6 +12,7 @@ open Printf
 module Make(V:Constant.S) =
   struct
     include ARMBase
+     include MachAtom
     module V = V
 
 (**********)

@@ -18,7 +18,8 @@ end
 
 module Make
     (A:Fence.S)
-    (E:Edge.S with type dp = A.dp and type fence=A.fence) : S with type edge = E.edge = struct
+    (E:Edge.S with
+     type dp = A.dp and type fence=A.fence and type atom = A.atom) : S with type edge = E.edge = struct
 
       type edge = E.edge
 
@@ -47,13 +48,12 @@ module Make
         | _ -> None
 
       let atom_name = function
-        | Plain -> 'p'
-        | Atomic -> 'a'
-        | Reserve -> 'r'
+        | None -> "p"
+        | Some a -> String.lowercase (A.pp_atom a)
 
       let atoms_name a1 a2 = match a1,a2 with
-      | Plain,Plain -> ""
-      | _ -> sprintf "%c%c" (atom_name a1) (atom_name a2)
+      | None,None -> ""
+      | _ -> sprintf "%s%s" (atom_name a1) (atom_name a2)
 
       let one_name e = match edge_name e.edge with
       | Some n ->
@@ -70,24 +70,25 @@ module Make
         | [] -> None
 
       let rec count_a = function
-        | {edge=(Rf Ext|Fr Ext|Ws Ext); a2=Atomic}::
-          ({edge=(Rf Ext|Fr Ext|Ws Ext);a1=Atomic}::_ as es) ->
-            "A"::count_a es
-        | {edge=(Rf Ext|Fr Ext|Ws Ext); a2=Plain}::
-          ({edge=(Rf Ext|Fr Ext|Ws Ext);a1=Plain}::_ as es) ->
+        | {edge=(Rf Ext|Fr Ext|Ws Ext); a2=Some a}::
+          ({edge=(Rf Ext|Fr Ext|Ws Ext);a1=Some _}::_ as es) ->
+           A.pp_atom a::count_a es
+        | {edge=(Rf Ext|Fr Ext|Ws Ext); a2=None}::
+          ({edge=(Rf Ext|Fr Ext|Ws Ext);a1=None}::_ as es) ->
             "P"::count_a es
         | _::es -> count_a es
         | [] -> []
 
       let init_a = function
-        | {edge=(Rf Ext|Fr Ext|Ws Ext);a1=Atomic}::_ as es ->
+        | {edge=(Rf Ext|Fr Ext|Ws Ext);a1=Some a}::_ as es ->
             begin match Misc.last es with
-            | {edge=(Rf Ext|Fr Ext|Ws Ext);a2=Atomic} -> ["A"]
+            | {edge=(Rf Ext|Fr Ext|Ws Ext);a2=Some _} ->
+                [A.pp_atom a]
             | _ -> []
             end
-        | {edge=(Rf Ext|Fr Ext|Ws Ext);a1=Plain}::_ as es ->
+        | {edge=(Rf Ext|Fr Ext|Ws Ext);a1=None}::_ as es ->
             begin match Misc.last es with
-            | {edge=(Rf Ext|Fr Ext|Ws Ext);a2=Plain} -> ["P"]
+            | {edge=(Rf Ext|Fr Ext|Ws Ext);a2=None} -> ["P"]
             | _ -> []
             end
         | _ -> []

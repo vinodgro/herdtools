@@ -180,18 +180,13 @@ module Make(Config:Config) (T:Builder.S)
         Buffer.add_char buff 'F' ;
         Buffer.add_char buff (sig_of_com c)
 
+  let sig_of_atom = function
+    | None -> 'Z'
+    | Some a -> T.A.sig_of_atom a
+
   let sig_of_atoms buff a1 a2 =
-    Buffer.add_char buff
-    (match a1,a2 with
-    | Reserve,Reserve -> 'R'
-    | Plain,Reserve -> 'S'
-    | Reserve,Plain -> 'T'
-    | Atomic,Reserve -> 'U'
-    | Reserve,Atomic -> 'V'
-    | Plain,Plain -> 'W'
-    | Plain,Atomic -> 'X'
-    | Atomic,Plain -> 'Y'
-    | Atomic,Atomic -> 'Z')
+    Buffer.add_char buff (sig_of_atom a1) ;
+    Buffer.add_char buff (sig_of_atom a2)
 
   let sig_of_edge buff e =
     let open T.E in
