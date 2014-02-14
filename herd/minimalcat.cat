@@ -4,6 +4,6 @@ show sync lwsync eieio
 show dmb dsb dsbst dmbst
 show isb isync
 let co=co0+
-let fr=((rf)-1;co)|fr0
+let fr=((rf)-1;co)
 show co,fr
 

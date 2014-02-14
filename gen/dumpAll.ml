@@ -24,7 +24,7 @@ module type Config = sig
   val overload : int option
 end
 
-module Make(Config:Config) (C:XXXCompile.S) 
+module Make(Config:Config) (T:Builder.S)
 
 = struct
 
@@ -36,12 +36,8 @@ module Make(Config:Config) (C:XXXCompile.S)
         let outname = Config.tarfile
       end)
 
-  module T =  Top.Make(Config)(C)
+  type edge = T.edge
 
-  open C.E 
-  open C.R
-  type edge = C.E.edge
-  type relax = C.R.relax
 
 (* Families *)
 
@@ -54,20 +50,20 @@ module Make(Config:Config) (C:XXXCompile.S)
 
   let normalise = 
     if Config.canonical_only then
-      let module Normer = Normaliser.Make(Config)(C.E) in
+      let module Normer = Normaliser.Make(Config)(T.E) in
       fun cy ->
-        let ncy = Normer.normalise cy in
+        let ncy = Normer.normalise (T.E.resolve_edges cy) in
         if Config.verbose > 0 then
           eprintf "Changed %s -> %s\n"
-            (C.E.pp_edges cy)
-            (C.E.pp_edges ncy) ;
+            (T.E.pp_edges cy)
+            (T.E.pp_edges ncy) ;
         ncy
     else fun cy -> cy
 
   let mk_base = match Config.family with
   | Some b -> fun _cy -> b
   | None ->
-      let module Normer = Normaliser.Make(Config)(C.E) in
+      let module Normer = Normaliser.Make(Config)(T.E) in
       Normer.family
 
 (* Complete name *)
@@ -80,7 +76,7 @@ module Make(Config:Config) (C:XXXCompile.S)
         let n = try Env.find base env with Not_found -> 0 in
         mk_fmt base n,Env.add base (n+1) env
     else
-      let module Namer = Namer.Make(C.A)(C.E) in
+      let module Namer = Namer.Make(T.A)(T.E) in
       fun env base es -> Namer.mk_name base es,env
 
   exception DupName of string 
@@ -133,7 +129,10 @@ module Make(Config:Config) (C:XXXCompile.S)
     | CFr -> '2'
     | CWs -> '3'
 
-  let sig_of_tedge buff = function
+
+  let sig_of_tedge buff e =
+    let open T.E in
+    match e with
     | Rf ie ->
         Buffer.add_char buff '1' ;
         Buffer.add_char buff (sig_of_ie ie)
@@ -150,13 +149,13 @@ module Make(Config:Config) (C:XXXCompile.S)
         Buffer.add_char buff (sig_of_dir e2)
     | Fenced (fe,sd,e1,e2) ->
         Buffer.add_char buff '5' ;
-        Buffer.add_char buff (C.A.sig_of_fence fe) ;
+        Buffer.add_char buff (T.A.sig_of_fence fe) ;
         Buffer.add_char buff (sig_of_sd sd) ;
         Buffer.add_char buff (sig_of_dir e1) ;
         Buffer.add_char buff (sig_of_dir e2)
     | Dp (dp,sd,e) ->
         Buffer.add_char buff '6' ;
-        Buffer.add_char buff (C.A.sig_of_dp dp) ;
+        Buffer.add_char buff (T.A.sig_of_dp dp) ;
         Buffer.add_char buff (sig_of_sd sd) ;
         Buffer.add_char buff (sig_of_dir e)
     | Hat ->
@@ -181,20 +180,16 @@ module Make(Config:Config) (C:XXXCompile.S)
         Buffer.add_char buff 'F' ;
         Buffer.add_char buff (sig_of_com c)
 
+  let sig_of_atom = function
+    | None -> 'Z'
+    | Some a -> T.A.sig_of_atom a
+
   let sig_of_atoms buff a1 a2 =
-    Buffer.add_char buff
-    (match a1,a2 with
-    | Reserve,Reserve -> 'R'
-    | Plain,Reserve -> 'S'
-    | Reserve,Plain -> 'T'
-    | Atomic,Reserve -> 'U'
-    | Reserve,Atomic -> 'V'
-    | Plain,Plain -> 'W'
-    | Plain,Atomic -> 'X'
-    | Atomic,Plain -> 'Y'
-    | Atomic,Atomic -> 'Z')
+    Buffer.add_char buff (sig_of_atom a1) ;
+    Buffer.add_char buff (sig_of_atom a2)
 
   let sig_of_edge buff e =
+    let open T.E in
     sig_of_tedge buff e.edge ;
     sig_of_atoms buff e.a1 e.a2
 
@@ -209,11 +204,11 @@ module Make(Config:Config) (C:XXXCompile.S)
       r in
 
     let all =
-      fold_edges (fun e k -> (e,sig_of_edge e)::k) [] in
+      T.E.fold_edges (fun e k -> (e,sig_of_edge e)::k) [] in
     if Config.verbose > 2 then begin
       eprintf "Signatures:\n" ;
-      iter_edges
-        (fun e -> eprintf "%s -> %s\n" (pp_edge e) (sig_of_edge e)) ;
+      T.E.iter_edges
+        (fun e -> eprintf "%s -> %s\n" (T.E.pp_edge e) (sig_of_edge e)) ;
       flush stderr
     end ;
     let all =
@@ -226,7 +221,7 @@ module Make(Config:Config) (C:XXXCompile.S)
           if s1=s2 then
             Warn.fatal
               "edges %s and %s have identical signatures, change sig_of_edge\n"
-              (pp_edge e1) (pp_edge e2)
+              (T.E.pp_edge e1) (T.E.pp_edge e2)
           else uniq rem in
     uniq all
 
@@ -305,13 +300,13 @@ module Make(Config:Config) (C:XXXCompile.S)
        sigs : SigSet.t ;     (* Signatures of compiled tests *)
        env : int Env.t ;     (* State for getting numeric names *)
        dup : int Env.t ;     (* State for getting fresh names *)
-       relaxed : C.R.SetSet.t ;
+       relaxed : T.R.SetSet.t ;
      }
 
   type check = edge list list -> bool
   type info = (string * string) list
-  type mk_info = edge list -> info * C.R.Set.t
-  let no_info _ = [],C.R.Set.empty
+  type mk_info = edge list -> info * T.R.Set.t
+  let no_info _ = [],T.R.Set.empty
 
   type mk_name =  edge list -> string option
   let no_name _ = None
@@ -320,7 +315,7 @@ module Make(Config:Config) (C:XXXCompile.S)
       ((edge list -> mk_info -> mk_name -> t -> t) -> t -> t)
 
   let sigs_init cys =
-    let cys = List.map C.E.parse_edges cys in
+    let cys = List.map T.E.parse_edges cys in
     List.fold_left
       (fun k es ->
         let xxx,_ = comp_sig es in
@@ -331,7 +326,7 @@ module Make(Config:Config) (C:XXXCompile.S)
     { ntests = 0 ;
       sigs = sigs_init Config.no ;
       env = Env.empty; dup = Env.empty;
-      relaxed = C.R.SetSet.empty; }
+      relaxed = T.R.SetSet.empty; }
 
 (************************************** ****)
 (* Check duplicates, compile and dump test *)
@@ -347,9 +342,9 @@ module Make(Config:Config) (C:XXXCompile.S)
 (* Test specification *)
   type cycle =
       {
-       orig : C.E.edge list ;
+       orig : T.E.edge list ;
 (* As given, for actually building the test & name. *)
-       norm : C.E.edge list;
+       norm : T.E.edge list;
 (* Normalized, for the cycle and info field. *)  
      }
 
@@ -361,7 +356,7 @@ module Make(Config:Config) (C:XXXCompile.S)
         n,env
     | Some n -> n,res.env in
     let n,dup = dup_name res.dup n in
-    let cy = pp_edges cycle.norm in
+    let cy = T.E.pp_edges cycle.norm in
     let info,relaxed = mk_info cycle.norm in
     let info = ("Cycle",cy)::info in
     let t = T.test_of_cycle n ~info:info ~check:check cycle.orig c in
@@ -379,22 +374,22 @@ module Make(Config:Config) (C:XXXCompile.S)
       env = env ;
       dup = dup;
       ntests = res.ntests+1;
-      relaxed = C.R.SetSet.add relaxed res.relaxed; }
+      relaxed = T.R.SetSet.add relaxed res.relaxed; }
 
 (* Compose duplicate checker and dumper *)
   let check_dump =
     if Config.canonical_only then    
       fun all_chan check es mk_info mk_name r  ->
-        let es,c = C.C.resolve_edges es in
+        let es,c = T.C.resolve_edges es in
         let seen,nes,sigs = have_seen es r.sigs in
         if seen then Warn.fatal "Duplicate" ;
-        C.C.finish c ;
+        T.C.finish c ;
         dump_test all_chan check { orig = es ; norm = nes }
           mk_info mk_name c { r with sigs = sigs; } 
     else 
       fun all_chan check es mk_info mk_name r ->
-        let es,c = C.C.resolve_edges es in
-        C.C.finish c ;
+        let es,c = T.C.resolve_edges es in
+        T.C.finish c ;
         dump_test all_chan check { orig = es ; norm = es ; }
           mk_info mk_name c r
 
@@ -402,7 +397,7 @@ module Make(Config:Config) (C:XXXCompile.S)
     let es = normalise es in
     if Config.verbose > 0 then begin
       eprintf "------------------------------------------------------\n" ;
-      eprintf "Cycle: %s\n" (pp_edges es) ;
+      eprintf "Cycle: %s\n" (T.E.pp_edges es) ;
       let info,_ = mk_info es in
       List.iter
         (fun (tag,i) -> eprintf "%s: %s\n" tag i) info
@@ -434,10 +429,10 @@ module Make(Config:Config) (C:XXXCompile.S)
           "Generator produced %d tests\n%!"
           res.ntests ;
         if
-          C.R.SetSet.exists (fun r -> not (C.R.Set.is_empty r)) res.relaxed
+          T.R.SetSet.exists (fun r -> not (T.R.Set.is_empty r)) res.relaxed
         then
           printf "Relaxations tested: %a\n"
-            pp_set_set res.relaxed)
+            T.R.pp_set_set res.relaxed)
       "@all" ;
     Tar.tar () ;
     Hint.close_out Config.hout

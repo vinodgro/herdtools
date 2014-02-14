@@ -15,6 +15,7 @@ type t =
   | X86
   | PPC
   | ARM
+  | C
 
 val tags : string list
 val parse : string -> t option

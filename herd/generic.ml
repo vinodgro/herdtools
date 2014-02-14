@@ -376,14 +376,12 @@ module Make
           run_interpret test conc m id vb_pp kont res in
         U.apply_process_co test  conc process_co res
       else
-        let co0 = S.tr (conc.S.pco) in
-        let fr0 = U.make_fr_partial conc in
+        let co0 = conc.S.pco in
         let m =
            List.fold_left
               (fun m (k,v) -> StringMap.add k (Rel v) m)
               m
               [
-               "fr0", fr0;
                "co0", co0;
              ] in
         run_interpret test conc m id vb_pp kont res

@@ -18,7 +18,7 @@ type cycle = One of string | Norm of string * string
 
 module T = struct type t = string * cycle end
 
-module Make(A:ArchBase.S) =
+module M =
   struct
 
     let get_cycle info =
@@ -34,11 +34,13 @@ module Make(A:ArchBase.S) =
       | Some c,None -> One c
       | None,None -> raise Not_found
 
-    let zyva name (parsed : A.pseudo MiscParser.t) =
-      name.Name.name,get_cycle  parsed.MiscParser.info
+    let zyva _chan splitted =
+      let name = splitted.Splitter.name
+      and info = splitted.Splitter.info in
+      name.Name.name,get_cycle  info
   end
 
-module X = ToolParse.Top(T)(Make)
+module X = ToolSplit.Top(Splitter.Default)(T)(M)
 let arg = ref []
 
 let prog =

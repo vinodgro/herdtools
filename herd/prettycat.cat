@@ -8,18 +8,19 @@
 (**********************)
 (* Computes co and fr *)
 (**********************)
-let invrf=rf -1
+let invrf=(rf)-1
 
 (* co observations in test *)
 let obsco =
-  noid
     (WW(po-loc)
-    |(rf;RW(po-loc))
-    |(WR(po-loc);invrf)
-    |(rf;RR(po-loc);invrf))
+    |rf;RW(po-loc)
+    |noid(WR(po-loc);invrf)
+    |noid(rf;RR(po-loc);invrf))
 
-let co = (obsco|co0)+
-let fr = (invrf;co)|fr0
+let cobase = obsco|co0
+acyclic cobase as uniproc
+let co = cobase+
+let fr = (invrf;co)
 show fr
 show co
 let coi = int(co)
@@ -27,7 +28,8 @@ and coe = ext(co)
 and fri = int(fr)
 and fre = ext(fr)
 
-acyclic po-loc | rf | fr | co as uniproc
+
+
 
 (* Utilities *)
 let dd = addr | data

@@ -61,8 +61,10 @@ module Make(S : SemExtra.S) = struct
 (* View of a proc *)
 (******************)
 
+
   let proc_view_event p e =
-    E.proc_of e = p || E.is_mem_store e
+    (match E.proc_of e with Some q -> q = p | None -> false) ||
+    E.is_mem_store e
 
   let proc_view_event2 p (e1,e2) =
     proc_view_event p e1 && proc_view_event p e2
@@ -124,7 +126,7 @@ module Make(S : SemExtra.S) = struct
       | S.Load er,S.Store ew when E.is_mem er ->
           E.EventRel.add (ew,er) k
       | _ -> k)
-     rfmap 
+      rfmap 
       E.EventRel.empty
 
   let make_rf conc = make_rf_from_rfmap conc.S.rfmap 
@@ -153,8 +155,8 @@ module Make(S : SemExtra.S) = struct
           stores k)
       loads E.EventRel.empty
 
-   let make_rf_regs conc =
-      S.RFMap.fold
+  let make_rf_regs conc =
+    S.RFMap.fold
       (fun wt rf k -> match wt,rf with
       | S.Load er,S.Store ew when E.is_reg_any er ->
           E.EventRel.add (ew,er) k
@@ -170,7 +172,7 @@ module Make(S : SemExtra.S) = struct
 
 
   let same_source conc e1 e2 = 
-   match find_rf e1 conc.S.rfmap,find_rf e2 conc.S.rfmap with
+    match find_rf e1 conc.S.rfmap,find_rf e2 conc.S.rfmap with
     | S.Init,S.Init -> true
     | S.Store w1,S.Store w2 -> E.event_compare w1 w2 = 0
     | S.Init,S.Store _
@@ -182,28 +184,28 @@ module Make(S : SemExtra.S) = struct
 
 (* po-separation *)
   let sep is_sep is_applicable evts =
-  let is_applicable e1 e2 = is_applicable (e1,e2) in
-  let rels =
-  E.EventSet.fold
-    (fun e k ->
-      if is_sep e then
-        let before =
-          E.EventSet.filter
-            (fun ea -> E.po_strict ea e)
-            evts
-        and after =
-          E.EventSet.filter
-            (fun eb ->  E.po_strict e eb)
-            evts in
-	E.EventRel.of_pred before after is_applicable::k
-      else k)
-    evts [] in
-  E.EventRel.unions rels
+    let is_applicable e1 e2 = is_applicable (e1,e2) in
+    let rels =
+      E.EventSet.fold
+        (fun e k ->
+          if is_sep e then
+            let before =
+              E.EventSet.filter
+                (fun ea -> E.po_strict ea e)
+                evts
+            and after =
+              E.EventSet.filter
+                (fun eb ->  E.po_strict e eb)
+                evts in
+	    E.EventRel.of_pred before after is_applicable::k
+          else k)
+        evts [] in
+    E.EventRel.unions rels
 
 (* Extract external sub-relation *)
 
-let extract_external r =
-  E.EventRel.filter (fun (e1,e2) -> E.proc_of e1 <> E.proc_of e2) r
+  let extract_external r =
+    E.EventRel.filter (fun (e1,e2) -> E.proc_of e1 <> E.proc_of e2) r
 
 (**************************************)
 (* Place loads in write_serialization *)
@@ -395,21 +397,21 @@ let extract_external r =
 
 (* With check *)
   let apply_process_co test conc process_co res =
-     try
-       fold_write_serialization_candidates
-         conc conc.S.pco process_co res
-     with E.EventRel.Cyclic ->
-       if S.O.debug.Debug.barrier && S.O.PC.verbose > 2 then begin
-         let module PP = Pretty.Make(S) in
-           let legend =
-             sprintf "%s cyclic co precursor"
-               test.Test.name.Name.name in
-           let pos = conc.S.pos in
-           prerr_endline legend ;
-           PP.show_legend test  legend conc
-             [ ("pos",S.rt pos); ("pco",S.rt conc.S.pco)]
-        end ;
-        res
+    try
+      fold_write_serialization_candidates
+        conc conc.S.pco process_co res
+    with E.EventRel.Cyclic ->
+      if S.O.debug.Debug.barrier && S.O.PC.verbose > 2 then begin
+        let module PP = Pretty.Make(S) in
+        let legend =
+          sprintf "%s cyclic co precursor"
+            test.Test.name.Name.name in
+        let pos = conc.S.pos in
+        prerr_endline legend ;
+        PP.show_legend test  legend conc
+          [ ("pos",S.rt pos); ("pco",S.rt conc.S.pco)]
+      end ;
+      res
 (*******************************************************)
 (* Saturate all memory accesses wrt atomicity classes  *)
 (*******************************************************)
@@ -479,46 +481,66 @@ let extract_external r =
 (* Compute write serialization precursor *)
 (*****************************************)
 
+          (* We asssume unicity of init write event to x,
+             as a defensive measure, works when no init write exists *)
+  let rec find_init = function
+    | []  -> raise Not_found
+    | e::es ->
+        if E.is_mem_store_init e then e
+        else find_init es
+
+(* Init store to loc is co-before stores to x *)
+  let compute_pco_init es =
+    let stores = collect_mem_stores es in
+    let xs =
+      LocEnv.fold
+        (fun _loc ews k ->
+          try
+            let ei = find_init ews in
+            List.fold_left
+              (fun k ew ->
+                if E.event_equal ei ew then k
+                else (ei,ew)::k)
+              k ews
+          with Not_found -> k)
+        stores [] in
+    E.EventRel.of_list xs
+
   let compute_pco rfmap ppoloc =
     try
       let pco = 
-        if S.O.optace then
-          E.EventRel.fold
-            (fun (e1,e2 as p) k -> match get_dir e1, get_dir e2 with
-            | E.W,E.W -> E.EventRel.add p k
-            | E.R,E.R ->
-                begin match
-                  find_source rfmap e1,
-                  find_source rfmap e2
-                with
-                | S.Store w1,S.Store w2 ->
-                    if E.event_equal w1 w2 then k
-                    else E.EventRel.add (w1,w2) k
-                | S.Init,_ -> k
-                | _,S.Init -> raise Exit
-                end
-            | E.R,E.W ->
-                begin match
-                  find_source rfmap e1
-                with
-                | S.Store w1 -> E.EventRel.add (w1,e2) k
-                | S.Init -> k
-                end
-            | E.W,E.R ->
-                begin match
-                  find_source rfmap e2
-                with
-                | S.Store w2 ->
-                    if E.event_equal e1 w2 then k
-                    else E.EventRel.add (e1,w2) k
-                | S.Init -> raise Exit
-                end)
-            ppoloc
-            E.EventRel.empty
-        else
-          E.EventRel.filter
-            (fun (e1,e2) -> E.is_store e1 && E.is_store e2)
-            ppoloc in
+        E.EventRel.fold
+          (fun (e1,e2 as p) k -> match get_dir e1, get_dir e2 with
+          | E.W,E.W -> E.EventRel.add p k
+          | E.R,E.R ->
+              begin match
+                find_source rfmap e1,
+                find_source rfmap e2
+              with
+              | S.Store w1,S.Store w2 ->
+                  if E.event_equal w1 w2 then k
+                  else E.EventRel.add (w1,w2) k
+              | S.Init,_ -> k
+              | _,S.Init -> raise Exit
+              end
+          | E.R,E.W ->
+              begin match
+                find_source rfmap e1
+              with
+              | S.Store w1 -> E.EventRel.add (w1,e2) k
+              | S.Init -> k
+              end
+          | E.W,E.R ->
+              begin match
+                find_source rfmap e2
+              with
+              | S.Store w2 ->
+                  if E.event_equal e1 w2 then k
+                  else E.EventRel.add (e1,w2) k
+              | S.Init -> raise Exit
+              end)
+          ppoloc
+          E.EventRel.empty in
       Some pco
     with Exit -> None
 
@@ -541,11 +563,11 @@ let extract_external r =
     let open ConstrGen in
     let cnstr = T.find_our_constraint test in
     match cnstr with
-    (* Looking for 'Allow' witness *)
+      (* Looking for 'Allow' witness *)
     | ExistsState p ->  C.check_prop p fsc
-    (* Looking for witness that invalidates 'Require' *)
+          (* Looking for witness that invalidates 'Require' *)
     | ForallStates p -> not (C.check_prop p fsc)
-    (* Looking for witness that invalidates 'Forbid' *)
+          (* Looking for witness that invalidates 'Forbid' *)
     | NotExistsState p -> C.check_prop p fsc
 
 

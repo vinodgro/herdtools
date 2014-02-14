@@ -32,9 +32,8 @@ module type Config = sig
   val norm : bool
 end
 
-module Make(O:Config) (C:XXXCompile.S) =
+module Make(O:Config) (M:Builder.S) =
   struct
-    module M = Top.Make(O)(C)
 
     let dump_stdout es =
       let t = M.make_test "A" es in
@@ -53,17 +52,17 @@ module Make(O:Config) (C:XXXCompile.S) =
 
     let dump =
       if O.norm then
-        let module Namer =
-          Namer.Make(C.A)(C.E) in
-        let module Normer = Normaliser.Make(O)(C.E) in
+        let module Namer = Namer.Make(M.A)(M.E) in
+        let module Normer = Normaliser.Make(O)(M.E) in
         fun _name es ->
+	  let es = M.E.resolve_edges es in
           let base,es = Normer.normalise_family es in
           let name = Namer.mk_name base es in
           dump_file name es
       else
         fun name  -> match name with
-        | None -> dump_stdout
-        | Some name -> dump_file name
+        | None -> fun es -> dump_stdout (M.E.resolve_edges es)
+        | Some name -> fun es -> dump_file name (M.E.resolve_edges es)
 
     let parse_line s =
       try
@@ -71,10 +70,10 @@ module Make(O:Config) (C:XXXCompile.S) =
         let name  = String.sub s 0 r
         and es = String.sub s (r+1) (String.length s - (r+1)) in
         let es = LexUtil.split es in
-        let es = C.R.parse_relaxs es in
+        let es = M.R.parse_relaxs es in
         let es =
           List.fold_right
-            (fun r k -> C.R.edges_of r @ k)
+            (fun r k -> M.R.edges_of r @ k)
             es [] in
         name,es
       with
@@ -86,17 +85,17 @@ module Make(O:Config) (C:XXXCompile.S) =
       try
         let pp_rs = List.map LexUtil.split pp_rs in
         let pp_rs = List.concat pp_rs in
-        let rs = List.map C.R.parse_relax pp_rs in
+        let rs = List.map M.R.parse_relax pp_rs in
         let es =
           List.fold_right
-            (fun r k -> C.R.edges_of r @ k)
+            (fun r k -> M.R.edges_of r @ k)
             rs [] in
         match es with
         | [] ->
             let dump_names =
               O.norm ||
               (match O.family with Some _ -> true | None -> false) in
-            let module D = DumpAll.Make(O)(C) in
+            let module D = DumpAll.Make(O)(M) in
             let gen kont =
               let rec do_rec k0 =
                 let k = 
@@ -185,13 +184,26 @@ let () =
   end in
   (match !Config.arch with
   | X86 ->
-      let module M = Build(X86Compile.Make(V)(C)) in
+      let module T = Top.Make(Co) in
+      let module M = Build(T(X86Compile.Make(V)(C))) in
       M.zyva
   | PPC ->
-      let module M = Build(PPCCompile.Make(V)(C)(PPCArch.Config)) in
+      let module T = Top.Make(Co) in
+      let module M = Build(T(PPCCompile.Make(V)(C)(PPCArch.Config))) in
       M.zyva
   | ARM ->
-      let module M = Build(ARMCompile.Make(V)(C)) in
-      M.zyva)
+      let module T = Top.Make(Co) in
+      let module M = Build(T(ARMCompile.Make(V)(C))) in
+      M.zyva
+  | C ->
+      let module CoC = struct
+        include Co
+        include C
+        let typ = !Config.typ
+      end in
+      let module T = CCompile.Make(CoC) in
+      let module M = Build(T) in
+      M.zyva
+)
     pp_es
 

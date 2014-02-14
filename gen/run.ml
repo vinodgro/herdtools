@@ -16,7 +16,7 @@ module type Config = sig
   val verbose : int
 end
 
-module Make (O:Config) (C:CompileCommon.S) :
+module Make (O:Config) (C:ArchRun.S) :
     sig
       val run : C.C.event list list -> C.A.location C.C.EventMap.t
         -> (C.A.location * Code.v) list list
@@ -207,7 +207,7 @@ module Make (O:Config) (C:CompileCommon.S) :
           | []|[_] -> fs
           | _ ->
               let w = Misc.last ws in
-              State.add (A.Loc w.C.loc) w.C.v fs)
+              State.add (A.of_loc w.C.loc) w.C.v fs)
           State.empty co in
       let fs = 
         C.EventMap.fold

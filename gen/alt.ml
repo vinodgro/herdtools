@@ -24,7 +24,7 @@ module type AltConfig = sig
   val cumul : fence list Config.cumul
 end
 
-module Make(C:XXXCompile.S)
+module Make(C:Builder.S)
     (O:AltConfig with type relax = C.R.relax and type fence = C.A.fence) :
     sig
       val gen : ?relax:C.R.relax list -> ?safe:C.R.relax list -> int -> unit

@@ -337,24 +337,24 @@ module Make(V:Constant.S)(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile
     | Some u -> unroll_fno u
 
     let emit_access  st p init e = match e.dir,e.atom with
-    | R,Plain ->
+    | R,None ->
         let emit = if e.rmw then emit_lwarx else emit_load in
         let r,init,cs,st = emit st p init e.loc  in
         Some r,init,cs,st
-    | W,Plain ->
+    | W,None ->
         let emit = if e.rmw then emit_one_stwcx else emit_store in
         let init,cs,st = emit st p init e.loc e.v in
         None,init,cs,st
-    | R,Atomic ->
+    | R,Some PPC.Atomic ->
         let r,init,cs,st = emit_fno st p init e.loc in
         Some r,init,cs,st
-    | W,Atomic ->
+    | W,Some PPC.Atomic ->
         let init,cs,st = emit_sta st p init e.loc e.v in
         None,init,cs,st
-    | R,Reserve ->
+    | R,Some PPC.Reserve ->
         let r,init,cs,st = emit_lwarx st p init e.loc  in
         Some r,init,cs,st
-    | W,Reserve ->
+    | W,Some PPC.Reserve ->
         Warn.fatal "No store with reservation"
 
           
@@ -362,22 +362,22 @@ module Make(V:Constant.S)(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile
       let r2,st = next_reg st in
       let c = PPC.Pxor(PPC.DontSetCR0,r2,r1,r1) in
       match e.dir,e.atom with
-      | R,Plain ->
+      | R,None ->
           let r,init,cs,st = emit_load_idx st p init e.loc r2 in
           Some r,init, PPC.Instruction c::cs,st
-      | R,Reserve ->
+      | R,Some PPC.Reserve ->
           let r,init,cs,st = emit_lwarx_idx st p init e.loc r2 in
           Some r,init, PPC.Instruction c::cs,st
-      | W,Plain ->
+      | W,None ->
           let init,cs,st = emit_store_idx st p init e.loc r2 e.v in
           None,init,PPC.Instruction c::cs,st
-      | R,Atomic ->
+      | R,Some PPC.Atomic ->
           let r,init,cs,st = emit_fno_idx st p init e.loc r2 in
           Some r,init, PPC.Instruction c::cs,st
-      | W,Atomic ->
+      | W,Some PPC.Atomic ->
           let init,cs,st = emit_sta_idx st p init e.loc r2 e.v in
           None,init,PPC.Instruction c::cs,st
-      | W,Reserve ->
+      | W,Some PPC.Reserve ->
           Warn.fatal "No store with reservation"        
 
     let emit_access_dep_data st p init e  r1 =
@@ -389,9 +389,9 @@ module Make(V:Constant.S)(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile
             [PPC.Instruction (PPC.Pxor(PPC.DontSetCR0,r2,r1,r1)) ;
              PPC.Instruction (PPC.Paddi (r2,r2,e.v)) ; ] in
           let emit = match e.atom with
-          | Plain -> emit_store_reg
-          | Atomic -> emit_sta_reg
-          | Reserve -> Warn.fatal "No store with reservation" in
+          | None -> emit_store_reg
+          | Some PPC.Atomic -> emit_sta_reg
+          | Some PPC.Reserve -> Warn.fatal "No store with reservation" in
           let init,cs,st = emit st p init e.loc r2 in
           None,init,cs2@cs,st
 
@@ -406,16 +406,16 @@ module Make(V:Constant.S)(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile
       match e.dir with
       | R ->
           let emit = match e.atom with
-          | Plain -> emit_load
-          | Reserve ->emit_lwarx
-          | Atomic -> emit_fno in
+          | None -> emit_load
+          | Some PPC.Reserve ->emit_lwarx
+          | Some PPC.Atomic -> emit_fno in
           let r,init,cs,st = emit st p init e.loc in
           Some r,init,(if isync then insert_isync c cs else c@cs),st
       | W ->
           let emit = match e.atom with
-          | Plain -> emit_store
-          | Reserve -> Warn.fatal "No store with reservation"
-          | Atomic -> emit_sta in
+          | None -> emit_store
+          | Some PPC.Reserve -> Warn.fatal "No store with reservation"
+          | Some PPC.Atomic -> emit_sta in
           let init,cs,st = emit st p init e.loc e.v in
           None,init,(if isync then insert_isync c cs else c@cs),st
 

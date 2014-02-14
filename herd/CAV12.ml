@@ -76,8 +76,11 @@ module Make
 (* Utilities *)
     let proc_eq = Misc.int_eq
     let one_store (e1,e2) = E.is_mem_store e1 || E.is_mem_store e2
-    and same_proc (e1,e2) = proc_eq (E.proc_of e1) (E.proc_of e2)
-    and diff_proc (e1,e2) = not (proc_eq (E.proc_of e1) (E.proc_of e2))
+    and same_proc (e1,e2) = E.same_proc e1 e2
+    and diff_proc (e1,e2) = not  (E.same_proc e1 e2)
+    and get_proc e = match E.proc_of e with
+    | Some p -> p
+    | None -> -1
 
     let is_fence_exe e = match e.SE.nature with
     | SE.Exe ->
@@ -88,7 +91,7 @@ module Make
     | _ -> false
 
     let is_self_propagate e = match e.SE.nature with
-    | SE.Prop j -> proc_eq j (E.proc_of e.SE.event)
+    | SE.Prop j -> proc_eq j (get_proc e.SE.event)
     | _ -> false
 
           (* Meaningless events *)
@@ -157,7 +160,7 @@ module Make
         (fun (x1e,y1e) k ->
           let x = x1e.SE.event
           and y = y1e.SE.event in
-          let py = E.proc_of y in
+          let py = get_proc y in
           if
             m.SE.fbefore (x,y) &&
             SE.relevant_to_proc x1e py && 
@@ -173,7 +176,7 @@ module Make
         (fun (x1e,y1e) k ->
           let x = x1e.SE.event
           and y = y1e.SE.event in
-          let px = E.proc_of x in
+          let px = get_proc x in
           
           if
             m.SE.fafter (x,y) &&
@@ -206,7 +209,7 @@ module Make
 (* Compute nature of relevant events *)
     let nature_of_relevant i x =
       if SE.globally_visible x then begin
-        if proc_eq (E.proc_of x) i then
+        if proc_eq (get_proc x) i then
           SE.Com
         else
           SE.Prop i
@@ -282,7 +285,7 @@ module Make
             E.EventSet.fold
               (fun e k -> 
                 if SE.globally_visible e then
-                  let j = E.proc_of e
+                  let j = get_proc e
                   and ecom = { SE.nature = SE.Com ; event = e; } in
                   List.fold_left
                     (fun k i ->
@@ -303,15 +306,15 @@ module Make
                   | R,R -> assert false
                   | R,W ->
                       ({ SE.nature = SE.Exe ; event = x ; },
-                       { SE.nature = SE.Prop (E.proc_of x) ; event = y ; })::k
+                       { SE.nature = SE.Prop (get_proc x) ; event = y ; })::k
                   | W,R ->
-                      ({ SE.nature = SE.Prop (E.proc_of y) ; event = x ; },
+                      ({ SE.nature = SE.Prop (get_proc y) ; event = x ; },
                        { SE.nature = SE.Exe ; event = y ; })::k
                   | W,W ->
                       if !Misc.switch then k
                       else
                       ({ SE.nature = SE.Com ; event = x ; },
-                       { SE.nature = SE.Prop (E.proc_of x) ; event = y ; })::k
+                       { SE.nature = SE.Prop (get_proc x) ; event = y ; })::k
                 else k)
               com [] in
           SE.SplittedRel.of_list pairs in

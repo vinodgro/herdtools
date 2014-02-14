@@ -1,29 +1,32 @@
 (*********************************************************************)
-(*                        Herd                                       *)
+(*                        Diy                                        *)
 (*                                                                   *)
 (* Luc Maranget, INRIA Paris-Rocquencourt, France.                   *)
 (* Jade Alglave, University College London, UK.                      *)
 (*                                                                   *)
-(*  Copyright 2013 Institut National de Recherche en Informatique et *)
+(*  Copyright 2014 Institut National de Recherche en Informatique et *)
 (*  en Automatique and the authors. All rights reserved.             *)
 (*  This file is distributed  under the terms of the Lesser GNU      *)
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Current architecture *)
-type t =
-  | X86
-  | PPC
-  | ARM
-  | C
+(* Base type for produced tests *)
 
-val tags : string list
-val parse : string -> t option
-val lex : string -> t
-val pp : t -> string
+type t =  Long | LongLong | Int | Short | Char 
 
+let tags =  ["longlong";"long";"int";"short";"char";]
 
-val arm : t
-val ppc : t
-val x86 : t
+let parse s = match s with
+| "longlong" -> Some LongLong
+| "long" -> Some Long
+| "int" -> Some Int
+| "short" -> Some Short
+| "char" -> Some Char
+| _ -> None
 
+let pp = function
+  | LongLong -> "longlong"
+  | Long -> "long"
+  | Int -> "int"
+  | Short -> "short"
+  | Char -> "char"

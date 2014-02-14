@@ -16,6 +16,7 @@ let nprocs = ref 4
 let size = ref 6
 let one = ref false 
 let arch = ref PPC
+let typ = ref TypBase.Int
 let tarfile = ref None
 let prefix = ref None
 let safes = ref None 
@@ -118,6 +119,13 @@ let common_specs =
     | None -> false
     | Some a -> arch := a ; true)
     Archs.tags "specify architecture"::
+  Util.parse_tag
+    "-type"
+    (fun tag -> match TypBase.parse tag with
+    | None -> false
+    | Some a -> typ := a ; true)
+    TypBase.tags
+    (sprintf "specify base type, default %s" (TypBase.pp !typ))::
    ("-o", Arg.String (fun s -> tarfile := Some s),
     "<name.tar> output litmus tests in archive <name.tar> (default, output in curent directory)")::
   ("-c", Arg.Bool (fun b ->  canonical_only := b),

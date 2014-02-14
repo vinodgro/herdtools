@@ -29,22 +29,19 @@ type sd = Same|Diff
 (* Direction of related events *)
 type extr = Dir of dir | Irr 
 
-(* Atomicity of events *)
-type atom = Atomic | Plain | Reserve
+
 
 (* Associated pretty print & generators *)
 val pp_ie : ie -> string
 val pp_dir : dir -> string
 val pp_extr : extr -> string
 val pp_sd : sd -> string
-val pp_atom : atom -> string
 
 val fold_ie : (ie -> 'a -> 'a) -> 'a -> 'a
 val fold_extr : (extr -> 'a -> 'a) -> 'a -> 'a
 val fold_sd : (sd -> 'a -> 'a) -> 'a -> 'a
 val fold_sd_extr : (sd -> extr -> 'a -> 'a) -> 'a -> 'a
 val fold_sd_extr_extr : (sd -> extr -> extr -> 'a -> 'a) -> 'a -> 'a
-val fold_atom : (atom -> 'a -> 'a) -> 'a -> 'a
 
 type check =
   | Sc | Uni | Thin | Critical | Free | Ppo | Transitive | Total
@@ -54,3 +51,6 @@ type com =  CRf | CFr | CWs
 
 val pp_com : com -> string
 val fold_com : (com -> 'a -> 'a) -> 'a -> 'a
+
+(* Info in tests *)
+type info = (string * string) list

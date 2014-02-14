@@ -19,6 +19,7 @@ module Config = struct let eieio = true end
 module Make(V:Constant.S)(C:Config)  =
   struct
     include PPCBase
+    include MachAtom
     module V = V
 
 (**********)

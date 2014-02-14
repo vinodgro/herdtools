@@ -15,9 +15,11 @@ module type S = sig
 
   type fence
   type dp
+  type atom
+
+  val pp_atom : atom -> string
 
   val strong : fence
-
   val pp_fence : fence -> string
 
 (* edge proper *)
@@ -35,7 +37,7 @@ module type S = sig
     | RfStar of ie
     | Rmw
 
-  type edge = { edge: tedge;  a1:atom; a2: atom; }
+  type edge = { edge: tedge;  a1:atom option; a2: atom option; }
   val plain_edge : tedge -> edge
   
   val fold_edges : (edge -> 'a -> 'a) -> 'a -> 'a
@@ -46,8 +48,10 @@ module type S = sig
 
   val pp_tedge : tedge -> string
   val pp_edge : edge -> string
+  val compare_atomo : atom option -> atom option -> int
   val compare : edge -> edge -> int
 
+  val parse_fence : string -> fence
   val parse_edge : string -> edge
   val parse_edges : string -> edge list
 
@@ -80,11 +84,15 @@ module type S = sig
 (* Expansion of Irr directions *)
   val expand_edges : edge list -> (edge list -> 'a -> 'a) -> 'a -> 'a
 
+(* Resolve Irr directions and unspecified atom *)
+  val resolve_edges : edge list -> edge list
+
 (* Possible interpretation of edge sequence as an edge *)
   val compact_sequence : edge list -> edge list -> edge -> edge -> edge list list
 (* Utilities *)
   val is_detour : edge -> bool
   val is_store : edge -> bool
+  val is_ext : edge -> bool
 
 (* Set *)
   module Set : MySet.S with type elt = edge
@@ -95,12 +103,16 @@ end
 
 module Make(F:Fence.S) : S
 with type fence = F.fence
-and type dp = F.dp = struct
+and type dp = F.dp 
+and type atom = F.atom = struct
 
   open Code
 
   type fence = F.fence
   type dp = F.dp
+  type atom = F.atom
+
+  let pp_atom = F.pp_atom
 
   let pp_fence = F.pp_fence
 
@@ -120,16 +132,20 @@ and type dp = F.dp = struct
     | RfStar of ie
     | Rmw
 
- type edge = { edge: tedge;  a1:atom; a2: atom; }
+ type edge = { edge: tedge;  a1:atom option; a2: atom option; }
 
 
   open Printf
 
-  let plain_edge e = { a1=Plain; a2=Plain; edge=e; }
+  let plain_edge e = { a1=None; a2=None; edge=e; }
 
-  let pp_aa a1 a2 = match a1,a2 with
-  | Plain,Plain -> ""
-  | _,_ -> pp_atom a1 ^ pp_atom a2
+  let pp_a = function
+    | None -> "P"
+    | Some a -> F.pp_atom a
+
+  let pp_aa a1 a2 = match a1, a2 with
+  | None,None -> ""
+  | _,_ -> sprintf "%s%s" (pp_a a1) (pp_a a2)
 
   let pp_tedge = function
     | Rf ie -> sprintf "Rf%s" (pp_ie ie)
@@ -151,26 +167,22 @@ and type dp = F.dp = struct
 
   let pp_edge e = pp_tedge e.edge ^ pp_aa e.a1 e.a2
 
-  let compare_atomic a1 a2 = match a1,a2 with
-  | Atomic,(Plain|Reserve)
-  | Plain,Reserve -> -1
-  | Atomic,Atomic
-  | Plain,Plain
-  | Reserve,Reserve -> 0
-  | Plain,Atomic
-  | Reserve,(Plain|Atomic) -> 1
+  let compare_atomo a1 a2 = match a1,a2 with
+  | None,None -> 0
+  | None,Some _ -> -1
+  | Some _,None -> 1
+  | Some a1,Some a2 -> F.compare_atom a1 a2
 
+  let compare e1 e2 = match compare_atomo e1.a1 e2.a1 with
+  | 0 ->
+      begin match  compare_atomo e1.a2 e2.a2 with
+      | 0 -> Pervasives.compare e1.edge e2.edge
+      | r -> r
+      end
+  | r -> r
 
-let compare e1 e2 = match compare_atomic e1.a1 e2.a1 with
-| 0 ->
-    begin match  compare_atomic e1.a2 e2.a2 with
-    | 0 -> Pervasives.compare e1.edge e2.edge
-    | r -> r
-    end
-| r -> r
-
-let pp_strong sd e1 e2 = 
-  sprintf "Fenced%s%s%s" (pp_sd sd) (pp_extr e1) (pp_extr e2)
+  let pp_strong sd e1 e2 = 
+    sprintf "Fenced%s%s%s" (pp_sd sd) (pp_extr e1) (pp_extr e2)
 
 (* Backward compatibility... *)
 
@@ -228,67 +240,83 @@ let fold_tedges f r =
   let r = fold_com (fun c r -> f (Back c) r) r in
   r
 
-let fold_edges f =
-  fold_atom
-    (fun a1 ->
-      fold_atom
-        (fun a2 ->
-          (fold_tedges
-             (fun te k ->
-               match a1,a2,te with
-               | Plain,Plain,Store ->
-                   f {a1; a2; edge=te;} k
-               | _,_,Store -> k
-               | _,_,_ ->
-                   match a1,do_dir_src te,a2,do_dir_tgt te with
-                   | Reserve,Dir W,_,_
-                   | _,_,Reserve, Dir W -> k
-                   | _ ->
-                       f {a1; a2; edge=te;} k))))
+  let fold_atomo f k = f None (F.fold_atom (fun a k -> f  (Some a) k) k)
 
-let iter_edges f = fold_edges (fun e () -> f e) ()
+  let applies_atom a d = match a with
+  | None -> true
+  | Some a -> F.applies_atom a d
 
-let t = Hashtbl.create 101
+  let fold_edges f =
+   fold_atomo
+      (fun a1 ->
+        fold_atomo
+          (fun a2 ->
+            (fold_tedges
+               (fun te k ->
+                 match te with
+                 | Store ->
+                     if a1 = None && a2=None then
+                       f {a1; a2; edge=te;} k
+                     else k
+                 | _ ->
+                     let d1 = do_dir_src te
+                     and d2 = do_dir_tgt te in
+                     if applies_atom a1 d1 && applies_atom a2 d2 then
+                       f {a1; a2; edge=te;} k
+                     else k))))
 
-let add_lxm lxm e =  Hashtbl.add t lxm e
+  let iter_edges f = fold_edges (fun e () -> f e) ()
+
+  let t = Hashtbl.create 101
+
+  let add_lxm lxm e =  Hashtbl.add t lxm e
 
 (* Fill up lexeme table *)
-let () =
-  iter_edges (fun e -> add_lxm (pp_edge e) e) ;
-  fold_sd_extr_extr
-    (fun sd e1 e2 () ->
-      add_lxm
-        (pp_strong sd e1 e2) (plain_edge (Fenced (F.strong,sd,e1,e2)))) () ;
-  let fill_opt tag dpo sd e = match dpo with
-  | None -> ()
-  | Some dp ->
-      add_lxm
-        (pp_dp_default tag sd e) 
-        (plain_edge (Dp (dp,sd,e))) in
-  fold_sd
-    (fun sd () ->
-      fill_opt "Dp" F.ddr_default sd Irr ;
-      fill_opt "Dp" F.ddr_default sd (Dir R) ;
-      fill_opt "Ctrl" F.ctrlr_default sd (Dir R) ;
-      fill_opt "Dp" F.ddw_default sd (Dir W) ;
-      fill_opt "Ctrl" F.ctrlw_default sd (Dir W) ;
-      ()) () ;
-  add_lxm "DetourRR" (plain_edge (Detour (Dir R))) ;
-  add_lxm "DetourWR" (plain_edge (Detour (Dir W))) ;
-  ()
+  let () =
+    iter_edges (fun e -> add_lxm (pp_edge e) e) ;
+    fold_sd_extr_extr
+      (fun sd e1 e2 () ->
+        add_lxm
+          (pp_strong sd e1 e2) (plain_edge (Fenced (F.strong,sd,e1,e2)))) () ;
+    let fill_opt tag dpo sd e = match dpo with
+    | None -> ()
+    | Some dp ->
+        add_lxm
+          (pp_dp_default tag sd e) 
+          (plain_edge (Dp (dp,sd,e))) in
+    fold_sd
+      (fun sd () ->
+        fill_opt "Dp" F.ddr_default sd Irr ;
+        fill_opt "Dp" F.ddr_default sd (Dir R) ;
+        fill_opt "Ctrl" F.ctrlr_default sd (Dir R) ;
+        fill_opt "Dp" F.ddw_default sd (Dir W) ;
+        fill_opt "Ctrl" F.ctrlw_default sd (Dir W) ;
+        ()) () ;
+    add_lxm "DetourRR" (plain_edge (Detour (Dir R))) ;
+    add_lxm "DetourWR" (plain_edge (Detour (Dir W))) ;
+    ()
 
 
-let fold_pp_edges f =
-  Hashtbl.fold
-    (fun s e k ->
-      match e.a1,e.a2 with
-      | Plain,Plain -> f s k
-      | _,_ -> k)
-    t
+  let fold_pp_edges f =
+    Hashtbl.fold
+      (fun s e k ->
+        if e.a1=None && e.a2=None then
+          f s k
+        else k)
+      t
 
-let parse_edge s = 
-  try Hashtbl.find t s
-  with Not_found -> Warn.fatal "Bad edge: %s" s
+  let fences_pp =
+    F.fold_all_fences
+      (fun f k -> (F.pp_fence f,f)::k)
+      []
+
+  let parse_fence s =
+    try List.assoc s fences_pp
+    with Not_found -> Warn.fatal "%s is not a fence" s
+
+  let parse_edge s = 
+    try Hashtbl.find t s
+    with Not_found -> Warn.fatal "Bad edge: %s" s
 
 let parse_edges s = List.map parse_edge (LexUtil.just_split s)
 
@@ -346,7 +374,16 @@ let loc_sd e = match e.edge with
       | Dir d1,Dir d2 -> d1=d2
       end
 
-  let can_precede_atoms x y = x.a2 = y.a2
+  let is_ext e = match e.edge with
+  | Rf Ext|Fr Ext|Ws Ext
+  | Leave _|Back _ -> true
+  | _ -> false
+
+  let can_precede_atoms x y = match x.a1,y.a2 with
+  | None,_
+  | _,None -> true
+  | Some a1,Some a2 -> F.compare_atom a1 a2 = 0
+
 
   let can_precede x y = can_precede_dirs  x y && can_precede_atoms x y
 
@@ -393,6 +430,54 @@ let loc_sd e = match e.edge with
 
   let expand_edges es f = do_expand_edges (List.rev es) f []
 
+(* resolve *)
+  let resolve_pair e1 e2 =
+    let e1,e2 =
+      let d1 = dir_tgt e1 and d2 = dir_src e2 in
+      match d1,d2 with
+      | Irr,Dir d -> set_tgt d e1,e2
+      | Dir d,Irr -> e1,set_src d e2
+      | _,_ -> e1,e2 in
+    let a1 = e1.a2 and a2 = e2.a1 in
+    match a1,a2 with
+    | None,Some _ -> { e1 with a2 = a2;},e2
+    | Some _,None -> e1, { e2 with a1 = a1}
+    | _,_ -> e1,e2
+
+  let merge_dir d1 d2 = match d1,d2 with
+  | (Irr,Dir d)|(Dir d,Irr) -> d
+  | Dir d1,Dir d2 -> assert (d1=d2) ; d1
+  | Irr,Irr -> assert false
+
+  let merge_atom a1 a2 = match a1,a2 with
+  | None,Some _ -> a2
+  | Some _,None -> a1
+  | None,None -> None
+  | Some a1,Some a2 -> assert (F.compare_atom a1 a2 = 0) ; Some a1
+
+  let merge_pair e1 e2 =
+    let tgt = merge_dir (dir_tgt e1) (dir_tgt e2)
+    and src = merge_dir (dir_src e1) (dir_src e2) in
+    let e = set_tgt tgt (set_src src e1) in
+    { e with a1 = merge_atom e1.a1 e2.a1; a2 = merge_atom e1.a2 e2.a2; }
+
+ 
+  let resolve_edges es = match es with
+  | []|[_] -> es
+  | fst::es ->
+     let rec do_rec p = function
+     | [] -> 
+         let p,fst = resolve_pair p fst in
+         fst,p,[]
+     | e::es ->
+         let p,e = resolve_pair p e in
+         let fst,q,es = do_rec e es in
+         fst,p,q::es in
+     let fst1,fst2,es = do_rec fst es in
+     let fst = merge_pair fst1 fst2 in
+     fst::es
+     
+(* compact *)
   let seq_sd e1 e2 = match loc_sd e1,loc_sd e2 with
   | Same,Same -> Same
   | _,_ -> Diff

@@ -25,12 +25,16 @@ module Make(S : SemExtra.S) = struct
   let int_map_find k m =
     try IntMap.find k m
     with Not_found -> []
+
+  let get_poi e = match E.progorder_of e with
+  | Some x -> x
+  | None -> assert false
         
   let progorder_as_list es  =
     let by_po =
       E.EventSet.fold
         (fun e k ->
-          let poi = E.progorder_of e in
+          let poi = get_poi e in
           let es_poi = int_map_find  poi k in
           IntMap.add poi (e::es_poi) k)
         es IntMap.empty in

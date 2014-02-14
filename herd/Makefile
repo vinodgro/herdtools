@@ -7,7 +7,9 @@ EXTRAPROGS=
 PROGS=herd.byte
 MDL=x86tso.cat herd.cat herdcat.cat ppc.cat sc.cat LL.cat arm.cat power.cat \
  atom.cat pretty.cat prettycat.cat fulleieio.cat armllh.cat uniproc.cat uniproccat.cat \
- minimal.cat minimalcat.cat qualcomm.cat
+ minimal.cat minimalcat.cat qualcomm.cat \
+ sccat.cat
+
 CFG=apoil.cfg enslip.cfg web.cfg doc.cfg
 DOT=test7.dot doc.dot
 

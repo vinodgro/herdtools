@@ -106,15 +106,15 @@ struct
   |R ->
       let rA,st = next_reg st in
       begin match e.C.atom with
-      | Plain ->
+      | None ->
           Some rA,init,pseudo [emit_load_ins e.C.loc rA],st
-      | Atomic|Reserve ->
-          Warn.fatal "No atomic load nor reserve for X86"
+      | Some Atomic ->
+          Warn.fatal "No atomic load for X86"
       end
   |W ->
       if
         do_sta ||
-        (match e.C.atom with Atomic -> true | Plain|Reserve -> false)
+        (match e.C.atom with Some Atomic -> true | None -> false)
       then
         let rX,st = next_reg st in
         None,init,pseudo (emit_sta e.C.loc rX e.C.v),
