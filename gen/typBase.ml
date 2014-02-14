@@ -12,17 +12,21 @@
 
 (* Base type for produced tests *)
 
-type t = Int | Short | Char 
+type t =  Long | LongLong | Int | Short | Char 
 
-let tags =  ["int";"short";"char";]
+let tags =  ["longlong";"long";"int";"short";"char";]
 
 let parse s = match s with
+| "longlong" -> Some LongLong
+| "long" -> Some Long
 | "int" -> Some Int
 | "short" -> Some Short
 | "char" -> Some Char
 | _ -> None
 
 let pp = function
+  | LongLong -> "longlong"
+  | Long -> "long"
   | Int -> "int"
   | Short -> "short"
   | Char -> "char"

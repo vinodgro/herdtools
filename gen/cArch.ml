@@ -122,6 +122,8 @@ open Printf
   let dump_tbase t =
     let open TypBase in
     match t with
+    | LongLong -> "long long"
+    | Long -> "long"
     | Int -> "int"
     | Short -> "short"
     | Char -> "char"
@@ -130,6 +132,7 @@ open Printf
 
   let dump_typ = function
     | Plain t -> dump_tbase t
+    | Atomic TypBase.LongLong -> "atomic_llong"
     | Atomic t -> sprintf "atomic_%s" (dump_tbase t)
 
   type exp =

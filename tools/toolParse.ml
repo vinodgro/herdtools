@@ -39,10 +39,8 @@ end = struct
     end
 
   module LexConf = Splitter.Default
-  module SP = Splitter.Make(LexConf)
 
-  let from_chan name chan = 
-    let (splitted:Splitter.result) =  SP.split name chan in
+  let from_chan chan splitted = 
     match splitted.Splitter.arch with
     | PPC ->
         let module PPC = PPCBase in
@@ -93,9 +91,13 @@ end = struct
         end in
         let module X = Make (ARM) (ARMLexParse) in
         X.zyva chan splitted
+    | C -> Warn.fatal "No C arch in toolParse.ml"
 
   let from_file name =
-    Misc.input_protect
-      (from_chan name)
-      name
+    let module Y = ToolSplit.Top(LexConf)(T)
+        (struct
+          let zyva = from_chan
+        end) in
+    Y.from_file name
+
 end

@@ -12,7 +12,7 @@
 
 (* Base type for produced tests *)
 
-type t = Int | Short | Char 
+type t = Long | LongLong | Int | Short | Char 
 
 val tags : string list
 
