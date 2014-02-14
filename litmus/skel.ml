@@ -50,6 +50,7 @@ module type Config = sig
   val carch : Archs.System.t Lazy.t
   val xy : bool
   val pldw : bool
+  val c11 : bool
   include DumpParams.Config
 end
 
@@ -344,6 +345,7 @@ end = struct
     O.o "#include <time.h>" ;
     O.o "#include <limits.h>" ;
     O.o "#include \"utils.h\"" ;
+    if Cfg.c11 then O.o "#include <stdatomic.h>";
     O.o "#include \"outs.h\"" ;
     if do_affinity then O.o "#include \"affinity.h\"" ;
     O.o "" ;

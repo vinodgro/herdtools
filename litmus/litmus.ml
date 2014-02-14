@@ -119,6 +119,7 @@ let opts =
      (get_gccopts `C)
    end ;
    argstring "-gcc" Option.gcc "<name> name of gcc" ;
+   argbool "-c11" Option.c11 "enable the C11 standard";
    argstring "-linkopt" Option.linkopt "<flags> set gcc link option(s)" ;
    "-gas",
    Arg.Bool set_gas,
@@ -238,6 +239,7 @@ let () =
       let xy = !xy
       let pldw = !pldw
       let gcc = !gcc
+      let c11 = !c11
       let crossrun = !crossrun
       let driver = !driver
       let sleep = !sleep

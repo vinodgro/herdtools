@@ -36,6 +36,7 @@ module type CommonConfig = sig
   val driver : Driver.t
   val crossrun : Crossrun.t
   val gcc : string
+  val c11 : bool
   val xy : bool
   val pldw : bool
   val morearch : MoreArch.t
