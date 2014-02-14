@@ -80,8 +80,8 @@ end = struct
         fprintf chan "locations [" ;
         List.iter
           (fun (loc,t) -> match t with
-          | MiscParser.I -> fprintf chan "%s; " (I.dump_location loc)
-          | MiscParser.P -> fprintf chan "%s*; "(I.dump_location loc))
+          | MiscParser.Ty _ -> fprintf chan "%s; " (I.dump_location loc)
+          | MiscParser.Pointer _ -> fprintf chan "%s*; "(I.dump_location loc))
           locs ;
         fprintf chan "]\n"
     end ;
@@ -115,8 +115,8 @@ end = struct
             (String.concat " "
                (List.map
                   (fun (loc,t) -> match t with
-                  | MiscParser.I -> sprintf "%s; " (I.dump_location loc)
-                  | MiscParser.P -> sprintf "%s*; "(I.dump_location loc))
+                  | MiscParser.Ty _ -> sprintf "%s; " (I.dump_location loc)
+                  | MiscParser.Pointer _ -> sprintf "%s*; "(I.dump_location loc))
                   locs))::k
     end @@
     [I.dump_constr t.condition]

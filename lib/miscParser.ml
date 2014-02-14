@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* The basic types of architectures and semantics, just parsed *)  
+(* The basic types of architectures and semantics, just parsed *)
 
 type maybev = SymbConstant.v
 
@@ -56,7 +56,7 @@ let as_local_proc i = function
   | Location_global _ -> None
   | Location_sreg _ -> assert false
 
-  
+
 module LocSet =
   MySet.Make
     (struct type t = location let compare = location_compare end)
@@ -78,7 +78,7 @@ let pp_outcome o =
   String.concat " "
     (List.map (fun a -> sprintf "%s;" (pp_atom a)) o)
 
-type run_type = I | P (* Integer|Pointer *)
+type run_type = Ty of string | Pointer of string
 
 
 (* Packed result *)
@@ -95,13 +95,13 @@ type ('loc,'v,'ins) r3 =
       (('loc * 'v) list,
        (int * 'ins list) list,
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
-       'loc) result    
+       'loc) result
 
 type ('loc,'v,'code) r4 =
       (('loc * 'v) list,
        'code list,
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
-       'loc) result    
+       'loc) result
 
 (* Result of generic parsing *)
 type 'pseudo t =

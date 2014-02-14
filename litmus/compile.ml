@@ -23,37 +23,48 @@ module Generic (A : Arch.Base) = struct
     | Constant.Symbolic _ -> RunType.Pointer "int"
 
   let type_in_final p reg final flocs =
-    ConstrGen.fold_constr
-      (fun a t ->
-         let open ConstrGen in
-         match a with
-         | LV (A.Location_reg (q,r),v) when p=q && A.reg_compare reg r = 0 ->
-             begin match typeof v,t with
-             | (_,RunType.Pointer _)
-             | (RunType.Pointer _,_) -> RunType.Pointer "int"
-             | RunType.Ty _,RunType.Ty _ -> RunType.Ty "int"
-             end
-         | _ -> t)
-      final
-      (List.fold_right
-         (fun (loc,t) k -> match loc with
-            | A.Location_reg (q,r) when p=q && A.reg_compare reg r = 0 ->
-                begin match t with
-                | MiscParser.I -> k
-                | MiscParser.P -> RunType.Pointer "int"
+    Misc.proj_opt
+      (RunType.Ty "int")
+      (ConstrGen.fold_constr
+         (fun a t ->
+            let open ConstrGen in
+            match a with
+            | LV (A.Location_reg (q,r),v) when p=q && A.reg_compare reg r = 0 ->
+                begin match typeof v,t with
+                | (RunType.Ty s1, Some (RunType.Ty s2))
+                | (RunType.Pointer s1, Some (RunType.Pointer s2))
+                  when Misc.string_eq s1 s2 ->
+                    t
+                | (ty, None) -> Some ty
+                | (_, Some _) ->
+                    (* TODO: Improve the warning *)
+                    Warn.fatal "Type missmatch between the locations and \
+                                the final condition"
                 end
-            | _ -> k)
-         flocs
-         (RunType.Ty "int"))
+            | _ -> t)
+         final
+         (List.fold_right
+            (fun (loc,t) k -> match loc with
+               | A.Location_reg (q,r) when p=q && A.reg_compare reg r = 0 ->
+                   begin match t with
+                   | MiscParser.Ty s -> Some (RunType.Ty s)
+                   | MiscParser.Pointer s -> Some (RunType.Pointer s)
+                   end
+               | _ -> k)
+            flocs
+            None)
+      )
 
     let add_addr_type a ty env =
       try
         let tz = StringMap.find a env in
-        let ty =
-          match ty,tz with
-          | RunType.Ty _,RunType.Ty _ -> RunType.Ty "int"
-          | (RunType.Pointer _,_)|(_,RunType.Pointer _) -> RunType.Pointer "int" in
-        StringMap.add a ty env
+        match ty,tz with
+        | (RunType.Pointer s1, RunType.Pointer s2)
+        | (RunType.Ty s1, RunType.Ty s2) when Misc.string_eq s1 s2 -> env
+        | (RunType.Pointer _, _)
+        | (RunType.Ty _, _) ->
+            (* TODO: Improve the warning *)
+            Warn.fatal "Type missmatch detected"
       with
         Not_found -> StringMap.add a ty env
 

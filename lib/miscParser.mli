@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* The basic types of architectures and semantics, just parsed *)  
+(* The basic types of architectures and semantics, just parsed *)
 
 type maybev = SymbConstant.v
 
@@ -41,7 +41,7 @@ type outcome = atom list
 val pp_atom : atom -> string
 val pp_outcome : outcome -> string
 
-type run_type = I | P (* Integer|Pointer *)
+type run_type = Ty of string | Pointer of string
 
 (* Packed result *)
 type info = (string * string) list
@@ -57,13 +57,13 @@ type ('loc,'v,'ins) r3 =
       (('loc * 'v) list,
        (int * 'ins list) list,
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
-       'loc) result    
+       'loc) result
 
 type ('loc,'v,'code) r4 =
       (('loc * 'v) list,
        'code list,
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
-       'loc) result    
+       'loc) result
 
 (* Result of generic parsing *)
 type 'pseudo t =

@@ -41,7 +41,7 @@ module Make(I:I) : sig
     (I.state, prog, I.constr, I.location)
         MiscParser.result
       -> unit
-end = struct    
+end = struct
   open Printf
   open I
   type prog =  (int * I.A.pseudo list) list
@@ -93,13 +93,13 @@ end = struct
 (* Conditions *)
     dump_sep chan "Check" ;
     begin match t.locations with
-    | [] -> () 
+    | [] -> ()
     | locs ->
         fprintf chan "locations [" ;
         List.iter
           (fun (loc,t) -> match t with
-          | MiscParser.I -> fprintf chan "%s; " (I.dump_location loc)
-          | MiscParser.P -> fprintf chan "%s*; "(I.dump_location loc))
+          | MiscParser.Ty _ -> fprintf chan "%s; " (I.dump_location loc)
+          | MiscParser.Pointer _ -> fprintf chan "%s*; "(I.dump_location loc))
           locs ;
         fprintf chan "]\n"
     end ;
