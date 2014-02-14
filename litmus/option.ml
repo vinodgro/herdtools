@@ -108,6 +108,7 @@ let smt = ref 2
 let prealloc = ref false
 let speedcheck = ref Speedcheck.NoSpeed
 let gcc = ref "gcc"
+let c11 = ref false
 let linkopt = ref ""
 let targetos = ref TargetOS.Linux
 let gas = ref None
