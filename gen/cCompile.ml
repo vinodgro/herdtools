@@ -18,6 +18,7 @@ open Code
 module type Config = sig
   include Top.Config
   include Cycle.Config
+  val list_edges : bool
   val typ : TypBase.t
 end
 
@@ -28,6 +29,16 @@ module Make(O:Config) : Builder.S
         let deftype = O.typ
       end
       module E = Edge.Make(A)
+      let () =
+        if O.list_edges then begin
+          eprintf "Edges:" ;
+          let es = E.fold_pp_edges (fun s k -> s::k) [] in
+          let es = List.sort String.compare es in
+          List.iter (eprintf " %s") es ;        
+          eprintf "\n%!" ;
+          exit 0
+        end
+
       module R = Relax.Make(A)(E)
       module C = Cycle.Make(O)(E)
 

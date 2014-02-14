@@ -39,7 +39,7 @@ module type Config = sig
   val lowercase : bool
 end
 
-module Make(Co:Config) (A:Arch.S) = struct
+module Make(Co:Config) (A:Fence.S) = struct
   module E = Edge.Make(A)
   module N = Namer.Make(A)(E)
   module Norm = Normaliser.Make(Co)(E)
@@ -76,7 +76,7 @@ module Make(Co:Config) (A:Arch.S) = struct
       if skip_line line then do_rec ()
       else begin
         let name,es = parse_line line in
-        let ps = Norm.normalise_family es in
+        let ps = Norm.normalise_family (E.resolve_edges es) in
         k := add name ps !k ;
         do_rec ()
     end in
@@ -148,5 +148,7 @@ let () =
   | ARM ->
       let module M = Build(ARMArch.Make(V)) in
       M.zyva
-  | C -> assert false)
+  | C ->
+      let module M = Build(CArch) in
+      M.zyva)
     stdin

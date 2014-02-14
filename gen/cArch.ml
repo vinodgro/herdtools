@@ -43,9 +43,14 @@ open Printf
     | Con -> 'I'
 
 (* Atoms *)
+  open Code
   type atom = mem_order
   let default_atom = SC
-  let applies_atom _a _d = true
+  let applies_atom a d = match a,d with
+  | (Acq|Acq_Rel|Con),Dir W -> false
+  | (Rel|Acq_Rel),Dir R -> false
+  | _,_ -> true
+
   let compare_atom = Pervasives.compare
   let sig_of_atom = sig_of_mem_order
   let pp_atom = function
