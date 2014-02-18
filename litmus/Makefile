@@ -4,7 +4,7 @@ LIBDIR=$(PREFIX)/lib/litmus
 CFG=conti.cfg saumur.cfg saumur.close.cfg doko.cfg squale.cfg hpcx.cfg \
  vargas.cfg vargas.cache.cfg vargas.close.cfg vargas16.cfg \
  abducens.cfg  abducens.big.cfg abducens.cache.cfg abducens.close.cfg \
- chianti.cfg portable.cfg \
+ chianti.cfg portable.cfg beaune.cfg \
  power7.cfg power7.32.cfg power.cfg g5.cfg\
  ARM.cfg ARM_ADB.cfg cortex9.cfg cortex9-O0.cfg\
  dragon.cfg dragon-arm.cfg dragon-thumb.cfg\

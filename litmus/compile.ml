@@ -64,7 +64,7 @@ module Generic (A : Arch.Base) = struct
         | (RunType.Pointer _, _)
         | (RunType.Ty _, _) ->
             (* TODO: Improve the warning *)
-            Warn.fatal "Type missmatch detected"
+            Warn.fatal "Type missmatch detected on location %s" a
       with
         Not_found -> StringMap.add a ty env
 
