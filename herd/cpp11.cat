@@ -24,7 +24,7 @@
 (* 
    TS: I made a .cfg (conf file) for running C++11 tests. To run, just
    use: 
-   ./herd -conf cpp11.conf .litmus_file
+   ./herd -conf cpp11.cfg litmus_file
 
    Other useful command line args:
    -show all (shows all allowed executions)
@@ -43,20 +43,19 @@
 
 (* Temproary concessions to the syntax *)
 (* We want both syntax i.e. [] identity + the child proof version *)
-let emps = W & ~W (* empty set -- there must be a better way. *)
-let rmw = emps    (* not done yet *)
-let ls = emps     (* successful lock *)
-let lk = emps     (* any lock *)
-let ul = emps     (* unlock. JPW: These should be added to the CPP11 list of atrbs. *)
+let set rmw = 0    (* not done yet *)
+let set ls = 0     (* successful lock *)
+let set lk = 0     (* any lock *)
+let set ul = 0     (* unlock. JPW: These should be added to the CPP11 list of atrbs. *)
 let lo = co
-let I = emps
+let set I = 0
 (* end - Temporary hacks*)
 
 
 
 (* SC atomics have acquire and release semantics. *)
-let cacq = acq | sc
-let crel = rel | sc
+let set cacq = acq | sc
+let set crel = rel | sc
 
 
 (* MB: What exactly are these reations? *)

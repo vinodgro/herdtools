@@ -49,7 +49,7 @@ let pp () =
 %token STAR PLUS OPT COMP BACKSLASH NEGONE TWO LOC INT EXT
 /*Scopes*/
 %token WI SG WG KER DEV
-%token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN
+%token LET REC SET RLN AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN
 %token REQUIRES PROVIDES
 %token ARROW
 %type <AST.t> main
@@ -102,9 +102,14 @@ var_list:
 commaopt:
 | COMMA { () }
 |       { () }
-    
+
 bind:
-| VAR EQUAL exp { ($1,$3) }
+| rlnopt VAR EQUAL exp { ($2,$4) }
+| SET    VAR EQUAL setexp { ($2,$4) }
+
+rlnopt:
+| RLN { () }
+|     { () }
 
 bind_list:
 | bind { [$1] }
@@ -112,7 +117,7 @@ bind_list:
 
 pat_bind:
 | bind { $1 }
-| VAR LPAR formals RPAR EQUAL exp { ($1,Fun ($3,$6)) }
+| rlnopt VAR LPAR formals RPAR EQUAL exp { ($2,Fun ($4,$7)) }
 
 pat_bind_list:
 | pat_bind { [$1] }
@@ -129,6 +134,7 @@ formalsN:
 
 setexp:
 | VAR { Var $1 }
+| EMPTY { Empty_set }
 | UNDERSCORE { Var "_" }
 | COMP setexp { Op1(Comp,$2) }
 | setexp UNION setexp { do_op Union $1 $3 }
@@ -143,7 +149,7 @@ exp:
 | base { $1 }
 
 base:
-| EMPTY { Konst Empty }
+| EMPTY { Empty_rel }
 | select LPAR exp RPAR { Op1 ($1,$3) }
 |  exp0 { $1 }
 | LBRAC setexp STAR setexp RBRAC {Cartesian ($2, $4)}
@@ -161,7 +167,7 @@ base:
 | LOCVAR { Op(Inter, [Var $1; Var "loc"]) }
 | SCOPEVAR { 
     let (x,ext_int,sc) = $1 in
-    Op(Inter, [Var x; Konst (Scope_op (sc, ext_int))])
+    Op(Inter, [Var x; Scope_op (sc, ext_int)])
   }
 | LPAR exp RPAR { $2 }
 

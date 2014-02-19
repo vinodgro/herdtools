@@ -17,11 +17,12 @@ type op2 = Union | Inter | Seq | Diff
 type op1 = Plus | Star | Opt | Comp | Inverse | Select of direction * direction
 type ext_int = External | Internal
 type scope = Device | Kernel | Work_Group | Sub_Group | Work_Item
-type konst = Empty | Scope_op of scope * ext_int
 type var = string
 
 type exp =
-  | Konst of  konst
+  | Empty_rel 
+  | Empty_set
+  | Scope_op of scope * ext_int
   | Var of var
   | Op1 of op1 * exp
   | Op of op2 * exp list

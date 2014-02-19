@@ -26,7 +26,7 @@ let () =
      "MM",MM;  "MR",MR;  "MW",MW;
      "WM",WM; "WW",WW; "WR",WR; "RM",RM; "RW",RW; "RR",RR;
      "AA",AA; "AP",AP; "PA",PA; "PP",PP; "F",F;
-     "let",LET; "rec",REC; "and",AND;
+     "let",LET; "rec",REC; "set",SET; "rln",RLN; "and",AND;
      "acyclic",ACYCLIC; "irreflexive",IRREFLEXIVE;
      "show",SHOW;
      "unshow",UNSHOW;

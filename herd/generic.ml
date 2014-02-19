@@ -111,7 +111,8 @@ module Make
     let show_to_vbpp st =
       StringMap.fold (fun tag v k -> (tag,v)::k)   (Lazy.force st.show) []
 
-    let empty_rel = Rel E.EventRel.empty        
+    let empty_rel = Rel E.EventRel.empty   
+    let empty_set = Set E.EventSet.empty       
     let interpret test conc m id vb_pp =
 
       let is_dir = function
@@ -125,10 +126,11 @@ module Make
         | Plain -> fun e -> not (E.is_atomic e) in
 
       let rec eval env = function
-        | Konst Empty -> empty_rel
-        | Konst (Scope_op (sc,External)) ->  
+        | Empty_rel -> empty_rel
+        | Empty_set -> empty_set
+        | Scope_op (sc,External) ->  
 	    Rel (U.ext_scope sc conc.S.unv test.Test.scope_tree)
-        | Konst (Scope_op (sc,Internal)) -> 
+        | Scope_op (sc,Internal) -> 
 	    Rel (U.int_scope sc conc.S.unv test.Test.scope_tree)
         | Var k -> find_env env k
         | Cartesian (e1,e2) ->
