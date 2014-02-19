@@ -62,7 +62,9 @@ module Generic (A : Arch.Base) = struct
         match ty,tz with
         | (RunType.Pointer s1, RunType.Pointer s2)
         | (RunType.Ty s1, RunType.Ty s2) when Misc.string_eq s1 s2 -> env
-        | _,_ ->
+(* All default cases expressed,
+   will produce a warning if RunType.t is extended *)
+        | (RunType.Pointer _|RunType.Ty _),(RunType.Pointer _|RunType.Ty _) ->
             (* TODO: Improve the warning *)
             Warn.fatal
               "Type missmatch detected on location %s, required %s vs. found %s"
