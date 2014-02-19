@@ -465,6 +465,11 @@ module Make
            "P", E.EventSet.filter (fun e -> not (E.is_atomic e)) evts;
            "A", E.EventSet.filter E.is_atomic evts;
 	   "I", E.EventSet.filter E.is_mem_store_init evts;
+(* C++ RMW and lock/unlock actions *)
+           "rmw", E.EventSet.filter E.is_rmw evts;
+           "ls", E.EventSet.filter E.is_successful_lock evts;
+           "lk", E.EventSet.filter E.is_lock evts;
+           "ul", E.EventSet.filter E.is_unlock evts;
          ]) in
 
       let process_co co0 res =

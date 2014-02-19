@@ -91,6 +91,12 @@ module type S = sig
 (* Commit *)
   val is_commit : event -> bool
 
+(* C++ RMW and lock/unlock actions *)
+  val is_rmw : event -> bool
+  val is_successful_lock : event -> bool
+  val is_lock : event -> bool
+  val is_unlock : event -> bool
+
 (**************)
 (* Event sets *)
 (**************)
@@ -459,6 +465,26 @@ module Make (AI:Arch.S) :  S with module A = AI =
    let is_commit e = match e.action with
    | Commit -> true
    | _ -> false
+
+(* C++ RMW and lock/unlock actions *)
+
+  let is_rmw e = match e.action with
+    | RMW _ -> true
+    | _ -> false
+
+  let is_successful_lock e = match e.action with
+    | Lock(_, Locked) -> true
+    | _ -> false
+
+  let is_lock e = match e.action with
+    | Lock _ -> true
+    | _ -> false
+
+  let is_unlock e = match e.action with
+    | Unlock _ -> true
+    | _ -> false
+
+(* Filters *)
 
    let list_contains el list =
      List.exists (fun a -> (A.pp_atrb a) = el) list

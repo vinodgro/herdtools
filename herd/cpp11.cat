@@ -43,12 +43,7 @@
 
 (* Temproary concessions to the syntax *)
 (* We want both syntax i.e. [] identity + the child proof version *)
-let set rmw = 0    (* not done yet *)
-let set ls = 0     (* successful lock *)
-let set lk = 0     (* any lock *)
-let set ul = 0     (* unlock. JPW: These should be added to the CPP11 list of atrbs. *)
 let lo = co
-let set I = 0
 (* end - Temporary hacks*)
 
 
