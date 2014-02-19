@@ -56,15 +56,17 @@ module Generic (A : Arch.Base) = struct
       )
 
     let add_addr_type a ty env =
+(*      Printf.eprintf "Type %s : %s\n" key a (RunType.dump ty) ; *)
       try
         let tz = StringMap.find a env in
         match ty,tz with
         | (RunType.Pointer s1, RunType.Pointer s2)
         | (RunType.Ty s1, RunType.Ty s2) when Misc.string_eq s1 s2 -> env
-        | (RunType.Pointer _, _)
-        | (RunType.Ty _, _) ->
+        | _,_ ->
             (* TODO: Improve the warning *)
-            Warn.fatal "Type missmatch detected on location %s" a
+            Warn.fatal
+              "Type missmatch detected on location %s, required %s vs. found %s"
+              a (RunType.dump ty) (RunType.dump tz)
       with
         Not_found -> StringMap.add a ty env
 
@@ -375,9 +377,9 @@ let lblmap_code =
       let env =
         List.fold_right
           (fun (loc,v) env ->
-            let env = Generic.add_value v env in
             match loc with
-            | A.Location_global (a) ->
+            | A.Location_global a ->
+                let env = Generic.add_value v env in
                 Generic.add_addr_type a (Generic.typeof v) env
             | _ -> env)
           init StringMap.empty in
