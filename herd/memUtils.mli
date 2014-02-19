@@ -90,6 +90,7 @@ module Make : functor (S: SemExtra.S) -> sig
   val collect_loads : S.event_structure -> S.event list LocEnv.t
   val collect_stores : S.event_structure -> S.event list LocEnv.t
   val collect_atomics : S.event_structure -> S.event list LocEnv.t
+  val collect_mutex_actions : S.event_structure -> S.event list LocEnv.t
 
 (* Utlities for relations *)
   val restrict_to_mem_stores : S.event_rel -> S.event_rel
@@ -154,8 +155,19 @@ NOTICE: The generator takes care of placing stores to final state
 	S.event_rel ->
 	  (S.event_rel ->  'a -> 'a) -> 'a -> 'a
 
+  val fold_write_and_lock_serialization_candidates :
+      S.concrete ->
+	S.event_rel ->
+	  (S.event_rel ->  'a -> 'a) -> 'a -> 'a
+
+
 (* Apply previous fold, catching cyclic graphs errors *)
   val apply_process_co :
+      S.test ->
+        S.concrete ->
+          (S.event_rel -> 'a -> 'a) -> 'a -> 'a
+
+  val apply_process_co_and_lo :
       S.test ->
         S.concrete ->
           (S.event_rel -> 'a -> 'a) -> 'a -> 'a

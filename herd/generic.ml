@@ -472,7 +472,7 @@ module Make
            "ul", E.EventSet.filter E.is_unlock evts;
          ]) in
 
-      let process_co co0 res =
+      let process_co_and_lo co0 res =
         let co = S.tr co0 in
         let fr = U.make_fr conc co in
         let vb_pp =
@@ -490,6 +490,7 @@ module Make
             [
              "fr", fr; "fre", U.ext fr; "fri", U.internal fr;
              "co", co; "coe", U.ext co; "coi", U.internal co;
+             "lo", E.EventRel.empty;
            ] in
 
         match interpret test conc m id vb_pp with
@@ -499,5 +500,5 @@ module Make
               kont conc conc.S.fs vb_pp  res
             else res
         | None -> res in
-      U.apply_process_co test  conc process_co res
+      U.apply_process_co_and_lo test  conc process_co_and_lo res
   end

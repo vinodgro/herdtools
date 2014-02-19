@@ -96,6 +96,7 @@ module type S = sig
   val is_successful_lock : event -> bool
   val is_lock : event -> bool
   val is_unlock : event -> bool
+  val is_mutex_action : event -> bool
 
 (**************)
 (* Event sets *)
@@ -482,6 +483,10 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
   let is_unlock e = match e.action with
     | Unlock _ -> true
+    | _ -> false
+
+  let is_mutex_action e = match e.action with
+    | Lock _ | Unlock _ -> true
     | _ -> false
 
 (* Filters *)
