@@ -91,6 +91,7 @@ module Make
     type st =
         { env : env ;
           show : S.event_rel StringMap.t Lazy.t ;
+	  seen_requires_clause : bool ;
           skipped : StringSet.t ; }
 
   let select_event = match S.O.PC.showevents with
@@ -305,6 +306,13 @@ module Make
           end in
           run { st with show; } c
       | Test (pos,t,e,name,test_type) ->
+	 if st.seen_requires_clause && test_type = Provides then 
+	   begin
+	     let pp = String.sub pp pos.pos pos.len in
+	     Warn.user_error "A provides-clause must not come after a requires-clause. Culprit: '%s'." pp
+	   end;
+	 let st = {st with seen_requires_clause = 
+			     (test_type = Requires) || st.seen_requires_clause;} in
           let skip_this_check =
             match name with
             | Some name -> StringSet.mem name O.skipchecks
@@ -385,7 +393,7 @@ module Make
             (fun show (tag,v) -> StringMap.add tag v show)
             StringMap.empty (Lazy.force vb_pp)
         end in
-      run {env=m; show=show; skipped=StringSet.empty;} prog
+      run {env=m; show=show; seen_requires_clause=false; skipped=StringSet.empty;} prog
         
     let check_event_structure test atrb conc kont res =
       let prb = JU.make_procrels conc in
