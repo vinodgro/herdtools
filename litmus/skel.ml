@@ -51,6 +51,7 @@ module type Config = sig
   val xy : bool
   val pldw : bool
   val c11 : bool
+  val c11_fence : bool
   include DumpParams.Config
 end
 
@@ -448,13 +449,6 @@ let user2_barrier_def () =
   if Cfg.cautious then O.oi "mcautious();" ;
   O.o "}"
 
-let c_barrier_def () =
-  if not Cfg.c11 then
-    Warn.fatal "The C fence cannot be used without the C11 support (-c11 true)";
-  O.o "inline static void barrier_wait() {";
-  O.oi "atomic_thread_fence(memory_order_acq_rel);";
-  O.o "}"
-
 let dump_read_timebase () =
   if (do_verbose_barrier || do_timebase) && have_timebase then begin
     O.o "typedef uint64_t tb_t ;" ;
@@ -542,7 +536,6 @@ let dump_read_timebase () =
     | Pthread -> dump_pthread_barrier_vars ()
     | User|User2|UserFence|UserFence2 -> dump_user_barrier_vars ()
     | TimeBase -> dump_tb_barrier_vars ()
-    | C -> ()
     end ;
     if do_verbose_barrier then begin
       if do_affinity then O.ox indent "int ecpu[N];" ;
@@ -572,8 +565,6 @@ let dump_read_timebase () =
         dump_tb_barrier_def ()
     | Pthread ->
         pthread_barrier_def ()
-    | C ->
-        c_barrier_def ()
     | NoBarrier -> ()
     end
 
@@ -672,7 +663,11 @@ let dump_read_timebase () =
 
   let dumb_one_mbar name fence =
     O.f "inline static void %s(void) {"  name ;
-    O.fi "asm __volatile__ (\"%s\" ::: \"memory\");" fence ;
+    (if Cfg.c11_fence then
+       O.oi "atomic_thread_fence(memory_order_acq_rel);"
+     else
+       O.fi "asm __volatile__ (\"%s\" ::: \"memory\");" fence
+    );
     O.o "}"
 
   let dump_mbar_def () =
@@ -1248,7 +1243,6 @@ let dump_read_timebase () =
     | User|UserFence|UserFence2 -> malloc indent "barrier"
     | TimeBase -> ()
     | User2 -> malloc2 indent "barrier"
-    | C -> ()
     end ;
     if do_verbose_barrier && have_timebase then begin
       loop_proc_prelude indent ;
@@ -1305,7 +1299,6 @@ let dump_read_timebase () =
     | Pthread -> O.oi "barrier_free(_a->barrier);"
     | User|User2|UserFence|UserFence2 -> free indent "barrier"
     | TimeBase -> ()
-    | C -> ()
     end ;
     if do_verbose_barrier && have_timebase then begin
       loop_proc_prelude indent ;
@@ -1357,7 +1350,7 @@ let dump_read_timebase () =
     begin match barrier with
     | User|UserFence|UserFence2 ->
         O.oii "_a->barrier[_i] = 0;"
-    | Pthread|NoBarrier|User2|TimeBase|C -> ()
+    | Pthread|NoBarrier|User2|TimeBase -> ()
     end ;
     O.oi "}" ;
     if Cfg.cautious then O.oi "mcautious();" ;
@@ -1369,7 +1362,7 @@ let dump_read_timebase () =
         O.oi "}"
     | TimeBase ->
         O.oi "barrier_init(&_a->barrier);"
-    | NoBarrier|Pthread|User|UserFence|UserFence2|C -> ()
+    | NoBarrier|Pthread|User|UserFence|UserFence2 -> ()
     end ;
     O.o "}" ;
     O.o ""
@@ -1419,7 +1412,6 @@ let dump_read_timebase () =
         | Pthread ->
             O.fi "barrier_t *barrier = _a->barrier;"
         | NoBarrier -> ()
-        | C -> ()
         end ;
         O.fi "int _size_of_test = _a->_p->size_of_test;" ;
         let prf =
@@ -1553,8 +1545,6 @@ let dump_read_timebase () =
             if Cfg.cautious then O.fx iloop "mcautious();"
         | NoBarrier ->
             if Cfg.cautious then O.fx iloop "mcautious();"
-        | C ->
-            O.fx iloop "barrier_wait();";
         end ;
 
         begin match barrier with
@@ -1575,7 +1565,7 @@ let dump_read_timebase () =
             end
         end ;
         if do_isync then begin match barrier with
-        | User | User2 | UserFence | UserFence2 | TimeBase | C ->
+        | User | User2 | UserFence | UserFence2 | TimeBase ->
             let rec aux = function
             | `PPCGen
             | `PPC ->

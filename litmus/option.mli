@@ -69,6 +69,7 @@ val prealloc : bool ref
 val speedcheck : Speedcheck.t ref
 val gcc : string ref
 val c11 : bool ref
+val c11_fence : bool ref
 val linkopt : string ref
 val targetos : TargetOS.t ref
 val gas : bool option ref

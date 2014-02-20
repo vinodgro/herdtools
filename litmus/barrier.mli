@@ -13,15 +13,7 @@
 
 (* Barrier option *)
 
-type t =
-  | User
-  | Pthread
-  | NoBarrier
-  | User2
-  | TimeBase
-  | UserFence
-  | UserFence2
-  | C
+type t = User | Pthread | NoBarrier | User2 | TimeBase | UserFence | UserFence2
 
 val tags : string list
 val parse : string -> t option
