@@ -943,6 +943,5 @@ let (=|=) = check_disjoint para_comp
         let es = make_load_store_atomic es in
 	{ es with atomicity = Atomicity.singleton es.events} 
 
-
   end
 
