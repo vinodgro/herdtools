@@ -51,6 +51,7 @@ module type Config = sig
   val xy : bool
   val pldw : bool
   val c11 : bool
+  val c11_fence : bool
   include DumpParams.Config
 end
 
@@ -662,7 +663,11 @@ let dump_read_timebase () =
 
   let dumb_one_mbar name fence =
     O.f "inline static void %s(void) {"  name ;
-    O.fi "asm __volatile__ (\"%s\" ::: \"memory\");" fence ;
+    (if Cfg.c11_fence then
+       O.oi "atomic_thread_fence(memory_order_acq_rel);"
+     else
+       O.fi "asm __volatile__ (\"%s\" ::: \"memory\");" fence
+    );
     O.o "}"
 
   let dump_mbar_def () =
