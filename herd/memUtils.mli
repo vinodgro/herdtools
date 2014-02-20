@@ -158,7 +158,7 @@ NOTICE: The generator takes care of placing stores to final state
   val fold_write_and_lock_serialization_candidates :
       S.concrete ->
 	S.event_rel ->
-	  (S.event_rel ->  'a -> 'a) -> 'a -> 'a
+	  (S.event_rel -> S.event_rel -> 'a -> 'a) -> 'a -> 'a
 
 
 (* Apply previous fold, catching cyclic graphs errors *)
@@ -170,7 +170,7 @@ NOTICE: The generator takes care of placing stores to final state
   val apply_process_co_and_lo :
       S.test ->
         S.concrete ->
-          (S.event_rel -> 'a -> 'a) -> 'a -> 'a
+          (S.event_rel -> S.event_rel -> 'a -> 'a) -> 'a -> 'a
 
         
 (* fold over possibilities when saturating memory order wrt atomicity classes.

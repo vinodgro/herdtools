@@ -61,44 +61,6 @@ module Make(S : SemExtra.S) = struct
 (*Scope operations*)
 
   let get_proc_loc_tuple scope_tree num = 
-    (*Mutable variables... Sorry I'm not great at this 
-    functional thing!*)
-    let rd = ref (-1) in
-    let rk = ref (-1) in
-    let rbl = ref (-1) in
-    let rw = ref (-1) in
-    let rt = ref (-1) in    
-    let search scope_tree =
-      for dev = 0 to (List.length scope_tree)-1 do
-	let device = List.nth scope_tree dev in
-	for ker = 0 to (List.length device)-1 do
-	  let kernel = (List.nth device ker) in
-	  for i = 0 to (List.length kernel)-1 do
-	    let warps = (List.nth kernel i) in
-	    for j = 0 to (List.length warps)-1 do
-	      let threads = (List.nth  warps j) in
-	      for k = 0 to (List.length threads)-1 do	    
-		let proc_num = (List.nth threads k) in
-		if proc_num == num then
-		  begin 
-		    rd := dev;
-		    rk := ker;
-		    rbl := i;
-		    rw := j;
-		    rt := k;		
-		  end
-	      done
-	    done
-	  done
-	done
-      done
-    in
-    search scope_tree;
-    (!rd,!rk, !rbl, !rw, !rt)
-  
-  (* JPW: The following is my attempt at a more functional
-     implementation. I haven't tested it properly though... *)
-  let get_proc_loc_tuple scope_tree num = 
     let result = ref (-1,-1,-1,-1,-1) in
     List.iteri (fun dev -> 
       List.iteri (fun ker -> 
@@ -513,9 +475,9 @@ module Make(S : SemExtra.S) = struct
       end ;
       res
 
-(********************************************)
-(* Mutex serialization candidate generator. *)
-(********************************************)
+(******************************************************)
+(* Write and mutex serialization candidate generator. *)
+(******************************************************)
 
   let fold_write_and_lock_serialization_candidates conc vb kont res =
     let vb =
@@ -540,13 +502,11 @@ module Make(S : SemExtra.S) = struct
               (E.EventSet.of_list mutex_actions) E.EventRel.empty in
           List.map order_to_succ_rel orders::k)
         mutex_actions_by_loc [] in
-    let res = 
-      Misc.fold_cross_gen E.EventRel.union E.EventRel.empty
-      co_orders kont res in
-    let res = 
-      Misc.fold_cross_gen E.EventRel.union E.EventRel.empty
-      lo_orders kont res in
-    res
+    Misc.fold_cross_gen E.EventRel.union E.EventRel.empty co_orders (fun co -> 
+      (* Printf.printf "Candidate co: %a\n" E.debug_rel co;*)
+      Misc.fold_cross_gen E.EventRel.union E.EventRel.empty lo_orders (fun lo ->
+	(* Printf.printf "Candidate lo: %a\n" E.debug_rel lo; *)
+	kont co lo)) res
 
 (* With check *)
   let apply_process_co_and_lo test conc process_co_and_lo res =

@@ -470,8 +470,9 @@ module Make
            "ul", E.EventSet.filter E.is_unlock evts;
          ]) in
 
-      let process_co_and_lo co0 res =
+      let process_co_and_lo co0 lo0 res =
         let co = S.tr co0 in
+	let lo = lo0 in
         let fr = U.make_fr conc co in
         let vb_pp =
           lazy begin
@@ -488,7 +489,7 @@ module Make
             [
              "fr", fr; "fre", U.ext fr; "fri", U.internal fr;
              "co", co; "coe", U.ext co; "coi", U.internal co;
-             "lo", E.EventRel.empty;
+             "lo", lo;
            ] in
 
         match interpret test conc m id vb_pp with

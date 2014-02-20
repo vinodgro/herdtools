@@ -334,7 +334,7 @@ module Make (AI:Arch.S) :  S with module A = AI =
     | _ -> None
 
     let location_of e = match e.action with
-    | Access (_, l, _) -> Some l
+    | Access (_, l, _) | Lock (l,_) | Unlock l -> Some l
     | _ -> None
 
     let location_reg_of e = match e.action with
@@ -391,6 +391,28 @@ module Make (AI:Arch.S) :  S with module A = AI =
       proc_of e1 = proc_of e2 && progorder_of e1 < progorder_of e2
 
 
+(* C++ RMW and lock/unlock actions *)
+
+  let is_rmw e = match e.action with
+    | RMW _ -> true
+    | _ -> false
+
+  let is_successful_lock e = match e.action with
+    | Lock(_, Locked) -> true
+    | _ -> false
+
+  let is_lock e = match e.action with
+    | Lock _ -> true
+    | _ -> false
+
+  let is_unlock e = match e.action with
+    | Unlock _ -> true
+    | _ -> false
+
+  let is_mutex_action e = match e.action with
+    | Lock _ | Unlock _ -> true
+    | _ -> false
+
 (* relative to memory *)
     let is_mem_store e = match e.action with
     | Access (W,A.Location_global _,_) -> true
@@ -410,7 +432,7 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
     let is_atomic e =
       if e.atomic then begin
-        assert (is_mem e) ;
+        assert (is_mem e || is_mutex_action e) ;
         true
       end else false
 
@@ -467,27 +489,7 @@ module Make (AI:Arch.S) :  S with module A = AI =
    | Commit -> true
    | _ -> false
 
-(* C++ RMW and lock/unlock actions *)
 
-  let is_rmw e = match e.action with
-    | RMW _ -> true
-    | _ -> false
-
-  let is_successful_lock e = match e.action with
-    | Lock(_, Locked) -> true
-    | _ -> false
-
-  let is_lock e = match e.action with
-    | Lock _ -> true
-    | _ -> false
-
-  let is_unlock e = match e.action with
-    | Unlock _ -> true
-    | _ -> false
-
-  let is_mutex_action e = match e.action with
-    | Lock _ | Unlock _ -> true
-    | _ -> false
 
 (* Filters *)
 
