@@ -65,6 +65,8 @@ module Make(O:Config)(M:XXXMem.S) =
 (* NB: pos and neg are w.r.t. proposition *)
           pos : int ;
           neg : int ;
+(* number of executions that fail at least one requires-clause *)
+	  bad : int ;
 (* shown executions *)
           shown : int;
 (* registers that read memory *)
@@ -72,7 +74,7 @@ module Make(O:Config)(M:XXXMem.S) =
         }
 
     let start =
-      { states = A.StateSet.empty; cands=0; pos=0; neg=0; shown=0;
+      { states = A.StateSet.empty; cands=0; pos=0; neg=0; shown=0; bad=0;
         reads = A.LocSet.empty; }
 
 (* Check condition *)
@@ -159,7 +161,7 @@ module Make(O:Config)(M:XXXMem.S) =
 (* Called by model simulator in case of success *)
     let model_kont ochan test cstr =
       let check = check_prop test in
-      fun conc fsc vbpp c ->
+      fun conc (fsc,failed_requires_clauses) vbpp c ->
         if do_observed && not (all_observed test conc) then c
         else
           let ok = check fsc in
@@ -225,6 +227,7 @@ module Make(O:Config)(M:XXXMem.S) =
               states = A.StateSet.add fsc c.states;
               pos = if ok then c.pos+1 else c.pos;
               neg = if ok then c.neg else c.neg+1;
+	      bad = if failed_requires_clauses > 0 then c.bad+1 else c.bad;
               shown = if show_exec then c.shown+1 else c.shown;
               reads = 
                 if O.outcomereads then
@@ -330,6 +333,7 @@ module Make(O:Config)(M:XXXMem.S) =
         let pos,neg = check_wit test c in
         printf "Witnesses\n" ;
         printf "Positive: %i Negative: %i\n" pos neg ;
+	printf "Bad executions: %i\n" c.bad ;
         printf "Condition %a\n" C.dump_constraints cstr ;
         printf "Observation %s %s %i %i\n%!" tname
           (if c.pos = 0 then "Never"

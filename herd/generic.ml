@@ -91,6 +91,8 @@ module Make
     type st =
         { env : env ;
           show : S.event_rel StringMap.t Lazy.t ;
+	  seen_requires_clause : bool ;
+	  failed_requires_clauses : int ;
           skipped : StringSet.t ; }
 
   let select_event = match S.O.PC.showevents with
@@ -305,6 +307,14 @@ module Make
           end in
           run { st with show; } c
       | Test (pos,t,e,name,test_type) ->
+	 if st.seen_requires_clause && test_type = Provides then 
+	   begin
+	     let pp = String.sub pp pos.pos pos.len in
+	     Warn.user_error 
+	       "A provides-clause must not come after a requires-clause. Culprit: '%s'." pp
+	   end;
+	 let st = {st with seen_requires_clause = 
+			     (test_type = Requires) || st.seen_requires_clause;} in
           let skip_this_check =
             match name with
             | Some name -> StringSet.mem name O.skipchecks
@@ -334,28 +344,12 @@ module Make
                   (sprintf "%s: Failure of '%s'" test.Test.name.Name.name pp)
                   (show_to_vbpp st)
               end ;
-              None
-            (*
-            else begin
-              if (O.debug && O.verbose > 0) then begin
-                let pp = String.sub pp pos.pos pos.len in
-                let prov_or_req = match test_type with
-                  | Provides -> "Provides"
-                  | Requires -> "Requires"
-                in
-                MU.pp_failure test conc
-                  (sprintf "%s: Failure of %s clause '%s'" 
-                    test.Test.name.Name.name prov_or_req pp)
-                  (show_to_vbpp st)
-              end ;
-              match test_type with
-                | Provides -> None
-                | Requires ->
-                  let pp = String.sub pp pos.pos pos.len in
-                  raise (Requires_clause_failure (sprintf 
-                    "%s: Failure of Requires clause '%s'" 
-                    test.Test.name.Name.name pp))
-            *)
+	      match test_type with
+	      | Provides -> None
+	      | Requires ->
+		 let st = {st with failed_requires_clauses =
+		   st.failed_requires_clauses + 1;} in
+		 run st c		     
             end
           else begin
             W.warn "Skipping check %s" (Misc.as_some name) ;
@@ -385,7 +379,11 @@ module Make
             (fun show (tag,v) -> StringMap.add tag v show)
             StringMap.empty (Lazy.force vb_pp)
         end in
-      run {env=m; show=show; skipped=StringSet.empty;} prog
+      run {env=m; show=show; 
+	   seen_requires_clause=false; 
+	   failed_requires_clauses=0;
+	   skipped=StringSet.empty;} 
+	  prog
         
     let check_event_structure test atrb conc kont res =
       let prb = JU.make_procrels conc in
@@ -497,7 +495,7 @@ module Make
         | Some st ->
             if not O.strictskip || StringSet.equal st.skipped O.skipchecks then
               let vb_pp = lazy (show_to_vbpp st) in
-              kont conc conc.S.fs vb_pp  res
+              kont conc (conc.S.fs, st.failed_requires_clauses) vb_pp res
             else res
         | None -> res in
       U.apply_process_co_and_lo test  conc process_co_and_lo res

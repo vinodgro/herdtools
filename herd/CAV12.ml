@@ -500,7 +500,7 @@ module Make
 			    vb_pp ;
 			  res
 			end else begin           
-			  kont conc conc.S.fs vb_pp res
+			  kont conc (conc.S.fs, 0) vb_pp res
 			end
 		      end in
 		U.apply_process_co test conc process_co res
