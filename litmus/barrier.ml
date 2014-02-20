@@ -13,17 +13,9 @@
 
 (* Barrier option *)
 
-type t =
-  | User
-  | Pthread
-  | NoBarrier
-  | User2
-  | TimeBase
-  | UserFence
-  | UserFence2
-  | C
+type t = User | Pthread | NoBarrier | User2 | TimeBase | UserFence | UserFence2
 
-let tags = ["user";"userfence";"user2";"userfence2";"pthread";"none";"timebase";"c"]
+let tags = ["user";"userfence";"user2";"userfence2";"pthread";"none";"timebase";]
 
 let parse tag = match String.lowercase tag with
 | "user" -> Some User
@@ -33,7 +25,6 @@ let parse tag = match String.lowercase tag with
 | "pthread" -> Some Pthread
 | "none" -> Some NoBarrier
 | "timebase"|"tb" -> Some TimeBase
-| "c" -> Some C
 | _ -> None
 
 let pp = function
@@ -44,4 +35,3 @@ let pp = function
 | Pthread -> "pthread"
 | NoBarrier -> "none"
 | TimeBase  -> "timebase"
-| C -> "c"
