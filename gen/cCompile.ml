@@ -97,22 +97,13 @@ module Make(O:Config) : Builder.S
 
       let compile_load st p mo loc =
         let r,st = alloc_reg p st in
-        let i = match mo with
-        | None ->
-            A.Decl (A.Plain A.deftype,r,Some (load_from None loc))
-        | Some _ ->
-            A.Decl (A.Atomic A.deftype,r,Some (load_from mo loc)) in
+        let i =  A.Decl (A.Plain A.deftype,r,Some (load_from mo loc)) in
         r,i,st
 
 
       let compile_load_not_zero st p mo x =
         let r,st = alloc_reg p st in
-        let decls =
-          A.Decl
-            (begin match mo with
-            | None -> A.Plain A.deftype
-            | Some _ -> A.Atomic A.deftype
-            end,r,None)
+        let decls = A.Decl (A.Plain A.deftype,r,None)
         and body =
           A.Seq
             (A.SetReg (r,load_from mo x),
@@ -121,12 +112,7 @@ module Make(O:Config) : Builder.S
 
       let compile_load_one st p mo x =
         let r,st = alloc_reg p st in
-        let decls =
-          A.Decl
-            (begin match mo with
-            | None -> A.Plain A.deftype
-            | Some _ -> A.Atomic A.deftype
-            end,r,None)
+        let decls = A.Decl (A.Plain A.deftype,r,None)
         and body =
           A.Seq
             (A.SetReg (r,load_from mo x),
@@ -140,11 +126,7 @@ module Make(O:Config) : Builder.S
         let decls =
           A.Seq
             (A.Decl (A.Plain TypBase.Int,idx,Some (A.Const 200)),
-             A.Decl
-               (begin match mo with
-               | None -> A.Plain A.deftype
-               | Some _ -> A.Atomic A.deftype
-               end,r,None))
+             A.Decl (A.Plain A.deftype,r,None))
         and body =
           A.seqs
             [A.SetReg (r,load_from mo x) ;
