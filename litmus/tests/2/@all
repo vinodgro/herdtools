@@ -1,5 +1,5 @@
 # diy -arch C -safe Pod**,Rfe,Fre,Wse,RfeRelAcq,RfeAA,FreAA,WseAA,RfeRlxRlx,FreRlxRlx,WseRlxRlx,FreAcqRel,RfeRelCon -size 4 -nprocs 2 -num false -addnum true -mode critical
-# Version 5.99-D, Revision: 881a7d37f8c4ffca4f7da0836986e589824aed80
+# Version 5.99-D, Revision: c32a93b6c5ab50db5c63238d24fe2bd131b76a07
 R.litmus
 R+popa+poap.litmus
 R+poprlx+porlxp.litmus

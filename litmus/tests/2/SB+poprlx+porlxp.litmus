@@ -11,7 +11,7 @@ Orig=PodWRPRlx FreRlxRlx PodWRRlxP Fre
 
 P0 (atomic_int* y,volatile int* x) {
   *x = 1;
-  atomic_int r0 = atomic_load_explicit(y,memory_order_relaxed);
+  int r0 = atomic_load_explicit(y,memory_order_relaxed);
 }
 
 P1 (atomic_int* y,volatile int* x) {

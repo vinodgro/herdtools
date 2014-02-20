@@ -10,12 +10,12 @@ Orig=PodRWAcqA RfeAA PodRWARel RfeRelAcq
 {}
 
 P0 (atomic_int* y,atomic_int* x) {
-  atomic_int r0 = atomic_load_explicit(x,memory_order_acquire);
+  int r0 = atomic_load_explicit(x,memory_order_acquire);
   atomic_store(y,1);
 }
 
 P1 (atomic_int* y,atomic_int* x) {
-  atomic_int r0 = atomic_load(y);
+  int r0 = atomic_load(y);
   atomic_store_explicit(x,1,memory_order_release);
 }
 

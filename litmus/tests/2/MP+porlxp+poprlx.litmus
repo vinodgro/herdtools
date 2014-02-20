@@ -16,7 +16,7 @@ P0 (volatile int* y,atomic_int* x) {
 
 P1 (volatile int* y,atomic_int* x) {
   int r0 = *y;
-  atomic_int r1 = atomic_load_explicit(x,memory_order_relaxed);
+  int r1 = atomic_load_explicit(x,memory_order_relaxed);
 }
 
 exists

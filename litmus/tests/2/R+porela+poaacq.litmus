@@ -16,7 +16,7 @@ P0 (atomic_int* y,atomic_int* x) {
 
 P1 (atomic_int* y,atomic_int* x) {
   atomic_store(y,2);
-  atomic_int r0 = atomic_load_explicit(x,memory_order_acquire);
+  int r0 = atomic_load_explicit(x,memory_order_acquire);
 }
 
 exists

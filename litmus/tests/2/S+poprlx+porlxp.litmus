@@ -15,7 +15,7 @@ P0 (atomic_int* y,volatile int* x) {
 }
 
 P1 (atomic_int* y,volatile int* x) {
-  atomic_int r0 = atomic_load_explicit(y,memory_order_relaxed);
+  int r0 = atomic_load_explicit(y,memory_order_relaxed);
   *x = 1;
 }
 
