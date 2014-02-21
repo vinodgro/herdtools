@@ -25,7 +25,7 @@ let () =
     [
      "MM",MM;  "MR",MR;  "MW",MW;
      "WM",WM; "WW",WW; "WR",WR; "RM",RM; "RW",RW; "RR",RR;
-     "AA",AA; "AP",AP; "PA",PA; "PP",PP; "F",F;
+     "AA",AA; "AP",AP; "PA",PA; "PP",PP;
      "let",LET; "rec",REC; "set",SET; "rln",RLN; "and",AND;
      "acyclic",ACYCLIC; "irreflexive",IRREFLEXIVE;
      "show",SHOW;
@@ -70,6 +70,7 @@ rule token = parse
 | '|'  {  UNION }
 | '&'  {  INTER }
 | '*'  {  STAR }
+| '~'  { COMP }
 | '+'  {  PLUS }
 | '\\'  {  DIFF }
 | '?'  {  OPT }

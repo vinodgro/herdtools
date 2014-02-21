@@ -130,6 +130,8 @@ module Make
       let rec eval env = function
         | Empty_rel -> empty_rel
         | Empty_set -> empty_set
+	| Ext -> Rel (U.ext conc.S.unv)
+	| Int -> Rel (U.internal conc.S.unv)
         | Scope_op (sc,External) ->  
 	    Rel (U.ext_scope sc conc.S.unv test.Test.scope_tree)
         | Scope_op (sc,Internal) -> 
@@ -148,12 +150,7 @@ module Make
               | Plus -> Rel (S.tr (as_rel v))
               | Star -> Rel (S.union (S.tr (as_rel v)) id)
               | Opt -> Rel (S.union (as_rel v) id)
-	      | Comp -> begin
-                match v with
-                  | Set s -> Set (E.EventSet.diff conc.S.str.E.events s)
-                  | Rel r -> Rel (S.comp r conc.S.unv)
-                end
-	      | Inverse -> Rel (S.inverse (as_rel v))
+	      | Inv -> Rel (S.inverse (as_rel v))
               | Select (s1,s2) ->
                   let f1 = is_dir s1 and f2 = is_dir s2 in
                   Rel (S.restrict f1 f2 (as_rel v))
@@ -172,19 +169,12 @@ module Make
                         List.fold_left (fun v z -> 
                           Rel (E.EventRel.inter (as_rel v) (as_rel z))) v vs
                     end
-
-		  (*TS: Not an efficient way to implement Diff, but it shouldn't be used that often*)
-		  | Diff -> 
-                    begin match vs with
-                      | [] -> assert false
-                      | v::vs ->			
-                        List.fold_left (fun v z -> 
-			  let comp = Rel (S.comp (as_rel z) conc.S.unv)
-			  in 
-                          Rel (E.EventRel.inter (as_rel v) (as_rel comp))) v vs
-                    end
-
-              (* Todo: I think Diff is missing here *)
+		  | Diff -> begin 
+		    match vs with
+		    | [v1;v2] ->			
+                       Rel (E.EventRel.diff (as_rel v1) (as_rel v2))
+                    | _ -> assert false
+		    end
               end else if List.for_all is_set vs then begin
                 match op with
                   | Union -> Set (E.EventSet.unions (List.map as_set vs))
@@ -196,6 +186,12 @@ module Make
                         List.fold_left (fun v z -> 
                           Set (E.EventSet.inter (as_set v) (as_set z))) v vs
                     end
+		  | Diff -> begin 
+		    match vs with
+		    | [v1;v2] ->			
+                       Set (E.EventSet.diff (as_set v1) (as_set v2))
+                    | _ -> assert false
+		    end
               (* Todo: I think Diff is missing here *)
               end else 
 		  begin
@@ -390,7 +386,7 @@ module Make
       | Some st ->
           if not O.strictskip || StringSet.equal st.skipped O.skipchecks then
             let vb_pp = lazy (show_to_vbpp st) in
-            kont conc conc.S.fs vb_pp  res
+            kont conc (conc.S.fs, st.failed_requires_clauses) vb_pp res
           else res
       | None -> res
 

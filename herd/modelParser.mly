@@ -46,7 +46,7 @@ let pp () =
 /* Plain/Atomic */
 %token AA AP PA PP
 %token SEMI UNION INTER COMMA HAT
-%token STAR PLUS OPT  DIFF NEGONE TWO LOC INT EXT
+%token STAR PLUS OPT COMP DIFF NEGONE TWO LOC INT EXT
 /*Scopes*/
 %token WI SG WG KER DEV
 %token LET REC SET RLN AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN
@@ -138,7 +138,8 @@ setexp:
 | UNDERSCORE { Var "_" }
 | setexp UNION setexp { do_op Union $1 $3 }
 | setexp INTER setexp { do_op Inter $1 $3 }
-| setexp DIFF setexp { Op(Inter, [$1; Op1(Comp,$3)]) }
+| setexp DIFF setexp { do_op Diff $1 $3 }
+| COMP setexp { do_op Diff (Var "_") $2 }
 | LPAR setexp RPAR { $2 }
 
 exp:
@@ -157,11 +158,14 @@ base:
 | base STAR { Op1(Star,$1) }
 | base PLUS { Op1(Plus,$1) }
 | base OPT { Op1(Opt,$1) }
+| COMP base { do_op Diff (Var "unv") $2 }
 | base HAT NEGONE { Op1(Inv,$1) }
 | base SEMI base { do_op Seq $1 $3 }
 | base UNION base { do_op Union $1 $3 }
-| base BACKSLASH base { do_op Diff $1 $3 }
+| base DIFF base { do_op Diff $1 $3 }
 | base INTER base { do_op Inter $1 $3 }
+| EXT { Ext }
+| INT { Int }
 | LOCVAR { Op(Inter, [Var $1; Var "loc"]) }
 | SCOPEVAR { 
     let (x,ext_int,sc) = $1 in
@@ -193,6 +197,3 @@ select:
 | AP { Select (Atomic,Plain) }
 | PA { Select (Plain,Atomic) }
 | PP { Select (Plain,Plain) }
-| EXT { Ext }
-| INT { Int }
-| NOID { NoId }

@@ -487,6 +487,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
                   {E.eiid = eiid ;
 		   E.iiid = None ;
                    E.atomic = false ;
+                   E.atrbs = [] ;
  		   E.action = E.Access (E.W, loc, v) ;} in
                 (eiid+1,ew::es))
               (eiid,[]) env in
