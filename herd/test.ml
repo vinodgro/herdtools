@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-type ('prog,'nice_prog,'start,'state,'constr,'loc, 'locset) t =
+type ('prog,'nice_prog,'start,'state,'constr,'loc,'locset) t =
     {
      arch : Archs.t ; 
      name : Name.t ;

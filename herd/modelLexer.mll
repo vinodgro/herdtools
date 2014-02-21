@@ -33,6 +33,7 @@ let () =
      "empty",TESTEMPTY;
      "as",AS; "fun", FUN; "in",IN;
      "provides",PROVIDES; "requires",REQUIRES;
+     "ext",EXT; "int",INT; "noid",NOID;
      "withco",WITHCO; "withoutco", WITHOUTCO;
    ]
 
@@ -70,8 +71,7 @@ rule token = parse
 | '&'  {  INTER }
 | '*'  {  STAR }
 | '+'  {  PLUS }
-| '~'  {  COMP }
-| '\\' { BACKSLASH }
+| '\\'  {  DIFF }
 | '?'  {  OPT }
 | '='  {  EQUAL }
 | ';'  {  SEMI }

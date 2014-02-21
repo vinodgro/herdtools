@@ -206,6 +206,7 @@ and opt = parse
 | "showinitrf" arg { lex_bool PP.showinitrf arg }
 | "showpoloc" arg { lex_bool PP.showpoloc arg }
 | "showfr" arg { lex_bool PP.showfr arg }
+| "showinitwrites" arg { lex_bool PP.showinitwrites arg }
 | "showthread" arg { lex_bool PP.showthread arg }
 | "showlegend" arg { lex_bool PP.showlegend arg }
 | "brackets" arg { lex_bool PP.brackets arg }

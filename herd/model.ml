@@ -101,6 +101,7 @@ module type Config = sig
   val verbose : int
   val skipchecks : StringSet.t
   val strictskip : bool
+  val optace : bool
 end
 
 let get_default_model a = match a with

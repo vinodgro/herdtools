@@ -180,7 +180,7 @@ let rec for_all_strict p = function
         ignore (for_all_strict p xs) ;
         false
       end
-        
+
 (* Connectors for predicates *)
 
 let (|||) p1 p2 = fun e -> p1 e || p2 e
@@ -260,7 +260,7 @@ let compute_sizes m =
         (fun i k -> max (String.length i) k)
         cs 0)
     m
-  
+
 let pp_prog chan m =
   let szs = compute_sizes m in
   iter_by_line
@@ -367,8 +367,8 @@ and read_filenames f name k =
   else f name k
 
 let fold_stdin f k = input_lines f "." k stdin
-  
-let rec fold_argv f names k = match names with  
+
+let rec fold_argv f names k = match names with
 | [] -> k
 | name::names -> read_filenames f name (fold_argv f names k)
 
@@ -376,7 +376,7 @@ let iter_argv f names =
   let f x () = f x in
   fold_argv f names ()
 
-let iter_stdin f = 
+let iter_stdin f =
  let f x () = f x in
  input_lines f "." () stdin
 
@@ -451,4 +451,3 @@ let fold_cross_gen add start xss kont r =
 
 
 let fold_cross xss = fold_cross_gen cons [] xss
-

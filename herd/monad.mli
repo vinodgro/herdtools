@@ -85,6 +85,8 @@ module type S =
 
     val initwrites : (A.location * A.V.v) list -> unit t
 
+
+(* Read out monad *)
     type evt_struct
     type output = VC.cnstrnts * evt_struct
 

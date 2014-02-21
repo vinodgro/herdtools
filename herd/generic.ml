@@ -385,6 +385,15 @@ module Make
 	   skipped=StringSet.empty;} 
 	  prog
         
+    let run_interpret test conc m id vb_pp kont res =
+      match interpret test conc m id vb_pp with
+      | Some st ->
+          if not O.strictskip || StringSet.equal st.skipped O.skipchecks then
+            let vb_pp = lazy (show_to_vbpp st) in
+            kont conc conc.S.fs vb_pp  res
+          else res
+      | None -> res
+
     let check_event_structure test atrb conc kont res =
       let prb = JU.make_procrels conc in
       let pr = prb.JU.pr in
@@ -470,40 +479,43 @@ module Make
            "ul", E.EventSet.filter E.is_unlock evts;
          ]) in
 
-      let process_co co0 res =
-	let process_lo lo0 res = 
-	 (* Printf.printf "Candidate co: %a\n" E.debug_rel co0;
+      if withco then
+	let process_co co0 res =
+	  let process_lo lo0 res = 
+	    (* Printf.printf "Candidate co: %a\n" E.debug_rel co0;
 	  Printf.printf "Candidate lo: %a\n" E.debug_rel lo0;*)
-          let co = S.tr co0 in
-	  let lo = lo0 in
-          let fr = U.make_fr conc co in
-          let vb_pp =
-            lazy begin
-		if S.O.PC.showfr then
-		  ("fr",fr)::("co",co0)::Lazy.force vb_pp
-		else
-		  ("co",co0)::Lazy.force vb_pp
-              end in
-	  
-          let m =
-            List.fold_left
+            let co = S.tr co0 in
+	    let lo = lo0 in
+            let fr = U.make_fr conc co in
+            let vb_pp =
+              lazy begin
+		  if S.O.PC.showfr then
+		    ("fr",fr)::("co",co0)::Lazy.force vb_pp
+		  else
+		    ("co",co0)::Lazy.force vb_pp
+		end in
+	    
+            let m =
+              List.fold_left
+		(fun m (k,v) -> StringMap.add k (Rel v) m)
+		m
+		[
+		  
+		  "fr", fr; "fre", U.ext fr; "fri", U.internal fr;
+		  "co", co; "coe", U.ext co; "coi", U.internal co;
+		  "lo", lo;
+		] in
+            run_interpret test conc m id vb_pp kont res in
+          U.apply_process_lo test conc process_lo res in
+        U.apply_process_co test  conc process_co res
+      else
+        let co0 = conc.S.pco in
+        let m =
+           List.fold_left
               (fun m (k,v) -> StringMap.add k (Rel v) m)
               m
               [
-		"fr", fr; "fre", U.ext fr; "fri", U.internal fr;
-		"co", co; "coe", U.ext co; "coi", U.internal co;
-		"lo", lo;
-              ] in
-	  
-          match interpret test conc m id vb_pp with
-          | Some st ->
-             if not O.strictskip || StringSet.equal st.skipped O.skipchecks then
-               let vb_pp = lazy (show_to_vbpp st) in
-               kont conc (conc.S.fs, st.failed_requires_clauses) vb_pp res
-             else res
-          | None -> res in
-	
-	U.apply_process_lo test conc process_lo res
-      in
-      U.apply_process_co test conc process_co res
+               "co0", co0;
+             ] in
+        run_interpret test conc m id vb_pp kont res
   end

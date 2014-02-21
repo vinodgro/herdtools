@@ -77,6 +77,7 @@ module Top (C:Config) = struct
         let verbose = C.verbose
         let skipchecks = C.skipchecks
         let strictskip = C.strictskip
+        let optace = C.optace
       end in
       match arch with
       | Archs.PPC ->

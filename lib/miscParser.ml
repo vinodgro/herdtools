@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* The basic types of architectures and semantics, just parsed *)  
+(* The basic types of architectures and semantics, just parsed *)
 
 type maybev = SymbConstant.v
 
@@ -102,7 +102,7 @@ let pp_outcome o =
   String.concat " "
     (List.map (fun a -> sprintf "%s;" (pp_atom a)) o)
 
-type run_type = I | P (* Integer|Pointer *)
+type run_type = Ty of string | Pointer of string
 
 (*********************************)
 (* GPU memory map and scope tree *)
@@ -202,7 +202,7 @@ type ('loc,'v,'ins) r3 =
       (('loc * 'v) list,
        (int * 'ins list) list,
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
-       'loc) result    
+       'loc) result
 
 type ('loc,'v,'code) r4 =
       (('loc * 'v) list,

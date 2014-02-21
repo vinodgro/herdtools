@@ -42,7 +42,7 @@ module Make(I:I) : sig
         (I.state, (int * I.A.pseudo list) list, I.constr, I.location)
           MiscParser.result
       -> string list
-end = struct    
+end = struct
   open Printf
   open I
 
@@ -88,8 +88,8 @@ end = struct
         fprintf chan "locations [" ;
         List.iter
           (fun (loc,t) -> match t with
-          | MiscParser.I -> fprintf chan "%s; " (I.dump_location loc)
-          | MiscParser.P -> fprintf chan "%s*; "(I.dump_location loc))
+          | MiscParser.Ty _ -> fprintf chan "%s; " (I.dump_location loc)
+          | MiscParser.Pointer _ -> fprintf chan "%s*; "(I.dump_location loc))
           locs ;
         fprintf chan "]\n"
     end ;
@@ -111,7 +111,7 @@ end = struct
     begin fun k ->  sprintf "{%s}" (dump_state  t.init) :: k
     end @@
     begin
-      fun k -> 
+      fun k ->
       let pp = List.map fmt_col t.prog in
       let pp = Misc.lines_of_prog pp in
       let pp = List.map (sprintf "%s;") pp in
@@ -125,9 +125,9 @@ end = struct
             (String.concat " "
                (List.map
                   (fun (loc,t) -> match t with
-                  | MiscParser.I -> sprintf "%s; " (I.dump_location loc)
-                  | MiscParser.P -> sprintf "%s*; "(I.dump_location loc))
+                  | MiscParser.Ty _ -> sprintf "%s; " (I.dump_location loc)
+                  | MiscParser.Pointer _ -> sprintf "%s*; "(I.dump_location loc))
                   locs))::k
     end @@
-    [I.dump_constr t.condition]    
+    [I.dump_constr t.condition]
 end

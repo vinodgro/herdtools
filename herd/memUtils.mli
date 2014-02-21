@@ -70,6 +70,8 @@ module Make : functor (S: SemExtra.S) -> sig
    a relation (ie as a transitive relation, not as a successor
    relation *)  
   val make_fr : S.concrete -> S.event_rel -> S.event_rel
+(* Idem, includes loads from init only *)
+  val make_fr_partial : S.concrete -> S.event_rel
 (* Separated by barrier in po *)
   val sep :
       (S.event -> bool) ->

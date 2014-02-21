@@ -478,6 +478,24 @@ Monad.S with module A = A and type evt_struct = E.event_structure
           Evt.singleton ((),[],do_trivial es) 
 
 
+      let initwrites env =
+        fun eiid ->
+          let eiid,es =
+            List.fold_left
+              (fun (eiid,es) (loc,v) ->
+                let ew =
+                  {E.eiid = eiid ;
+		   E.iiid = None ;
+                   E.atomic = false ;
+ 		   E.action = E.Access (E.W, loc, v) ;} in
+                (eiid+1,ew::es))
+              (eiid,[]) env in
+          let es = E.EventSet.of_list es in
+(*          Printf.eprintf "Init writes %a\n" E.debug_events es; *)
+          eiid,
+          Evt.singleton ((),[],do_trivial es) 
+          
+
       let get_output = 
 	fun et -> 
 	  let (_,es) = et 0 in

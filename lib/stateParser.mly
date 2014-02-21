@@ -30,7 +30,8 @@ open ConstrGen
 %token SCOPETREE GLOBAL SHARED DEVICE KERNEL CTA WARP THREAD COMMA PTX_REG_DEC 
 %token <string> PTX_REG_TYPE
 
-%left PLUS_DISJ OR 
+
+%left PLUS_DISJ OR
 %left AND
 %right IMPLIES
 %nonassoc NOT
@@ -79,7 +80,7 @@ location:
 | location_reg { $1 }
 | LBRK maybev RBRK {Location_global $2}
 /* Hum, for backward compatibility, and compatiility with printer */
-| maybev { Location_global $1 } 
+| maybev { Location_global $1 }
 
 gpu_reg_dec:
 | NUM COLON PTX_REG_DEC PTX_REG_TYPE reg {Location_reg_type($1,$5,$4)}
@@ -97,14 +98,16 @@ atom_semi_list:
 | atom {$1::[]}
 | atom SEMI atom_semi_list  {$1::$3}
 
-	
+
 /* For final state constraints */
 
 loc_typ:
-| location { ($1,I) }
-| location STAR { ($1,P) }
+| location { ($1, Ty "int") }
+| location STAR { ($1, Pointer "int") }
+| location NAME { ($1, Ty $2) }
+| location NAME STAR { ($1, Pointer $2) }
 
-loc_semi_list: 
+loc_semi_list:
 | {[]}
 | SEMI {[]}
 | loc_typ {$1::[]}
@@ -118,18 +121,18 @@ locs:
 | { [] }
 | location locs { $1 :: $2 }
 
-constraints : 
+constraints :
 | locations old_constraints
   { let x = $1 in
     let y,z = $2 in
     x,y,z }
 
-old_constraints : 
+old_constraints :
 | final EOF { $1,[] }
 | final WITH kinds EOF { $1,$3 }
 
 
-kinds : 
+kinds :
 | kind         { [$1] }
 | kind SEMI    { [$1] }
 | kind SEMI kinds   { $1 :: $3 }
@@ -152,7 +155,7 @@ constr:
     {ExistsState $2}
 | NOT EXISTS prop
 	{ NotExistsState $3 }
-| FINAL prop 
+| FINAL prop
         { ExistsState $2 }
 | LPAR prop RPAR
     {ExistsState $2}
@@ -179,8 +182,8 @@ atom_prop:
 | location EQUAL location_deref {LL ($1,$3)}
 
 
-prop: 
-| 
+prop:
+|
     {And []}
 | TRUE
     {And []}
@@ -188,15 +191,15 @@ prop:
     {Or []}
 | atom_prop
     { Atom $1 }
-| NOT prop 
+| NOT prop
     {Not $2}
-| prop AND prop 
+| prop AND prop
     {And [$1;$3]}
-| prop OR  prop 
+| prop OR  prop
     {Or [$1;$3]}
 | prop IMPLIES prop
     { Implies ($1,$3) }
-| LPAR prop RPAR 
+| LPAR prop RPAR
     { $2 }
 
 scopes_and_memory_map : 

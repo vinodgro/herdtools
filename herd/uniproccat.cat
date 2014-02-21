@@ -1,0 +1,33 @@
+"Uniproc model" withoutco
+
+(**********************)
+(* Computes co and fr *)
+(**********************)
+let invrf=rf -1
+
+(* co observations in test *)
+let obsco =
+    (WW(po-loc)
+    |(rf;RW(po-loc))
+    |noid(WR(po-loc);invrf)
+    |noid(rf;RR(po-loc);invrf))
+
+let co = (obsco|co0)+
+let fr = (invrf;co)
+show fr
+show co
+let coi = int(co)
+and coe = ext(co)
+and fri = int(fr)
+and fre = ext(fr)
+
+(* a few additional shows *)
+show mfence lfence sfence
+show sync lwsync eieio
+show dmb dsb dsbst dmbst
+show isb isync
+
+(* uni check proper *)
+acyclic co as uniproc
+
+

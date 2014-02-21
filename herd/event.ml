@@ -31,12 +31,13 @@ module type S = sig
     | Commit
 
   type event = {
-      eiid : eiid;
-      iiid : A.inst_instance_id option; 
+      eiid : eiid;                       (* for init writes *)
+      iiid : A.inst_instance_id option;  (* None for init writes *)
       atomic : bool;
       action : action;  
       atrbs : A.atrb list;
   } 
+
 
 (* Only basic printing is here *)
   val pp_dirn : dirn -> string
@@ -191,7 +192,7 @@ module type S = sig
      events is be a mem_store *)
   val proj_proc_view : event_structure -> event_rel -> event_rel list
 
-      (* e1 < e2 in UNION (strict_po,iico) ? *)
+  (* e1 < e2 in UNION (strict_po,iico) ? *)
   val strict_before_po_iico : event_structure -> event -> event -> bool
 
 	
@@ -677,20 +678,6 @@ module Make (AI:Arch.S) :  S with module A = AI =
         | Some p -> [p]
         | None -> []) (procs_of es) es.events
 
-(*
-  let proj_syncs es =
-  ProjSet.proj
-  (fun e -> [proc_of e]) (procs_of es) (syncs_of es)
-
-  let proj_lwsyncs es =
-  ProjSet.proj
-  (fun e -> [proc_of e]) (procs_of es) (lwsyncs_of es)
-
-  let proj_eieios es =
-  ProjSet.proj
-  (fun e -> [proc_of e]) (procs_of es) (eieios_of es)
- *)
-
     module ProjRel = Proj(EventRel)
 
     let proc_of_pair (e1,e2) =
@@ -719,7 +706,6 @@ module Make (AI:Arch.S) :  S with module A = AI =
           if is_mem_store e2 then [p1] else []
       | None,None -> [] in
       ProjRel.proj proc_of (procs_of es) rel
-
 
     let strict_before_po_iico es e1 e2 =
       let strict_po_reln = 
@@ -904,6 +890,12 @@ let (=|=) = check_disjoint para_comp
     | None,None -> true
 
 
+    let different_ins i1 i2 =  match i1,i2 with
+    | Some i1,Some i2 -> A.inst_instance_compare i1 i2 <> 0
+    | None,Some _
+    | Some _,None
+    | None,None -> true
+
     let disjoint_iiis es1 es2 =
       EventSet.for_all
 	(fun e1 ->
@@ -917,7 +909,7 @@ let (=|=) = check_disjoint para_comp
 	not
 	  (EventSet.disjoint es1.events es2.events  &&
 	   disjoint_iiis es1 es2)
-      then None
+      then assert false
       else Some (do_it es1 es2)
 
 (* Parallel composition *)

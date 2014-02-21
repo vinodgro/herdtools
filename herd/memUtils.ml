@@ -349,6 +349,7 @@ module Make(S : SemExtra.S) = struct
   and collect_atomics es = collect_by_loc es E.is_atomic
   and collect_mutex_actions es = collect_by_loc es E.is_mutex_action
 
+
 (* fr to init stores only *)
   let make_fr_partial conc =
     let ws_by_loc = collect_mem_stores conc.S.str in
@@ -508,7 +509,6 @@ module Make(S : SemExtra.S) = struct
              [ ("pos",S.rt pos); ("pco",S.rt conc.S.pco)]
         end ;
         res
-
 
 (*******************************************************)
 (* Saturate all memory accesses wrt atomicity classes  *)
