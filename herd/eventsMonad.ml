@@ -338,9 +338,11 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 	do_write_loc_atrb false (A.Location_global a) v ii []
       and write_mem_atomic a v ii =
         do_write_loc_atrb true (A.Location_global a) v ii []
-
+      
+      (* The following is just a dummy implementation of RMWs for 
+      the time being. *)
       let do_rmw_loc loc v1 v2 ii atrbs_success atrbs_failure eiid =
-        let mk_es a atrbs =
+        let mk_es a eiid atrbs =
           ((), [],
 	   trivial_event_structure
 	     {E.eiid = eiid ;
@@ -350,8 +352,8 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 	      E.action = a})
           in
 	  (eiid+2,
-	   Evt.add (mk_es (E.RMW (loc, v1, v2)) atrbs_success)  
-             (Evt.add (mk_es (E.Access (E.R, loc, v1)) atrbs_failure) 
+	   Evt.add (mk_es (E.RMW (loc, v1, v2)) eiid atrbs_success)  
+             (Evt.add (mk_es (E.Access (E.R, loc, v1)) (eiid + 1) atrbs_failure) 
                 Evt.empty))
 
       let rmw_loc = do_rmw_loc
