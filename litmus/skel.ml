@@ -1326,11 +1326,15 @@ let dump_read_timebase () =
       (fun (a,t) ->
         let v = A.find_in_state (A.Location_global a) test.T.init in
         if Cfg.cautious then O.oii "mcautious();" ;
+        let do_store =
+          if RunType.is_atomic t then O.fii "atomic_init(&%s,%s);"
+          else O.fii "%s = %s;" in
         match t,memory with
         | RunType.Ty _,Indirect ->
-            O.fii "_a->mem_%s[_i] = %s;" a (dump_a_v v)
+            do_store
+              (sprintf "_a->mem_%s[_i]" a) (dump_a_v v)
         | _,_ ->
-            O.fii "%s = %s;"
+            do_store
               (dump_a_leftval a) (dump_a_v_casted v))
       test.T.globals ;
     begin if do_safer && do_collect_after then
