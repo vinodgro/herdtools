@@ -20,6 +20,7 @@ module type Config = sig
   include Cycle.Config
   val list_edges : bool
   val typ : TypBase.t
+  val cpp : bool
 end
 
 module Make(O:Config) : Builder.S
@@ -80,7 +81,16 @@ module Make(O:Config) : Builder.S
 (* Basics *)
       let st0 = 0
 
-      let alloc_reg _p st = { A.id=st;},st+1
+      let reset_alloc,alloc_reg =
+        if O.cpp then
+          let c = ref 0 in
+          (fun () -> c := 0),
+          (fun _p st ->
+            let c0 = !c in
+            incr c ;
+            { A.id = c0; },st+1)
+          else
+          (fun () -> ()),(fun _p st -> { A.id=st;},st+1)
 
       let compile_store e = 
         let v = e.C.v in
@@ -92,7 +102,9 @@ module Make(O:Config) : Builder.S
             A.AtomicStore(a,loc,A.Const v)
 
       let load_from mo loc = match mo with
-      | None -> A.Deref (A.Load loc)
+      | None ->
+          if O.cpp then A.Load loc
+          else A.Deref (A.Load loc)
       | Some mo -> A.AtomicLoad (mo,loc)
 
       let compile_load st p mo loc =
@@ -100,7 +112,20 @@ module Make(O:Config) : Builder.S
         let i =  A.Decl (A.Plain A.deftype,r,Some (load_from mo loc)) in
         r,i,st
 
+      let assertval mo loc v =
+        if O.cpp then
+          A.AssertVal(load_from mo loc,v)
+        else load_from mo loc
 
+      let compile_load_assertvalue v st p mo loc =
+        let r,st = alloc_reg p st in
+        let i = 
+          A.Decl
+            (A.Plain A.deftype,r,
+             Some (assertval mo loc v)) in
+        r,i,st
+
+ 
       let compile_load_not_zero st p mo x =
         let r,st = alloc_reg p st in
         let decls = A.Decl (A.Plain A.deftype,r,None)
@@ -148,7 +173,8 @@ module Make(O:Config) : Builder.S
             let loc = A.Loc e.C.loc in
             let mo = e.C.atom in
             let r,i,st =
-              (if U.do_poll n then compile_load_one else compile_load)
+              (if U.do_poll n then compile_load_one
+              else compile_load_assertvalue e.C.v)
                 st p mo loc in
             Some r,i,st
         | W ->
@@ -164,7 +190,9 @@ module Make(O:Config) : Builder.S
       let rec straight_observer st p mo x = function
         | [] -> A.Nop,[]
         | v::vs ->
-            let r,c,st = compile_load st p mo x in
+            let r,c,st =
+              compile_load_assertvalue 
+                (Ints.choose v) st p mo x  in
             let cs,fs = straight_observer st p  mo x vs in
             A.seq c cs,F.add_final_v p r v fs
 
@@ -355,7 +383,7 @@ module Make(O:Config) : Builder.S
 (* Local check of coherence *)
 
       let do_add_load st p f mo x v =
-        let r,c,st = compile_load st p mo x in
+        let r,c,st = compile_load_assertvalue v st p mo x in
         c,F.add_final_v p r (Ints.singleton v) f,st
 
       let do_add_loop st p f mo x v w =
@@ -487,6 +515,7 @@ module Make(O:Config) : Builder.S
               
         
       let compile_cycle ok n =
+        reset_alloc () ;
         let env = type_cycle n in
         let open Config in
         let splitted =  C.split_procs n in
@@ -588,14 +617,16 @@ module Make(O:Config) : Builder.S
         | Deref (Load _ as e) -> sprintf "*%s" (dump_exp e)
         | Deref e -> sprintf "*(%s)" (dump_exp e)
         | Const v -> sprintf "%i" v
-
+        | AssertVal (e,_) -> dump_exp e
 
       let fx chan indent fmt =
         output_string chan indent ;
         kfprintf
           (fun chan -> output_string chan "\n")
           chan fmt
+
       let indent1 = "  "
+      let indent2 = indent1 ^ indent1
 
       let rec dump_ins chan i ins =
         let open A in
@@ -652,7 +683,10 @@ module Make(O:Config) : Builder.S
 (* Empty init *)
       let dump_init chan =  fprintf chan "\n{}\n\n"
 
+(********)
 (* Test *)
+(********)
+
       type edge = E.edge
       type node = C.node
       let ppo _f k = k
@@ -672,7 +706,7 @@ module Make(O:Config) : Builder.S
 
       let extract_edges t = t.edges
 
-      let dump_test_channel chan t =
+      let dump_c_test_channel chan t =
         fprintf chan "C %s\n" t.name ;
         if t.com <>  "" then fprintf chan "\"%s\"\n" t.com ;
         List.iter
@@ -685,11 +719,91 @@ module Make(O:Config) : Builder.S
         F.dump_final chan t.final ;
         ()
 
-      let dump_test ({ name = name; _ } as t) =
+      let dump_c_test ({ name = name; _ } as t) =
         let fname = name ^ ".litmus" in
         Misc.output_protect
-          (fun chan -> dump_test_channel chan t)
+          (fun chan -> dump_c_test_channel chan t)
           fname
+
+(************************)
+(* C++ a la cppmem dump *)
+(************************)
+      let rec dump_exp e =
+        let open A in
+        match e with
+        | Load loc -> dump_loc_exp loc
+        | AtomicLoad (mo,loc) ->
+            sprintf "%s.load(%s)"
+              (dump_loc_exp loc) (dump_mem_order mo)
+        | Deref (Load _ as e) -> sprintf "*%s" (dump_exp e)
+        | Deref e -> sprintf "*(%s)" (dump_exp e)
+        | Const v -> sprintf "%i" v
+        | AssertVal (AtomicLoad _|Load _ as e,v) ->
+            sprintf "%s.readsvalue(%i)" (dump_exp e) v
+        | AssertVal _ ->
+            Warn.fatal "Cannot compile to C++ (expr)"
+      let rec dump_ins chan i ins =
+        let open A in
+        match ins with
+        | Seq (i1,i2) ->
+            dump_ins chan i i1 ;
+            dump_ins chan i i2
+        | Decl (_,_,None) -> ()
+        | Decl (_t,r,Some e) ->
+            fx chan i "%s = %s;" (A.dump_reg r) (dump_exp e)
+        | Store (loc,e) ->
+            fx chan i "%s = %s;" loc (dump_exp e)
+        | SetReg (r,e) ->
+            fx chan i "%s = %s;" (A.dump_reg r) (dump_exp e)
+        | AtomicStore (mo,loc,e) ->
+            fx chan i "%s.store(%s,%s);"
+              loc (dump_exp e) (dump_mem_order mo)
+        | Fence _ 
+        | Loop _ 
+        | BreakCond _ 
+        | A.Decr _ ->
+            Warn.fatal "Cannot compile to C++"
+        | Nop -> ()
+
+
+      let dump_prog chan =
+        let rec do_rec pre = function
+          | (_,i)::rem ->
+              fx chan indent1 "%s {" pre ;
+              dump_ins chan indent2 i ;
+              fx chan indent1 "}" ;
+              do_rec "|||" rem
+          | [] ->
+              fx chan indent1 "%s" "}}}" in
+        do_rec "{{{"
+          
+      let dump_cpp_test_channel chan t =
+        fprintf chan "// CPP %s\n" t.name ;
+        if t.com <>  "" then fprintf chan "// \"%s\"\n" t.com ;
+        fprintf chan "int main() {\n" ;
+        StringMap.iter
+          (fun loc t ->
+            fprintf chan "  %s %s = 0;\n" (A.dump_typ t) loc)
+          t.types ;
+        dump_prog chan t.prog ;
+        fprintf chan "  return 0;\n" ;
+        fprintf chan "}\n" ;
+        ()
+        
+
+      let dump_cpp_test  ({ name = name; _ } as t) =
+        let fname = name ^ ".c" in
+        Misc.output_protect
+          (fun chan -> dump_cpp_test_channel chan t)
+          fname
+
+      let dump_test_channel =
+        if O.cpp then dump_cpp_test_channel
+        else dump_c_test_channel
+
+      let dump_test =
+        if O.cpp then dump_cpp_test
+        else dump_c_test
 
       let test_of_cycle name ?com ?(info=[]) ?(check=(fun _ -> true)) es c =
         let com = match com with None -> E.pp_edges es | Some com -> com in

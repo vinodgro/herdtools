@@ -151,6 +151,9 @@ let () =
   let relax_list = split !Config.relaxs
   and safe_list = split !Config.safes 
   and one_list = if !Config.one then Some !lc else None in
+
+  let cpp = match !Config.arch with CPP -> true  |  _ -> false in
+
   let module Co = struct
 (* Dump all *)
     let verbose = !Config.verbose
@@ -189,6 +192,7 @@ let () =
     let eprocs = !Config.eprocs
     let nprocs = !Config.nprocs
     let neg = !Config.neg
+    let cpp = cpp
   end in
   let module C = struct
     let verbose = !Config.verbose
@@ -214,7 +218,7 @@ let () =
   | ARM ->
       let module M = Make(T(ARMCompile.Make(V)(C)))(Co) in
       M.go
-  | C ->
+  | C|CPP ->
       let module CoC = struct
         include Co
         include C

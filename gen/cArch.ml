@@ -140,6 +140,7 @@ open Printf
     | AtomicLoad of mem_order * location
     | Deref of exp
     | Const of Code.v
+    | AssertVal of exp * Code.v
 
   let addrs_of_location = function
     | Reg _ -> StringSet.empty
@@ -148,7 +149,7 @@ open Printf
   let rec addrs_of_exp = function
     | Const _ -> StringSet.empty
     | AtomicLoad (_,loc)|Load loc -> addrs_of_location loc
-    | Deref e -> addrs_of_exp e
+    | Deref e|AssertVal (e,_) -> addrs_of_exp e
 
   type cond = Eq | Ne
 

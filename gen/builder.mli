@@ -36,7 +36,7 @@ module type S = sig
       string -> ?com:string -> ?info:Code.info -> ?check:check -> edge list ->
        node -> test  
 (* Dump the given test *)
-  val dump_test : test -> unit
+(*  val dump_test : test -> unit *)
   val dump_test_channel : out_channel -> test -> unit
 
 end

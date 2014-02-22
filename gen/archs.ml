@@ -19,6 +19,7 @@ type t =
   | PPC
   | ARM
   | C
+  | CPP
 
 let tags = ["X86";"PPC";"ARM";"C"]
 
@@ -27,6 +28,7 @@ let parse s = match s with
 | "PPC" -> Some PPC
 | "ARM" -> Some ARM
 | "C"   -> Some C
+| "CPP"|"C++"   -> Some CPP
 | _ -> None
 
 let lex s = match parse s with
@@ -39,8 +41,8 @@ let pp a = match a with
 | PPC -> "PPC"
 | ARM -> "ARM"
 | C -> "C"
+| CPP -> "C++"
 
 let arm = ARM
 let ppc = PPC
 let x86 = X86
-let c = C

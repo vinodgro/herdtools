@@ -148,7 +148,7 @@ let () =
   | ARM ->
       let module M = Build(ARMArch.Make(V)) in
       M.zyva
-  | C ->
+  | C|CPP ->
       let module M = Build(CArch) in
       M.zyva)
     stdin

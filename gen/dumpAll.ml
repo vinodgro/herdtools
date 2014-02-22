@@ -22,6 +22,7 @@ module type Config = sig
   val numeric : bool
   val lowercase : bool
   val overload : int option
+  val cpp : bool
 end
 
 module Make(Config:Config) (T:Builder.S)
@@ -361,11 +362,10 @@ module Make(Config:Config) (T:Builder.S)
     let info = ("Cycle",cy)::info in
     let t = T.test_of_cycle n ~info:info ~check:check cycle.orig c in
 (* Output test proper *)
-    let src = sprintf "%s.litmus" n in
+    let src = sprintf "%s.%s" n (if Config.cpp then "c" else "litmus") in
     tar_output_protect
       (fun chan -> T.dump_test_channel chan t)
       src ;
-    let src = sprintf "%s.litmus" n in
 (* And litmus file name in @all file *)
     fprintf all_chan "%s\n" src ;
     if Config.verbose > 0 then eprintf "Test: %s\n" n ;

@@ -193,6 +193,7 @@ let () =
       let nprocs = !Config.nprocs
       let neg = !Config.neg
       let allow_back = false
+      let cpp = match !Config.arch with Archs.CPP -> true | _ -> false
     end in
     let module V = SymbConstant in
     let open Archs in
@@ -208,7 +209,7 @@ let () =
     | ARM ->
         let module M = Make(C)(T(ARMCompile.Make(V)(C))) in
         M.zyva
-    | C ->
+    | C|CPP ->
         let module CoC = struct
           include C
           let typ = !Config.typ

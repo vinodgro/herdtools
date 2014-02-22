@@ -30,6 +30,7 @@ module type Config = sig
   include Top.Config
   include DumpAll.Config
   val norm : bool
+  val cpp : bool
 end
 
 module Make(O:Config) (M:Builder.S) =
@@ -40,7 +41,9 @@ module Make(O:Config) (M:Builder.S) =
       M.dump_test_channel stdout t ;
       None
 
-    let litmus name = sprintf "%s.litmus" name
+    let litmus =
+      if O.cpp then sprintf "%s.c"
+      else sprintf "%s.litmus"
 
     let dump_file name es =
       if O.verbose > 0 then eprintf "Test name: %s\n" name ;
@@ -134,6 +137,9 @@ let () =
     (fun x -> pp_es := x :: !pp_es)
 
 let pp_es = List.rev !pp_es
+let cpp = match !Config.arch with
+| CPP -> true
+| _ -> false
 
 let () =
   let module V = SymbConstant in
@@ -167,6 +173,7 @@ let () =
     let neg = !Config.neg
 (* Specific *)
     let norm = !norm
+    let cpp = cpp
   end in
   let module Build = Make(Co) in
   let module C = struct
@@ -195,11 +202,12 @@ let () =
       let module T = Top.Make(Co) in
       let module M = Build(T(ARMCompile.Make(V)(C))) in
       M.zyva
-  | C ->
+  | C|CPP as a ->
       let module CoC = struct
         include Co
         include C
         let typ = !Config.typ
+        let cpp = match a with CPP -> true | _ -> false
       end in
       let module T = CCompile.Make(CoC) in
       let module M = Build(T) in
