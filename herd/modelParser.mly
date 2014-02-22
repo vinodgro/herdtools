@@ -35,18 +35,16 @@ let pp () =
 %}
 %token EOF
 %token <string> VAR
-%token <string> LOCVAR
-%token <string * AST.ext_int * AST.scope> SCOPEVAR
 %token <string> STRING
 %token LPAR RPAR LBRAC RBRAC
 %token EMPTY UNDERSCORE
 %token WITHCO WITHOUTCO
 /* Access direction */
-%token MM  MR  MW WM WW WR RM RW RR INT EXT NOID
+%token MM  MR  MW WM WW WR RM RW RR
 /* Plain/Atomic */
 %token AA AP PA PP
 %token SEMI UNION INTER COMMA HAT
-%token STAR PLUS OPT COMP DIFF NEGONE TWO LOC INT EXT
+%token STAR PLUS OPT COMP DIFF NEGONE TWO
 /*Scopes*/
 %token WI SG WG KER DEV
 %token LET REC SET RLN AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN
@@ -164,13 +162,6 @@ base:
 | base UNION base { do_op Union $1 $3 }
 | base DIFF base { do_op Diff $1 $3 }
 | base INTER base { do_op Inter $1 $3 }
-| EXT { Ext }
-| INT { Int }
-| LOCVAR { Op(Inter, [Var $1; Var "loc"]) }
-| SCOPEVAR { 
-    let (x,ext_int,sc) = $1 in
-    Op(Inter, [Var x; Scope_op (sc, ext_int)])
-  }
 | LPAR exp RPAR { $2 }
 
 exp0:

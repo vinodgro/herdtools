@@ -33,10 +33,10 @@ let () =
      "empty",TESTEMPTY;
      "as",AS; "fun", FUN; "in",IN;
      "provides",PROVIDES; "requires",REQUIRES;
-     "ext",EXT; "int",INT; "noid",NOID;
      "withco",WITHCO; "withoutco", WITHOUTCO;
    ]
 
+(*
 let scopes = Hashtbl.create 101
 let () =
   List.iter
@@ -48,8 +48,10 @@ let () =
      "kernel", AST.Kernel;
      "device", AST.Device; 
    ]
+*)
 
 }
+
 
 let digit = [ '0'-'9' ]
 let alpha = [ 'a'-'z' 'A'-'Z']
@@ -81,19 +83,6 @@ rule token = parse
 | "->" { ARROW }
 | '"' ([^'"']* as s) '"' { STRING s } (* '"' *)
 | '2'  { TWO }
-| (name as x) "-loc" { LOCVAR x }
-| (name as x) "-ext" { SCOPEVAR (x, AST.External, AST.Work_Item) }
-| (name as x) "-int" { SCOPEVAR (x, AST.Internal, AST.Work_Item) }
-| "ext-" (name as sc) { 
-  let scope = try Hashtbl.find scopes sc with Not_found ->
-  Warn.fatal "Expression \"ext-%s\" contains invalid scope \"%s\"." sc sc in
-  SCOPEVAR ("unv",AST.External,scope) 
-  }
-| "int-" (name as sc) { 
-  let scope = try Hashtbl.find scopes sc with Not_found ->
-  Warn.fatal "Expression \"int-%s\" contains invalid scope \"%s\"." sc sc in
-  SCOPEVAR ("unv",AST.Internal,scope) 
-  }
 | name as x
     { 
       try Hashtbl.find keywords x with Not_found -> VAR x }

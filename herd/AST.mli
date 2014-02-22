@@ -12,31 +12,32 @@
 
 (* Syntax tree of model definition *)
 type pos = { pos:int; len:int;}
-type direction = Write | Read | WriteRead | Atomic | Plain | Filter of string list | Unv_Set | Bar_Set
+type direction = 
+  | Write | Read | WriteRead | Atomic | Plain 
+  | Filter of string list | Unv_Set | Bar_Set
+
 type op2 = Union | Inter | Seq | Diff
 
 type ext_int = External | Internal
+
 type scope = Device | Kernel | Work_Group | Sub_Group | Work_Item
 
 type op1 =
   | Plus | Star | Opt | Select of direction * direction  | Inv  
+
 
 type var = string
 
 type exp =
   | Empty_rel 
   | Empty_set
-  | Scope_op of scope * ext_int
-  | Ext  (* External subrelation (events from <> threads) *)
-  | Int  (* Internal subrelation (events from = threads) *)
-  | NoId (* Irreflexive subrelation (<> events, aka r\id) *)
   | Var of var
   | Op1 of op1 * exp
   | Op of op2 * exp list
   | Cartesian of exp * exp
   | App of exp * exp list
-  | Bind  of binding list * exp
-  | BindRec  of binding list * exp
+  | Bind of binding list * exp
+  | BindRec of binding list * exp
   | Fun of var list * exp
 
 and binding = var * exp

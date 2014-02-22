@@ -130,12 +130,6 @@ module Make
       let rec eval env = function
         | Empty_rel -> empty_rel
         | Empty_set -> empty_set
-	| Ext -> Rel (U.ext conc.S.unv)
-	| Int -> Rel (U.internal conc.S.unv)
-        | Scope_op (sc,External) ->  
-	    Rel (U.ext_scope sc conc.S.unv test.Test.scope_tree)
-        | Scope_op (sc,Internal) -> 
-	    Rel (U.int_scope sc conc.S.unv test.Test.scope_tree)
         | Var k -> find_env env k
         | Cartesian (e1,e2) ->
           let v1 = eval_set env e1 in
@@ -410,7 +404,9 @@ module Make
         List.fold_left
           (fun m (k,v) -> StringMap.add k (Rel v) m)
           StringMap.empty
-          ["id",id;
+          (["id",id;
+	    "noid", E.EventRel.filter (fun (e1,e2) -> 
+	    not (E.event_equal e1 e2)) conc.S.unv;
            "atom",conc.S.atomic_load_store;
 	   (*TS: lifting the restriction from po, for C++11 model*)
            (*"po",S.restrict E.is_mem E.is_mem conc.S.po;*)
@@ -453,8 +449,19 @@ module Make
 	   "membar.cta", prb.JU.membar_cta;
 	   "membar.gl", prb.JU.membar_gl;
 	   "membar.sys", prb.JU.membar_sys;
-         ] in
-
+	 ] @
+	 (* Scope hierarchy -- this has been moved from modelLexer.mll *)
+	 List.fold_left (fun z (k,v) ->
+	   ("ext-" ^ k, U.ext_scope v conc.S.unv test.Test.scope_tree) ::
+	   ("int-" ^ k, U.int_scope v conc.S.unv test.Test.scope_tree) ::
+	   z ) [] [ 
+	     "work_item", Work_Item; "thread", Work_Item;
+	     "sub_group", Sub_Group; "warp", Sub_Group;
+	     "work_group", Work_Group; "block", Work_Group; "cta", Work_Group;
+	     "kernel", Kernel;
+	     "device", Device; 
+	   ]
+	 ) in
       let m =
         List.fold_left
           (fun m (k,v) -> StringMap.add k (Set v) m)
