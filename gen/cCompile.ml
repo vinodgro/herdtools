@@ -417,7 +417,7 @@ module Make(O:Config) : Builder.S
           then
             code,(A.Loc x,Ints.singleton v)::f,st
           else
-            let mo = elst.C.atom in
+            let mo = Some A.Rlx in
             do_observe_local st p code f mo (A.Loc x) prev_v v
         else
           code,f,st
