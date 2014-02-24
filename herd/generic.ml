@@ -12,10 +12,6 @@
 
 open Printf
 
-(*
-exception Requires_clause_failure of string (* not sure where to put this! *)
-*)
-
 module type Config = sig
   val m : AST.pp_t
   include Model.Config
