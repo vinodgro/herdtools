@@ -43,16 +43,19 @@ module Make
       | Rel of S.event_rel
       | Clo of closure
 
-    and env = v StringMap.t
+    and env = v Lazy.t StringMap.t
     and closure =
         { clo_args : AST.var list ;
           clo_env : env ;
           clo_body : AST.exp; }
 
     let find_env env k =
-      try StringMap.find k env
-      with
-      | Not_found -> Warn.user_error "unbound var: %s" k
+      Lazy.force (
+	  try 
+	    StringMap.find k env
+	  with
+	  | Not_found -> Warn.user_error "unbound var: %s" k
+	)
 
     let is_rel = function
       | Rel _ -> true
@@ -199,7 +202,7 @@ module Make
               with _ -> Warn.user_error "argument_mismatch" in
             let env =
               List.fold_right
-                (fun (x,v) env -> StringMap.add x v env)
+                (fun (x,v) env -> StringMap.add x (lazy v) env)
                 bds f.clo_env in
             eval env f.clo_body
         | Bind (bds,e) ->
@@ -218,7 +221,7 @@ module Make
       | [] -> env
       | (k,e)::bds ->
           let v = eval env e in
-          StringMap.add k v (eval_bds env bds)
+          StringMap.add k (lazy v) (eval_bds env bds)
 
 (* For let rec *)
       and env_rec pp bds =
@@ -239,7 +242,7 @@ module Make
         fun env ->
           fix 0
             (List.fold_left
-               (fun env (k,_) -> StringMap.add k empty_rel env)
+               (fun env (k,_) -> StringMap.add k (lazy empty_rel) env)
                env bds)
             (List.map (fun _ -> E.EventRel.empty) bds)
 
@@ -247,7 +250,7 @@ module Make
       | [] -> env,[]
       | (k,e)::bds ->
           let v = eval env e in
-          let env = StringMap.add k v env in
+          let env = StringMap.add k (lazy v) env in
           let env,vs = fix_step env bds in
           env,(as_rel v::vs) in
 
@@ -398,7 +401,7 @@ module Make
 (* Initial env *)
       let m =
         List.fold_left
-          (fun m (k,v) -> StringMap.add k (Rel v) m)
+          (fun m (k,v) -> StringMap.add k (lazy (Rel v)) m)
           StringMap.empty
           (["id",id;
 	    "noid", E.EventRel.filter (fun (e1,e2) -> 
@@ -460,7 +463,7 @@ module Make
 	 ) in
       let m =
         List.fold_left
-          (fun m (k,v) -> StringMap.add k (Set v) m)
+          (fun m (k,v) -> StringMap.add k (lazy (Set v)) m)
           m
           (arch_vars @ [
            "_", evts;
@@ -496,7 +499,7 @@ module Make
 	    
             let m =
               List.fold_left
-		(fun m (k,v) -> StringMap.add k (Rel v) m)
+		(fun m (k,v) -> StringMap.add k (lazy (Rel v)) m)
 		m
 		[
 		  
@@ -511,7 +514,7 @@ module Make
         let co0 = conc.S.pco in
         let m =
            List.fold_left
-              (fun m (k,v) -> StringMap.add k (Rel v) m)
+              (fun m (k,v) -> StringMap.add k (lazy (Rel v)) m)
               m
               [
                "co0", co0;
