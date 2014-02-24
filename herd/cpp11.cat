@@ -43,7 +43,9 @@
 
 (* Temproary concessions to the syntax *)
 (* We want both syntax i.e. [] identity + the child proof version *)
-let lo = co
+let set brmw = 0
+let set atom = ~na & (M | brmw | rmw)
+(*let set atom = ~B & (rel | acq | con | sc | relacq | rlx | brmw)*)
 (* end - Temporary hacks*)
 
 
@@ -95,8 +97,7 @@ let fid = ([B]; po)?
    order does not relate fences to other actions in the same thread. *)
 (*let bugr = po*)
 (*show bugr*)
-let pp_asw = asw \ (asw;po)
-show pp_asw
+
 
 (*C: release_acquire_fenced_synchronizes_with, hypothetical_release_sequence_set, release_sequence_set *)
 
@@ -121,11 +122,11 @@ let rsco = (co ; [rmw] | coi) & (niw [~rmw])
 *)
 
 
-let rs = [crel]; fid; [~na]; (((co ; [rmw]) | coi | [W]) & ~(coe ; [~rmw] ; co))
-let swra = ext & (rs; rf; idf; [cacq])
+let rs = [crel]; fid; [atom & W]; (((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co))?
+let swra = ext & (rs; rf; [atom]; idf; [cacq])
 let swul = ext & ([ul]; lo; [lk])
-let asw = ([I * ~I]) & ~([I * ~I];po)
-let sw = asw | swul | swra
+let pp_asw = asw \ (asw;po)
+let sw = pp_asw | swul | swra
 
 (* C: no_consume_hb *)
 (* simple_hb applies to the programs that don't have consumes *)
@@ -145,8 +146,6 @@ let dob = (ext & ([W]; rs; rf; [con])); cad?
 let ithbr = sw | dob | sw;po
 let ithb = (ithbr | po;ithbr)+
 let hb = po | ithb
-show sw
-show dob
 provides acyclic hb as hbAcyclic
 
 
@@ -174,6 +173,7 @@ provides acyclic (pol | com) as uniproc
 (* Question: Is the model with the restrictions from START above the
    same as the model with the following hbuniproc? *)
 provides acyclic (hbl | com) as hbuniproc
+show co
 
 (* MB: Above is an adjustment of the standard uniproc:
 
@@ -278,7 +278,6 @@ provides acyclic (hbl | com) as hbuniproc
   simplifications that involve hb, it is such a complicated relation.
 *)
 let vse = [W];hbl;[R] & ~(hbl; [W]; hbl)
-show vse
 
 (* C: consistent_non_atomic_rf -- must read from vse: *)
 let narf = rf; [na]
@@ -305,7 +304,7 @@ acyclic GHB
 
 
 (* C: consistent_atomic_rf -- acyclicity of hb union rf for atomic reads: *)
-let arf = rf; [~na]
+let arf = rf; [atom]
 let hbarf = hb | arf
 provides acyclic hbarf as atomicRfConsistent
 (*jade: arf and hbarf are funky names =)*)
@@ -391,11 +390,13 @@ let overstrong_scfr = [SC]; fid; fr; idf; [SC]
 
    Here is the aproximation of from-reads that the SC atomics do respect:
 *)
-let scfr = ([sc]    ; rf^-1; hbl  ; [W & sc]) |
-           ([sc]    ; rf^-1; [sc] ; co; [sc]) |
-           ([sc & B]; po; fr;     [sc]    ) |
-           (    [sc];     fr; po; [sc & B]) |
-           ([sc & B]; po; fr; po; [sc & B])
+let scfr = noid &
+           ( ([sc]    ; rf^-1; hbl  ; [W & sc]) |
+             ([sc]    ; rf^-1; [sc] ; co; [sc]) |
+             ([sc & B]; po; fr;     [sc]    ) |
+             (    [sc];     fr; po; [sc & B]) |
+             ([sc & B]; po; fr; po; [sc & B])
+           )
 
 (* SC atomics have to respect happens-before: *)
 
@@ -421,9 +422,9 @@ provides irreflexive mv as consistentLo
 
 
 (* C: data_races *)
-let dr = ([W * M] | [M * W]) &
+let dr = ([W * _] | [_ * W]) &
          loc & 
-         ([na * _] | [_ * na]) &
+         (~[atom * atom]) &
          ext &
          ~hb & ~(hb^-1)
 
@@ -445,7 +446,8 @@ let ur = ([W * M] | [M * W]) &
 let bl = ([ls]; (po & lo); [lk]) & ~(lo; [ul]; lo)
 
 (* This seems to say the right thing, but it is a bit complicated! *)
-let lu = ~([ls]; (po & lo & ~(lo; [ul]; lo))); [ul]
+let lopowoul = (po & lo & ~(lo; [ul]; lo))
+let lu = [ul] & ~([ul];lopowoul^-1;[ls];lopowoul;[ul])
 
 
 
@@ -455,12 +457,12 @@ show bl
 (*
   MB: The behaviour of requires was not quite right. Herd threw an
   exeption on a violation, so for now these are commented out.
+*)
 
 requires empty dr as dataRace 
 requires empty ur as unsequencedRace 
 requires empty bl as badLock
 requires empty lu as badUnlock
-*)
 
 (* MB: TODO
 
