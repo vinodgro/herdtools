@@ -1037,6 +1037,19 @@ let dump_read_timebase () =
       end
     end
 
+  let do_store t loc v =
+    if RunType.is_atomic t then
+      sprintf "atomic_store_explicit(&%s,%s,memory_order_relaxed)" loc v
+    else
+      sprintf "%s = %s" loc v
+
+  let do_load t loc =
+    if RunType.is_atomic t then
+      sprintf "atomic_load_explicit(&%s,memory_order_relaxed)" loc
+    else loc
+
+  let do_copy t loc1 loc2 = do_store t loc1 (do_load t loc2)
+
   let dump_check_globals env test =
     if do_check_globals then begin
 (* CHECKGLOBALS *)
@@ -1102,8 +1115,12 @@ let dump_read_timebase () =
           loop_test_prelude indent2 "" ;
           List.iter
             (fun loc ->
-              O.fiii "cpy_%s[_id][_i] = %s;"
-                (dump_loc_name loc) (dump_loc loc))
+              let t = find_type loc env in
+              let ins =
+                do_copy t
+                  (sprintf "cpy_%s[_id][_i]" (dump_loc_name loc))
+                  (dump_loc loc) in
+              O.fiii "%s;" ins)
             locs ;
           loop_test_postlude indent2 ;
           O.fii "po_reinit(_a->s_or);" ;
@@ -1114,7 +1131,12 @@ let dump_read_timebase () =
           List.iter
             (fun loc ->
               let a = dump_loc_name loc in
-              O.fiii "if (cpy_%s[_id][_i] != cpy_%s[_nxt_id][_i]) { _found = 1; break; }" a a)
+              let t = find_type loc env in
+              let load1 =
+                do_load t (sprintf "cpy_%s[_id][_i]" a)
+              and load2 =
+                do_load t (sprintf "cpy_%s[_nxt_id][_i]" a) in
+              O.fiii "if (%s != %s) { _found = 1; break; }" load1 load2)
             locs ;
           O.oii "}" ;
           let fmt = "%i: Stabilizing final state!\\n" in
