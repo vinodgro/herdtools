@@ -186,7 +186,7 @@ let map_addrs _f _ins = Warn.fatal "C++11 map_addrs has not been implemented"
 (*This is how PPC and ARM did it...*)
 let fold_addrs _f c _ins = c
 
-let pp_instruction _m _ins = Warn.fatal "C++11 pp_instruction has not been implemented"
+let pp_instruction _m _ins = dump_instruction _ins
 
 let get_next _ins = Warn.fatal "C++11 get_next not implemented"
 

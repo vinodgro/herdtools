@@ -299,11 +299,16 @@ module Make (AI:Arch.S) :  S with module A = AI =
                                                                       
     let pp_action withparen e = match e.action with
     | Access (W,l,v) ->
-	Printf.sprintf "%s%s%s=%s"
-          (pp_dirn W)
-          (pp_location withparen l)
-	  (if e.atomic then "*" else "")
-	  (V.pp_v v)
+        if e.iiid = None (* init write *) then
+	  Printf.sprintf "Init %s=%s"
+	    (pp_location withparen l)
+	    (V.pp_v v)
+	else
+	  Printf.sprintf "%s%s%s=%s"
+            (pp_dirn W)
+            (pp_location withparen l)
+	    (if e.atomic then "*" else "")
+	    (V.pp_v v)
     | Access (R,l,v) ->
 	Printf.sprintf "%s%s%s=%s"
           (pp_dirn R)
@@ -316,11 +321,12 @@ module Make (AI:Arch.S) :  S with module A = AI =
         (V.pp_v v1)
         (V.pp_v v2)
     | Lock (l,o) ->
-      Printf.sprintf "Lock(%s,%s)"
+      Printf.sprintf "L%s%s"
+	(match o with Locked -> "S" (* successful *) | Blocked -> "B")
         (pp_location withparen l)
-        (match o with Locked -> "Locked" | Blocked -> "Blocked")
+        
     | Unlock l ->
-      Printf.sprintf "Unlock(%s)"
+      Printf.sprintf "U%s"
         (pp_location withparen l)
     | Barrier b      -> A.pp_barrier b
     | Commit -> "Commit"
@@ -429,6 +435,7 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
     let is_mem e = match e.action with
     | Access (_,A.Location_global _,_) -> true
+    | RMW _ -> true
     | _ -> false
 
     let is_atomic e =

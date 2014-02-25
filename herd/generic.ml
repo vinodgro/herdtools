@@ -97,8 +97,7 @@ module Make
   let select_event = match S.O.PC.showevents with
   | AllEvents -> (fun _ -> true)
   | MemEvents -> E.is_mem
-  | NonRegEvents -> (fun e -> E.is_mem e || E.is_barrier e || E.is_commit e
-  )
+  | NonRegEvents -> (fun e -> E.is_mem e || E.is_barrier e || E.is_mutex_action e || E.is_commit e)
 
   let select_rel =
     E.EventRel.filter (fun (e1,e2) -> select_event e1 && select_event e2)
@@ -110,7 +109,7 @@ module Make
       else (fun x -> x)
 
     let show_to_vbpp st =
-      StringMap.fold (fun tag v k -> (tag,v)::k)   (Lazy.force st.show) []
+      StringMap.fold (fun tag v k -> (tag,v)::k) (Lazy.force st.show) []
 
     let empty_rel = Rel E.EventRel.empty   
     let empty_set = Set E.EventSet.empty       
@@ -484,17 +483,19 @@ module Make
       if withco then
 	let process_co co0 res =
 	  let process_lo lo0 res = 
-	    (* Printf.printf "Candidate co: %a\n" E.debug_rel co0;
-	  Printf.printf "Candidate lo: %a\n" E.debug_rel lo0;*)
+	     Printf.printf "Candidate co: %a\n" E.debug_rel co0;
+	  Printf.printf "Candidate lo: %a\n" E.debug_rel lo0;
             let co = S.tr co0 in
 	    let lo = lo0 in
             let fr = U.make_fr conc co in
             let vb_pp =
               lazy begin
-		  if S.O.PC.showfr then
-		    ("fr",fr)::("co",co0)::Lazy.force vb_pp
-		  else
-		    ("co",co0)::Lazy.force vb_pp
+		  (if S.O.PC.showfr then [("fr",fr)] else []) @
+                  (if StringSet.mem "co" S.O.PC.unshow 
+		   then [] else [("co",co0)]) @
+		  (if StringSet.mem "lo" S.O.PC.unshow 
+		   then [] else [("lo",lo0)]) @
+		  Lazy.force vb_pp
 		end in
 	    
             let m =
@@ -505,7 +506,7 @@ module Make
 		  
 		  "fr", fr; "fre", U.ext fr; "fri", U.internal fr;
 		  "co", co; "coe", U.ext co; "coi", U.internal co;
-		  "lo", lo;
+		  "lo", lo; "loe", U.ext lo; "loi", U.internal lo;
 		] in
             run_interpret test conc m id vb_pp kont res in
           U.apply_process_lo test conc process_lo res in

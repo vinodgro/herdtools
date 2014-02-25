@@ -1,10 +1,8 @@
 CPP11 MP_relaxed
 "Fre PodWR Fre PodWR"
 { x=0; y=0; }
- P0                          | P1                      ;
- x.store(1,mo_relaxed)       | r1 = y.load(mo_relaxed) ;
- y.store(1,mo_relaxed)       | r2 = x.load(mo_relaxed) ; 
- y.store(2,mo_relaxed)       | lock(x) ; 
- unlock(x)                   | r3 = x.load(mo_relaxed) ; 
+ P0           | P1         ;
+ lock(x)      | lock(x)    ;
+ unlock(x)    | unlock(x)  ; 
 
 exists (1:r1 = 1 /\ 1:r2 = 0)

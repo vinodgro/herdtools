@@ -1008,7 +1008,8 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
   | AllEvents -> (fun _ -> true)
   | MemEvents -> E.is_mem
   | NonRegEvents ->
-      (fun e -> E.is_mem e || E.is_barrier e || E.is_commit e)
+      (fun e -> E.is_mem e || E.is_barrier e || 
+		E.is_commit e || E.is_mutex_action e)
 
   let select_event = let open Misc in select_event &&& select_non_init
 
