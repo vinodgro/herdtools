@@ -1076,13 +1076,16 @@ let dump_read_timebase () =
         let v = find_global_init a test in
         match memory,t with
         | Indirect,RunType.Ty _ ->
-            sprintf "mem_%s[_i] != %s" a  (A.Out.dump_v v)
+            let load = do_load t (sprintf "mem_%s[_i]" a) in
+            sprintf "%s != %s" load (A.Out.dump_v v)
         | (Indirect,RunType.Pointer _) ->
+            let load = do_load t (dump_a_leftval a) in
             sprintf "%s != %s"
-              (dump_a_leftval a) (dump_a_v_casted v)
+              load (dump_a_v_casted v)
         | (Direct,_) ->
+            let load = do_load t (dump_leftval a) in
             sprintf "%s != %s"
-              (dump_leftval a) (dump_a_v_casted v) in
+              load (dump_a_v_casted v) in
       List.iter
         (fun x ->
           O.fii "if (%s%s) fatal(\"check_globals failed\");"
