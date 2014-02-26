@@ -108,7 +108,7 @@ module Make(S : SemExtra.S) = struct
 (********)
 
   let get_dir e = match e.E.action with
-  | E.Access (d,_,_) -> d
+  | E.Access (d,_,_,_) -> d
   | _ -> assert false
 
 
