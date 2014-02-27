@@ -49,6 +49,33 @@ version:
 	@export LC_ALL=C && echo  'let rev = "'`$(SVNVERSION)`'"' >> version.ml
 	@@echo "let libdir = \"$(LIBDIR)\"" >> version.ml
 
+baseline:
+	@echo "Regenerating baseline..."
+	@./herd -model power.cat testsuite/PPCTests/*  > testsuite/PPC_results_baseline.txt
+	@./herd -model arm.cat testsuite/ARMTests/* > testsuite/ARM_results_baseline.txt
+
+test:
+	@echo "Running tests..."
+	@./herd -model power.cat testsuite/PPCTests/*  > testsuite/PPC_results_new.txt
+	@./herd -model arm.cat testsuite/ARMTests/* > testsuite/ARM_results_new.txt
+	@test -s ../tools/mcompare || { echo "../tools/mcompare doesn't exist. Run the \`make -C ../tools\` command."; exit 1; }
+	@echo "Comparing test results against baseline..."
+	@../tools/mcompare \
+          testsuite/PPC_results_new.txt \
+          testsuite/PPC_results_baseline.txt \
+          -neg testsuite/N1 -pos testsuite/P1 >/dev/null
+	@../tools/mcompare \
+          testsuite/ARM_results_new.txt \
+          testsuite/ARM_results_baseline.txt \
+          -neg testsuite/N2 -pos testsuite/P2 >/dev/null
+	@echo "There are differences in the following PPC tests:" && \
+	  cat testsuite/P1 && cat testsuite/N1
+	@echo "There are differences in the following ARM tests:" && \
+	  cat testsuite/P2 && cat testsuite/N2 
+	@rm testsuite/N1 testsuite/N2 testsuite/P1 testsuite/P2
+
 clean::
 	/bin/rm -f version.ml
+	/bin/rm -f testsuite/PPC_results_baseline.txt
+	/bin/rm -f testsuite/ARM_results_baseline.txt
 
