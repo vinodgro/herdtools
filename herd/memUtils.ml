@@ -511,8 +511,8 @@ module Make(S : SemExtra.S) = struct
       let pco = 
         E.EventRel.fold
           (fun (e1,e2 as p) k -> match get_dir e1, get_dir e2 with
-          | E.W,E.W -> E.EventRel.add p k
-          | E.R,E.R ->
+          | Dir.W,Dir.W -> E.EventRel.add p k
+          | Dir.R,Dir.R ->
               begin match
                 find_source rfmap e1,
                 find_source rfmap e2
@@ -523,14 +523,14 @@ module Make(S : SemExtra.S) = struct
               | S.Init,_ -> k
               | _,S.Init -> raise Exit
               end
-          | E.R,E.W ->
+          | Dir.R,Dir.W ->
               begin match
                 find_source rfmap e1
               with
               | S.Store w1 -> E.EventRel.add (w1,e2) k
               | S.Init -> k
               end
-          | E.W,E.R ->
+          | Dir.W,Dir.R ->
               begin match
                 find_source rfmap e2
               with

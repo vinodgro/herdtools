@@ -47,7 +47,7 @@ module Make : functor (S: SemExtra.S) -> sig
 
 
 (* Misc, but everywhere... *)
-  val get_dir : S.event -> S.E.dirn
+  val get_dir : S.event -> Dir.dirn
   val find_source :'a S.RFMap.t -> S.event -> 'a
   val rext : S.concrete -> S.event -> bool
   val same_source :  S.concrete -> S.event -> S.event -> bool

@@ -17,21 +17,22 @@ module type S = sig
   module A : Arch.S
 
   type eiid = int
-	
-  type dirn = R | W  
     
   type action = 
-    | Access of dirn * A.location * A.V.v * bool (* atomicity flag *)
+    | Access of Dir.dirn * A.location * A.V.v * bool (* atomicity flag *)
     | Barrier of A.barrier
     | Commit
 
+(* 
+  eiid = unique event id
+  iiid = id of instruction that generated this event; None for init writes 
+*)
   type event = {
-      eiid : eiid;                       (* for init writes *)
-      iiid : A.inst_instance_id option;  (* None for init writes *)
+      eiid : eiid;                       
+      iiid : A.inst_instance_id option;  
       action : action;  } 
 
 (* Only basic printing is here *)
-  val pp_dirn : dirn -> string
   val pp_eiid       : event -> string
   val pp_action     : bool -> event -> string
   val debug_event : out_channel -> event -> unit
@@ -58,7 +59,7 @@ module type S = sig
   val is_mem_load : event ->  bool
   val is_mem : event -> bool
   val is_atomic : event -> bool
-  val get_mem_dir : event -> dirn
+  val get_mem_dir : event -> Dir.dirn
 
 (* relative to the registers of the given proc *)
   val is_reg_store : event -> A.proc -> bool
@@ -241,12 +242,12 @@ end
       
 module Make (AI:Arch.S) :  S with module A = AI =
   struct
+    open Dir
+
     module A = AI
     module V = AI.V
 
     type eiid = int
-
-    type dirn = R | W  
       
     type action = 
       | Access of dirn * A.location * V.v * bool (* atomicity flag *)
@@ -263,8 +264,6 @@ module Make (AI:Arch.S) :  S with module A = AI =
         String.make 1 (Char.chr (Char.code 'a' + e.eiid))
       else "ev"^string_of_int e.eiid
 
-
-    let pp_dirn d = match d with R-> "R" | W-> "W"
 
 (* Local pp_location that adds [..] around global locations *)        
     let pp_location withparen loc =

@@ -303,14 +303,14 @@ module Make
                 if diff_proc p then
                   let open E in
                   match get_mem_dir x, get_mem_dir y with
-                  | R,R -> assert false
-                  | R,W ->
+                  | Dir.R,Dir.R -> assert false
+                  | Dir.R,Dir.W ->
                       ({ SE.nature = SE.Exe ; event = x ; },
                        { SE.nature = SE.Prop (get_proc x) ; event = y ; })::k
-                  | W,R ->
+                  | Dir.W,Dir.R ->
                       ({ SE.nature = SE.Prop (get_proc y) ; event = x ; },
                        { SE.nature = SE.Exe ; event = y ; })::k
-                  | W,W ->
+                  | Dir.W,Dir.W ->
                       if !Misc.switch then k
                       else
                       ({ SE.nature = SE.Com ; event = x ; },
