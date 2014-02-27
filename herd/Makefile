@@ -76,6 +76,6 @@ test:
 
 clean::
 	/bin/rm -f version.ml
-	/bin/rm -f testsuite/PPC_results_baseline.txt
-	/bin/rm -f testsuite/ARM_results_baseline.txt
+	/bin/rm -f testsuite/PPC_results_new.txt
+	/bin/rm -f testsuite/ARM_results_new.txt
 
