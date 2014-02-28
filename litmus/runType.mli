@@ -14,3 +14,4 @@ type t = Ty of string | Pointer of string
 
 val dump : t -> string
 val is_atomic : t -> bool
+val strip_atomic : t -> t

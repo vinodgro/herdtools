@@ -242,9 +242,10 @@ let () =
       let gcc = !gcc
       let c11 = !c11
       let c11_fence =
-        if not c11 then
+        let b = !c11_fence in
+        if b && not c11 then
           Warn.fatal "The use of C11 fence cannot be enabled without C11 enabled (use -c11 true)";
-        !c11_fence
+        b
       let crossrun = !crossrun
       let driver = !driver
       let sleep = !sleep
