@@ -101,7 +101,7 @@ let check_procs prog =
   in
   Misc.iteri
     (fun k p ->
-      if k <> p then
+      if not (Misc.int_eq k p) then
         Warn.fatal "Processes must be P0, P1, ...")
     procs ;
   procs
