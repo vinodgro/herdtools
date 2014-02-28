@@ -139,14 +139,14 @@ module Make
                  in
                  List.fold_left f [] code.CAst.params
                in
-               (proc, (comp_template proc init final code, (regs, volatile))) :: acc
+               acc @ [(proc, (comp_template proc init final code, (regs, volatile)))]
            | CAst.Global _ -> acc
         )
         []
 
     let get_global_code =
       let f acc = function
-        | CAst.Global x -> x :: acc
+        | CAst.Global x -> acc @ [x]
         | CAst.Test _ -> acc
       in
       List.fold_left f []
