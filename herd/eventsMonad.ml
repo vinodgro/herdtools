@@ -303,7 +303,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 		  trivial_event_structure
 		    {E.eiid = eiid1 ;
 		     E.iiid = Some ii;
-		     E.action = E.Access (Dir.R, loc, v, atomic)})
+		     E.action = E.mk_Access (Dir.R, loc, v, atomic)})
 		 acc_inner)) (eiid,Evt.empty)	
 
       let read_loc = do_read_loc false
@@ -321,7 +321,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 	      trivial_event_structure
 		{E.eiid = eiid ;
 		 E.iiid = Some ii;
-		 E.action = E.Access (Dir.W, loc, v, atomic)}))
+		 E.action = E.mk_Access (Dir.W, loc, v, atomic)}))
 	    
       let write_loc = do_write_loc false
 
@@ -340,7 +340,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 		 ((), [],
 		  trivial_event_structure
 		    {E.eiid = eiid ;  E.iiid = Some ii; 
-		     E.action = E.Barrier b;}))
+		     E.action = E.mk_Barrier b;}))
 
       let any_op mk_v mk_c =
 	(fun eiid_next -> 
@@ -403,7 +403,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 	      trivial_event_structure
 		{E.eiid = eiid ;
 		 E.iiid = Some ii;
-		 E.action = E.Commit;}))
+		 E.action = E.mk_Commit;}))
 
       let initwrites env =
         fun eiid ->
@@ -413,7 +413,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
                 let ew =
                   {E.eiid = eiid ;
 		   E.iiid = None ;
- 		   E.action = E.Access (Dir.W, loc, v, false) ;} in
+ 		   E.action = E.mk_Access (Dir.W, loc, v, false) ;} in
                 (eiid+1,ew::es))
               (eiid,[]) env in
           let es = E.EventSet.of_list es in

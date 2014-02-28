@@ -14,7 +14,8 @@ module Make (C:Sem.Config)(V:Value.S)
 =
   struct
     module ARM = ARMArch.Make(C.PC)(V)
-    include SemExtra.Make(C)(ARM)
+    module Act = MachAction.Make(ARM)
+    include SemExtra.Make(C)(ARM)(Act)
 
 (* Barrier pretty print *)
     let  dmb =
