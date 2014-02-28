@@ -30,6 +30,7 @@ module type S = sig
       condition : C.constr ;
       globals : string type_env ;
       flocs : A.location list ;
+      global_code : string list;
       src : src ; }
 
   val find_our_constraint : t -> C.constr
@@ -61,6 +62,7 @@ struct
       condition : C.constr ;
       globals : string type_env ;
       flocs : A.location list ;
+      global_code : string list;
       src : src ; }
 
   let find_our_constraint test = test.condition

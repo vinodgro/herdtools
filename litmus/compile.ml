@@ -422,6 +422,7 @@ let lblmap_code =
         condition = final;
         globals = comp_globals init code;
         flocs = List.map fst locs ;
+        global_code = [];
         src = t;
       }
 

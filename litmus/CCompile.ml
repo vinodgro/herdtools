@@ -144,6 +144,13 @@ module Make
         )
         []
 
+    let get_global_code =
+      let f acc = function
+        | CAst.Global x -> x :: acc
+        | CAst.Test _ -> acc
+      in
+      List.fold_left f []
+
     let compile t =
       let
         { MiscParser.init = init ;
@@ -158,6 +165,7 @@ module Make
         condition = final;
         globals = comp_globals init code;
         flocs = List.map fst locs;
+        global_code = get_global_code code;
         src = t;
       }
 

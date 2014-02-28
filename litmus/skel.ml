@@ -1408,7 +1408,7 @@ let dump_read_timebase () =
     if do_verbose_barrier_local then O.fi "pm_t *p_mutex;" ;
     O.fi "ctx_t *_a;   /* In this context */" ;
     O.f "} parg_t;" ;
-    O.f "" ;
+    O.f "\n\n%s\n\n" (String.concat "\n" test.T.global_code);
     List.iter
       (fun (proc,(out,(outregs,envVolatile))) ->
         let  do_collect =  do_collect_local && (do_safer || proc=0) in
