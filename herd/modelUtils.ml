@@ -32,8 +32,8 @@ module Make(O:Model.Config) (S:SemExtra.S) = struct
           E.EventRel.filter (fun (_,e2) -> E.is_mem_load e2) data_dep in
 
         let is_data (e1,e2) = match e1.E.action, e2.E.action with
-        | E.Access (E.R,S.A.Location_reg (_,_),v1),
-          E.Access (E.W,S.A.Location_global _,v2) ->
+        | E.Access (Dir.R,S.A.Location_reg (_,_),v1,_),
+          E.Access (Dir.W,S.A.Location_global _,v2,_) ->
             v1 == v2
               (* Oups! relies on the value being substituted
                  after solving equations! *)

@@ -287,7 +287,7 @@ let get_loc e = match E.location_of e with
 | None -> assert false
 
 and get_value e = match e.E.action with
-| E.Access (_,_,v) -> v
+| E.Access (_,_,v,_) -> v
 | E.Barrier _|E.Commit -> assert false
 
 

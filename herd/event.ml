@@ -17,22 +17,22 @@ module type S = sig
   module A : Arch.S
 
   type eiid = int
-	
-  type dirn = R | W  
     
   type action = 
-    | Access of dirn * A.location * A.V.v
+    | Access of Dir.dirn * A.location * A.V.v * bool (* atomicity flag *)
     | Barrier of A.barrier
     | Commit
 
+(* 
+  eiid = unique event id
+  iiid = id of instruction that generated this event; None for init writes 
+*)
   type event = {
-      eiid : eiid;                       (* for init writes *)
-      iiid : A.inst_instance_id option;  (* None for init writes *)
-      atomic : bool ;
+      eiid : eiid;                       
+      iiid : A.inst_instance_id option;  
       action : action;  } 
 
 (* Only basic printing is here *)
-  val pp_dirn : dirn -> string
   val pp_eiid       : event -> string
   val pp_action     : bool -> event -> string
   val debug_event : out_channel -> event -> unit
@@ -59,7 +59,7 @@ module type S = sig
   val is_mem_load : event ->  bool
   val is_mem : event -> bool
   val is_atomic : event -> bool
-  val get_mem_dir : event -> dirn
+  val get_mem_dir : event -> Dir.dirn
 
 (* relative to the registers of the given proc *)
   val is_reg_store : event -> A.proc -> bool
@@ -242,22 +242,21 @@ end
       
 module Make (AI:Arch.S) :  S with module A = AI =
   struct
+    open Dir
+
     module A = AI
     module V = AI.V
 
     type eiid = int
-
-    type dirn = R | W  
       
     type action = 
-      | Access of dirn * A.location * V.v
+      | Access of dirn * A.location * V.v * bool (* atomicity flag *)
       | Barrier of A.barrier
       | Commit
 
     type event = {
 	eiid : eiid;
 	iiid : A.inst_instance_id option ;
-        atomic : bool ;
 	action : action;  } 
 
     let pp_eiid e =
@@ -266,25 +265,23 @@ module Make (AI:Arch.S) :  S with module A = AI =
       else "ev"^string_of_int e.eiid
 
 
-    let pp_dirn d = match d with R-> "R" | W-> "W"
-
 (* Local pp_location that adds [..] around global locations *)        
     let pp_location withparen loc =
       if withparen then sprintf "[%s]" (A.pp_location loc)
       else A.pp_location loc
                                                                       
     let pp_action withparen e = match e.action with
-    | Access (W,l,v) ->
+    | Access (W,l,v,ato) ->
 	Printf.sprintf "%s%s%s=%s"
           (pp_dirn W)
           (pp_location withparen l)
-	  (if e.atomic then "*" else "")
+	  (if ato then "*" else "")
 	  (V.pp_v v)
-    | Access (R,l,v) ->
+    | Access (R,l,v,ato) ->
 	Printf.sprintf "%s%s%s=%s"
           (pp_dirn R)
           (pp_location withparen l) 
-          (if e.atomic then "*" else "")
+          (if ato then "*" else "")
 	  (V.pp_v v)
     | Barrier b      -> A.pp_barrier b
     | Commit -> "Commit"
@@ -295,19 +292,19 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
 (* Utility functions to pick out components *)
     let value_of e = match e.action with
-    | Access (_,_ , v) -> Some v
+    | Access (_,_ , v,_) -> Some v
     | _ -> None
 
     let location_of e = match e.action with
-    | Access (_, l, _) -> Some l
+    | Access (_, l, _,_) -> Some l
     | _ -> None
 
     let location_reg_of e = match e.action with
-    | Access (_,A.Location_reg (_,r),_) -> Some r
+    | Access (_,A.Location_reg (_,r),_,_) -> Some r
     | _ -> None
 
     let global_loc_of e = match e.action with
-    | Access (_,A.Location_global loc,_) -> Some loc
+    | Access (_,A.Location_global loc,_,_) -> Some loc
     | _ -> None
 
     let location_compare e1 e2 = match location_of e1,location_of e2 with
@@ -355,7 +352,7 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
 (* relative to memory *)
     let is_mem_store e = match e.action with
-    | Access (W,A.Location_global _,_) -> true
+    | Access (W,A.Location_global _,_,_) -> true
     | _ -> false
 
     let is_mem_store_init e = match e.iiid with
@@ -363,56 +360,55 @@ module Make (AI:Arch.S) :  S with module A = AI =
     | Some _ -> false
 
     let is_mem_load e = match e.action with
-    | Access (R,A.Location_global _,_) -> true
+    | Access (R,A.Location_global _,_,_) -> true
     | _ -> false
 
     let is_mem e = match e.action with
-    | Access (_,A.Location_global _,_) -> true
+    | Access (_,A.Location_global _,_,_) -> true
     | _ -> false
 
-    let is_atomic e =
-      if e.atomic then begin
-        assert (is_mem e) ;
-        true
-      end else false
+    let is_atomic e = match e.action with
+      | Access (_,_,_,true) -> 
+	 assert (is_mem e); true
+      | _ -> false
 
     let get_mem_dir e = match e.action with
-    | Access (d,A.Location_global _,_) -> d
+    | Access (d,A.Location_global _,_,_) -> d
     | _ -> assert false
 
 (* relative to the registers of the given proc *)
     let is_reg_store e (p:int) = match e.action with
-    | Access (W,A.Location_reg (q,_),_) -> p = q
+    | Access (W,A.Location_reg (q,_),_,_) -> p = q
     | _ -> false
 
     let is_reg_load e (p:int) = match e.action with
-    | Access (R,A.Location_reg (q,_),_) -> p = q
+    | Access (R,A.Location_reg (q,_),_,_) -> p = q
     | _ -> false
 
     let is_reg e (p:int) = match e.action with
-    | Access (_,A.Location_reg (q,_),_) -> p = q
+    | Access (_,A.Location_reg (q,_),_,_) -> p = q
     | _ -> false
 
 
 (* Store/Load anywhere *)
     let is_store e = match e.action with
-    | Access (W,_,_) -> true
+    | Access (W,_,_,_) -> true
     | _ -> false
 
     let is_load e = match e.action with
-    | Access (R,_,_) -> true
+    | Access (R,_,_,_) -> true
     | _ -> false
 
     let is_reg_any e = match e.action with
-    | Access (_,A.Location_reg _,_) -> true
+    | Access (_,A.Location_reg _,_,_) -> true
     | _ -> false
 
     let is_reg_store_any e = match e.action with
-    | Access (W,A.Location_reg _,_) -> true
+    | Access (W,A.Location_reg _,_,_) -> true
     | _ -> false
 
     let is_reg_load_any e = match e.action with
-    | Access (R,A.Location_reg _,_) -> true
+    | Access (R,A.Location_reg _,_,_) -> true
     | _ -> false
 
 (* Barriers *)
@@ -640,7 +636,7 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
     let undetermined_vars_in_action a =
       match a with
-      | Access (_,l,v) -> 
+      | Access (_,l,v,_) -> 
 	  let undet_loc = match A.undetermined_vars_in_loc l with
 	  | None -> V.ValueSet.empty
 	  | Some v -> V.ValueSet.singleton v in
@@ -658,9 +654,11 @@ module Make (AI:Arch.S) :  S with module A = AI =
 
     let simplify_vars_in_action soln a =
       match a with
-      | Access (d,l,v) -> 
-	  Access (d,A.simplify_vars_in_loc soln l,V.simplify_var soln v)
-      | Barrier _|Commit -> a
+      | Access (d,l,v,ato) -> 
+	 let l' = A.simplify_vars_in_loc soln l in
+	 let v' = V.simplify_var soln v in
+	 Access (d,l',v',ato)
+      | Barrier _ | Commit -> a
 
     let simplify_vars_in_event soln e = 
       {e with action = simplify_vars_in_action soln e.action}
@@ -810,9 +808,11 @@ let (=|=) = check_disjoint para_comp
       let module M = Map.Make(OrderedEvent) in
       let env =
         EventSet.fold
-          (fun e k ->
-            if is_mem e then M.add e { e with atomic = true } k
-            else k)
+	  (fun e k ->
+            match e.action with
+	    | Access(d,l,v,_) when is_mem e ->
+		 M.add e { e with action = Access(d,l,v,true) } k
+	    | _ -> k)
           es.events M.empty in
       map_event_structure
         (fun e -> try M.find e env with Not_found -> e)
