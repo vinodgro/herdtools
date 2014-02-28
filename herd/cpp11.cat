@@ -41,12 +41,6 @@
 
 
 
-(* Temproary concessions to the syntax *)
-(* We want both syntax i.e. [] identity + the child proof version *)
-let lo = co
-(* end - Temporary hacks*)
-
-
 
 (* SC atomics have acquire and release semantics. *)
 let set cacq = acq | sc
@@ -95,8 +89,6 @@ let fid = ([B]; po)?
    order does not relate fences to other actions in the same thread. *)
 (*let bugr = po*)
 (*show bugr*)
-let pp_asw = asw \ (asw;po)
-show pp_asw
 
 (*C: release_acquire_fenced_synchronizes_with, hypothetical_release_sequence_set, release_sequence_set *)
 
@@ -121,15 +113,16 @@ let rsco = (co ; [rmw] | coi) & (niw [~rmw])
 *)
 
 
-let rs = [crel]; fid; [~na]; (((co ; [rmw]) | coi | [W]) & ~(coe ; [~rmw] ; co))
-let swra = ext & (rs; rf; idf; [cacq])
+let rs = [crel]; fid; [atom & W]; (((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co))?
+let swra = ext & (rs; rf; [atom]; idf; [cacq])
 let swul = ext & ([ul]; lo; [lk])
-let asw = ([I * ~I]) & ~([I * ~I];po)
-let sw = asw | swul | swra
+let pp_asw = asw \ (asw;po)
+show pp_asw
+let sw = pp_asw | swul | swra
 
 (* C: no_consume_hb *)
 (* simple_hb applies to the programs that don't have consumes *)
-let simple_hb = (po | sw)+
+(*let simple_hb = (po | sw)+*)
 
 
 (* C: with_consume_cad_set, dependency_ordered_before
@@ -305,9 +298,9 @@ acyclic GHB
 
 
 (* C: consistent_atomic_rf -- acyclicity of hb union rf for atomic reads: *)
-let arf = rf; [~na]
-let hbarf = hb | arf
-provides acyclic hbarf as atomicRfConsistent
+let arf = rf; [atom]
+let hbarf = hb;arf
+provides irreflexive hbarf as atomicRfConsistent
 (*jade: arf and hbarf are funky names =)*)
 
 
@@ -391,11 +384,13 @@ let overstrong_scfr = [SC]; fid; fr; idf; [SC]
 
    Here is the aproximation of from-reads that the SC atomics do respect:
 *)
-let scfr = ([sc]    ; rf^-1; hbl  ; [W & sc]) |
-           ([sc]    ; rf^-1; [sc] ; co; [sc]) |
-           ([sc & B]; po; fr;     [sc]    ) |
-           (    [sc];     fr; po; [sc & B]) |
-           ([sc & B]; po; fr; po; [sc & B])
+let scfr = ~[_] &
+           ( ([sc]    ; rf^-1; hbl  ; [W & sc]) |
+             ([sc]    ; rf^-1; [sc] ; co; [sc]) |
+             ([sc & B]; po; fr;     [sc]    ) |
+             (    [sc];     fr; po; [sc & B]) |
+             ([sc & B]; po; fr; po; [sc & B])
+           )
 
 (* SC atomics have to respect happens-before: *)
 
@@ -421,9 +416,9 @@ provides irreflexive mv as consistentLo
 
 
 (* C: data_races *)
-let dr = ([W * M] | [M * W]) &
+let dr = ([W * _] | [_ * W]) &
          loc & 
-         ([na * _] | [_ * na]) &
+         (~[atom * atom]) &
          ext &
          ~hb & ~(hb^-1)
 
@@ -445,29 +440,21 @@ let ur = ([W * M] | [M * W]) &
 let bl = ([ls]; (po & lo); [lk]) & ~(lo; [ul]; lo)
 
 (* This seems to say the right thing, but it is a bit complicated! *)
-let lu = ~([ls]; (po & lo & ~(lo; [ul]; lo))); [ul]
+let lopowoul = (po & lo & ~(lo; [ul]; lo))
+let lu = [ul] & ~([ul];lopowoul^-1;[ls];lopowoul;[ul])
+
 
 
 
 show dr
 show ur
 show bl
-(*
-  MB: The behaviour of requires was not quite right. Herd threw an
-  exeption on a violation, so for now these are commented out.
 
 requires empty dr as dataRace 
 requires empty ur as unsequencedRace 
 requires empty bl as badLock
 requires empty lu as badUnlock
-*)
 
-(* MB: TODO
-
- The lack of initialisation writes is still a problem. I need changes to Herd to deal with that. At a minimum, those changes would a name to the set of initialisation writes. Then I could define asw from there.
-
-Lock order is defined as co at the moment, it will be nicer if it was really a separate lo.
-*)
 
 
 (********************************)

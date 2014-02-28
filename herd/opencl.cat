@@ -1,29 +1,87 @@
 "OpenCL"
 
-(* Currently this is identical to the C++11 model. *)
+let set cacq = acq | sc
+let set crel = rel | sc
 
-(* Uniproc/Coherence check *)
+let dd = data | addr
+
+let pp_asw = asw \ (asw;po)
+let pol = po & loc
 let com = rf | fr | co
-acyclic po-loc | com
 
-(*synchronizes with*)
-let sw = ((co;rfe) & F[mo_release]F[mo_acquire](unv)) |   (*release sequence, coherence order followed by a release acquires*)
-          (F[mo_release]F[mo_acquire](unv) & rfe)         (*If an acquire externel reads from a release*)
+let set gtewi  = work_item & work_group & device & all_devices
+let set gtewg  = work_group & device & all_devices
+let set gtedev = device & all_devices
+let dwi_scope  = [gtewi * gtewi]
+let dwg_scope  = [gtewg * gtewg]
+let ddev_scope = [gtedev * gtedev]
+let dall_scope = [all_devices * all_devices]
+let inclusive_scopes = (int & dwi_scope)     | (gidint & dwg_scope) |
+                       (didint & ddev_scope) | dall_scope
 
-(*hb is just as defined in the 2011 paper*)
-let hb = (po | sw)+
+let gidf = (po; [B & global_fence])?
+let gfid = ([B & global_fence]; po)?
+let grs = [crel]; gfid; [atom & W & global_loc]; (((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co))?
+let gswra = inclusive_scopes & ext & (grs; rf; [atom]; gidf; [cacq])
+let gsw = pp_asw | gswra
+let ghb = (po | gsw)+
+let ghbl = ghb & loc
+let gvse = [W];ghbl;[R] & ~(ghbl; [W]; ghbl)
+provides acyclic ghb as ghbAcyclic
+provides acyclic (hhbl | com) as ghbuniproc
 
-(*data race*)
+let lidf = (po; [B & local_fence])?
+let lfid = ([B & local_fence]; po)?
+let lrs = [crel]; lfid; [atom & W & local_loc]; (((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co))?
+let lswra = inclusive_scopes & ext & (lrs; rf; [atom]; lidf; [cacq])
+let lsw = pp_asw | lswra
+let lhb = (po | lsw)+
+let lhbl = lhb & loc
+let lvse = [W];lhbl;[R] & ~(lhbl; [W]; lhbl)
+provides acyclic lhb as lhbAcyclic
+provides acyclic (lhbl | com) as lhbuniproc
 
-let dr = (WM(loc) | MW(loc)) &                               (*loc is the relation of all events to the same location*)
-         (F[non_atomic]F[](unv) | F[]F[non_atomic](unv)) &   (*At lease one is non-atomic*)
-	 MM(tid) &                                           (*tid relates all events in different threads*)
-	 (~(hb | (hb^-1)))                                     (*Make sure they are not in happens before*)
+let narf = rf; [na]
+let narfvse = narf;~((gvse | lvse)^-1)
+provides irreflexive narfvse as nonAtomicRfConsistent
 
-(*creating an acyclic global happens before with fr is the same as consistent reads from mapping we think*)
-let GHB = po | fr | sw
-acyclic GHB
+let arf = rf; [atom]
+let hbarf = (ghb | lhb);arf
+provides irreflexive hbarf as atomicRfConsistent
 
-show sw
-(*show dr*)
-empty dr
+(* There's no restriction to local or global here. Is that right? *)
+let idf = (po; [B])?
+let fid = ([B]; po)?
+let scco = [sc]; fid; co; idf; [sc]
+let scfr = ~[_] &
+           ( ([sc]    ; rf^-1; (ghbl | lhbl)  ; [W & sc]) |
+             ([sc]    ; rf^-1; [sc] ; co; [sc]) |
+             ([sc & B]; po; fr;     [sc]    ) |
+             (    [sc];     fr; po; [sc & B]) |
+             ([sc & B]; po; fr; po; [sc & B])
+           )
+let scghb = [sc]; ghb; [sc]
+let sclhb = [sc]; lhb; [sc]
+let sc = scghb | sclhb | scco | scfr
+provides acyclic sc as scConsistent
+show sc
+
+let glhb = ghb | lhb
+let dr = ([W * _] | [_ * W]) &
+         loc & 
+         (~[atom * atom]) &
+         ext &
+         ~glhb & ~(glhb^-1) &
+         ~inclusive_scopes
+
+let ur = ([W * M] | [M * W]) &
+         loc &
+         int &
+         ~[_] &
+         ~po & ~(po^-1)
+
+show dr
+show ur
+requires empty dr as dataRace 
+requires empty ur as unsequencedRace 
+
