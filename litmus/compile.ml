@@ -85,7 +85,7 @@ module Make
       and type location = A_complete.location
       and module Out = A_complete.Out
     )
-    (T:Test.S with module A = A and type P.code = A_complete.pseudo list)
+    (T:Test.S with module A = A and type P.code = int * A_complete.pseudo list)
     (C:XXXCompile.S with module A = A_complete) =
   struct
     open Printf

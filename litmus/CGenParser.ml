@@ -93,7 +93,12 @@ module Make
 (************************)
 
 let check_procs prog =
-  let procs = List.map (fun cfun ->  cfun.CAst.proc) prog in
+  let procs =
+    List.fold_left
+      (fun acc -> function CAst.Test cfun -> cfun.CAst.proc :: acc | CAst.Global _ -> acc)
+      []
+      prog
+  in
   Misc.iteri
     (fun k p ->
       if k <> p then
@@ -195,6 +200,6 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
         let info = parsed.MiscParser.info in
         { parsed with
           MiscParser.info =
-            ("Hash",D.digest init (List.map (fun x -> x.CAst.proc, x) prog) all_locs)::info ; } in
+            ("Hash",D.digest init prog all_locs)::info ; } in
       parsed
   end

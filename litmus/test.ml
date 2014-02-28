@@ -16,7 +16,7 @@ module type S = sig
   module P : PseudoAbstract.S
 
   type src =
-    ((A.location * Constant.v) list, (int * P.code) list,
+    ((A.location * Constant.v) list, P.code list,
           C.constr, A.location)
          MiscParser.result
 
@@ -48,7 +48,7 @@ struct
 
   type 'a type_env = ('a * RunType.t) list
   type src =
-    ((A.location * Constant.v) list, (int * P.code) list,
+    ((A.location * Constant.v) list, P.code list,
           C.constr, A.location)
          MiscParser.result
 
