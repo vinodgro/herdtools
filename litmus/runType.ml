@@ -17,7 +17,22 @@ let dump = function
   | Pointer x -> x ^ "*"
 
 (* Awfull ack TODO : more explict atomics *)
+let atomic_prf = "atomic_"
+let alen = String.length atomic_prf
+let is_atomic_type s =
+  String.length s >= alen && String.sub s 0 alen = atomic_prf
+
 let is_atomic = function
   | Pointer _ -> false
+  | Ty s -> is_atomic_type s
+
+
+let strip_atomic t = match t with
+  | Pointer _ -> t
   | Ty s ->
-      String.length s >= 6 && String.sub s 0 6 = "atomic"
+      Ty
+        begin
+          if is_atomic_type s then
+            String.sub s alen (String.length s - alen)
+          else s
+        end

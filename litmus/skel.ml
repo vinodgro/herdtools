@@ -813,7 +813,7 @@ let dump_read_timebase () =
     let cond = test.T.condition in
     let find_type loc =
       let t = find_type loc env in
-      RunType.dump t in
+      RunType.dump (RunType.strip_atomic t) in
     DC.fundef find_type cond
 
   let dump_cond_fun_call test dump_loc dump_val =
@@ -1351,16 +1351,15 @@ let dump_read_timebase () =
       (fun (a,t) ->
         let v = A.find_in_state (A.Location_global a) test.T.init in
         if Cfg.cautious then O.oii "mcautious();" ;
-        let do_store =
-          if RunType.is_atomic t then O.fii "atomic_init(&%s,%s);"
-          else O.fii "%s = %s;" in
-        match t,memory with
-        | RunType.Ty _,Indirect ->
-            do_store
-              (sprintf "_a->mem_%s[_i]" a) (dump_a_v v)
-        | _,_ ->
-            do_store
-              (dump_a_leftval a) (dump_a_v_casted v))
+        let ins =
+          match t,memory with
+          | RunType.Ty _,Indirect ->
+              do_store t
+                (sprintf "_a->mem_%s[_i]" a) (dump_a_v v)
+          | _,_ ->
+              do_store t
+                (dump_a_leftval a) (dump_a_v_casted v) in
+        O.fii "%s;" ins)
       test.T.globals ;
     begin if do_safer && do_collect_after then
       List.iter
@@ -1829,10 +1828,11 @@ let dump_read_timebase () =
       end ;
       List.iter
         (fun loc ->
+          let t = find_type loc env in
           O.fiii "%s %s = %s;"
-            (RunType.dump (find_type loc env))
+            (RunType.dump (RunType.strip_atomic t))
             (dump_loc_copy loc)
-            (dump_ctx_loc "ctx." loc) ;
+            (do_load t (dump_ctx_loc "ctx." loc)) ;
           if Cfg.cautious then O.oiii "mcautious();")
         locs ;
       O.oiii "outcome_t o;" ;
@@ -1845,10 +1845,13 @@ let dump_read_timebase () =
         | locs -> begin
             List.iter
               (fun loc ->
+                let t = find_type loc env in
                 loop_proc_prelude indent3 ;
                 O.fiv
-                  "if (%s != ctx.cpy_%s[_p][_i]) fatal(\"%s: global %s unstabilized\") ;"
-                  (dump_loc_copy loc) (dump_loc_name loc)
+                  "if (%s != %s) fatal(\"%s: global %s unstabilized\") ;"
+                  (dump_loc_copy loc)
+                  (do_load t
+                     (sprintf "ctx.cpy_%s[_p][_i]" (dump_loc_name loc)))
                   (doc.Name.name)  (dump_loc_name loc) ;
                 loop_proc_postlude indent3)
               locs ;
