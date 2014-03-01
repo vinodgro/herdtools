@@ -22,6 +22,13 @@ module type S = sig
   val mk_Barrier : A.barrier -> action
   val mk_Commit : action
 
+(* Constructing actions: CPP11 *)
+  val mk_Access_CPP11 : Dir.dirn * A.location * A.V.v * CPP11Base.mem_order -> action
+  val mk_RMW : A.location * A.V.v * A.V.v * CPP11Base.mem_order -> action
+  val mk_Blocked_RMW : A.location -> action
+  val mk_Lock : A.location * bool -> action
+  val mk_Unlock : A.location -> action
+
   val pp_action     : bool -> action -> string
 
 (*************************************)

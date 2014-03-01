@@ -19,12 +19,15 @@ module type S =
   sig
     module A     : Arch.S
 
+    module E : Event.S 
+	   with module Act.A = A
+
     module VC    : Valconstraint.S      
-    with type atom = A.V.v
-    and type cst = A.V.cst
-    and type solution = A.V.solution
-    and type location = A.location
-    and type state = A.state
+	   with type atom = A.V.v
+	    and type cst = A.V.cst
+	    and type solution = A.V.solution
+	    and type location = A.location
+	    and type state = A.state
 
     type 'a t
 	  
@@ -49,19 +52,28 @@ module type S =
 
     val tooFar : string -> unit t
 
-    val read_loc : A.location -> A.inst_instance_id -> A.V.v t
-    val read_reg : A.reg -> A.inst_instance_id -> A.V.v t
-    val read_mem : A.global_loc -> A.inst_instance_id -> A.V.v t
-    val read_mem_atomic : A.global_loc -> A.inst_instance_id -> A.V.v t
-
-    val write_loc : A.location -> A.V.v -> A.inst_instance_id -> unit t
-    val write_reg : A.reg -> A.V.v -> A.inst_instance_id -> unit t
-    val write_mem : A.global_loc -> A.V.v -> A.inst_instance_id -> unit t
-    val write_mem_atomic : A.global_loc -> A.V.v -> A.inst_instance_id -> unit t
-
+    val read_loc : (A.location -> A.V.v -> E.action) -> 
+		   A.location -> A.inst_instance_id -> A.V.v t
+   (* val read_reg : (bool -> A.location -> A.V.v -> E.action) -> 
+		   A.reg -> A.inst_instance_id -> A.V.v t
+    val read_mem : (bool -> A.location -> A.V.v -> E.action) -> 
+		   A.global_loc -> A.inst_instance_id -> A.V.v t
+    val read_mem_atomic : (bool -> A.location -> A.V.v -> E.action) -> 
+			  A.global_loc -> A.inst_instance_id -> A.V.v t
+    
+    val write_loc : (A.location -> A.V.v -> E.action) -> 
+		    A.location -> A.V.v -> A.inst_instance_id -> unit t
+    *)
+    val mk_action : E.action -> A.inst_instance_id -> unit t
+  (*  val write_reg : (bool -> A.location -> A.V.v -> E.action) -> 
+		    A.reg -> A.V.v -> A.inst_instance_id -> unit t
+    val write_mem : (bool -> A.location -> A.V.v -> E.action) ->
+		    A.global_loc -> A.V.v -> A.inst_instance_id -> unit t
+    val write_mem_atomic : (bool -> A.location -> A.V.v -> E.action) ->
+			   A.global_loc -> A.V.v -> A.inst_instance_id -> unit t
     val write_flag :
 	A.reg -> Op.op -> A.V.v -> A.V.v ->  A.inst_instance_id -> unit t
-	
+   *)	
     val create_barrier : A.barrier -> A.inst_instance_id -> unit t
 
     val op1 : Op.op1 -> A.V.v -> A.V.v t

@@ -37,21 +37,46 @@ module Make (C:Sem.Config)(V:Value.S)
     let (>>::) = M.(>>::)
     let (>>!) = M.(>>!)
 
+    let mk_read ato loc v = Act.mk_Access (Dir.R, loc, v, ato)
+					      
+    let read_loc = 
+      M.read_loc (mk_read false)
+    let read_reg r ii = 
+      M.read_loc (mk_read false) (A.Location_reg (ii.A.proc,r)) ii
+    let read_mem a ii  = 
+      M.read_loc (mk_read false) (A.Location_global a) ii
+    let read_mem_atomic a ii = 
+      M.read_loc (mk_read true) (A.Location_global a) ii
+		 
+    let write_loc loc v ii = 
+      M.mk_action (Act.mk_Access (Dir.W, loc, v, false)) ii
+    let write_reg r v ii = 
+      M.mk_action (Act.mk_Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
+    let write_mem a v ii  = 
+      M.mk_action (Act.mk_Access (Dir.W, A.Location_global a, v, false)) ii
+    let write_mem_atomic a v ii = 
+      M.mk_action (Act.mk_Access (Dir.W, A.Location_global a, v, true)) ii
+
+    let write_flag r o v1 v2 ii =
+	M.addT
+	  (A.Location_reg (ii.A.proc,r))
+	  (M.op o v1 v2) >>= (fun (loc,v) -> write_loc loc v ii)
+
 (* Now handled by axiomatic model *)
     let with_store_buffer () = false
 
-    let write_addr a v ii =  M.write_mem a v ii
+    let write_addr a v ii =  write_mem a v ii
     let write_addr_conditional a v ii = 
-      M.write_mem_atomic  a v ii
+      write_mem_atomic  a v ii
 
-    let read_addr a ii = M.read_mem a ii
-    let read_addr_res a ii = M.read_mem_atomic a ii
+    let read_addr a ii = read_mem a ii
+    let read_addr_res a ii = read_mem_atomic a ii
 
     let read_reg_or_zero r ii = match r with
     | PPC.Ireg PPC.GPR0 ->
         M.unitT V.zero
     | _ ->
-        M.read_reg r ii
+        read_reg r ii
 
 (**********************)
 (* Condition register *)
@@ -69,7 +94,7 @@ module Make (C:Sem.Config)(V:Value.S)
     and ppc_bitreg cr bit = PPC.CRBit (32+4*cr+bit)
 
     let read_flag cr bit ii =
-      M.read_reg (PPC.CRField cr) ii >>=
+      read_reg (PPC.CRField cr) ii >>=
       M.op1 (Op.ReadBit (caml_bitof bit))
 
           (* Set flags by comparing v1 v2 *)
@@ -85,7 +110,7 @@ module Make (C:Sem.Config)(V:Value.S)
 	  (ifT bit_gt Op.Gt v1 v2
 	      (M.unitT (mask bit_eq))) >>=
         (* [not Lt /\ not Gt] => Eq *)
-	fun v -> M.write_reg (PPC.CRField cr) v ii
+	fun v -> write_reg (PPC.CRField cr) v ii
 
     let flags with_flags cr v1 v2 ii =
       if with_flags then write_cr cr v1 v2 ii >>! ()
@@ -94,7 +119,7 @@ module Make (C:Sem.Config)(V:Value.S)
 (* sets the CR0[EQ] bit to veq *)
     let flags_res veq ii =
       let cr = 0 in
-      M.write_reg (PPC.CRField cr) (if veq then mask bit_eq else V.zero) ii 
+      write_reg (PPC.CRField cr) (if veq then mask bit_eq else V.zero) ii 
 
           (* operations RD <- RA op RB *) 
     let op3regs ii op set rD rA rB =
@@ -102,21 +127,21 @@ module Make (C:Sem.Config)(V:Value.S)
       | PPC.SetCR0 -> true
       | PPC.DontSetCR0 -> false in
       let proc = ii.PPC.proc in
-      ((M.read_reg rA ii >>| M.read_reg rB ii) >>=
+      ((read_reg rA ii >>| read_reg rB ii) >>=
        (fun (vA,vB) ->
 	 M.addT (PPC.Location_reg (proc,rD)) (M.op op vA vB)
 	   >>= (fun (l,v) ->
- 	     M.write_loc l v ii >>|	  
+ 	     write_loc l v ii >>|	  
 	     flags with_flags 0 v V.zero ii))) >>! B.Next
 
         (* operations RD <- RA op im *) 
     let op2regi ii op with_flags rD rA im =
       let proc = ii.PPC.proc in
-      (M.read_reg rA ii >>=
+      (read_reg rA ii >>=
        (fun vA ->
 	 M.addT (PPC.Location_reg (proc,rD)) (M.op op vA im) >>=
 	 (fun (l,v) ->
- 	   M.write_loc l v ii >>|	  
+ 	   write_loc l v ii >>|	  
 	   flags with_flags 0 v V.zero ii))) >>! B.Next
 
 
@@ -154,15 +179,15 @@ module Make (C:Sem.Config)(V:Value.S)
 (* Hum, maybe of an exageration, 2 read events, against one *)
 	  op3regs ii Op.Or PPC.DontSetCR0 rD rS rS
 	else
-	  M.read_reg rS ii >>=
-	  fun v -> M.write_reg rD v ii >>!
+	  read_reg rS ii >>=
+	  fun v -> write_reg rD v ii >>!
 	    B.Next
 (* 2 reg + immediate *)
     | PPC.Pli (rD,v)
     | PPC.Paddi (rD,PPC.Ireg (PPC.GPR0),v) ->
 (* Believe it or not Power ISA, p. 62 says so,
    In addi r,GPR0,v GPR0 is interpreted as constant 0 ! *)
-	M.write_reg rD (V.intToV v) ii >>!
+	write_reg rD (V.intToV v) ii >>!
 	B.Next
     |  PPC.Paddi (rD,rA,simm) ->
 	op2regi ii Op.Add false rD rA (V.intToV simm)
@@ -188,60 +213,60 @@ module Make (C:Sem.Config)(V:Value.S)
     | PPC.Pbcc(PPC.Ne,lbl) -> bcc_no 0 bit_eq ii lbl
 (* Compare, to result in any cr *)
     | PPC.Pcmpwi (cr,rA,v) ->
-	M.read_reg rA ii >>=
+	read_reg rA ii >>=
 	fun vA -> flags true cr vA (V.intToV v) ii >>!
 	  B.Next
     | PPC.Pcmpw (cr,rA,rB) ->
-	(M.read_reg rA ii >>| M.read_reg rB ii) >>=
+	(read_reg rA ii >>| read_reg rB ii) >>=
 	fun (vA,vB) -> flags true cr vA vB ii >>! B.Next
 (* memory loads/stores *)
     | PPC.Plwz(rD,d,rA)|PPC.Pld(rD,d,rA) ->
-        M.read_reg rA ii >>= 
+        read_reg rA ii >>= 
 	fun aA -> 
 	  M.add aA (V.intToV d) >>=
 	  fun a -> 
 	    read_addr a ii >>=
 	    fun v ->
-	      M.write_reg rD v ii >>!
+	      write_reg rD v ii >>!
 	      B.Next
     | PPC.Plwzx(rD,rA,rB)|PPC.Pldx(rD,rA,rB) ->
-	(read_reg_or_zero rA ii >>| M.read_reg rB ii) >>=
+	(read_reg_or_zero rA ii >>| read_reg rB ii) >>=
 	fun (aA,aB) -> 
 	  M.add aA aB >>=
 	  fun a ->
 	    read_addr a ii >>=
-	    fun v -> M.write_reg rD v ii >>! B.Next
+	    fun v -> write_reg rD v ii >>! B.Next
     | PPC.Pstw(rS,d,rA)|PPC.Pstd(rS,d,rA) ->
-	(M.read_reg rS ii >>| M.read_reg rA ii) >>=
+	(read_reg rS ii >>| read_reg rA ii) >>=
 	(fun (vS,aA) -> 
 	  M.add aA (V.intToV d) >>=
 	  fun a -> write_addr a vS ii >>! B.Next)
     | PPC.Pstwx(rS,rA,rB) | PPC.Pstdx(rS,rA,rB)->
-	(M.read_reg rS ii
+	(read_reg rS ii
 	   >>| (* Enforce right associativity of >>| *)
 	   (read_reg_or_zero rA ii
-              >>| M.read_reg rB ii)) >>=
+              >>| read_reg rB ii)) >>=
 	(fun (vS,(aA,aB)) ->
 	  M.add aA aB  >>=
 	  fun a -> write_addr a vS ii >>! B.Next)
     | PPC.Plwarx(rD,rA,rB) ->
-	(read_reg_or_zero rA ii >>| M.read_reg rB ii) >>=
+	(read_reg_or_zero rA ii >>| read_reg rB ii) >>=
 	fun (aA,aB) -> 
 	  M.add aA aB >>=
 	  fun a ->
 	    read_addr_res a ii >>=
-	    (fun v -> M.write_reg rD v ii >>| M.write_reg PPC.RES V.one ii) 
+	    (fun v -> write_reg rD v ii >>| write_reg PPC.RES V.one ii) 
               >>! B.Next
     | PPC.Pstwcx(rS,rA,rB) ->
-	((M.read_reg rS ii >>| M.read_reg PPC.RES ii)
+	((read_reg rS ii >>| read_reg PPC.RES ii)
 	   >>| (* Enforce right associativity of >>| *)
-	   (read_reg_or_zero rA ii >>| M.read_reg rB ii)) >>=
+	   (read_reg_or_zero rA ii >>| read_reg rB ii)) >>=
 	fun ((vS,_),(aA,aB)) ->
 	  M.add aA aB  >>=
 	  fun a ->
             M.altT
-              ((M.write_reg PPC.RES V.zero ii >>| flags_res false ii) >>! B.Next)
-              (M.write_reg PPC.RES V.zero ii >>| (write_addr_conditional a vS ii >>|
+              ((write_reg PPC.RES V.zero ii >>| flags_res false ii) >>! B.Next)
+              (write_reg PPC.RES V.zero ii >>| (write_addr_conditional a vS ii >>|
               flags_res true ii) >>! B.Next)
     |PPC.Peieio  ->
 	M.create_barrier PPC.Eieio ii >>! B.Next	  

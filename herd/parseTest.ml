@@ -143,11 +143,30 @@ module Top (C:Config) = struct
             | X86.Mfence -> MFENCE
             | X86.Sfence -> SFENCE
             | X86.Lfence -> LFENCE
-
           end in
           let module X86M = X86Mem.Make(ModelConfig)(X86S) (X86Barrier) in
           let module X = Make (X86S) (X86LexParse) (X86M) in 
           X.run name chan env splitted
+      | Archs.CPP11 ->
+        let module CPP11 = CPP11Arch.Make(C.PC)(SymbValue) in
+        let module CPP11LexParse = struct
+    	  type instruction = CPP11.pseudo
+	  type token = CPP11Parser.token
+          module Lexer = CPP11Lexer.Make(LexConfig)
+	  let lexer = Lexer.token
+	  let parser = CPP11Parser.main
+        end in
+        let module CPP11S = CPP11Sem.Make(C)(SymbValue) in
+        let module  CPP11Barrier = struct
+          type a = CPP11.barrier
+          type b = Fence of CPP11.mem_order
+          let a_to_b a = match a with
+            | CPP11.Fence o -> Fence o
+        end in
+        let module CPP11M = CPP11Mem.Make(ModelConfig)(CPP11S) (CPP11Barrier) in
+        let module X = Make (CPP11S) (CPP11LexParse) (CPP11M) in 
+        X.run name chan env splitted
+
     end else env
 (* Forgive fatal errors *)
   let from_file  name env =

@@ -22,10 +22,6 @@ module type S = sig
 
   type eiid = int
 
-  val mk_Access : Dir.dirn * A.location * A.V.v * bool -> action
-  val mk_Barrier : A.barrier -> action
-  val mk_Commit : action
-
 (* 
   eiid = unique event id
   iiid = id of instruction that generated this event; None for init writes 
@@ -251,14 +247,9 @@ struct
   module A = AI
   module V = AI.V
 	       
-    type eiid = int
+  type eiid = int
 
   type action = Act.action
-
-  (* Constructing actions *)
-  let mk_Access = Act.mk_Access
-  let mk_Barrier = Act.mk_Barrier
-  let mk_Commit = Act.mk_Commit
 
     type event = {
 	eiid : eiid;

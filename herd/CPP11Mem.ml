@@ -10,37 +10,41 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(*********)
-(* Archs *)
-(*********)
+(*Mostly taken from the X86 Model*)
 
-type t =
-  | X86
-  | PPC
-  | ARM
-  | CPP11
+module type Config = sig
+  val model : Model.t
+  include Model.Config
+end
 
-let tags = ["X86";"PPC";"ARM";"CPP11"]
+module Make
+    (O:Config)
+    (S:Sem.Semantics)
+    (B:CPP11Barrier.S with type a = S.barrier)
+ :
+    XXXMem.S with
+module S = S
+    =
+  struct
 
-let parse s = match s with
-| "X86" -> Some X86
-| "PPC" -> Some PPC
-| "ARM" -> Some ARM
-| "CPP11" -> Some CPP11
-| _ -> None
+    open Model
 
-let lex s = match parse s with
-| Some a -> a
-| None -> assert false
+    let model = O.model
 
+    module S = S
 
-let pp a = match a with
-| X86 -> "X86"
-| PPC -> "PPC"
-| ARM -> "ARM"
-| CPP11 -> "CPP11"
+    module ModelConfig = (O : Model.Config)
 
-let arm = ARM
-let ppc = PPC
-let x86 = X86
-let cpp11 = CPP11
+    let check_event_structure test = match O.model with
+    | Generic m ->
+        let module X =
+          Generic.Make
+            (struct
+              let m = m
+              include ModelConfig
+             end)(S)(AllBarrier.FromCPP11(B)) in
+        X.check_event_structure test
+    | File _ -> assert false
+    | m -> 
+        Warn.fatal "Model %s not implemented for C++11" (Model.pp m)
+end

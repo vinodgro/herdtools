@@ -50,7 +50,7 @@ module Make
           | DMB|DSB|DMBST|DSBST
           | MFENCE|LFENCE|SFENCE
             -> true
-          | ISYNC|ISB -> false
+          | _ -> false
           end
       | None -> false
 

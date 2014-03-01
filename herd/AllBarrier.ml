@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Union of relevant PPC,ARM and X86 barriers *)
+(* Union of relevant PPC, ARM, X86 and CPP11 barriers *)
 module type S =
   sig
     type a (* Native arch barrier *)
@@ -19,6 +19,7 @@ module type S =
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
+      | FENCE of CPP11Base.mem_order (* CPP11 barriers *)
     val a_to_b : a -> b
     val pp_isync : string
   end
@@ -27,11 +28,12 @@ module type S =
 module FromPPC(B:PPCBarrier.S) = struct
   type a = B.a
 
-  type b =
+  type b = 
       | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
+      | FENCE of CPP11Base.mem_order (* CPP11 barriers *)
 
   let a_to_b a = match B.a_to_b a with
   | B.LWSYNC -> LWSYNC
@@ -45,11 +47,12 @@ end
 module FromARM(AB:ARMBarrier.S) = struct
   type a = AB.a
 
-  type b =
+  type b = 
       | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
+      | FENCE of CPP11Base.mem_order (* CPP11 barriers *)
 
   let a_to_b a = match AB.a_to_b a with
   | AB.DSB ARMBase.SY -> DSB
@@ -66,16 +69,36 @@ module FromX86(XB:X86Barrier.S) = struct
 
   type a = XB.a
 
-  type b =
+  type b = 
       | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
+      | FENCE of CPP11Base.mem_order (* CPP11 barriers *)
 
   let a_to_b a = match XB.a_to_b a with
   | XB.MFENCE -> MFENCE
   | XB.SFENCE -> SFENCE 
   | XB.LFENCE -> LFENCE
+
+  let pp_isync = "???"
+end
+
+module FromCPP11(CB:CPP11Barrier.S) = struct
+
+  type a = CB.a
+
+  type b = 
+      | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
+      | DSB | DMB | ISB               (* ARM barrier *)
+      | DSBST | DMBST
+      | MFENCE | SFENCE | LFENCE
+      | FENCE of CPP11Base.mem_order (* CPP11 barriers *)
+
+  let a_to_b a = match CB.a_to_b a with
+  | CB.Fence mo -> 
+     assert (List.mem mo [CPP11Base.Acq; CPP11Base.Rel; CPP11Base.Acq_Rel; CPP11Base.SC]);
+     FENCE mo
 
   let pp_isync = "???"
 end
