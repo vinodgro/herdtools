@@ -15,6 +15,7 @@ val default_atom : atom
 val sig_of_atom : atom -> char
 val applies_atom : atom -> Code.extr -> bool
 
+val pp_as_a : atom option
 val pp_atom : atom -> string
 val compare_atom : atom -> atom -> int
 

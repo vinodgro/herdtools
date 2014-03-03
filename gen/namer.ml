@@ -75,7 +75,7 @@ module Make
            A.pp_atom a::count_a es
         | {edge=(Rf Ext|Fr Ext|Ws Ext); a2=None}::
           ({edge=(Rf Ext|Fr Ext|Ws Ext);a1=None}::_ as es) ->
-            "P"::count_a es
+            Code.plain::count_a es
         | _::es -> count_a es
         | [] -> []
 
@@ -88,7 +88,7 @@ module Make
             end
         | {edge=(Rf Ext|Fr Ext|Ws Ext);a1=None}::_ as es ->
             begin match Misc.last es with
-            | {edge=(Rf Ext|Fr Ext|Ws Ext);a2=None} -> ["P"]
+            | {edge=(Rf Ext|Fr Ext|Ws Ext);a2=None} -> [Code.plain]
             | _ -> []
             end
         | _ -> []
@@ -96,7 +96,7 @@ module Make
       let isolated_writes es =
         let x =  init_a es @ count_a es in
         let x =
-          if List.for_all (fun s -> s = "P") x then []
+          if List.for_all (fun s -> s = Code.plain) x then []
           else  x in
         String.concat "" x
 

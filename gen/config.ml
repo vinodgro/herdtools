@@ -32,6 +32,7 @@ let max_relax = ref 100
 type 'a cumul = Empty | All | Set of 'a
 let cumul = ref All
 let poll = ref false
+let docheck = ref false
 let fmt = ref 3
 let no = ref None
 let addnum = ref true
@@ -45,7 +46,7 @@ type do_observers =
   | Local   (* Local observer when possible *)
 let do_observers = ref Avoid
 type obs_type = Straight | Fenced | Loop
-let obs_type = ref Fenced
+let obs_type = ref Straight
 
 let upto = ref true
 let optcond = ref true
@@ -154,6 +155,8 @@ let common_specs =
    "<n> shorthand for -unrollatomic <n>")::
   ("-poll",Arg.Bool (fun b -> poll := b),
      "<bool> poll on loaded values, as much as possible")::
+  ("-check",Arg.Bool (fun b -> docheck := b),
+     "<bool> check loaded values in test code")::
   ("-neg", Arg.Bool (fun b -> neg := b),
     "<bool> negate final condition (default false)")::
   ("-coherence_decreasing", Arg.Set coherence_decreasing,

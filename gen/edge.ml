@@ -140,12 +140,40 @@ and type atom = F.atom = struct
   let plain_edge e = { a1=None; a2=None; edge=e; }
 
   let pp_a = function
-    | None -> "P"
+    | None -> Code.plain
     | Some a -> F.pp_atom a
 
   let pp_aa a1 a2 = match a1, a2 with
   | None,None -> ""
   | _,_ -> sprintf "%s%s" (pp_a a1) (pp_a a2)
+
+  let pp_a_bis = function
+    | None -> "P"
+    | Some a -> F.pp_atom a
+
+  let pp_aa_bis a1 a2 = match a1,a2 with
+  | None,None -> ""
+  | _,_ -> sprintf "%s%s" (pp_a_bis a1) (pp_a_bis a2)
+
+  let pp_a_ter = function
+    | None -> Code.plain
+    | Some a as ao ->
+        if ao = F.pp_as_a then "A"
+        else F.pp_atom a
+
+  let pp_aa_ter a1 a2 = match a1,a2 with
+  | None,None -> ""
+  | _,_ -> sprintf "%s%s" (pp_a_ter a1) (pp_a_ter a2)
+
+  let pp_a_qua = function
+    | None -> "P"
+    | Some a as ao ->
+        if ao = F.pp_as_a then "A"
+        else F.pp_atom a
+
+  let pp_aa_qua a1 a2 = match a1,a2 with
+  | None,None -> ""
+  | _,_ -> sprintf "%s%s" (pp_a_qua a1) (pp_a_qua a2)
 
   let pp_tedge = function
     | Rf ie -> sprintf "Rf%s" (pp_ie ie)
@@ -165,7 +193,15 @@ and type atom = F.atom = struct
     | Leave c -> sprintf "%sLeave" (pp_com c)
     | Back c -> sprintf "%sBack" (pp_com c)
 
-  let pp_edge e = pp_tedge e.edge ^ pp_aa e.a1 e.a2
+  let do_pp_edge pp_aa e = pp_tedge e.edge ^ pp_aa e.a1 e.a2
+
+  let pp_edge e = do_pp_edge pp_aa e 
+      
+  let pp_edge_with_p e = do_pp_edge pp_aa_bis e
+
+  let pp_edge_with_a e = do_pp_edge pp_aa_ter e
+
+  let pp_edge_with_pa e = do_pp_edge pp_aa_qua e
 
   let compare_atomo a1 a2 = match a1,a2 with
   | None,None -> 0
@@ -273,7 +309,27 @@ let fold_tedges f r =
 
 (* Fill up lexeme table *)
   let () =
-    iter_edges (fun e -> add_lxm (pp_edge e) e) ;
+    let es = fold_edges (fun e k -> e::k) [] in
+    List.iter  (fun e -> add_lxm (pp_edge e) e) es ;
+    List.iter
+      (fun e -> match e.a1,e.a2 with
+      | (None,Some _)
+      | (Some _,None) ->
+          add_lxm (pp_edge_with_p e) e
+      | _,_ -> ()) es ;
+    List.iter
+      (fun e -> match e.a1,e.a2 with
+      | (_,(Some _ as a)) when a = F.pp_as_a ->
+          add_lxm (pp_edge_with_a e) e
+      | ((Some _ as a),_) when a = F.pp_as_a ->
+          add_lxm (pp_edge_with_a e) e
+      | _,_ -> ()) es ;
+    List.iter
+      (fun e -> match e.a1,e.a2 with
+      | (None,(Some _ as a))
+      | ((Some _ as a),None) when a = F.pp_as_a ->
+          add_lxm (pp_edge_with_pa e) e
+      | _,_ -> ()) es ;
     fold_sd_extr_extr
       (fun sd e1 e2 () ->
         add_lxm

@@ -1,11 +1,11 @@
 C LB+poprlx+porlxp
-"PodRWPRlx RfeRlxRlx PodRWRlxP Rfe"
-Cycle=Rfe PodRWPRlx RfeRlxRlx PodRWRlxP
+"PodRWNaRlx RfeRlxRlx PodRWRlxNa Rfe"
+Cycle=Rfe PodRWNaRlx RfeRlxRlx PodRWRlxNa
 Relax=
 Safe=Rfe PodRW RfeRlxRlx
 Prefetch=0:x=F,0:y=W,1:y=F,1:x=W
 Com=Rf Rf
-Orig=PodRWPRlx RfeRlxRlx PodRWRlxP Rfe
+Orig=PodRWNaRlx RfeRlxRlx PodRWRlxNa Rfe
 
 {}
 

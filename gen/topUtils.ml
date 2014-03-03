@@ -173,8 +173,8 @@ let io_of_node n = {ploc=n.C.C.evt.C.C.loc; pdir=n.C.C.evt.C.C.dir;}
       e.C.C.dir = R && e.C.C.v = 0
 
     let check_here n = match n.C.C.edge.C.E.edge with
-    | C.E.Ws _ | C.E.DetourWs _
-    | C.E.Fr _
+    | C.E.Ws Ext | C.E.DetourWs _
+    | C.E.Fr Ext
     | C.E.Leave (CFr|CWs)
     | C.E.Back(CFr|CWs)  -> not (is_load_init n.C.C.evt)
     | _ -> false

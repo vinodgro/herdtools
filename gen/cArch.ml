@@ -29,8 +29,8 @@ open Printf
   let pp_mem_order_short = function
     | Acq -> "Acq"
     | Rel -> "Rel"
-    | Acq_Rel -> "AcqRel"
-    | SC -> "SC"
+    | Acq_Rel -> "AR"
+    | SC -> "Sc"
     | Rlx -> "Rlx"
     | Con -> "Con"
 
@@ -53,13 +53,8 @@ open Printf
 
   let compare_atom = Pervasives.compare
   let sig_of_atom = sig_of_mem_order
-  let pp_atom = function
-    | Acq -> "Acq"
-    | Rel -> "Rel"
-    | Acq_Rel -> "AR"
-    | SC -> "A"
-    | Rlx -> "Rlx"
-    | Con -> "Con"
+  let pp_as_a = Some SC
+  let pp_atom = pp_mem_order_short
 
   let fold_atom f k =
     let k = f Acq k in
@@ -153,6 +148,7 @@ open Printf
 
   type cond = Eq | Ne
 
+  type condexp = exp * cond * exp
   type ins =
     | Seq of ins * ins
     | Decl of typ * arch_reg * exp option
@@ -161,17 +157,27 @@ open Printf
     | AtomicStore of mem_order * Code.loc * exp
     | Fence of fence
     | Loop of ins
-    | BreakCond of cond * arch_reg * exp
+    | If of condexp * ins * ins option
+    | Break
     | Decr of arch_reg
     | Nop
 
+  let addrs_ofcondexp (e1,_,e2) =
+    StringSet.union (addrs_of_exp e1) (addrs_of_exp e2)
+
   let rec addrs_of = function
-    | Fence _ | Decr _ | Nop | Decl (_,_,None) -> StringSet.empty
+    | Break | Fence _ | Decr _ | Nop | Decl (_,_,None) -> StringSet.empty
     | Seq (i1,i2) -> StringSet.union (addrs_of i1) (addrs_of i2)
     | Decl (_,_,Some e)
-    | SetReg (_,e)|BreakCond (_,_,e) -> addrs_of_exp e
+    | SetReg (_,e) -> addrs_of_exp e
     | Store (loc,e)|AtomicStore (_,loc,e) -> StringSet.add loc (addrs_of_exp e)
     | Loop i -> addrs_of i
+    | If (ce,itrue,ifalse) ->
+        StringSet.union (addrs_ofcondexp ce)
+          (StringSet.union (addrs_of itrue) (addrs_of_opt ifalse))
+  and addrs_of_opt = function
+    | None -> StringSet.empty
+    | Some i -> addrs_of i
 
   let seq i1 i2 = match i1,i2 with
   | (Nop,i)|(i,Nop) -> i
