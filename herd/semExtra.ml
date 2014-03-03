@@ -160,12 +160,12 @@ type concrete =
 
 end
 
-module Make(C:Config) (A:Arch.S) : S with module A = A =
+module Make(C:Config) (A:Arch.S) (Act:Action.S with module A = A) : (S with module A = A) =
   struct
     module O = C
     module A  = A
     module V = A.V
-    module E = Event.Make(A)
+    module E = Event.Make(A)(Act)
     module M =  EventsMonad.Make(C)(A)(E)
     module C = Constraints.Make (C.PC)(A)
 

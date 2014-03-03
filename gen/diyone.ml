@@ -30,7 +30,7 @@ module type Config = sig
   include Top.Config
   include DumpAll.Config
   val norm : bool
-  val cpp : bool
+  val cpp : bool    
   val docheck : bool
 end
 

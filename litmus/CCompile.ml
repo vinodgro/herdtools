@@ -25,6 +25,10 @@ module Make
     module C = T.C
     module Generic = Compile.Generic(A)
 
+    type t =
+      | Test of A.Out.t
+      | Global of string
+
     let add_param {CAst.param_ty; param_name} =
       StringMap.add param_name param_ty
 
@@ -42,7 +46,10 @@ module Make
           init StringMap.empty in
       let env =
         List.fold_right
-          (fun (_, {CAst.params; _}) -> add_params params)
+          (function
+            | CAst.Test {CAst.params; _} -> add_params params
+            | _ -> Misc.identity
+          )
           code
           env
       in
@@ -119,19 +126,30 @@ module Make
       LocMap.bindings locs
 
     let comp_code final init flocs =
-      List.map
-        (fun (proc, code) ->
-           let regs = get_locals proc (locations proc final flocs) in
-           let final = List.map fst regs in
-           let volatile =
-             let f acc = function
-               | {CAst.volatile = true; param_name; _} -> param_name :: acc
-               | {CAst.volatile = false; _} -> acc
-             in
-             List.fold_left f [] code.CAst.params
-           in
-           (proc, (comp_template proc init final code, (regs, volatile)))
+      List.fold_left
+        (fun acc -> function
+           | CAst.Test code ->
+               let proc = code.CAst.proc in
+               let regs = get_locals proc (locations proc final flocs) in
+               let final = List.map fst regs in
+               let volatile =
+                 let f acc = function
+                   | {CAst.volatile = true; param_name; _} -> param_name :: acc
+                   | {CAst.volatile = false; _} -> acc
+                 in
+                 List.fold_left f [] code.CAst.params
+               in
+               acc @ [(proc, (comp_template proc init final code, (regs, volatile)))]
+           | CAst.Global _ -> acc
         )
+        []
+
+    let get_global_code =
+      let f acc = function
+        | CAst.Global x -> acc @ [x]
+        | CAst.Test _ -> acc
+      in
+      List.fold_left f []
 
     let compile t =
       let
@@ -147,6 +165,7 @@ module Make
         condition = final;
         globals = comp_globals init code;
         flocs = List.map fst locs;
+        global_code = get_global_code code;
         src = t;
       }
 

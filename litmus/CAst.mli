@@ -13,8 +13,12 @@ type param = { param_ty : RunType.t; volatile : bool; param_name : string }
 
 type body = string
 
-type t =
+type test =
   { proc : int
   ; params : param list
   ; body : body
   }
+
+type t =
+  | Global of string
+  | Test of test

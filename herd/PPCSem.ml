@@ -15,7 +15,8 @@ module Make (C:Sem.Config)(V:Value.S)
   struct
 
     module PPC = PPCArch.Make(C.PC)(V)
-    include SemExtra.Make(C)(PPC) 
+    module Act = MachAction.Make(PPC)
+    include SemExtra.Make(C)(PPC)(Act) 
 
 (* barrier pretty print *)
     let sync = {barrier=PPC.Sync; pp="sync";}

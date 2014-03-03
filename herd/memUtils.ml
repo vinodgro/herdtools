@@ -107,11 +107,6 @@ module Make(S : SemExtra.S) = struct
 (* Misc *)
 (********)
 
-  let get_dir e = match e.E.action with
-  | E.Access (d,_,_,_) -> d
-  | _ -> assert false
-
-
   let find_source rfmap r =
     try S.RFMap.find  (S.Load r) rfmap
     with Not_found -> assert false
@@ -510,7 +505,7 @@ module Make(S : SemExtra.S) = struct
     try
       let pco = 
         E.EventRel.fold
-          (fun (e1,e2 as p) k -> match get_dir e1, get_dir e2 with
+          (fun (e1,e2 as p) k -> match E.get_mem_dir e1, E.get_mem_dir e2 with
           | Dir.W,Dir.W -> E.EventRel.add p k
           | Dir.R,Dir.R ->
               begin match

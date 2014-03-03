@@ -15,7 +15,8 @@ module Make (C:Sem.Config)(V : Value.S)
     =
   struct
     module X86 = X86Arch.Make(C.PC)(V)
-    include SemExtra.Make(C)(X86)
+    module Act = MachAction.Make(X86)
+    include SemExtra.Make(C)(X86)(Act)
 
 (* barrier pretty print *)
     let mfence = {barrier=X86.Mfence; pp="mfence";}
