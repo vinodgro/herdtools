@@ -94,5 +94,5 @@ let () =
   | ARM ->
       let module M = Build(ARMArch.Make(V)) in
       M.zyva
-  | C -> assert false)
+  | C|CPP -> assert false)
     stdin
