@@ -306,7 +306,7 @@ end = struct
       if A.location_compare loc loc0 = 0 then t
       else find_type loc env
 
-  let find_global_type a = find_type (A.Location_global a)
+  let _find_global_type a = find_type (A.Location_global a)
 
 (* Test condition *)
 
@@ -1458,11 +1458,13 @@ let dump_read_timebase () =
         | Some _ -> O.fi "int _stride = _a->_p->stride;"
         end ;
         let addrs = A.Out.get_addrs out in
+(*
         List.iter
           (fun a ->
             let t = find_global_type a env in
             O.fi "%s *%s = _a->%s;" (dump_global_type t) a a)
           addrs ;
+*)
         List.iter
           (fun (r,t) ->
             let name = A.Out.dump_out_reg  proc r in

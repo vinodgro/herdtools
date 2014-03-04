@@ -66,10 +66,6 @@ module Make
       let f acc (x, ty) = get_local proc (fun x -> Misc.cons (x, ty)) acc x in
       List.fold_left f []
 
-    let get_addrs proc =
-      let f acc (x, _) = get_local proc (fun x -> Misc.cons (proc, x)) acc x in
-      List.fold_left f []
-
      let ins_of_string inputs outputs x =
        { A.Out.memo = x
        ; inputs
@@ -84,8 +80,16 @@ module Make
        let f {CAst.param_name; _} = param_name in
        List.map f
 
+    let get_addrs code =
+      let _,addrs =
+        List.fold_right
+          (fun x (n,k) -> n+1,(n,x)::k)
+          (string_of_params code.CAst.params)
+          (0,[]) in
+      addrs
+
     let comp_template proc init final code =
-      let addrs = get_addrs proc init in
+      let addrs = get_addrs code in
       let inputs = string_of_params code.CAst.params in
       { A.Out.init = []
       ; addrs
@@ -125,7 +129,7 @@ module Make
       let locs = List.fold_left locations_flocs locs flocs in
       LocMap.bindings locs
 
-    let comp_code final init flocs =
+    let comp_code final init flocs procs =
       List.fold_left
         (fun acc -> function
            | CAst.Test code ->
@@ -142,7 +146,7 @@ module Make
                acc @ [(proc, (comp_template proc init final code, (regs, volatile)))]
            | CAst.Global _ -> acc
         )
-        []
+        [] procs
 
     let get_global_code =
       let f acc = function
