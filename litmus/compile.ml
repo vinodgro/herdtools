@@ -18,13 +18,16 @@ module type Config = sig
 end
 
 module Generic (A : Arch.Base) = struct
+  let base =  RunType.Ty "int"
+  and pointer = RunType.Pointer "int"
+
   let typeof = function
-    | Constant.Concrete _ -> RunType.Ty "int"
-    | Constant.Symbolic _ -> RunType.Pointer "int"
+    | Constant.Concrete _ -> base
+    | Constant.Symbolic _ -> pointer
 
   let type_in_final p reg final flocs =
     Misc.proj_opt
-      (RunType.Ty "int")
+      base
       (ConstrGen.fold_constr
          (fun a t ->
             let open ConstrGen in
@@ -381,7 +384,7 @@ let lblmap_code =
           (fun (loc,v) env ->
             match loc with
             | A.Location_global a ->
-                let env = Generic.add_value v env in
+(*                let env = Generic.add_value v env in *)
                 Generic.add_addr_type a (Generic.typeof v) env
             | _ -> env)
           init StringMap.empty in
@@ -392,6 +395,21 @@ let lblmap_code =
               (fun (_,a) -> Generic.add_addr_type a (RunType.Ty "int"))
               t.addrs)
           code env in
+(* Add uninitialised globals referenced as values in init,
+   Those may be accessed by code *)
+      let env =
+         List.fold_right
+          (fun (_,v) env ->
+            match v with
+            | Constant.Symbolic a ->
+                begin try
+                  let _ = StringMap.find a env in
+                  env
+                with Not_found  ->
+                  StringMap.add a Generic.base env
+                end
+            | _ -> env)
+          init env in
       StringMap.fold
         (fun a ty k -> (a,ty)::k)
         env []
