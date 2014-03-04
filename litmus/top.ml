@@ -290,7 +290,7 @@ end = struct
                 in
                 let params = String.concat ", " (List.map f params) in
                 Printf.sprintf "static void P%i(%s) {%s}\n" i params body
-            | CAst.Global x -> Printf.sprintf "{\n\n%s\n\n}\n\n" x
+            | CAst.Global x -> Printf.sprintf "{%s}\n\n" x
           in
           [f cfun]
 
@@ -308,6 +308,11 @@ end = struct
       module Comp = CCompile.Make(O)(T)
       module MS = Skel.Make(O)(Pseudo)(A')(T)
       module R = Run.Make(O)(Tar)(T.D)
+
+      let rec count_procs = function
+        | CAst.Test _::xs -> 1 + count_procs xs
+        | CAst.Global _::xs -> count_procs xs
+        | [] -> 0
 
       let get_cycle t =
         let info = t.MiscParser.info in
@@ -356,7 +361,7 @@ end = struct
           let doc = splitted.Splitter.name in
           let tname = doc.Name.name in
           close_in in_chan ;
-          let nprocs = List.length parsed.MiscParser.prog
+          let nprocs = count_procs parsed.MiscParser.prog
           and avail = match O.avail with
           | Some n -> n
           | None -> 1000
