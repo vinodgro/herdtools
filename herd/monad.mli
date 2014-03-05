@@ -52,9 +52,16 @@ module type S =
 
     val tooFar : string -> unit t
 
+    (* read_loc mk_action loc ii:  
+       for each value v that could be read,
+       make an event structure comprising a single event with
+       instruction id "ii", and action "mk_action v loc". *)
     val read_loc : (A.location -> A.V.v -> E.action) -> 
 		   A.location -> A.inst_instance_id -> A.V.v t
 
+    (* mk_singleton_es a ii: 
+       make an event structure comprising a single event with
+       instruction id "ii", and action "a". *)
     val mk_singleton_es : E.action -> A.inst_instance_id -> unit t
 	
     val create_barrier : A.barrier -> A.inst_instance_id -> unit t
