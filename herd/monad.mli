@@ -54,26 +54,9 @@ module type S =
 
     val read_loc : (A.location -> A.V.v -> E.action) -> 
 		   A.location -> A.inst_instance_id -> A.V.v t
-   (* val read_reg : (bool -> A.location -> A.V.v -> E.action) -> 
-		   A.reg -> A.inst_instance_id -> A.V.v t
-    val read_mem : (bool -> A.location -> A.V.v -> E.action) -> 
-		   A.global_loc -> A.inst_instance_id -> A.V.v t
-    val read_mem_atomic : (bool -> A.location -> A.V.v -> E.action) -> 
-			  A.global_loc -> A.inst_instance_id -> A.V.v t
-    
-    val write_loc : (A.location -> A.V.v -> E.action) -> 
-		    A.location -> A.V.v -> A.inst_instance_id -> unit t
-    *)
-    val mk_action : E.action -> A.inst_instance_id -> unit t
-  (*  val write_reg : (bool -> A.location -> A.V.v -> E.action) -> 
-		    A.reg -> A.V.v -> A.inst_instance_id -> unit t
-    val write_mem : (bool -> A.location -> A.V.v -> E.action) ->
-		    A.global_loc -> A.V.v -> A.inst_instance_id -> unit t
-    val write_mem_atomic : (bool -> A.location -> A.V.v -> E.action) ->
-			   A.global_loc -> A.V.v -> A.inst_instance_id -> unit t
-    val write_flag :
-	A.reg -> Op.op -> A.V.v -> A.V.v ->  A.inst_instance_id -> unit t
-   *)	
+
+    val mk_singleton_es : E.action -> A.inst_instance_id -> unit t
+	
     val create_barrier : A.barrier -> A.inst_instance_id -> unit t
 
     val op1 : Op.op1 -> A.V.v -> A.V.v t

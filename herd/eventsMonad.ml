@@ -307,18 +307,8 @@ struct
 		     E.iiid = Some ii;
 		     E.action = mk_action loc v })
 		 acc_inner)) (eiid,Evt.empty)	
-(*
-      let read_loc mk_action = 
-	do_read_loc (mk_action false)
-      let read_reg mk_action r ii = 
-	do_read_loc (mk_action false) (A.Location_reg (ii.A.proc,r)) ii
-      and read_mem mk_action a ii = 
-	do_read_loc (mk_action false) (A.Location_global a) ii
-      and read_mem_atomic mk_action a ii = 
-	do_read_loc (mk_action true) (A.Location_global a) ii 
-	*)
 
-      let mk_action a ii =
+      let mk_singleton_es a ii =
 	fun eiid ->
 	  (eiid+1,
 	   Evt.singleton
@@ -327,26 +317,8 @@ struct
 		{E.eiid = eiid ;
 		 E.iiid = Some ii;
 		 E.action = a }))
-(*	    
-      let write_loc mk_action = 
-	do_write_loc (mk_action false)
-      let write_reg mk_action r v ii =
-	do_write_loc (mk_action false) (A.Location_reg (ii.A.proc,r)) v ii
-      and write_mem mk_action a v ii =
-	do_write_loc (mk_action false) (A.Location_global a) v ii
-      and write_mem_atomic mk_action a v ii =
-        do_write_loc (mk_action true) (A.Location_global a) v ii
- *)
 
-      let create_barrier : A.barrier -> A.inst_instance_id -> unit t
-	  = fun b ii ->
-	    fun eiid ->
-	      (eiid+1,
-	       Evt.singleton
-		 ((), [],
-		  trivial_event_structure
-		    {E.eiid = eiid ;  E.iiid = Some ii; 
-		     E.action = E.Act.mk_Barrier b;}))
+      let create_barrier b = mk_singleton_es (E.Act.mk_Barrier b)
 
       let any_op mk_v mk_c =
 	(fun eiid_next -> 
@@ -395,23 +367,8 @@ struct
 	  
       type evt_struct = E.event_structure
       type output = VC.cnstrnts * evt_struct
-
-      (*
-      let write_flag r o v1 v2 ii =
-	addT
-	  (A.Location_reg (ii.A.proc,r))
-	  (op o v1 v2) >>= (fun (loc,v) -> write_loc loc v ii)
-      *)
 	  
-      let commit ii =
-	fun eiid ->
-	  (eiid+1,
-	   Evt.singleton
-	     ((), [],
-	      trivial_event_structure
-		{E.eiid = eiid ;
-		 E.iiid = Some ii;
-		 E.action = E.Act.mk_Commit;}))
+      let commit = mk_singleton_es E.Act.mk_Commit
 
       let initwrites env =
         fun eiid ->

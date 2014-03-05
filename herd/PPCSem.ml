@@ -49,13 +49,13 @@ module Make (C:Sem.Config)(V:Value.S)
       M.read_loc (mk_read true) (A.Location_global a) ii
 		 
     let write_loc loc v ii = 
-      M.mk_action (Act.mk_Access (Dir.W, loc, v, false)) ii
+      M.mk_singleton_es (Act.mk_Access (Dir.W, loc, v, false)) ii
     let write_reg r v ii = 
-      M.mk_action (Act.mk_Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
+      M.mk_singleton_es (Act.mk_Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
     let write_mem a v ii  = 
-      M.mk_action (Act.mk_Access (Dir.W, A.Location_global a, v, false)) ii
+      M.mk_singleton_es (Act.mk_Access (Dir.W, A.Location_global a, v, false)) ii
     let write_mem_atomic a v ii = 
-      M.mk_action (Act.mk_Access (Dir.W, A.Location_global a, v, true)) ii
+      M.mk_singleton_es (Act.mk_Access (Dir.W, A.Location_global a, v, true)) ii
 
     let write_flag r o v1 v2 ii =
 	M.addT
