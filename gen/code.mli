@@ -54,3 +54,6 @@ val fold_com : (com -> 'a -> 'a) -> 'a -> 'a
 
 (* Info in tests *)
 type info = (string * string) list
+
+(* Name of plain accesses *)
+val plain : string

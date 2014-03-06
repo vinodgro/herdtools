@@ -70,3 +70,5 @@ let fold_com f r = f CRf (f CFr (f CWs r))
 
 (* Info in tests *)
 type info = (string * string) list
+
+let plain = "Na"

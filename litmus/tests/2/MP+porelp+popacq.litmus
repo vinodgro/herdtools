@@ -1,11 +1,11 @@
 C MP+porelp+popacq
-"PodWWRelP Rfe PodRRPAcq FreAcqRel"
-Cycle=Rfe PodRRPAcq FreAcqRel PodWWRelP
+"PodWWRelNa Rfe PodRRNaAcq FreAcqRel"
+Cycle=Rfe PodRRNaAcq FreAcqRel PodWWRelNa
 Relax=
 Safe=Rfe PodWW PodRR FreAcqRel
 Prefetch=0:x=F,0:y=W,1:y=F,1:x=T
 Com=Rf Fr
-Orig=PodWWRelP Rfe PodRRPAcq FreAcqRel
+Orig=PodWWRelNa Rfe PodRRNaAcq FreAcqRel
 
 {}
 

@@ -101,7 +101,7 @@ end = struct
       (Lang:Language.S) =
     struct
       module Pseudo = struct
-        type code = A.pseudo list
+        type code = int * A.pseudo list
         let rec fmt_io io = match io with
         | A.Nop -> ""
         | A.Instruction ins -> A.dump_instruction ins
@@ -281,14 +281,16 @@ end = struct
       end
       module Pseudo = struct
         type code = CAst.t
-        let dump_prog (i, cfun) =
-          let f { CAst.params; body; _ } =
-            let string_of_ty ty = RunType.dump ty ^ "*" in
-            let f {CAst.param_ty; param_name} =
-              Printf.sprintf "%s %s" (string_of_ty param_ty) param_name
-            in
-            let params = String.concat ", " (List.map f params) in
-            Printf.sprintf "static void P%i(%s) {\n%s\n}\n" i params body
+        let dump_prog cfun =
+          let f = function
+            | CAst.Test { CAst.params; body; proc = i } ->
+                let string_of_ty ty = RunType.dump ty ^ "*" in
+                let f {CAst.param_ty; param_name} =
+                  Printf.sprintf "%s %s" (string_of_ty param_ty) param_name
+                in
+                let params = String.concat ", " (List.map f params) in
+                Printf.sprintf "static void P%i(%s) {%s}\n" i params body
+            | CAst.Global x -> Printf.sprintf "{%s}\n\n" x
           in
           [f cfun]
 
@@ -306,6 +308,11 @@ end = struct
       module Comp = CCompile.Make(O)(T)
       module MS = Skel.Make(O)(Pseudo)(A')(T)
       module R = Run.Make(O)(Tar)(T.D)
+
+      let rec count_procs = function
+        | CAst.Test _::xs -> 1 + count_procs xs
+        | CAst.Global _::xs -> count_procs xs
+        | [] -> 0
 
       let get_cycle t =
         let info = t.MiscParser.info in
@@ -354,7 +361,7 @@ end = struct
           let doc = splitted.Splitter.name in
           let tname = doc.Name.name in
           close_in in_chan ;
-          let nprocs = List.length parsed.MiscParser.prog
+          let nprocs = count_procs parsed.MiscParser.prog
           and avail = match O.avail with
           | Some n -> n
           | None -> 1000
@@ -373,10 +380,7 @@ end = struct
             let module Alloc = CSymbReg.Make(A') in
             let allocated = Alloc.allocate_regs parsed in
             let allocated =
-              { allocated with MiscParser.prog =
-                List.map
-                  (fun cfun -> cfun.CAst.proc,cfun)
-                  allocated.MiscParser.prog; } in
+              { allocated with MiscParser.prog = allocated.MiscParser.prog; } in
             let compiled = Comp.compile allocated in
             let source = MyName.outname name ".c" in
             let () =

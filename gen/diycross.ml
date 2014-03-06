@@ -184,6 +184,7 @@ let () =
       let list_edges = !Config.list_edges
       let overload = !Config.overload
       let poll = !Config.poll
+      let docheck = !Config.docheck
       let optcoherence = !Config.optcoherence
       let optcond = !Config.optcond
       let fno = !Config.fno

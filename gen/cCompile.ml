@@ -21,6 +21,7 @@ module type Config = sig
   val list_edges : bool
   val typ : TypBase.t
   val cpp : bool
+  val docheck : bool
 end
 
 module Make(O:Config) : Builder.S
@@ -33,7 +34,7 @@ module Make(O:Config) : Builder.S
       let () =
         if O.list_edges then begin
           eprintf "Edges:" ;
-          let es = E.fold_pp_edges (fun s k -> s::k) [] in
+          let es = E.fold_edges (fun e k -> E.pp_edge e::k) [] in
           let es = List.sort String.compare es in
           List.iter (eprintf " %s") es ;        
           eprintf "\n%!" ;
@@ -89,7 +90,7 @@ module Make(O:Config) : Builder.S
             let c0 = !c in
             incr c ;
             { A.id = c0; },st+1)
-          else
+        else
           (fun () -> ()),(fun _p st -> { A.id=st;},st+1)
 
       let compile_store e = 
@@ -101,11 +102,15 @@ module Make(O:Config) : Builder.S
         | Some a ->
             A.AtomicStore(a,loc,A.Const v)
 
+      let load_checked_not = None
+
       let load_from mo loc = match mo with
       | None ->
           if O.cpp then A.Load loc
           else A.Deref (A.Load loc)
       | Some mo -> A.AtomicLoad (mo,loc)
+
+      let _load_from_event e = load_from e.C.atom (A.Loc e.C.loc)
 
       let compile_load st p mo loc =
         let r,st = alloc_reg p st in
@@ -125,14 +130,17 @@ module Make(O:Config) : Builder.S
              Some (assertval mo loc v)) in
         r,i,st
 
- 
+      let do_breakcond cond p r v =
+        A.If ((v,cond,A.Load (A.Reg (p,r))),A.Break,None)
+      let breakcond cond p r v =
+        do_breakcond cond p r (A.Const v)
+
       let compile_load_not_zero st p mo x =
         let r,st = alloc_reg p st in
         let decls = A.Decl (A.Plain A.deftype,r,None)
         and body =
           A.Seq
-            (A.SetReg (r,load_from mo x),
-             A.BreakCond (A.Ne,r,A.Const 0)) in
+            (A.SetReg (r,load_from mo x),breakcond A.Eq p r 0) in
         r,A.Seq (decls,A.Loop body),st
 
       let compile_load_one st p mo x =
@@ -141,7 +149,7 @@ module Make(O:Config) : Builder.S
         and body =
           A.Seq
             (A.SetReg (r,load_from mo x),
-             A.BreakCond (A.Eq,r,A.Const 1)) in
+             breakcond A.Eq p r 1) in
         r,A.Seq (decls,A.Loop body),st
 
           
@@ -155,9 +163,9 @@ module Make(O:Config) : Builder.S
         and body =
           A.seqs
             [A.SetReg (r,load_from mo x) ;
-             A.BreakCond (A.Ne,r,e) ;
+             do_breakcond A.Ne p r e ;
              A.Decr idx ;
-             A.BreakCond (A.Eq,idx,A.Const 0);] in
+             breakcond A.Eq p idx 0;] in
         r,A.Seq (decls,A.Loop body),st
           
       let compile_load_not_value st p mo x v =
@@ -182,29 +190,119 @@ module Make(O:Config) : Builder.S
             None,i,st
 
 
+(* Lift definitions *)
+      module RegSet =
+        MySet.Make
+          (struct
+            type t = A.arch_reg
+            let compare = Pervasives.compare
+          end)
+
+      let insert_now d i =
+        List.fold_right
+          (fun (t,r) k ->
+            A.seqs [A.Decl (t,r,Some (A.Const (-1)));k])
+          d i
+
+      let rec lift_rec top xs i =
+        let open A in
+        match i with
+        | Decl (t,r,None) ->
+            if not top && RegSet.mem r xs then [t,r],Nop
+            else [],i
+        | Decl (t,r,Some e) ->
+            if not top && RegSet.mem r xs then
+              [t,r],SetReg (r,e)
+            else
+              [],i
+        | Seq (i1,i2) ->
+            let d1,i1 = lift_rec top xs i1
+            and d2,i2 = lift_rec top xs i2 in
+            d1@d2,seqs [i1;i2]
+        | Loop i ->
+            let d,i = lift_rec false xs i in
+            if top then
+              [],insert_now d (Loop i)
+            else
+              d,Loop i
+        | If (ce,itrue,ifalse) ->
+            let dtrue,itrue = lift_rec false xs itrue
+            and dfalse,ifalse = match ifalse with
+            | None -> [],None
+            | Some ifalse ->
+                let dfalse,ifalse = lift_rec false xs ifalse in
+                dfalse,Some ifalse in
+            let d = dtrue@dfalse in
+            if top then
+              [],insert_now d (If (ce,itrue,ifalse))
+            else
+              d,If (ce,itrue,ifalse)
+        | Store _|AtomicStore _|SetReg _
+        | Fence _|Break|Decr _|Nop -> [],i
+
+      let lift_top xs i =
+        let d,i = lift_rec true xs i in
+        match d with
+        | [] -> i
+        | _ -> assert false
+
+      let lift_defs xs i =
+        if O.cpp then i
+        else
+          let regs =
+            List.fold_right
+              (fun loc k -> match loc with
+              | A.Loc _ -> k
+              | A.Reg (_,r) -> r::k)
+              xs [] in
+          let xs = RegSet.of_list regs in
+          lift_top xs i
 
 (*************)
 (* Observers *)
 (*************)
 
-      let rec straight_observer st p mo x = function
+      let add_fence fenced ins = match fenced,ins with
+      | (false,_)|(_,A.Nop) -> ins
+      | _ -> A.Seq (A.Fence A.strong,ins)
+
+      let rec straight_observer_std fenced st p mo x = function
         | [] -> A.Nop,[]
         | v::vs ->
             let r,c,st =
               compile_load_assertvalue 
                 (Ints.choose v) st p mo x  in
-            let cs,fs = straight_observer st p  mo x vs in
-            A.seq c cs,F.add_final_v p r v fs
+            let cs,fs = straight_observer_std fenced st p  mo x vs in
+            A.seq c (add_fence fenced cs),F.add_final_v p r v fs
 
-      let rec fenced_observer st p mo x = function
-        | [] -> A.Nop,[]
+      let rec straight_observer_check fenced st p mo x = function
+        | [] -> assert false (* A.Nop,[] *)
+        | [_] as vs -> straight_observer_std fenced st p mo x vs
         | v::vs ->
-            let r,c,st = compile_load st p mo x in
-            let cs,fs = fenced_observer st p  mo x vs in
-            (match cs with
-            | A.Nop -> c
-            | _ -> A.seqs [c;A.Fence A.strong;cs]),
-            F.add_final_v p r v fs
+            let v0 = Ints.choose v in
+            if O.cpp then
+              let ce = A.Const v0,A.Eq,assertval mo x v0 in
+              let cs,fs = straight_observer_check fenced st p  mo x vs in
+              A.If (ce,add_fence fenced cs,load_checked_not),fs
+            else
+              let r,i,st = compile_load st p mo x in
+              let ce = A.Const v0,A.Eq,A.Load (A.Reg (p,r)) in
+              let cs,fs = straight_observer_check fenced st p  mo x vs in
+              A.Seq (i,A.If (ce,add_fence fenced cs,load_checked_not)),
+              F.add_final_v p r v fs
+
+      let  straight_observer_check_lift fenced st p mo x i =
+        let i,f = straight_observer_check fenced st p mo x i in
+        let xs = List.map fst f in
+        lift_defs xs i,f
+
+      let straight_observer =
+        (if O.docheck then straight_observer_check_lift
+        else straight_observer_std) false
+
+      let fenced_observer =
+        (if O.docheck then straight_observer_check_lift
+        else straight_observer_std) true
 
       let loop_observer st p mo x = function
         | []|[_] -> A.Nop,[]    
@@ -322,8 +420,8 @@ module Make(O:Config) : Builder.S
               | _,_ -> ()
               end ;
               if is_nop then
-                  let cs,fs = build_observers p mo x vss in
-                  cs,f@fs
+                let cs,fs = build_observers p mo x vss in
+                cs,f@fs
               else
                 let cs,fs = build_observers (p+1) mo x vss in
                 c::cs,f@fs
@@ -392,6 +490,9 @@ module Make(O:Config) : Builder.S
 
 
       let do_observe_local st p code f mo x prev_v v =
+        let mo = match mo with
+        | Some _ -> Some A.Rlx
+        | None -> None in
         let open Config in
         match O.obs_type with
         | Straight ->
@@ -417,7 +518,9 @@ module Make(O:Config) : Builder.S
           then
             code,(A.Loc x,Ints.singleton v)::f,st
           else
-            let mo = Some A.Rlx in
+            let mo = match elst.C.atom with
+            | Some _ -> Some A.Rlx
+            | None   -> None in
             do_observe_local st p code f mo (A.Loc x) prev_v v
         else
           code,f,st
@@ -471,6 +574,7 @@ module Make(O:Config) : Builder.S
           let cs,fs = build_detours lsts (p+1) ns in
           c::cs,f@fs
 
+
 (* zyva *)
       let rec compile_stores ns k = match ns with
       | [] -> k
@@ -483,20 +587,97 @@ module Make(O:Config) : Builder.S
             let k = compile_stores ns k in
             A.Seq (i,k)
 
-      let rec compile_proc loc_writes st p ns = match ns with
-      | [] -> A.Nop,(C.EventMap.empty,[]),st
+      let add_fence n is = match n.C.edge.E.edge with
+      | E.Fenced (fe,_,_,_) -> A.Seq (A.Fence fe,is)
+      | _ -> is
+
+
+      let do_observe_local st p (m,f) mo x pv v =
+        let mo = match mo with
+        | Some _ -> Some A.Rlx
+        | None -> None in
+        let open Config in
+        match O.obs_type with
+        | Straight ->
+            let c,f,st = do_add_load st p f mo x v in
+            c,(m,f),st
+        | Config.Fenced ->
+            let c,f,st = do_add_load st p f mo x v in
+            A.Seq (A.Fence A.strong,c),(m,f),st
+        | Loop ->
+            let c,f,st = do_add_loop st p f mo x pv v in
+            c,(m,f),st
+
+      let observe_local st p f n =
+        let open Config in
+        match O.do_observers with
+        | Local when U.check_here n ->
+            let e = n.C.evt in
+            do_observe_local st p f e.C.atom (A.Loc e.C.loc) e.C.v
+              n.C.next.C.evt.C.v
+        | _ -> A.Nop,f,st
+              
+      let observe_local_check st _p f n =
+        let open Config in
+        match O.do_observers with
+        | Local when U.check_here n ->
+            Warn.fatal "Local observers not complete in mode -check true"
+        | _ -> (fun is -> is),f,st
+
+      let rec compile_proc_std loc_writes st p ns = match ns with
+      | [] ->
+          let f = C.EventMap.empty,[] in
+          A.Nop,f,st
       | n::ns ->
           let o,i,st = compile_access st p n in
-          let is,fs,st = compile_proc loc_writes st p ns in
-          A.Seq
-            (i,
-             match n.C.edge.E.edge with
-             | E.Fenced (fe,_,_,_) -> A.Seq (A.Fence fe,is)
-             | _ -> is),
+          let is,fs,st = compile_proc_std loc_writes st p ns in
+          let obs,fs,st = observe_local st p fs n in
+          A.seqs [i;obs;add_fence n is],
           (if StringSet.mem n.C.evt.C.loc loc_writes && not (U.do_poll n) then
             F.add_final p o n fs
           else fs),
           st
+
+      let rec do_compile_proc_check loc_writes st p ns = match ns with
+      | [] -> assert false (* A.Nop,(C.EventMap.empty,[]),st *)
+      | [_] -> compile_proc_std loc_writes st p ns
+      | n::ns ->
+          let e = n.C.evt in
+          let o,fi,st =
+            begin match e.C.dir with
+            | R ->
+                let v = e.C.v
+                and mo = e.C.atom
+                and loc = A.Loc e.C.loc in
+                if O.cpp then
+                  let ce = A.Const v,A.Eq,assertval mo loc v in
+                  None,
+                  (fun ins -> A.If (ce,add_fence n ins,load_checked_not)),
+                  st
+                else
+                  let r,i,st = compile_load st p mo loc in
+                  let ce = A.Const v,A.Eq,A.Load (A.Reg (p,r)) in
+                  Some r,
+                  (fun ins ->
+                    A.Seq
+                      (i,A.If (ce,add_fence n ins,load_checked_not))),
+                  st
+            | W ->
+                None,
+                (fun ins -> A.Seq (compile_store e,add_fence n ins)),
+                st
+            end in
+          let is,fs,st = do_compile_proc_check loc_writes st p ns in
+          let obs,fs,st = observe_local_check st p fs n in
+          fi (obs is),
+          (if StringSet.mem n.C.evt.C.loc loc_writes then F.add_final p o n fs
+          else fs),
+          st
+
+      let compile_proc_check loc_writes st p ns =
+        let i,(_,f as mf),st = do_compile_proc_check loc_writes st p ns in
+        lift_defs (List.map fst f) i,mf,st
+
 
       let add_args env prog =
         List.map
@@ -512,11 +693,11 @@ module Make(O:Config) : Builder.S
                 locs [] in
             args,i)
           prog
-              
-        
+          
+          
       let compile_cycle ok n =
         reset_alloc () ;
-        let env = type_cycle n in
+        let env = type_cycle n in        
         let open Config in
         let splitted =  C.split_procs n in
         (* Split before, as  proc numbers added by side effet.. *)
@@ -529,15 +710,10 @@ module Make(O:Config) : Builder.S
         let rec do_rec p = function
           | [] -> [],(C.EventMap.empty,[]),[]
           | n::ns ->
-              let c,(m,f),st = compile_proc loc_writes st0 p n in
+              let c,(m,f),_st =
+                (if O.docheck then compile_proc_check else  compile_proc_std)
+                  loc_writes st0 p n in
               let c = compile_stores n c in
-              let c,f,_st =
-                match O.cond with
-                | Unicond -> c,f,st                
-                | Cycle|Observe ->
-                    match O.do_observers with
-                    | Local -> add_co_local_check lsts n st p c f
-                    | Avoid|Accept|Enforce -> c,f,st in
               let ds = C.get_detours_from_list n in
               let cds,fds = build_detours lsts (p+1) ds in
               let cs,(ms,fs),ios = do_rec (p+1+List.length cds) ns in
@@ -605,6 +781,8 @@ module Make(O:Config) : Builder.S
         | A.Loc loc -> loc
         | A.Reg (_,r) -> A.dump_reg r
 
+      let dump_cond c = match c with A.Ne -> "!=" | A.Eq -> "=="
+
       let rec dump_exp e =
         let open A in
         match e with
@@ -618,6 +796,10 @@ module Make(O:Config) : Builder.S
         | Deref e -> sprintf "*(%s)" (dump_exp e)
         | Const v -> sprintf "%i" v
         | AssertVal (e,_) -> dump_exp e
+
+      let dump_condexp (e1,c,e2) =
+        sprintf "%s %s %s"
+          (dump_exp e1) (dump_cond c) (dump_exp e2)
 
       let fx chan indent fmt =
         output_string chan indent ;
@@ -655,11 +837,18 @@ module Make(O:Config) : Builder.S
             fx chan i "for (;;) {" ;
             dump_ins chan (i ^ indent1) body ;
             fx chan i "}"
-        | A.BreakCond (c,r,e) ->
-            fx chan i "if (%s %s %s) break;"
-              (A.dump_reg r)
-              (match c with A.Ne -> "!=" | A.Eq -> "==")
-              (dump_exp e)
+        | If (ce,itrue,ifalse) ->
+            fx chan i "if (%s) {" (dump_condexp ce) ;
+            dump_ins chan (i ^ indent1) itrue ;
+            begin match ifalse with
+            | None -> ()
+            | Some ins ->
+                fx chan i "} else {" ;
+                dump_ins chan (i ^ indent1) ins ;
+            end ;
+            fx chan i "}"
+        | Break ->
+            fx chan i "break;"
         | A.Decr r ->
             fx chan i "%s--;" (A.dump_reg r)
         | Nop -> ()
@@ -742,6 +931,17 @@ module Make(O:Config) : Builder.S
             sprintf "%s.readsvalue(%i)" (dump_exp e) v
         | AssertVal _ ->
             Warn.fatal "Cannot compile to C++ (expr)"
+
+      let dump_cond_arg e = match e with
+      | A.Const _|A.Load _ -> dump_exp e
+      | _ -> sprintf "(%s)" (dump_exp e)
+
+      let dump_condexp (e1,c,e2) =
+        sprintf "%s %s %s"
+          (dump_cond_arg e1)
+          (dump_cond c)
+          (dump_cond_arg e2)
+
       let rec dump_ins chan i ins =
         let open A in
         match ins with
@@ -758,9 +958,19 @@ module Make(O:Config) : Builder.S
         | AtomicStore (mo,loc,e) ->
             fx chan i "%s.store(%s,%s);"
               loc (dump_exp e) (dump_mem_order mo)
+        | If (ce,itrue,ifalse) ->
+            fx chan i "if (%s) {" (dump_condexp ce) ;
+            dump_ins chan (i ^ indent1) itrue ;
+            begin match ifalse with
+            | None -> ()
+            | Some ifalse ->
+                fx chan i "} else {" ;
+                dump_ins chan (i ^ indent1) ifalse ;
+            end ;
+            fx chan i "}"
         | Fence _ 
         | Loop _ 
-        | BreakCond _ 
+        | Break 
         | A.Decr _ ->
             Warn.fatal "Cannot compile to C++"
         | Nop -> ()
@@ -789,7 +999,7 @@ module Make(O:Config) : Builder.S
         fprintf chan "  return 0;\n" ;
         fprintf chan "}\n" ;
         ()
-        
+          
 
       let dump_cpp_test  ({ name = name; _ } as t) =
         let fname = name ^ ".c" in

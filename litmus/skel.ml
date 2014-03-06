@@ -306,7 +306,7 @@ end = struct
       if A.location_compare loc loc0 = 0 then t
       else find_type loc env
 
-  let find_global_type a = find_type (A.Location_global a)
+  let _find_global_type a = find_type (A.Location_global a)
 
 (* Test condition *)
 
@@ -1408,7 +1408,7 @@ let dump_read_timebase () =
     if do_verbose_barrier_local then O.fi "pm_t *p_mutex;" ;
     O.fi "ctx_t *_a;   /* In this context */" ;
     O.f "} parg_t;" ;
-    O.f "" ;
+    O.f "\n\n%s\n\n" (String.concat "\n" test.T.global_code);
     List.iter
       (fun (proc,(out,(outregs,envVolatile))) ->
         let  do_collect =  do_collect_local && (do_safer || proc=0) in
@@ -1458,11 +1458,13 @@ let dump_read_timebase () =
         | Some _ -> O.fi "int _stride = _a->_p->stride;"
         end ;
         let addrs = A.Out.get_addrs out in
+(*
         List.iter
           (fun a ->
             let t = find_global_type a env in
             O.fi "%s *%s = _a->%s;" (dump_global_type t) a a)
           addrs ;
+*)
         List.iter
           (fun (r,t) ->
             let name = A.Out.dump_out_reg  proc r in

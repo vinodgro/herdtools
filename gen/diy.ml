@@ -193,7 +193,8 @@ let () =
     let nprocs = !Config.nprocs
     let neg = !Config.neg
     let cpp = cpp
-  end in
+    let docheck = !Config.docheck
+ end in
   let module C = struct
     let verbose = !Config.verbose
     let list_edges = !Config.list_edges

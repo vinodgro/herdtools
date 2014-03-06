@@ -16,7 +16,7 @@ module type S = sig
   module P : PseudoAbstract.S
 
   type src =
-    ((A.location * Constant.v) list, (int * P.code) list,
+    ((A.location * Constant.v) list, P.code list,
           C.constr, A.location)
          MiscParser.result
 
@@ -30,6 +30,7 @@ module type S = sig
       condition : C.constr ;
       globals : string type_env ;
       flocs : A.location list ;
+      global_code : string list;
       src : src ; }
 
   val find_our_constraint : t -> C.constr
@@ -48,7 +49,7 @@ struct
 
   type 'a type_env = ('a * RunType.t) list
   type src =
-    ((A.location * Constant.v) list, (int * P.code) list,
+    ((A.location * Constant.v) list, P.code list,
           C.constr, A.location)
          MiscParser.result
 
@@ -61,6 +62,7 @@ struct
       condition : C.constr ;
       globals : string type_env ;
       flocs : A.location list ;
+      global_code : string list;
       src : src ; }
 
   let find_our_constraint test = test.condition

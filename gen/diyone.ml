@@ -30,7 +30,8 @@ module type Config = sig
   include Top.Config
   include DumpAll.Config
   val norm : bool
-  val cpp : bool
+  val cpp : bool    
+  val docheck : bool
 end
 
 module Make(O:Config) (M:Builder.S) =
@@ -174,6 +175,7 @@ let () =
 (* Specific *)
     let norm = !norm
     let cpp = cpp
+    let docheck = !Config.docheck
   end in
   let module Build = Make(Co) in
   let module C = struct

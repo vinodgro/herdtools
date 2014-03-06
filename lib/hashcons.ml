@@ -31,6 +31,8 @@ type 'a t = {
   mutable limit : int;               (* max ratio totsize/table length *)
 }
 
+type 'a u = 'a t
+
 let create sz =
   let sz = if sz < 7 then 7 else sz in
   let sz = if sz > Sys.max_array_length then Sys.max_array_length else sz in
@@ -160,14 +162,16 @@ module Make(H : HashedType) : (S with type key = H.t) = struct
 
   type key = H.t
 
-  type data = H.t hash_consed
 
+  type t = H.t u
+(*
+  type data = H.t hash_consed
   type t = {
     mutable table : data Weak.t array;
     mutable totsize : int;             (* sum of the bucket sizes *)
     mutable limit : int;               (* max ratio totsize/table length *)
   }
-
+*)
   let emptybucket = Weak.create 0
 
   let create sz =

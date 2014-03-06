@@ -40,6 +40,7 @@ external int_compare : int -> int -> int = "caml_int_compare"
 val int_eq : int -> int -> bool
 val string_eq : string -> string -> bool
 
+external identity : 'a -> 'a = "%identity"
 
 val is_none : 'a option -> bool
 val as_some : 'a option -> 'a
@@ -66,7 +67,7 @@ val iteri : (int -> 'a -> unit) -> 'a list -> unit
 val mapi : (int -> 'a -> 'b) -> 'a list -> 'b list
 val rev_filter : ('a -> bool) -> 'a list -> 'a list
 val map3 :
-    ('a -> 'b -> 'c -> 'd) -> 
+    ('a -> 'b -> 'c -> 'd) ->
       'a list -> 'b list -> 'c list -> 'd list
 
 (* strict version of List.for_all *)
@@ -168,4 +169,3 @@ val fold_cross :  'a list list ->  ('a list -> 'b -> 'b) -> 'b -> 'b
    fold_cross_gen (fun y ys -> y::ys) [] *)
 val fold_cross_gen :
     ('a -> 'b -> 'b) -> 'b -> 'a list list -> ('b -> 'c -> 'c) -> 'c -> 'c
-

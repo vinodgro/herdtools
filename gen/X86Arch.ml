@@ -23,6 +23,8 @@ module Make(V:Constant.S) =
     let compare_atom = Pervasives.compare
     let sig_of_atom = function
       | Atomic -> 'A'
+
+    let pp_as_a = None
     let pp_atom = function
       | Atomic -> "A"
     let fold_atom f k = f Atomic k

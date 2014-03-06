@@ -23,6 +23,8 @@ let sig_of_atom = function
   | Atomic -> 'A'
   | Reserve -> 'B'
 
+let pp_as_a = None
+
 let pp_atom = function
   | Atomic -> "A"
   | Reserve -> "R"

@@ -253,8 +253,8 @@ struct
 
 
   let dump_addr a = match O.memory with
-  | Direct -> sprintf "&%s[_i]" a
-  | Indirect -> sprintf "%s[_i]" a
+  | Direct -> sprintf "&_a->%s[_i]" a
+  | Indirect -> sprintf "_a->%s[_i]" a
 
   let dump_v v = match v with
   | Concrete i -> sprintf "%i" i
@@ -314,9 +314,9 @@ struct
         (List.map
            (match O.memory with
            | Direct ->
-               (fun (_,a) -> sprintf "[%s] \"=m\" (%s[_i])" a a)
+               (fun (_,a) -> sprintf "[%s] \"=m\" (_a->%s[_i])" a a)
            | Indirect ->
-               (fun (_,a) -> sprintf "[%s] \"=m\" (*%s[_i])" a a)
+               (fun (_,a) -> sprintf "[%s] \"=m\" (*_a->%s[_i])" a a)
            )
            t.addrs
          @List.map
@@ -426,6 +426,7 @@ struct
     if O.cautious then begin
       dump_save_copies chan indent proc t
     end
+
 
   (* TODO: Remove this ugly module *)
   module Reexport = struct

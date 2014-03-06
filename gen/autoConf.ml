@@ -73,7 +73,7 @@ let get_arch a =
   | X86 -> (module X86 : ArchConf)
   | PPC -> (module PPC : ArchConf)
   | ARM -> (module ARM : ArchConf)
-  | C -> assert false
+  | C|CPP -> assert false
 
 open AutoOpt 
 
