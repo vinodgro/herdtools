@@ -22,8 +22,7 @@ module Make
     (S:Sem.Semantics)
     (B:CPP11Barrier.S with type a = S.barrier)
  :
-    XXXMem.S with
-module S = S
+    (XXXMem.S with module S = S)
     =
   struct
 
@@ -38,7 +37,7 @@ module S = S
     let check_event_structure test = match O.model with
     | Generic m ->
         let module X =
-          Generic.Make
+          CPP11ModelChecker.Make
             (struct
               let m = m
               include ModelConfig

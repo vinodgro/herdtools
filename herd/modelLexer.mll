@@ -26,12 +26,13 @@ let () =
      "MM",MM;  "MR",MR;  "MW",MW;
      "WM",WM; "WW",WW; "WR",WR; "RM",RM; "RW",RW; "RR",RR;
      "AA",AA; "AP",AP; "PA",PA; "PP",PP;
-     "let",LET; "rec",REC; "and",AND;
+     "let",LET; "rec",REC; "set",SET; "rln",RLN; "and",AND;
      "acyclic",ACYCLIC; "irreflexive",IRREFLEXIVE;
      "show",SHOW;
      "unshow",UNSHOW;
      "empty",TESTEMPTY;
      "as",AS; "fun", FUN; "in",IN;
+     "provides",PROVIDES; "requires",REQUIRES;
      "ext",EXT; "int",INT; "noid",NOID;
      "withco",WITHCO; "withoutco", WITHOUTCO;
    ]
@@ -44,30 +45,34 @@ let alpha = [ 'a'-'z' 'A'-'Z']
 let name  = alpha (alpha|digit|'_' | '.' | '-')*
 
 rule token = parse
-| [' ''\t'] {  token lexbuf }
-| '\n'      {  incr_lineno lexbuf; token lexbuf }
-| "(*"      {  LU.skip_comment lexbuf ; token lexbuf }
-| '#' [^'\n']* '\n' {  incr_lineno lexbuf ; token lexbuf }
-| '(' {  LPAR }
-| ')' {   RPAR }
-| '0'  {  EMPTY }
-| '|'  {  UNION }
-| '&'  {  INTER }
-| '*'  {  STAR }
-| '+'  {  PLUS }
-| "-1" { INV }
-| '\\'  {  DIFF }
-| '?'  {  OPT }
-| '='  {  EQUAL }
-| ';'  {  SEMI }
-| ','  { COMMA }
-| "->" { ARROW }
+| [' ''\t'] { token lexbuf }
+| '\n'      { incr_lineno lexbuf; token lexbuf }
+| "(*"      { LU.skip_comment lexbuf ; token lexbuf }
+| '#' [^'\n']* '\n' { incr_lineno lexbuf ; token lexbuf }
+| '('   { LPAR }
+| ')'   { RPAR }
+| '['   { LBRAC }
+| ']'   { RBRAC }
+| '_'   { UNDERSCORE }
+| '0'   { EMPTY }
+| '|'   { UNION }
+| '&'   { INTER }
+| '*'   { STAR }
+| '~'   { COMP }
+| '+'   { PLUS }
+| "^-1" { INV }
+| "-1"  { INV }
+| '\\'  { DIFF }
+| '?'   { OPT }
+| '='   { EQUAL }
+| ';'   { SEMI }
+| ','   { COMMA }
+| "->"  { ARROW }
 | '"' ([^'"']* as s) '"' { STRING s } (* '"' *)
-| name as x
-    { 
-      try Hashtbl.find table x with Not_found -> VAR x }
+| name as x { 
+    try Hashtbl.find table x with Not_found -> VAR x }
 | eof { EOF }
-| "" { error "Model lexer" lexbuf }
+| ""  { error "Model lexer" lexbuf }
 
 {
 let token lexbuf =

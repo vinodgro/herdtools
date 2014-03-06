@@ -81,6 +81,9 @@ module type S = sig
 (* Commit *)
   val is_commit : event -> bool
 
+(* Mutex operations *)
+  val is_mutex_action : event -> bool
+
 (**************)
 (* Event sets *)
 (**************)
@@ -255,6 +258,7 @@ struct
 	eiid : eiid;
 	iiid : A.inst_instance_id option ;
 	action : action;  } 
+		  
 
     let pp_eiid e =
       if e.eiid < 26 then
@@ -344,6 +348,9 @@ struct
 
 (* Commits *)
    let is_commit e = Act.is_commit e.action
+
+(* Mutex operations *)
+   let is_mutex_action e = Act.is_mutex_action e.action
 
 (******************************)
 (* Build structures of events *)

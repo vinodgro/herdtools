@@ -76,13 +76,13 @@ let pp_mem_order o =
 (****************)
 
 type barrier =
-| Fence of mem_order
+| Fence
     
 let all_kinds_of_barriers =  [ ]
   
 let pp_barrier b = 
   match b with
-  | Fence o -> sprintf "fence(%s)" (pp_mem_order o)
+  | Fence -> sprintf "fence"
 
 let barrier_compare = Pervasives.compare
 

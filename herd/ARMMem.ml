@@ -73,7 +73,7 @@ module S = S
         X.check_event_structure test
     | Generic m ->
         let module X =
-          Generic.Make
+          MachModelChecker.Make
             (struct
               let m = m
               include ModelConfig

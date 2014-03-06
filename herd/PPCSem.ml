@@ -37,7 +37,7 @@ module Make (C:Sem.Config)(V:Value.S)
     let (>>::) = M.(>>::)
     let (>>!) = M.(>>!)
 
-    let mk_read ato loc v = Act.mk_Access (Dir.R, loc, v, ato)
+    let mk_read ato loc v = Act.Access (Dir.R, loc, v, ato)
 					      
     let read_loc = 
       M.read_loc (mk_read false)
@@ -49,18 +49,24 @@ module Make (C:Sem.Config)(V:Value.S)
       M.read_loc (mk_read true) (A.Location_global a) ii
 		 
     let write_loc loc v ii = 
-      M.mk_singleton_es (Act.mk_Access (Dir.W, loc, v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, loc, v, false)) ii
     let write_reg r v ii = 
-      M.mk_singleton_es (Act.mk_Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
     let write_mem a v ii  = 
-      M.mk_singleton_es (Act.mk_Access (Dir.W, A.Location_global a, v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, false)) ii
     let write_mem_atomic a v ii = 
-      M.mk_singleton_es (Act.mk_Access (Dir.W, A.Location_global a, v, true)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, true)) ii
 
     let write_flag r o v1 v2 ii =
 	M.addT
 	  (A.Location_reg (ii.A.proc,r))
 	  (M.op o v1 v2) >>= (fun (loc,v) -> write_loc loc v ii)
+
+    let create_barrier b ii = 
+      M.mk_singleton_es (Act.Barrier b) ii
+
+    let commit ii = 
+      M.mk_singleton_es (Act.Commit) ii
 
 (* Now handled by axiomatic model *)
     let with_store_buffer () = false
@@ -147,12 +153,12 @@ module Make (C:Sem.Config)(V:Value.S)
 
     let bcc_yes cr bit ii lbl =
       read_flag cr bit ii >>= fun v ->
-        M.commit ii >>= fun () -> B.bccT v lbl  
+        commit ii >>= fun () -> B.bccT v lbl  
 
     let bcc_no cr bit ii lbl =
       read_flag cr bit ii >>=
       M.op1 Op.Not >>=
-      fun v ->  M.commit ii >>= fun () -> B.bccT v lbl
+      fun v ->  commit ii >>= fun () -> B.bccT v lbl
 
     let build_semantics _st i ii = match i with
 (* 3 regs ops *)
@@ -269,13 +275,13 @@ module Make (C:Sem.Config)(V:Value.S)
               (write_reg PPC.RES V.zero ii >>| (write_addr_conditional a vS ii >>|
               flags_res true ii) >>! B.Next)
     |PPC.Peieio  ->
-	M.create_barrier PPC.Eieio ii >>! B.Next	  
+	create_barrier PPC.Eieio ii >>! B.Next	  
     |PPC.Psync   ->
-	M.create_barrier PPC.Sync ii >>! B.Next
+	create_barrier PPC.Sync ii >>! B.Next
     |PPC.Plwsync -> 
-	M.create_barrier PPC.Lwsync ii >>! B.Next
+	create_barrier PPC.Lwsync ii >>! B.Next
     |PPC.Pisync  ->
-	M.create_barrier PPC.Isync ii >>! B.Next
+	create_barrier PPC.Isync ii >>! B.Next
     |PPC.Pdcbf (_rA,_rB) ->
         M.unitT B.Next
     | PPC.Pnor (_, _, _, _)

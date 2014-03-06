@@ -44,7 +44,7 @@ module Make (C:Sem.Config)(V:Value.S)
     let (>>!) = M.(>>!)
     let (>>::) = M.(>>::)
 
-    let mk_read ato loc v = Act.mk_Access (Dir.R, loc, v, ato)
+    let mk_read ato loc v = Act.Access (Dir.R, loc, v, ato)
 					      
     let read_loc = 
       M.read_loc (mk_read false)
@@ -56,18 +56,24 @@ module Make (C:Sem.Config)(V:Value.S)
       M.read_loc (mk_read true) (A.Location_global a) ii
 		 
     let write_loc loc v ii = 
-      M.mk_singleton_es (Act.mk_Access (Dir.W, loc, v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, loc, v, false)) ii
     let write_reg r v ii = 
-      M.mk_singleton_es (Act.mk_Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
     let write_mem a v ii  = 
-      M.mk_singleton_es (Act.mk_Access (Dir.W, A.Location_global a, v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, false)) ii
     let write_mem_atomic a v ii = 
-      M.mk_singleton_es (Act.mk_Access (Dir.W, A.Location_global a, v, true)) ii
-
+      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, true)) ii
+			
     let write_flag r o v1 v2 ii =
 	M.addT
 	  (A.Location_reg (ii.A.proc,r))
 	  (M.op o v1 v2) >>= (fun (loc,v) -> write_loc loc v ii)
+
+    let create_barrier b ii = 
+      M.mk_singleton_es (Act.Barrier b) ii
+
+    let commit ii = 
+      M.mk_singleton_es (Act.Commit) ii
 		  
     let flip_flag v = M.op Op.Xor v V.one	
     let is_zero v = M.op Op.Eq v V.zero
@@ -106,7 +112,7 @@ module Make (C:Sem.Config)(V:Value.S)
 	 (fun veq -> 
 	   flip_flag veq >>=
 	   fun veqneg ->
-             M.commit ii >>*=
+             commit ii >>*=
              fun () ->
 	       M.choiceT veqneg
 	         (op ii)
@@ -116,7 +122,7 @@ module Make (C:Sem.Config)(V:Value.S)
         ((read_reg  ARM.Z ii)
 	   >>=
 	 (fun veq ->
-           M.commit ii >>*=
+           commit ii >>*=
 	   fun () -> M.choiceT veq
 	     (op ii)
 	     (M.unitT ())))
@@ -187,15 +193,15 @@ module Make (C:Sem.Config)(V:Value.S)
           | ARM.I_B lbl -> B.branchT lbl
 	  | ARM.I_BEQ (lbl) ->
 	      read_reg ARM.Z ii >>=
-	      fun v -> M.commit ii >>= fun () -> B.bccT v lbl
+	      fun v -> commit ii >>= fun () -> B.bccT v lbl
 	  | ARM.I_BNE (lbl) ->
 	      read_reg ARM.Z ii >>=
-	      fun v -> flip_flag v >>= fun vneg -> M.commit ii >>=
+	      fun v -> flip_flag v >>= fun vneg -> commit ii >>=
                 fun () -> B.bccT vneg lbl 
           | ARM.I_CB (n,r,lbl) ->
               let cond = if n then is_not_zero else is_zero in
               read_reg r ii >>= cond >>=
-                fun v -> M.commit ii >>= fun () -> B.bccT v lbl
+                fun v -> commit ii >>= fun () -> B.bccT v lbl
 	  | ARM.I_CMPI (r,v) ->
 	      ((read_reg  r ii) 
 		 >>= 
@@ -282,13 +288,13 @@ module Make (C:Sem.Config)(V:Value.S)
                 write_flags set v3 (V.intToV 0) ii)))
 		>>! B.Next
 	  | ARM.I_DMB o ->
-	      (M.create_barrier (ARM.DMB o) ii)
+	      (create_barrier (ARM.DMB o) ii)
 		>>! B.Next
 	  | ARM.I_DSB o ->
-	      (M.create_barrier (ARM.DSB o) ii)
+	      (create_barrier (ARM.DSB o) ii)
 		>>! B.Next
 	  | ARM.I_ISB ->
-	      (M.create_barrier ARM.ISB ii)
+	      (create_barrier ARM.ISB ii)
 		>>! B.Next
           | ARM.I_SADD16 _ ->
               Warn.user_error "SADD16 not implemented"

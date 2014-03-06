@@ -318,7 +318,6 @@ struct
 		 E.iiid = Some ii;
 		 E.action = a }))
 
-      let create_barrier b = mk_singleton_es (E.Act.mk_Barrier b)
 
       let any_op mk_v mk_c =
 	(fun eiid_next -> 
@@ -367,8 +366,6 @@ struct
 	  
       type evt_struct = E.event_structure
       type output = VC.cnstrnts * evt_struct
-	  
-      let commit = mk_singleton_es E.Act.mk_Commit
 
       let initwrites env =
         fun eiid ->
@@ -378,7 +375,7 @@ struct
                 let ew =
                   {E.eiid = eiid ;
 		   E.iiid = None ;
- 		   E.action = E.Act.mk_Access (Dir.W, loc, v, false) ;} in
+ 		   E.action = E.Act.mk_init_write loc v ;} in
                 (eiid+1,ew::es))
               (eiid,[]) env in
           let es = E.EventSet.of_list es in

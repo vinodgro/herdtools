@@ -32,7 +32,7 @@ module Make (C:Sem.Config)(V : Value.S)
     let (>>|) = M.(>>|)
     let (>>!) = M.(>>!)
 
-    let mk_read ato loc v = Act.mk_Access (Dir.R, loc, v, ato)
+    let mk_read ato loc v = Act.Access (Dir.R, loc, v, ato)
 					      
     let read_loc = 
       M.read_loc (mk_read false)
@@ -44,18 +44,24 @@ module Make (C:Sem.Config)(V : Value.S)
       M.read_loc (mk_read true) (A.Location_global a) ii
 		 
     let write_loc loc v ii = 
-      M.mk_singleton_es (Act.mk_Access (Dir.W, loc, v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, loc, v, false)) ii
     let write_reg r v ii = 
-      M.mk_singleton_es (Act.mk_Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
     let write_mem a v ii  = 
-      M.mk_singleton_es (Act.mk_Access (Dir.W, A.Location_global a, v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, false)) ii
     let write_mem_atomic a v ii = 
-      M.mk_singleton_es (Act.mk_Access (Dir.W, A.Location_global a, v, true)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, true)) ii
 
     let write_flag r o v1 v2 ii =
 	M.addT
 	  (A.Location_reg (ii.A.proc,r))
 	  (M.op o v1 v2) >>= (fun (loc,v) -> write_loc loc v ii)
+
+    let create_barrier b ii = 
+      M.mk_singleton_es (Act.Barrier b) ii
+
+    let commit ii = 
+      M.mk_singleton_es (Act.Commit) ii
 
     let lval_ea ea ii = match ea with
     | X86.Effaddr_rm32 (X86.Rm32_reg r)->
@@ -205,10 +211,10 @@ module Make (C:Sem.Config)(V : Value.S)
 	xchg ea1 ea2 ii
     | X86.I_CMPXCHG (_,_) -> Warn.fatal "I_CMPXCHG not implemented"
     | X86.I_LFENCE ->
-	M.create_barrier X86.Lfence ii >>! B.Next
+	create_barrier X86.Lfence ii >>! B.Next
     | X86.I_SFENCE ->
-	M.create_barrier X86.Sfence ii >>! B.Next
+	create_barrier X86.Sfence ii >>! B.Next
     | X86.I_MFENCE ->
-	M.create_barrier X86.Mfence ii >>! B.Next
+	create_barrier X86.Mfence ii >>! B.Next
     |  X86.I_MOVSD -> Warn.fatal "I_MOVSD not implemented"
   end

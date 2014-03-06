@@ -159,9 +159,8 @@ module Top (C:Config) = struct
         let module CPP11S = CPP11Sem.Make(C)(SymbValue) in
         let module  CPP11Barrier = struct
           type a = CPP11.barrier
-          type b = Fence of CPP11.mem_order
-          let a_to_b a = match a with
-            | CPP11.Fence o -> Fence o
+          type b = unit
+          let a_to_b _ = assert false
         end in
         let module CPP11M = CPP11Mem.Make(ModelConfig)(CPP11S) (CPP11Barrier) in
         let module X = Make (CPP11S) (CPP11LexParse) (CPP11M) in 

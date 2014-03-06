@@ -13,28 +13,37 @@
 
 open Printf
 
-module Make (A : Arch.S) : (Action.S with module A = A) = struct
+module type S = sig
+  (* Module "A_" is really the same as "A". We just 
+     need to pick a different name to pacify the 
+     OCaml module system. Same goes for types 
+     "action" and "action_" *)
+  module A_ : Arch.S
+  type action_ =    
+    | Access of Dir.dirn * A_.location * A_.V.v * bool (* atomicity flag *)
+    | Barrier of A_.barrier
+    | Commit
+  include Action.S with module A = A_ and type action = action_
+
+end
+
+module Make (A : Arch.S) : (S with module A_ = A) = struct
 
   module A = A
+  module A_ = A
   module V = A.V
   open Dir
 
-  type action = 
+  type action_ = 
     | Access of dirn * A.location * V.v * bool 
           (* atomicity flag *)
     | Barrier of A.barrier
     | Commit
+ 
+  type action = action_
   
-  let mk_Access (d,l,v,ato) = Access (d,l,v,ato)
-  let mk_Barrier b = Barrier b
-  let mk_Commit = Commit
-
-(* CPP11 actions don't apply here *)
-  let mk_Unlock       _ = assert false
-  let mk_Lock         _ = assert false
-  let mk_Blocked_RMW  _ = assert false
-  let mk_RMW          _ = assert false
-  let mk_Access_CPP11 _ = assert false
+  
+  let mk_init_write l v = Access(W,l,v,false)
 
 (* Local pp_location that adds [..] around global locations *)        
     let pp_location withparen loc =
@@ -143,6 +152,12 @@ module Make (A : Arch.S) : (Action.S with module A = A) = struct
    let is_commit a = match a with
    | Commit -> true
    | _ -> false
+
+(* Mutex operations *)
+   let is_mutex_action _ = false
+
+  (* There are no additional architecture-specific sets to define *)
+  let arch_sets = []
 
 (* Equations *)
 

@@ -19,7 +19,6 @@ module type S =
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
-      | FENCE of CPP11Base.mem_order (* CPP11 barriers *)
     val a_to_b : a -> b
     val pp_isync : string
   end
@@ -33,7 +32,6 @@ module FromPPC(B:PPCBarrier.S) = struct
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
-      | FENCE of CPP11Base.mem_order (* CPP11 barriers *)
 
   let a_to_b a = match B.a_to_b a with
   | B.LWSYNC -> LWSYNC
@@ -52,7 +50,6 @@ module FromARM(AB:ARMBarrier.S) = struct
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
-      | FENCE of CPP11Base.mem_order (* CPP11 barriers *)
 
   let a_to_b a = match AB.a_to_b a with
   | AB.DSB ARMBase.SY -> DSB
@@ -74,7 +71,6 @@ module FromX86(XB:X86Barrier.S) = struct
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
-      | FENCE of CPP11Base.mem_order (* CPP11 barriers *)
 
   let a_to_b a = match XB.a_to_b a with
   | XB.MFENCE -> MFENCE
@@ -93,12 +89,8 @@ module FromCPP11(CB:CPP11Barrier.S) = struct
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
-      | FENCE of CPP11Base.mem_order (* CPP11 barriers *)
 
-  let a_to_b a = match CB.a_to_b a with
-  | CB.Fence mo -> 
-     assert (List.mem mo [CPP11Base.Acq; CPP11Base.Rel; CPP11Base.Acq_Rel; CPP11Base.SC]);
-     FENCE mo
+  let a_to_b _ = assert false (* no barriers in CPP11 *)
 
   let pp_isync = "???"
 end

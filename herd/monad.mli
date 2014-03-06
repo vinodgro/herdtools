@@ -64,7 +64,6 @@ module type S =
        instruction id "ii", and action "a". *)
     val mk_singleton_es : E.action -> A.inst_instance_id -> unit t
 	
-    val create_barrier : A.barrier -> A.inst_instance_id -> unit t
 
     val op1 : Op.op1 -> A.V.v -> A.V.v t
     val op : Op.op -> A.V.v -> A.V.v -> A.V.v t
@@ -72,7 +71,6 @@ module type S =
     val add : A.V.v -> A.V.v -> A.V.v t
 
     val assign : A.V.v -> A.V.v -> unit t
-    val commit :  A.inst_instance_id -> unit t
 
     val initwrites : (A.location * A.V.v) list -> unit t
 

@@ -19,7 +19,6 @@ module type S =
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
       | MFENCE | SFENCE | LFENCE
-      | FENCE of CPP11Base.mem_order (* CPP11 barriers *)
     val a_to_b : a -> b
     val pp_isync : string
   end

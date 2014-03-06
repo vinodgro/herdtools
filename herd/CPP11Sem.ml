@@ -17,18 +17,8 @@ module Make (C:Sem.Config)(V:Value.S)
     module CPP11 = CPP11Arch.Make(C.PC)(V)
     module Act = CPP11Action.Make(CPP11)
     include SemExtra.Make(C)(CPP11)(Act)
-
-(* barrier pretty print *)
-    let bar_acq = {barrier=CPP11.Fence CPP11.Acq; pp="fence(mo_acquire)";}
-    let bar_rel = {barrier=CPP11.Fence CPP11.Rel; pp="fence(mo_release)";}
-    let bar_sc = {barrier=CPP11.Fence CPP11.SC; pp="fence(mo_sc)";}
-    let bar_acq_rel = {barrier=CPP11.Fence CPP11.Acq_Rel; pp="fence(mo_acq_rel)";}
-
-    let barriers = [bar_acq; bar_rel; bar_sc; bar_acq_rel]
-
+    let barriers = []
     let isync = None
-        
-
 
 (****************************)	  
 (* Build semantics function *)
@@ -40,11 +30,11 @@ module Make (C:Sem.Config)(V:Value.S)
     let (>>::) = M.(>>::)
     let (>>!) = M.(>>!)
 		       
-    let read_loc mo = M.read_loc (fun loc v -> Act.mk_Access_CPP11 (Dir.R, loc, v, mo))
+    let read_loc mo = M.read_loc (fun loc v -> Act.Access (Dir.R, loc, v, mo))
     let read_reg r ii = read_loc CPP11.NA (A.Location_reg (ii.A.proc,r)) ii
     let read_mem mo a = read_loc mo (A.Location_global a)
 
-    let write_loc mo loc v ii = M.mk_singleton_es (Act.mk_Access_CPP11 (Dir.W, loc, v, mo)) ii
+    let write_loc mo loc v ii = M.mk_singleton_es (Act.Access (Dir.W, loc, v, mo)) ii
     let write_reg r v ii = write_loc CPP11.NA (A.Location_reg (ii.A.proc,r)) v ii
     let write_mem mo a  = write_loc mo (A.Location_global a) 	     
 		 
@@ -71,14 +61,14 @@ module Make (C:Sem.Config)(V:Value.S)
 	  fun loc -> 
           M.altT
             (* successful attempt to obtain mutex *)
-	    (M.mk_singleton_es (Act.mk_Lock (loc, true)) ii >>! B.Next)
+	    (M.mk_singleton_es (Act.Lock (loc, true)) ii >>! B.Next)
             (* unsuccessful attempt to obtain mutex *)
-	    (M.mk_singleton_es (Act.mk_Lock (loc, false)) ii >>! B.Next)
+	    (M.mk_singleton_es (Act.Lock (loc, false)) ii >>! B.Next)
 
       | CPP11.Punlock l ->
 	(M.unitT (CPP11.maybev_to_location l)) >>=
 	  fun loc -> 
-	  M.mk_singleton_es (Act.mk_Unlock loc) ii >>! B.Next
+	  M.mk_singleton_es (Act.Unlock loc) ii >>! B.Next
 
       | CPP11.Pcas(l,v1,v2,mo_success, _ (*mo_failure *)) ->
 	 (M.unitT (CPP11.maybev_to_location l)) >>|
@@ -86,9 +76,9 @@ module Make (C:Sem.Config)(V:Value.S)
            (M.unitT (V.intToV (constant_to_int v2))) >>=
 	   (* Todo: give this the proper CAS semantics *)
 	   fun ((loc, v1), v2) -> 
-	   M.mk_singleton_es (Act.mk_RMW (loc,v1,v2,mo_success)) ii >>! B.Next     
+	   M.mk_singleton_es (Act.RMW (loc,v1,v2,mo_success)) ii >>! B.Next     
 								    
       | CPP11.Pfence(mo) ->
-	M.create_barrier (CPP11.Fence mo) ii >>! B.Next
+	M.mk_singleton_es (Act.Fence mo) ii >>! B.Next
 
   end

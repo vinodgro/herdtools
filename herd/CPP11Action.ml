@@ -13,30 +13,40 @@
 
 open Printf
 
-module Make (A : Arch.S) : (Action.S with module A = A) = 
+module type S = sig
+  (* Module "A_" is really the same as "A". We just 
+     need to pick a different name to pacify the 
+     OCaml module system. Same goes for types 
+     "action" and "action_" *)
+  module A_ : Arch.S
+  type action_ =    
+    | Access of Dir.dirn * A_.location * A_.V.v * CPP11Base.mem_order
+    | Fence of CPP11Base.mem_order
+    | RMW of A_.location * A_.V.v * A_.V.v * CPP11Base.mem_order
+    | Blocked_RMW of A_.location
+    | Lock of A_.location * bool (* true = success, false = blocked *)
+    | Unlock of A_.location
+  include Action.S with module A = A_ and type action = action_
+
+end
+
+module Make (A : Arch.S) : (S with module A_ = A) = 
 struct
   module A = A
+  module A_ = A
   module V = A.V
   open Dir
 
-  type action = 
+  type action_ = 
     | Access of dirn * A.location * V.v * CPP11Base.mem_order
-    | Barrier of A.barrier
+    | Fence of CPP11Base.mem_order
     | RMW of A.location * V.v * V.v * CPP11Base.mem_order
     | Blocked_RMW of A.location
     | Lock of A.location * bool (* true = success, false = blocked *)
     | Unlock of A.location
+  type action = action_
  
-  let mk_Access_CPP11 (d,l,v,mo) = Access (d,l,v,mo)
-  let mk_Barrier b = Barrier b
-  let mk_RMW (l,v1,v2,mo) = RMW (l,v1,v2,mo)
-  let mk_Blocked_RMW l = Blocked_RMW l
-  let mk_Lock (l,o) = Lock (l,o)
-  let mk_Unlock l = Unlock l
-
-  (* Unused constructors *)
-  let mk_Access _ = assert false
-  let mk_Commit   = assert false
+  let mk_init_write l v = Access (W,l,v,CPP11Base.NA)
 
 (* Local pp_location that adds [..] around global locations *)        
     let pp_location withparen loc =
@@ -50,7 +60,9 @@ struct
           (CPP11Base.pp_mem_order mo)
           (pp_location withparen l)
 	  (V.pp_v v)
-    | Barrier b -> A.pp_barrier b
+    | Fence mo -> 
+       sprintf "F(%s)"
+	  (CPP11Base.pp_mem_order mo)
     | RMW (l,v1,v2,mo) ->
        	sprintf "RMW(%s)%s(%s>%s)"
           (CPP11Base.pp_mem_order mo)
@@ -106,7 +118,12 @@ struct
     | Access (_,A.Location_global _,_,_) -> true
     | _ -> false
 
-    let is_atomic _ = assert false
+    (* The following definition of is_atomic
+       is quite arbitrary. *)
+    let is_atomic a = match a with
+    | Access (_,A.Location_global _,_,mo) -> mo != CPP11Base.NA
+    | RMW _ -> true
+    | _ -> false
 
     let get_mem_dir a = match a with
     | Access (d,A.Location_global _,_,_) -> d
@@ -148,16 +165,62 @@ struct
     | _ -> false
 
 (* Barriers *)
-    let is_barrier a = match a with
-    | Barrier _ -> true
-    | _ -> false
-
-    let barrier_of a = match a with
-    | Barrier b -> Some b
-    | _ -> None
+    let is_barrier _ = false
+    let barrier_of _ = None
 
 (* Commits *)
-   let is_commit _ = assert false
+   let is_commit _ = false
+
+(* Fences *)
+   let is_fence a = match a with
+     | Fence _ -> true
+     | _ -> false
+
+(* RMWs *)
+   let is_rmw a = match a with
+     | RMW _ -> true
+     | _ -> false
+
+(* Blocked RMWs *)
+   let is_blocked_rmw a = match a with
+     | Blocked_RMW _ -> true
+     | _ -> false
+
+(* Mutex operations *)
+   let is_lock a = match a with
+     | Lock _ -> true
+     | _ -> false
+
+   let is_successful_lock a = match a with
+     | Lock (_,true) -> true
+     | _ -> false
+
+   let is_unlock a = match a with
+     | Unlock _ -> true
+     | _ -> false
+
+   let is_mutex_action a = match a with
+     | Lock _ | Unlock _ -> true
+     | _ -> false
+
+   let mo_matches target a = match a with
+     | Access(_,_,_,mo)
+     | RMW (_,_,_,mo) 
+     | Fence mo -> mo=target
+     | _ -> false
+
+(* Architecture-specific sets *)
+   let arch_sets = [
+     "rmw", is_rmw; "brmw", is_blocked_rmw;
+     "lk", is_lock; "ls", is_successful_lock;
+     "ul", is_unlock; "F", is_fence;
+     "acq", mo_matches CPP11Base.Acq;
+     "sc", mo_matches CPP11Base.SC;
+     "rel", mo_matches CPP11Base.Rel; 
+     "acq_rel", mo_matches CPP11Base.Acq_Rel;
+     "rlx", mo_matches CPP11Base.Rlx;
+     "con", mo_matches CPP11Base.Con;
+   ]
 
 (* Equations *)
 
@@ -186,7 +249,7 @@ struct
 	 (match A.undetermined_vars_in_loc l with
 	  | None -> V.ValueSet.empty
 	  | Some v -> V.ValueSet.singleton v) 
-      | Barrier _ -> V.ValueSet.empty
+      | Fence _ -> V.ValueSet.empty
 
     let simplify_vars_in_action soln a =
       match a with
@@ -208,7 +271,7 @@ struct
       | Unlock l  ->
         let l' = A.simplify_vars_in_loc soln l in
         Unlock l'
-      | Barrier _ -> a
+      | Fence _ -> a
 
 (*************************************************************)	      
 (* Add together event structures from different instructions *)
