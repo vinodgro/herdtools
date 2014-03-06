@@ -159,16 +159,7 @@ type concrete =
   type pp_barrier = { barrier:barrier ; pp:string; }
 
 end
-(*
-    module CPP11 = CPP11Arch.Make(C.PC)(V)
-    module Act = CPP11Action.Make(C.PC)(V)
-    include SemExtra.Make(C)(CPP11)(Act)
 
-         type reg = CPP11Action.Make(C.PC)(V).A.reg
-       is not included in
-         type reg = CPP11.reg
-
- *)
 module Make(C:Config) (A:Arch.S) (Act:Action.S with module A = A) 
        : (S with module A = A and module E.Act = Act) =
   struct
