@@ -29,29 +29,26 @@ module Make(Tmpl:Template.S) = struct
           with
           | Not_found -> assert false
         in
-        match Tmpl.Reexport.O.memory with
+        match Tmpl.memory with
         | Memory.Direct ->
             out "%s%s %s = (%s)&_a->%s[_i];\n" indent ty x ty x
         | Memory.Indirect ->
             out "%s%s %s = (%s)_a->%s[_i];\n" indent ty x ty x
       in
       let dump_output x =
-        let outname = Tmpl.Reexport.compile_out_reg proc x in
+        let outname = Tmpl.compile_out_reg proc x in
         out "%s%s = %s;\n" indent outname (Tmpl.fmt_reg x)
       in
       let print_start = out "%sasm __volatile__ (\"%cSTART _litmus_P%i\\n\" ::: \"memory\");\n" in
       let print_end = out "%sasm __volatile__ (\"%cEND _litmus_P%i\\n\" ::: \"memory\");\n" in
       let dump_ins x =
         List.iter dump_input x.Tmpl.inputs;
-        print_start indent Tmpl.Reexport.A.comment proc;
-        out "%s\n" (Tmpl.Reexport.to_string x);
-        print_end indent Tmpl.Reexport.A.comment proc;
+        print_start indent Tmpl.comment proc;
+        out "%s\n" (Tmpl.to_string x);
+        print_end indent Tmpl.comment proc;
         List.iter dump_output x.Tmpl.outputs
       in
-      let trashed = Tmpl.Reexport.trashed_regs t in
-      Tmpl.Reexport.before_dump chan indent env proc t trashed;
       List.iter dump_ins t.Tmpl.code;
-      Tmpl.after_dump chan indent proc t
     end;
     out "%s} while(0);\n" indent
 
