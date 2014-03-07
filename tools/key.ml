@@ -114,36 +114,48 @@ module Make(Opt:Config) = struct
 
   module Cond = struct
 
-    type info =  { cond : LogConstr.constr option ; unsure : bool ; }
+    type info = 
+     { cond : LogConstr.constr option ; unsure : bool ; kind : LogState.kind;}
 
 
-    let sure c = { cond = c ; unsure = false; }
-    let unsure c = { cond = c ; unsure = true; }
+    let sure k c = { cond = c ; unsure = false; kind=k; }
+    let unsure k c = { cond = c ; unsure = true; kind=k; }
 
     let change_condition k c =  match c with
-    | None -> sure None
+    | None -> sure k None
     | Some c ->
         let p = ConstrGen.prop_of c in
-        let sure c = sure (Some c) in
+        let sure c = sure k (Some c) in
         match k with
         | Forbid -> sure (ConstrGen.NotExistsState p)
         | Allow -> sure (ConstrGen.ExistsState p)
         | Require -> sure (ConstrGen.ForallStates p)
-        | NoKind  -> unsure (Some c)
+        | Undefined -> sure  (ConstrGen.ExistsState p)
+        | NoKind -> unsure k (Some c)
         | ErrorKind -> assert false
 
     let add_col t1 =
       Array.map
         (fun t ->          
-          let c =
+          let k,c =
             let c,from_log =
-              try Some (TblRename.find_value Opt.conds t.tname),false
+              try
+                Some (TblRename.find_value Opt.conds t.tname),false
               with Not_found ->  t.condition,true in 
             try
               let k = TblRename.find_value Opt.kinds t.tname in
-              change_condition k c
+              k,change_condition k c
             with Not_found ->
-              if from_log then unsure c else sure c in
+              let k = match c with
+              | None -> NoKind
+              | Some c ->
+                  let open ConstrGen in
+                  begin match c with
+                  | NotExistsState _ -> LogState.Forbid
+                  | ExistsState _ -> LogState.Allow
+                  | ForallStates _ -> LogState.Require
+                  end in
+              k,if from_log then unsure k c else sure k c in
           { name = t.tname ; info = c; })
         t1.tests
 

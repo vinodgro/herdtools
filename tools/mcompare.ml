@@ -698,9 +698,9 @@ module Make (Opt:Config) = struct
           (struct
             type info = K.Cond.info
 
-            let fmt_cell col { K.Cond.cond=cond; K.Cond.unsure=unsure; } t =
+            let fmt_cell col
+                { K.Cond.cond=cond; K.Cond.unsure=unsure; kind=k;} t =
               let v = LS.revalidate cond t.states in
-              let k = kind_of cond in
               add_comment true t.tname
                 col.is_litmus unsure k v                
                 (LS.pp_validation v)
@@ -714,9 +714,9 @@ module Make (Opt:Config) = struct
         (Misc.array_map2
            (fun t k ->
              let i =  k.Key.info in
-             let cond = i.K.Cond.cond
+             let k = i.K.Cond.kind
              and unsure = i.K.Cond.unsure in
-             [LS.pp_kind (kind_of cond) ^
+             [LS.pp_kind k ^
               (if unsure then "?" else "") ^
               (if unsure && t.loop then " (Loop)" else "")])
            t1.tests keys)
@@ -905,15 +905,15 @@ let format_int_string s =
               type info = K.Cond.info
 
               let fmt_cell col
-                  { K.Cond.cond = cond; K.Cond.unsure = unsure;} t =
+                  { K.Cond.cond = cond; K.Cond.unsure = unsure; kind=k } t =
                 if verbose > 1 then
                   begin match cond with
                   | None -> eprintf "No cond for %s\n" t.tname
                   | Some c ->
-                      eprintf "Cond for %s: <%a>\n" t.tname LogConstr.dump c
+                      eprintf "Cond for %s: <%a>[kind=%s]\n"
+                        t.tname LogConstr.dump c (LS.pp_kind k)
                   end ;
                 let v = LS.revalidate cond t.states in
-                let k = kind_of cond in
                 let v_pp =
                   if col.is_litmus then
                     let p,n = LS.witness_again cond t.states in
@@ -942,13 +942,13 @@ let format_int_string s =
             (Array.map
                (fun k ->
                  let i =  k.Key.info in
-                 let cond = i.K.Cond.cond
+                 let kind = i.K.Cond.kind
                  and unsure = i.K.Cond.unsure in
                  let ppk = 
                    if unsure then
-                     if verbose > 0 then LS.pp_kind (kind_of cond) ^ "?"
+                     if verbose > 0 then LS.pp_kind kind ^ "?"
                      else "---"
-                   else LS.pp_kind (kind_of cond) in
+                   else LS.pp_kind kind in
                  [ppk])
                keys)
             m ;

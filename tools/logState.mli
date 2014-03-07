@@ -36,7 +36,7 @@ type kind =
   | Allow | Require | Forbid
   | NoKind (* No kind in log *)
   | ErrorKind (* Propagate Errors *)
-
+  | Undefined (* UB (eg data races) *)
 type validation = Ok | No | DontKnow | Run
 
 type test =
