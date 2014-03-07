@@ -93,8 +93,11 @@ end = struct
 
   module W = Warn.Make(OT)
 
-  module Utils (O:Config) (A':Arch.Base) =
+  module Utils (O:Config) (A':Arch.Base) (Lang:Language.S)
+      (Pseudo:PseudoAbstract.S) (T:Test.S with module A = A' and module P = Pseudo) =
     struct
+      module MS = Skel.Make(O)(Pseudo)(A')(T)
+
       let get_cycle t =
         let info = t.MiscParser.info in
         List.assoc "Cycle" info
@@ -148,6 +151,15 @@ end = struct
             let module Obj = ObjUtil.Make(O)(Tar) in
             Obj.dump ()
         | _ -> utils
+
+      let dump source doc compiled =
+        Misc.output_protect
+          (fun chan ->
+             let module Out =
+               Indent.Make(struct let out = chan end) in
+             let module S = MS(Out)(Lang) in
+             S.dump doc compiled)
+          (Tar.outname source)
     end
 
 
@@ -182,12 +194,11 @@ end = struct
           Misc.pp_prog chan pp
       end
 
-      module Utils = Utils(O)(A)
       module P = GenParser.Make(O)(A) (L)
       module T = Test.Make(A)(Pseudo)
       module Comp = Compile.Make (O)(A)(A)(T) (XXXComp)
-      module MS = Skel.Make(O)(Pseudo)(A)(T)
       module R = Run.Make(O)(Tar)(T.D)
+      module Utils = Utils(O)(A)(Lang)(Pseudo)(T)
 
       let compile
           hint avoid_cycle utils cycles hash_env
@@ -217,14 +228,7 @@ end = struct
             let allocated = Alloc.allocate_regs parsed in
             let compiled = Comp.compile allocated in
             let source = MyName.outname name ".c" in
-            let () =
-              Misc.output_protect
-                (fun chan ->
-                  let module Out =
-                    Indent.Make(struct let out = chan end) in
-                  let module S = MS(Out)(Lang) in
-                  S.dump doc compiled)
-                (Tar.outname source) in
+            Utils.dump source doc compiled;
             let utils = Utils.utils utils in
             R.run name out_chan doc allocated source ;
             Completed (A.arch,doc,source,utils,cycles,hash_env)
@@ -311,12 +315,12 @@ end = struct
           List.iter (Printf.fprintf chan "%s") pp
       end
 
-      module Utils = Utils(O)(A')
       module P = CGenParser.Make(O)(Pseudo)(A')(L)
       module T = Test.Make(A')(Pseudo)
       module Comp = CCompile.Make(O)(T)
       module MS = Skel.Make(O)(Pseudo)(A')(T)
       module R = Run.Make(O)(Tar)(T.D)
+      module Utils = Utils(O)(A')(Lang)(Pseudo)(T)
 
       let rec count_procs = function
         | CAst.Test _::xs -> 1 + count_procs xs
@@ -353,14 +357,7 @@ end = struct
               { allocated with MiscParser.prog = allocated.MiscParser.prog; } in
             let compiled = Comp.compile allocated in
             let source = MyName.outname name ".c" in
-            let () =
-              Misc.output_protect
-                (fun chan ->
-                  let module Out =
-                    Indent.Make(struct let out = chan end) in
-                  let module S = MS(Out)(Lang) in
-                  S.dump doc compiled)
-                (Tar.outname source) in
+            Utils.dump source doc compiled;
             let utils = Utils.utils utils in
             R.run name out_chan doc allocated source ;
             Completed (A.arch,doc,source,utils,cycles,hash_env)
