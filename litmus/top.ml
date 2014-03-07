@@ -93,9 +93,11 @@ end = struct
 
   module W = Warn.Make(OT)
 
-  module Utils (O:Config) (A':Arch.Base) (Lang:Language.S)
-      (Pseudo:PseudoAbstract.S) (T:Test.S with module A = A' and module P = Pseudo) =
+  module Utils (O:Config) (A:Arch.S) (A':Arch.Base) (Lang:Language.S)
+      (Pseudo:PseudoAbstract.S) =
     struct
+      module T = Test.Make(A')(Pseudo)
+      module R = Run.Make(O)(Tar)(T.D)
       module MS = Skel.Make(O)(Pseudo)(A')(T)
 
       let get_cycle t =
@@ -141,7 +143,7 @@ end = struct
           { t with MiscParser.info = info; }
         with Not_found -> t
 
-      let utils utils =
+      let get_utils utils =
         match utils with
         | [] ->
             let module O = struct
@@ -170,6 +172,39 @@ end = struct
           let hash = List.assoc "Hash" parsed.MiscParser.info in
           { filename=name; hash=hash;}
         with Not_found -> assert false
+
+      let compile
+          parse count_procs compile allocate
+          hint avoid_cycle utils cycles hash_env
+          name in_chan out_chan splitted =
+        try begin
+          let parsed = parse in_chan splitted in
+          let doc = splitted.Splitter.name in
+          let tname = doc.Name.name in
+          close_in in_chan ;
+          let nprocs = count_procs parsed.MiscParser.prog in
+          let hash = hash name parsed in
+          if
+            cycle_ok avoid_cycle parsed &&
+            hash_ok hash_env tname hash &&
+            (not O.limit || nprocs <= avail)
+          then begin
+            let hash_env = StringMap.add tname hash hash_env in
+            let parsed = change_hint hint doc.Name.name parsed in
+            let module Alloc = CSymbReg.Make(A') in
+            let allocated = allocate parsed in
+            let compiled = compile allocated in
+            let source = MyName.outname name ".c" in
+            dump source doc compiled;
+            let utils = get_utils utils in
+            R.run name out_chan doc allocated source ;
+            Completed (A.arch,doc,source,utils,cycles,hash_env)
+          end else begin
+            W.warn
+              "Test %s not performed" doc.Name.name ;
+            Absent A.arch
+          end
+        end with e -> Interrupted (A.arch,e)
     end
 
 
@@ -204,43 +239,16 @@ end = struct
           Misc.pp_prog chan pp
       end
 
+      module Utils = Utils(O)(A)(A)(Lang)(Pseudo)
       module P = GenParser.Make(O)(A) (L)
-      module T = Test.Make(A)(Pseudo)
-      module Comp = Compile.Make (O)(A)(A)(T) (XXXComp)
-      module R = Run.Make(O)(Tar)(T.D)
-      module Utils = Utils(O)(A)(Lang)(Pseudo)(T)
+      module Comp = Compile.Make (O)(A)(A)(Utils.T) (XXXComp)
 
-      let compile
-          hint avoid_cycle utils cycles hash_env
-          name in_chan out_chan splitted  =
-        try begin
-          let parsed = P.parse in_chan splitted in
-          let doc = splitted.Splitter.name in
-          let tname = doc.Name.name in
-          close_in in_chan ;
-          let nprocs = List.length parsed.MiscParser.prog in
-          let hash = Utils.hash name parsed in
-          if
-            Utils.cycle_ok avoid_cycle parsed &&
-            Utils.hash_ok hash_env tname hash &&
-            (not O.limit || nprocs <= Utils.avail)
-          then begin
-            let hash_env = StringMap.add tname hash hash_env in
-            let parsed = Utils.change_hint hint doc.Name.name parsed in
-            let module Alloc = SymbReg.Make(A) in
-            let allocated = Alloc.allocate_regs parsed in
-            let compiled = Comp.compile allocated in
-            let source = MyName.outname name ".c" in
-            Utils.dump source doc compiled;
-            let utils = Utils.utils utils in
-            R.run name out_chan doc allocated source ;
-            Completed (A.arch,doc,source,utils,cycles,hash_env)
-          end else begin
-            W.warn
-              "Test %s not performed" doc.Name.name ;
-            Absent A.arch
-          end
-        end with e -> Interrupted (A.arch,e)
+      let compile =
+        let allocate parsed =
+          let module Alloc = SymbReg.Make(A) in
+          Alloc.allocate_regs parsed
+        in
+        Utils.compile P.parse List.length Comp.compile allocate
     end
 
 
@@ -318,51 +326,22 @@ end = struct
           List.iter (Printf.fprintf chan "%s") pp
       end
 
+      module Utils = Utils(O)(A)(A')(Lang)(Pseudo)
       module P = CGenParser.Make(O)(Pseudo)(A')(L)
-      module T = Test.Make(A')(Pseudo)
-      module Comp = CCompile.Make(O)(T)
-      module MS = Skel.Make(O)(Pseudo)(A')(T)
-      module R = Run.Make(O)(Tar)(T.D)
-      module Utils = Utils(O)(A')(Lang)(Pseudo)(T)
+      module Comp = CCompile.Make(O)(Utils.T)
 
       let rec count_procs = function
         | CAst.Test _::xs -> 1 + count_procs xs
         | CAst.Global _::xs -> count_procs xs
         | [] -> 0
 
-      let compile
-          hint avoid_cycle utils cycles hash_env
-          name in_chan out_chan splitted  =
-        try begin
-          let parsed = P.parse in_chan splitted in
-          let doc = splitted.Splitter.name in
-          let tname = doc.Name.name in
-          close_in in_chan ;
-          let nprocs = count_procs parsed.MiscParser.prog in
-          let hash = Utils.hash name parsed in
-          if
-            Utils.cycle_ok avoid_cycle parsed &&
-            Utils.hash_ok hash_env tname hash &&
-            (not O.limit || nprocs <= Utils.avail)
-          then begin
-            let hash_env = StringMap.add tname hash hash_env in
-            let parsed = Utils.change_hint hint doc.Name.name parsed in
-            let module Alloc = CSymbReg.Make(A') in
-            let allocated = Alloc.allocate_regs parsed in
-            let allocated =
-              { allocated with MiscParser.prog = allocated.MiscParser.prog; } in
-            let compiled = Comp.compile allocated in
-            let source = MyName.outname name ".c" in
-            Utils.dump source doc compiled;
-            let utils = Utils.utils utils in
-            R.run name out_chan doc allocated source ;
-            Completed (A.arch,doc,source,utils,cycles,hash_env)
-          end else begin
-            W.warn
-              "Test %s not performed" doc.Name.name ;
-            Absent A.arch
-          end
-        end with e -> Interrupted (A.arch,e)
+      let compile =
+        let allocate parsed =
+          let module Alloc = CSymbReg.Make(A') in
+          let allocated = Alloc.allocate_regs parsed in
+          { allocated with MiscParser.prog = allocated.MiscParser.prog; }
+        in
+        Utils.compile P.parse count_procs Comp.compile allocate
     end
 
 
