@@ -117,7 +117,7 @@ clean::
 %.dot: %.litmus
 	herd -model minimal -conf doc.cfg -showinitrf true -showlegend true -shortlegend true  -show prop -o . $< > /dev/null
 
-DOTS=classic.dot classic-sc.dot ws-sc.dot iriw.dot iriw-internal.dot \
+DOTS=classic.dot classic-sc.dot ws-sc.dot iriw-small-caps.dot iriw-internal.dot \
  IRIW.dot 2+2WLocal.dot LB.dot LB-kinds.dot \
  DetourR.dot DetourW.dot DetourRW.dot DetourWW.dot \
  $(GENDOTS)
