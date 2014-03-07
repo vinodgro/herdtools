@@ -19,12 +19,15 @@ module type S =
   sig
     module A     : Arch.S
 
+    module E : Event.S 
+	   with module Act.A = A
+
     module VC    : Valconstraint.S      
-    with type atom = A.V.v
-    and type cst = A.V.cst
-    and type solution = A.V.solution
-    and type location = A.location
-    and type state = A.state
+	   with type atom = A.V.v
+	    and type cst = A.V.cst
+	    and type solution = A.V.solution
+	    and type location = A.location
+	    and type state = A.state
 
     type 'a t
 	  
@@ -49,20 +52,18 @@ module type S =
 
     val tooFar : string -> unit t
 
-    val read_loc : A.location -> A.inst_instance_id -> A.V.v t
-    val read_reg : A.reg -> A.inst_instance_id -> A.V.v t
-    val read_mem : A.global_loc -> A.inst_instance_id -> A.V.v t
-    val read_mem_atomic : A.global_loc -> A.inst_instance_id -> A.V.v t
+    (* read_loc mk_action loc ii:  
+       for each value v that could be read,
+       make an event structure comprising a single event with
+       instruction id "ii", and action "mk_action v loc". *)
+    val read_loc : (A.location -> A.V.v -> E.action) -> 
+		   A.location -> A.inst_instance_id -> A.V.v t
 
-    val write_loc : A.location -> A.V.v -> A.inst_instance_id -> unit t
-    val write_reg : A.reg -> A.V.v -> A.inst_instance_id -> unit t
-    val write_mem : A.global_loc -> A.V.v -> A.inst_instance_id -> unit t
-    val write_mem_atomic : A.global_loc -> A.V.v -> A.inst_instance_id -> unit t
-
-    val write_flag :
-	A.reg -> Op.op -> A.V.v -> A.V.v ->  A.inst_instance_id -> unit t
+    (* mk_singleton_es a ii: 
+       make an event structure comprising a single event with
+       instruction id "ii", and action "a". *)
+    val mk_singleton_es : E.action -> A.inst_instance_id -> unit t
 	
-    val create_barrier : A.barrier -> A.inst_instance_id -> unit t
 
     val op1 : Op.op1 -> A.V.v -> A.V.v t
     val op : Op.op -> A.V.v -> A.V.v -> A.V.v t
@@ -70,7 +71,6 @@ module type S =
     val add : A.V.v -> A.V.v -> A.V.v t
 
     val assign : A.V.v -> A.V.v -> unit t
-    val commit :  A.inst_instance_id -> unit t
 
     val initwrites : (A.location * A.V.v) list -> unit t
 

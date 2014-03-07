@@ -14,11 +14,13 @@ module type Config = sig
     val debug : Debug.t
 end
 
-module Make (C:Config) (A:Arch.S) (E:Event.S with module A = A) :
-Monad.S with module A = A and type evt_struct = E.event_structure
-    = struct 
-      
+module Make (C:Config) (A:Arch.S) (E:Event.S with module A = A and module Act.A = A) :
+(Monad.S with module A = A and module E = E 
+	  and type evt_struct = E.event_structure) = 
+struct 
+    
       module A = A
+      module E = E
       module V = A.V
       module VC =
         Valconstraint.Make
@@ -293,7 +295,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 
       let trivial_event_structure e = do_trivial (E.EventSet.singleton e)
 
-      let do_read_loc atomic loc ii =
+      let read_loc mk_action loc ii =
 	fun eiid ->
 	  V.fold_over_vals
 	    (fun v (eiid1,acc_inner) ->
@@ -303,17 +305,10 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 		  trivial_event_structure
 		    {E.eiid = eiid1 ;
 		     E.iiid = Some ii;
-		     E.action = E.mk_Access (Dir.R, loc, v, atomic)})
+		     E.action = mk_action loc v })
 		 acc_inner)) (eiid,Evt.empty)	
 
-      let read_loc = do_read_loc false
-
-      let read_reg r ii = do_read_loc false (A.Location_reg (ii.A.proc,r)) ii
-      and read_mem a ii = do_read_loc false (A.Location_global a) ii
-      and read_mem_atomic a ii = do_read_loc true (A.Location_global a) ii 
-
-
-      let do_write_loc atomic loc v ii =
+      let mk_singleton_es a ii =
 	fun eiid ->
 	  (eiid+1,
 	   Evt.singleton
@@ -321,26 +316,8 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 	      trivial_event_structure
 		{E.eiid = eiid ;
 		 E.iiid = Some ii;
-		 E.action = E.mk_Access (Dir.W, loc, v, atomic)}))
-	    
-      let write_loc = do_write_loc false
+		 E.action = a }))
 
-      let write_reg r v ii =
-	do_write_loc false (A.Location_reg (ii.A.proc,r)) v ii
-      and write_mem a v ii =
-	do_write_loc false (A.Location_global a) v ii
-      and write_mem_atomic a v ii =
-        do_write_loc true (A.Location_global a) v ii
-
-      let create_barrier : A.barrier -> A.inst_instance_id -> unit t
-	  = fun b ii ->
-	    fun eiid ->
-	      (eiid+1,
-	       Evt.singleton
-		 ((), [],
-		  trivial_event_structure
-		    {E.eiid = eiid ;  E.iiid = Some ii; 
-		     E.action = E.mk_Barrier b;}))
 
       let any_op mk_v mk_c =
 	(fun eiid_next -> 
@@ -390,21 +367,6 @@ Monad.S with module A = A and type evt_struct = E.event_structure
       type evt_struct = E.event_structure
       type output = VC.cnstrnts * evt_struct
 
-      let write_flag r o v1 v2 ii =
-	addT
-	  (A.Location_reg (ii.A.proc,r))
-	  (op o v1 v2) >>= (fun (loc,v) -> write_loc loc v ii)
-	  
-      let commit ii =
-	fun eiid ->
-	  (eiid+1,
-	   Evt.singleton
-	     ((), [],
-	      trivial_event_structure
-		{E.eiid = eiid ;
-		 E.iiid = Some ii;
-		 E.action = E.mk_Commit;}))
-
       let initwrites env =
         fun eiid ->
           let eiid,es =
@@ -413,7 +375,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
                 let ew =
                   {E.eiid = eiid ;
 		   E.iiid = None ;
- 		   E.action = E.mk_Access (Dir.W, loc, v, false) ;} in
+ 		   E.action = E.Act.mk_init_write loc v ;} in
                 (eiid+1,ew::es))
               (eiid,[]) env in
           let es = E.EventSet.of_list es in

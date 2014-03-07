@@ -22,10 +22,6 @@ module type S = sig
 
   type eiid = int
 
-  val mk_Access : Dir.dirn * A.location * A.V.v * bool -> action
-  val mk_Barrier : A.barrier -> action
-  val mk_Commit : action
-
 (* 
   eiid = unique event id
   iiid = id of instruction that generated this event; None for init writes 
@@ -84,6 +80,9 @@ module type S = sig
 
 (* Commit *)
   val is_commit : event -> bool
+
+(* Mutex operations *)
+  val is_mutex_action : event -> bool
 
 (**************)
 (* Event sets *)
@@ -251,19 +250,15 @@ struct
   module A = AI
   module V = AI.V
 	       
-    type eiid = int
+  type eiid = int
 
   type action = Act.action
-
-  (* Constructing actions *)
-  let mk_Access = Act.mk_Access
-  let mk_Barrier = Act.mk_Barrier
-  let mk_Commit = Act.mk_Commit
 
     type event = {
 	eiid : eiid;
 	iiid : A.inst_instance_id option ;
 	action : action;  } 
+		  
 
     let pp_eiid e =
       if e.eiid < 26 then
@@ -290,7 +285,11 @@ struct
       | A.Location_global _ -> true
       | A.Location_reg _ -> false
 
-    let same_location e1 e2 = location_compare e1 e2 = 0
+    let same_location e1 e2 = 
+      if (location_of e1 = None || location_of e2 = None) then
+	false
+      else
+        location_compare e1 e2 = 0
 
     let same_value e1 e2 = match value_of e1, value_of e2 with
     | Some v1,Some v2 -> V.compare v1 v2 = 0
@@ -353,6 +352,9 @@ struct
 
 (* Commits *)
    let is_commit e = Act.is_commit e.action
+
+(* Mutex operations *)
+   let is_mutex_action e = Act.is_mutex_action e.action
 
 (******************************)
 (* Build structures of events *)

@@ -17,16 +17,18 @@ module type S = sig
 
   type action
 
-(* Constructing actions *)
-  val mk_Access : Dir.dirn * A.location * A.V.v * bool -> action
-  val mk_Barrier : A.barrier -> action
-  val mk_Commit : action
+  val mk_init_write : A.location -> A.V.v -> action
 
   val pp_action     : bool -> action -> string
 
-(*************************************)
+(* Some architecture-specific sets, and their definitions
+   e.g. ["rmw", is_rmw; "ls", is_successful_lock]
+ *)
+  val arch_sets : (string * (action -> bool)) list
+
+(**************************************)
 (* Access to sub_components of events *)
-(*************************************)
+(**************************************)
 
   val value_of : action -> A.V.v option
   val location_of   : action -> A.location option
@@ -71,8 +73,11 @@ module type S = sig
   val is_barrier : action -> bool
   val barrier_of : action -> A.barrier option
 
-(* Commit *)
+(* Commits *)
   val is_commit : action -> bool
+
+(* Mutex operations *)
+  val is_mutex_action : action -> bool
 
 (********************)
 (* Equation solving *)

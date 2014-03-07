@@ -1,0 +1,165 @@
+Test IRIW_relacq Allowed
+States 16
+2:r1=0; 2:r2=0; 3:r1=0; 3:r2=0;
+2:r1=0; 2:r2=0; 3:r1=0; 3:r2=1;
+2:r1=0; 2:r2=0; 3:r1=1; 3:r2=0;
+2:r1=0; 2:r2=0; 3:r1=1; 3:r2=1;
+2:r1=0; 2:r2=1; 3:r1=0; 3:r2=0;
+2:r1=0; 2:r2=1; 3:r1=0; 3:r2=1;
+2:r1=0; 2:r2=1; 3:r1=1; 3:r2=0;
+2:r1=0; 2:r2=1; 3:r1=1; 3:r2=1;
+2:r1=1; 2:r2=0; 3:r1=0; 3:r2=0;
+2:r1=1; 2:r2=0; 3:r1=0; 3:r2=1;
+2:r1=1; 2:r2=0; 3:r1=1; 3:r2=0;
+2:r1=1; 2:r2=0; 3:r1=1; 3:r2=1;
+2:r1=1; 2:r2=1; 3:r1=0; 3:r2=0;
+2:r1=1; 2:r2=1; 3:r1=0; 3:r2=1;
+2:r1=1; 2:r2=1; 3:r1=1; 3:r2=0;
+2:r1=1; 2:r2=1; 3:r1=1; 3:r2=1;
+Ok
+Witnesses
+Positive: 1 Negative: 15
+Bad executions: 0
+Condition exists (2:r1=1 /\ 2:r2=0 /\ 3:r1=1 /\ 3:r2=0)
+Observation IRIW_relacq Sometimes 1 15
+Hash=cd7aac4ac76b2b485c283a66fd14dfc1
+
+Test IRIW_relaxed Allowed
+States 16
+2:r1=0; 2:r2=0; 3:r1=0; 3:r2=0;
+2:r1=0; 2:r2=0; 3:r1=0; 3:r2=1;
+2:r1=0; 2:r2=0; 3:r1=1; 3:r2=0;
+2:r1=0; 2:r2=0; 3:r1=1; 3:r2=1;
+2:r1=0; 2:r2=1; 3:r1=0; 3:r2=0;
+2:r1=0; 2:r2=1; 3:r1=0; 3:r2=1;
+2:r1=0; 2:r2=1; 3:r1=1; 3:r2=0;
+2:r1=0; 2:r2=1; 3:r1=1; 3:r2=1;
+2:r1=1; 2:r2=0; 3:r1=0; 3:r2=0;
+2:r1=1; 2:r2=0; 3:r1=0; 3:r2=1;
+2:r1=1; 2:r2=0; 3:r1=1; 3:r2=0;
+2:r1=1; 2:r2=0; 3:r1=1; 3:r2=1;
+2:r1=1; 2:r2=1; 3:r1=0; 3:r2=0;
+2:r1=1; 2:r2=1; 3:r1=0; 3:r2=1;
+2:r1=1; 2:r2=1; 3:r1=1; 3:r2=0;
+2:r1=1; 2:r2=1; 3:r1=1; 3:r2=1;
+Ok
+Witnesses
+Positive: 1 Negative: 15
+Bad executions: 0
+Condition exists (2:r1=1 /\ 2:r2=0 /\ 3:r1=1 /\ 3:r2=0)
+Observation IRIW_relaxed Sometimes 1 15
+Hash=7e778dc76692f6cfe3e372b561b400b7
+
+Test IRIW_sc Allowed
+States 16
+2:r1=0; 2:r2=0; 3:r1=0; 3:r2=0;
+2:r1=0; 2:r2=0; 3:r1=0; 3:r2=1;
+2:r1=0; 2:r2=0; 3:r1=1; 3:r2=0;
+2:r1=0; 2:r2=0; 3:r1=1; 3:r2=1;
+2:r1=0; 2:r2=1; 3:r1=0; 3:r2=0;
+2:r1=0; 2:r2=1; 3:r1=0; 3:r2=1;
+2:r1=0; 2:r2=1; 3:r1=1; 3:r2=0;
+2:r1=0; 2:r2=1; 3:r1=1; 3:r2=1;
+2:r1=1; 2:r2=0; 3:r1=0; 3:r2=0;
+2:r1=1; 2:r2=0; 3:r1=0; 3:r2=1;
+2:r1=1; 2:r2=0; 3:r1=1; 3:r2=0;
+2:r1=1; 2:r2=0; 3:r1=1; 3:r2=1;
+2:r1=1; 2:r2=1; 3:r1=0; 3:r2=0;
+2:r1=1; 2:r2=1; 3:r1=0; 3:r2=1;
+2:r1=1; 2:r2=1; 3:r1=1; 3:r2=0;
+2:r1=1; 2:r2=1; 3:r1=1; 3:r2=1;
+Ok
+Witnesses
+Positive: 1 Negative: 15
+Bad executions: 0
+Condition exists (2:r1=1 /\ 2:r2=0 /\ 3:r1=1 /\ 3:r2=0)
+Observation IRIW_sc Sometimes 1 15
+Hash=b380508ac51bd53552624d737fb58057
+
+Test MP_dr Allowed
+States 2
+1:r1=0; 1:r2=0;
+1:r1=1; 1:r2=0;
+Ok
+Witnesses
+Positive: 1 Negative: 1
+Bad executions: 2
+Condition exists (1:r1=1 /\ 1:r2=0)
+Observation MP_dr Sometimes 1 1
+Hash=48d9c428d40a294135964872b8993fe1
+
+Test MP_fence Allowed
+States 4
+1:r1=0; 1:r2=0;
+1:r1=0; 1:r2=1;
+1:r1=1; 1:r2=0;
+1:r1=1; 1:r2=1;
+Ok
+Witnesses
+Positive: 1 Negative: 3
+Bad executions: 0
+Condition exists (1:r1=1 /\ 1:r2=0)
+Observation MP_fence Sometimes 1 3
+Hash=fbdd1031ccebdc7feca1e65a2f4a0ae1
+
+Test MP_relacq Allowed
+States 2
+1:r1=0; 1:r2=0;
+1:r1=1; 1:r2=1;
+No
+Witnesses
+Positive: 0 Negative: 2
+Bad executions: 1
+Condition exists (1:r1=1 /\ 1:r2=0)
+Observation MP_relacq Never 0 2
+Hash=a36d055f99f4f0988cbab8a4c3fe6ec5
+
+Test MP_relaxed Allowed
+States 4
+1:r1=0; 1:r2=0;
+1:r1=0; 1:r2=1;
+1:r1=1; 1:r2=0;
+1:r1=1; 1:r2=1;
+Ok
+Witnesses
+Positive: 1 Negative: 3
+Bad executions: 0
+Condition exists (1:r1=1 /\ 1:r2=0)
+Observation MP_relaxed Sometimes 1 3
+Hash=386dc5e24446ed4a5dfc20ea649fde0f
+
+Test MP_relseq Allowed
+States 3
+1:r1=0; 1:r2=0;
+1:r1=1; 1:r2=1;
+1:r1=2; 1:r2=1;
+No
+Witnesses
+Positive: 0 Negative: 3
+Bad executions: 1
+Condition exists (1:r1=2 /\ 1:r2=0)
+Observation MP_relseq Never 0 3
+Hash=c1651faac95111fa33c7fb934810683b
+
+Test silly Allowed
+States 1
+1:r1=0; 1:r2=0;
+No
+Witnesses
+Positive: 0 Negative: 84
+Bad executions: 84
+Condition exists (1:r1=1 /\ 1:r2=0)
+Observation silly Never 0 84
+Hash=cbf3a95c92fcd68cc9817c7e1c2edb9f
+
+Test sillywrites Allowed
+States 1
+1:r1=0; 1:r2=0;
+No
+Witnesses
+Positive: 0 Negative: 1
+Bad executions: 0
+Condition exists (1:r1=1 /\ 1:r2=0)
+Observation sillywrites Never 0 1
+Hash=03ef35542d40ed1da427450b4a323e26
+

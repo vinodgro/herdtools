@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Union of relevant PPC,ARM and X86 barriers *)
+(* Union of relevant PPC, ARM, X86 and CPP11 barriers *)
 module type S =
   sig
     type a (* Native arch barrier *)
@@ -27,7 +27,7 @@ module type S =
 module FromPPC(B:PPCBarrier.S) = struct
   type a = B.a
 
-  type b =
+  type b = 
       | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
@@ -45,7 +45,7 @@ end
 module FromARM(AB:ARMBarrier.S) = struct
   type a = AB.a
 
-  type b =
+  type b = 
       | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
@@ -66,7 +66,7 @@ module FromX86(XB:X86Barrier.S) = struct
 
   type a = XB.a
 
-  type b =
+  type b = 
       | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
@@ -76,6 +76,21 @@ module FromX86(XB:X86Barrier.S) = struct
   | XB.MFENCE -> MFENCE
   | XB.SFENCE -> SFENCE 
   | XB.LFENCE -> LFENCE
+
+  let pp_isync = "???"
+end
+
+module FromCPP11(CB:CPP11Barrier.S) = struct
+
+  type a = CB.a
+
+  type b = 
+      | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
+      | DSB | DMB | ISB               (* ARM barrier *)
+      | DSBST | DMBST
+      | MFENCE | SFENCE | LFENCE
+
+  let a_to_b _ = assert false (* no barriers in CPP11 *)
 
   let pp_isync = "???"
 end

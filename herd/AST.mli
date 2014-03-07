@@ -12,15 +12,21 @@
 
 (* Syntax tree of model definition *)
 type pos = { pos:int; len:int;}
-type direction = Write | Read | WriteRead | Atomic | Plain
-type op2 = Union | Inter | Seq | Diff
+type direction = 
+  | Write | Read | WriteRead | Atomic | Plain
+  | Unv_Set (* universal set *)
+  | Bar_Set (* set of barriers *)
+type op2 = 
+  | Union | Inter | Diff (* these apply to sets and relations *)
+  | Seq (* sequential composition of relations *) 
+  | Cartesian (* build a relation from two sets *)
 type op1 =
   | Plus | Star | Opt | Select of direction * direction
   | Inv  (* Relation inverse *)
   | Ext  (* External subrelation (events from <> threads) *)
   | Int  (* Internal subrelation (events from = threads) *)
   | NoId (* Irreflexive subrelation (<> events, aka r\id) *)
-type konst = Empty
+type konst = Empty_set | Empty_rel
 type var = string
 
 type exp =
@@ -37,10 +43,12 @@ and binding = var * exp
 
 type test = Acyclic | Irreflexive | TestEmpty
 
+type test_type = Requires | Provides
+
 type ins =
   | Let of binding list
   | Rec of binding list
-  | Test of pos * test * exp * string option
+  | Test of pos * test * exp * string option * test_type
   | UnShow of string list
   | Show of string list
   | ShowAs of exp * string

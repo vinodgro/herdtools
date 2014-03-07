@@ -10,9 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(*****************************)
-(* Entry to models for ARM   *)
-(*****************************)
+(*Mostly taken from the X86 Model*)
 
 module type Config = sig
   val model : Model.t
@@ -22,62 +20,30 @@ end
 module Make
     (O:Config)
     (S:Sem.Semantics)
-    (B:ARMBarrier.S with type a = S.barrier)
+    (B:CPP11Barrier.S with type a = S.barrier)
  :
-    XXXMem.S with
-module S = S
+    (XXXMem.S with module S = S)
     =
   struct
 
     open Model
 
+    let model = O.model
 
     module S = S
 
     module ModelConfig = (O : Model.Config)
-    let model = O.model
 
     let check_event_structure test = match O.model with
-    | Minimal uni ->
-        let module X = 
-          Minimal.Make
-            (struct
-              let uniproc = uni
-              include ModelConfig
-            end)
-            (S) in
-        X.check_event_structure test
-    | CAV12 opt ->
-        let module X = 
-          CAV12.Make
-            (struct
-              let opt = opt
-              include ModelConfig
-            end)
-            (S)
-            (AllBarrier.FromARM(B)) in
-        X.check_event_structure test        
-    | Jade opt ->
-        let module X = 
-          Jade.Make
-            (struct
-              let opt = opt
-              include ModelConfig
-            end)
-            (S)
-            (AllBarrier.FromARM(B)) in
-        X.check_event_structure test                
-    | X86TSO ->
-        let module X =
-          X86TSO.Make(ModelConfig)(S)(AllBarrier.FromARM(B)) in
-        X.check_event_structure test
     | Generic m ->
         let module X =
-          MachModelChecker.Make
+          CPP11ModelChecker.Make
             (struct
               let m = m
               include ModelConfig
-             end)(S)(AllBarrier.FromARM(B)) in
+             end)(S)(AllBarrier.FromCPP11(B)) in
         X.check_event_structure test
     | File _ -> assert false
-  end
+    | m -> 
+        Warn.fatal "Model %s not implemented for C++11" (Model.pp m)
+end

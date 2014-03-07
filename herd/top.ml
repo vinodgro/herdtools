@@ -58,6 +58,8 @@ module Make(O:Config)(M:XXXMem.S) =
         sts
         0
 
+    let report_bad_executions = ref false
+
 (* Test result *)
     type count =
         { states : A.StateSet.t;
@@ -65,6 +67,8 @@ module Make(O:Config)(M:XXXMem.S) =
 (* NB: pos and neg are w.r.t. proposition *)
           pos : int ;
           neg : int ;
+(* Number of executions that fail at least one requires clause *)
+	  bad : int ;
 (* shown executions *)
           shown : int;
 (* registers that read memory *)
@@ -72,7 +76,7 @@ module Make(O:Config)(M:XXXMem.S) =
         }
 
     let start =
-      { states = A.StateSet.empty; cands=0; pos=0; neg=0; shown=0;
+      { states = A.StateSet.empty; cands=0; pos=0; neg=0; bad=0; shown=0;
         reads = A.LocSet.empty; }
 
 (* Check condition *)
@@ -159,7 +163,7 @@ module Make(O:Config)(M:XXXMem.S) =
 (* Called by model simulator in case of success *)
     let model_kont ochan test cstr =
       let check = check_prop test in
-      fun conc fsc vbpp c ->
+      fun conc fsc vbpp failed_requires_clauses c ->
         if do_observed && not (all_observed test conc) then c
         else
           let ok = check fsc in
@@ -220,11 +224,15 @@ module Make(O:Config)(M:XXXMem.S) =
               PP.dump_legend chan test legend conc (Lazy.force vbpp)
           | _ -> ()
           end ;
+	  report_bad_executions := (failed_requires_clauses != None);
           let r =
             { cands = c.cands+1;
               states = A.StateSet.add fsc c.states;
               pos = if ok then c.pos+1 else c.pos;
               neg = if ok then c.neg else c.neg+1;
+              bad = (match failed_requires_clauses with 
+		    | Some n when n > 0 -> c.bad+1 
+		    | _ -> c.bad);
               shown = if show_exec then c.shown+1 else c.shown;
               reads = 
                 if O.outcomereads then
@@ -330,6 +338,8 @@ module Make(O:Config)(M:XXXMem.S) =
         let pos,neg = check_wit test c in
         printf "Witnesses\n" ;
         printf "Positive: %i Negative: %i\n" pos neg ;
+	if (!report_bad_executions) then 
+	  printf "Bad executions: %i\n" c.bad ;
         printf "Condition %a\n" C.dump_constraints cstr ;
         printf "Observation %s %s %i %i\n%!" tname
           (if c.pos = 0 then "Never"

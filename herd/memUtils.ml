@@ -281,6 +281,8 @@ module Make(S : SemExtra.S) = struct
   and collect_loads es = collect_by_loc es E.is_load
   and collect_stores es = collect_by_loc es E.is_store
   and collect_atomics es = collect_by_loc es E.is_atomic
+  and collect_mutex_actions es = collect_by_loc es E.is_mutex_action
+
 
 (* fr to init stores only *)
   let make_fr_partial conc =
@@ -407,6 +409,41 @@ module Make(S : SemExtra.S) = struct
           [ ("pos",S.rt pos); ("pco",S.rt conc.S.pco)]
       end ;
       res
+
+(********************************************)
+(* Mutex serialization candidate generator. *)
+(********************************************)
+
+  let fold_mutex_serialization_candidates conc (* vb *) _ kont res =
+    let mutex_actions_by_loc = collect_mutex_actions conc.S.str in
+    let lo_orders : E.EventRel.t list list =
+      LocEnv.fold
+	(fun _loc mutex_actions k ->
+          let orders =
+	    E.EventRel.all_topos (PC.verbose > 0)
+              (E.EventSet.of_list mutex_actions) E.EventRel.empty in
+          List.map order_to_succ_rel orders::k)
+        mutex_actions_by_loc [] in
+    Misc.fold_cross_gen E.EventRel.union E.EventRel.empty lo_orders kont res
+
+(* With check *)
+  let apply_process_lo test conc process_lo res =
+     try
+       fold_mutex_serialization_candidates
+         conc conc.S.pco process_lo res
+     with E.EventRel.Cyclic ->
+       if S.O.debug.Debug.barrier && S.O.PC.verbose > 2 then begin
+         let module PP = Pretty.Make(S) in
+           let legend =
+             sprintf "%s cyclic co or lo precursor"
+               test.Test.name.Name.name in
+           let pos = conc.S.pos in
+           prerr_endline legend ;
+           PP.show_legend test  legend conc
+             [ ("pos",S.rt pos); ("pco",S.rt conc.S.pco)]
+        end ;
+        res
+
 (*******************************************************)
 (* Saturate all memory accesses wrt atomicity classes  *)
 (*******************************************************)

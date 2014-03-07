@@ -50,7 +50,7 @@ module Make
           | DMB|DSB|DMBST|DSBST
           | MFENCE|LFENCE|SFENCE
             -> true
-          | ISYNC|ISB -> false
+          | _ -> false
           end
       | None -> false
 
@@ -500,7 +500,7 @@ module Make
                       vb_pp ;
                     res
                 end else begin           
-                  kont conc conc.S.fs vb_pp res
+                  kont conc conc.S.fs vb_pp None res
                 end
           end in
         U.apply_process_co test conc process_co res
