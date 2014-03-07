@@ -53,11 +53,13 @@ baseline:
 	@echo "Regenerating baseline..."
 	@./herd -model power.cat testsuite/PPCTests/*  > testsuite/PPC_results_baseline.txt
 	@./herd -model arm.cat testsuite/ARMTests/* > testsuite/ARM_results_baseline.txt
+	@./herd -model cpp11.cat testsuite/CPP11Tests/* > testsuite/CPP11_results_baseline.txt
 
 test:
 	@echo "Running tests..."
 	@./herd -model power.cat testsuite/PPCTests/*  > testsuite/PPC_results_new.txt
 	@./herd -model arm.cat testsuite/ARMTests/* > testsuite/ARM_results_new.txt
+	@./herd -model cpp11.cat testsuite/CPP11Tests/* > testsuite/CPP11_results_new.txt
 	@test -s ../tools/mcompare || { echo "../tools/mcompare doesn't exist. Run the \`make -C ../tools\` command."; exit 1; }
 	@echo "Comparing test results against baseline..."
 	@../tools/mcompare \
@@ -68,14 +70,23 @@ test:
           testsuite/ARM_results_new.txt \
           testsuite/ARM_results_baseline.txt \
           -neg testsuite/N2 -pos testsuite/P2 >/dev/null
+	@../tools/mcompare \
+          testsuite/CPP11_results_new.txt \
+          testsuite/CPP11_results_baseline.txt \
+          -neg testsuite/N3 -pos testsuite/P3 >/dev/null
 	@echo "There are differences in the following PPC tests:" && \
 	  cat testsuite/P1 && cat testsuite/N1
 	@echo "There are differences in the following ARM tests:" && \
 	  cat testsuite/P2 && cat testsuite/N2 
-	@rm testsuite/N1 testsuite/N2 testsuite/P1 testsuite/P2
+	@echo "There are differences in the following CPP11 tests:" && \
+	  cat testsuite/P3 && cat testsuite/N3 
+	@rm testsuite/P1 testsuite/N1 
+	@rm testsuite/P2 testsuite/N2
+	@rm testsuite/P3 testsuite/N3
 
 clean::
 	/bin/rm -f version.ml
 	/bin/rm -f testsuite/PPC_results_new.txt
 	/bin/rm -f testsuite/ARM_results_new.txt
+	/bin/rm -f testsuite/CPP11_results_new.txt
 

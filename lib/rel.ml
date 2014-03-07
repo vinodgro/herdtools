@@ -39,6 +39,7 @@ module type S = sig
   val restrict_domain : (elt1 -> bool) -> t -> t
   val restrict_codomain : (elt2 -> bool) -> t -> t
   val restrict_domains : (elt1 -> bool) -> (elt2 -> bool) -> t -> t
+  val restrict_rel : (elt1 -> elt2 -> bool) -> t -> t
 
 end
 
@@ -124,4 +125,5 @@ with
     let restrict_domain p r = filter (fun (e,_) -> p e) r
     and restrict_codomain p r = filter (fun (_,e) -> p e) r
     and restrict_domains p1 p2 r = filter (fun (e1,e2) -> p1 e1 && p2 e2) r
+    and restrict_rel p r = filter (fun (e1,e2) -> p e1 e2) r
   end

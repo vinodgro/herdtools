@@ -156,8 +156,8 @@ module Make (A : Arch.S) : (S with module A_ = A) = struct
 (* Mutex operations *)
    let is_mutex_action _ = false
 
-  (* There are no additional architecture-specific sets to define *)
-  let arch_sets = []
+(* Architecture-specific sets *)
+   let arch_sets = []
 
 (* Equations *)
 

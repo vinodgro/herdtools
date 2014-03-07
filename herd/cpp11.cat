@@ -1,9 +1,10 @@
 "C++11"
 
-(* JW: The set A currently contains:
-  - all reads/writes that have memory_order other than non_atomic
-  - all RMW actions
-  - nothing else
+(* JW: The set A can now be used to refer to all atomic events. It
+   currently contains:
+   - all reads/writes that have memory_order other than non_atomic
+   - all RMW actions
+   - nothing else
  *)
 
 (* MB: This file includes a version of the C/C++11 memory model. It
@@ -119,7 +120,6 @@ let rsco = (co ; [rmw] | coi) & (niw [~rmw])
 
 
 let rs = [crel]; fid; [A & W] ; (((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co))?
-(*
 let swra = ext (rs; rf; [A]; idf; [cacq])
 let swul = ext ([ul]; lo; [lk])
 let pp_asw = asw \ (asw;po)
@@ -509,4 +509,3 @@ let ni(s,r) = ~(r; [s] ;r)
 let irrefl_then_subset(r1,r2) = r1^-1;~r2
 
 let max_preds(r) = r & ~(r; r)
- *)

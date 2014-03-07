@@ -21,20 +21,30 @@ module type S = sig
     | Set of S.event_set
     | Clo of closure
 
-  and env = v StringMap.t
+  and env = v Lazy.t StringMap.t
   and closure =
     { clo_args : AST.var list ;
       clo_env : env ;
       clo_body : AST.exp; }
   
-  val run_interpret : S.test ->
-           S.concrete ->
-           env ->
-           S.event_rel ->
-           (StringMap.key * S.event_rel) list Lazy.t ->
-           (S.concrete ->
-            S.state -> (StringMap.key * S.event_rel) list lazy_t -> 'a -> 'a) ->
-           'a -> 'a
+  type st = { 
+    env : env ;
+    show : S.event_rel StringMap.t Lazy.t ;
+    seen_requires_clause : bool ;
+    skipped : StringSet.t ; 
+  }
+
+  val show_to_vbpp : 
+    st -> (StringMap.key * S.event_rel) list
+
+  val interpret : 
+    (unit -> unit) -> (* function called when a requires clause fails *)
+    S.test ->
+    S.concrete ->
+    env ->
+    S.event_rel ->
+    (StringMap.key * S.event_rel) list Lazy.t ->
+    st option
 end
 
 
@@ -70,16 +80,18 @@ module Make
       | Set of S.event_set
       | Clo of closure
 
-    and env = v StringMap.t
+    and env = v Lazy.t StringMap.t
     and closure =
         { clo_args : AST.var list ;
           clo_env : env ;
           clo_body : AST.exp; }
 
     let find_env env k =
-      try StringMap.find k env
-      with
-      | Not_found -> Warn.user_error "unbound var: %s" k
+      Lazy.force (
+	try StringMap.find k env
+	with
+	| Not_found -> Warn.user_error "unbound var: %s" k
+      )
 
     let is_rel = function
       | Rel _ -> true
@@ -125,9 +137,10 @@ module Make
     let empty_rel = Rel E.EventRel.empty
     let empty_set = Set E.EventSet.empty        
 
-    let interpret test conc m id vb_pp =
+    let interpret failed_requires_clause test conc m id vb_pp =
 
       let is_dir = function
+        (* Todo: are these still needed? *)
 	| Unv_Set -> (fun _ -> true)
 	| Bar_Set -> E.is_barrier
         | WriteRead -> E.is_mem
@@ -219,7 +232,7 @@ module Make
               with _ -> Warn.user_error "argument_mismatch" in
             let env =
               List.fold_right
-                (fun (x,v) env -> StringMap.add x v env)
+                (fun (x,v) env -> StringMap.add x (lazy v) env)
                 bds f.clo_env in
             eval env f.clo_body
         | Bind (bds,e) ->
@@ -237,7 +250,7 @@ module Make
       | [] -> env
       | (k,e)::bds ->
           let v = eval env e in
-          StringMap.add k v (eval_bds env bds)
+          StringMap.add k (lazy v) (eval_bds env bds)
 
 (* For let rec *)
       and env_rec pp bds =
@@ -258,7 +271,7 @@ module Make
         fun env ->
           fix 0
             (List.fold_left
-               (fun env (k,_) -> StringMap.add k empty_rel env)
+               (fun env (k,_) -> StringMap.add k (lazy empty_rel) env)
                env bds)
             (List.map (fun _ -> E.EventRel.empty) bds)
 
@@ -266,7 +279,7 @@ module Make
       | [] -> env,[]
       | (k,e)::bds ->
           let v = eval env e in
-          let env = StringMap.add k v env in
+          let env = StringMap.add k (lazy v) env in
           let env,vs = fix_step env bds in
           env,(as_rel v::vs) in
 
@@ -350,8 +363,13 @@ module Make
                 MU.pp_failure test conc
                   (sprintf "%s: Failure of '%s'" test.Test.name.Name.name pp)
                   (show_to_vbpp st)
-              end ;
-              None
+	      end ;
+	      match test_type with
+	      | Provides -> 
+		 None
+	      | Requires -> 
+		 let () = failed_requires_clause () in
+		 run st c
             end
           else begin
             W.warn "Skipping check %s" (Misc.as_some name) ;
@@ -385,13 +403,6 @@ module Make
         seen_requires_clause=false;
         skipped=StringSet.empty;} prog
         
-    let run_interpret  test conc m id vb_pp kont res =
-      match interpret test conc m id vb_pp with
-      | Some st ->
-          if not O.strictskip || StringSet.equal st.skipped O.skipchecks then
-            let vb_pp = lazy (show_to_vbpp st) in
-            kont conc conc.S.fs vb_pp  res
-          else res
-      | None -> res
+
 
   end

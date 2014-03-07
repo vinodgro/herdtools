@@ -19,7 +19,7 @@ module type S = sig
 
   val check_event_structure :
       S.test -> S.concrete ->
-	(S.concrete ->  S.state -> S.rel_pp Lazy.t -> 'a -> 'a) ->
+	(S.concrete ->  S.state -> S.rel_pp Lazy.t -> int option (* number of failed requires clauses, None in machine models *) -> 'a -> 'a) ->
               'a -> 'a
 
 end

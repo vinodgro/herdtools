@@ -220,6 +220,7 @@ struct
      "acq_rel", mo_matches CPP11Base.Acq_Rel;
      "rlx", mo_matches CPP11Base.Rlx;
      "con", mo_matches CPP11Base.Con;
+     "na", mo_matches CPP11Base.NA;
    ]
 
 (* Equations *)

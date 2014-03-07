@@ -39,6 +39,7 @@ module type S = sig
   val restrict_domain : (elt1 -> bool) -> t -> t
   val restrict_codomain : (elt2 -> bool) -> t -> t
   val restrict_domains : (elt1 -> bool) -> (elt2 -> bool) -> t -> t
+  val restrict_rel : (elt1 -> elt2 -> bool) -> t -> t
 
 end
 

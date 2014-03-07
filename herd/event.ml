@@ -285,7 +285,11 @@ struct
       | A.Location_global _ -> true
       | A.Location_reg _ -> false
 
-    let same_location e1 e2 = location_compare e1 e2 = 0
+    let same_location e1 e2 = 
+      if (location_of e1 = None || location_of e2 = None) then
+	false
+      else
+        location_compare e1 e2 = 0
 
     let same_value e1 e2 = match value_of e1, value_of e2 with
     | Some v1,Some v2 -> V.compare v1 v2 = 0

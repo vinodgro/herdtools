@@ -28,6 +28,15 @@ module Make
 
     let (pp,(withco,_,prog)) = O.m
 
+    let run_interpret failed_requires_clause test conc m id vb_pp kont res =
+      match I.interpret failed_requires_clause test conc m id vb_pp with
+      | Some st ->
+          if not O.strictskip || StringSet.equal st.I.skipped O.skipchecks then
+            let vb_pp = lazy (I.show_to_vbpp st) in
+            kont conc conc.S.fs vb_pp None res
+          else res
+      | None -> res
+
     let check_event_structure test conc kont res =
       let prb = JU.make_procrels conc in
       let pr = prb.JU.pr in
@@ -41,7 +50,7 @@ module Make
 (* Initial env *)
       let m =
         List.fold_left
-          (fun m (k,v) -> StringMap.add k (I.Rel v) m)
+          (fun m (k,v) -> StringMap.add k (lazy (I.Rel v)) m)
           StringMap.empty
           ["id",id;
 	   "unv", E.EventRel.cartesian evts evts;
@@ -77,21 +86,21 @@ module Make
          ] in
       let m =
         List.fold_left
-          (fun m (k,v) -> StringMap.add k (I.Set v) m)
+          (fun m (k,v) -> StringMap.add k (lazy (I.Set (E.EventSet.filter v evts))) m)
           m
           [
-           "_", evts;
-           "R", E.EventSet.filter E.is_mem_load evts;
-           "W", E.EventSet.filter E.is_mem_store evts;
-           "M", E.EventSet.filter E.is_mem evts;
-	   "B", E.EventSet.filter E.is_barrier evts;
-           "P", E.EventSet.filter (fun e -> not (E.is_atomic e)) evts;
-           "A", E.EventSet.filter E.is_atomic evts;
-	   "I", E.EventSet.filter E.is_mem_store_init evts;
+           "_", (fun _ -> true);
+           "R", E.is_mem_load;
+           "W", E.is_mem_store;
+           "M", E.is_mem;
+	   "B", E.is_barrier;
+           "P", (fun e -> not (E.is_atomic e));
+           "A", E.is_atomic;
+	   "I", E.is_mem_store_init;
          ] in
       let m = 
 	List.fold_left
-	  (fun m (k,v) -> StringMap.add k (I.Set (E.EventSet.filter (fun e -> v e.E.action) evts)) m)
+	  (fun m (k,v) -> StringMap.add k (lazy (I.Set (E.EventSet.filter (fun e -> v e.E.action) evts))) m)
 	  m
 	  E.Act.arch_sets in
       if withco then
@@ -108,22 +117,22 @@ module Make
 
           let m =
             List.fold_left
-              (fun m (k,v) -> StringMap.add k (I.Rel v) m)
+              (fun m (k,v) -> StringMap.add k (lazy (I.Rel v)) m)
               m
               [
                "fr", fr; "fre", U.ext fr; "fri", U.internal fr;
                "co", co; "coe", U.ext co; "coi", U.internal co;
              ] in
-          I.run_interpret test conc m id vb_pp kont res in
+          run_interpret (fun () -> ()) test conc m id vb_pp kont res in
         U.apply_process_co test  conc process_co res
       else
         let co0 = conc.S.pco in
         let m =
            List.fold_left
-              (fun m (k,v) -> StringMap.add k (I.Rel v) m)
+              (fun m (k,v) -> StringMap.add k (lazy (I.Rel v)) m)
               m
               [
                "co0", co0;
              ] in
-        I.run_interpret test conc m id vb_pp kont res
+        run_interpret (fun () -> ()) test conc m id vb_pp kont res
   end
