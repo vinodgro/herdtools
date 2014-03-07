@@ -93,7 +93,7 @@ end = struct
 
   module W = Warn.Make(OT)
 
-  module Utils =
+  module Utils (O:Config) (A':Arch.Base) =
     struct
       let get_cycle t =
         let info = t.MiscParser.info in
@@ -137,6 +137,17 @@ end = struct
               t.MiscParser.info in
           { t with MiscParser.info = info; }
         with Not_found -> t
+
+      let utils utils =
+        match utils with
+        | [] ->
+            let module O = struct
+              include O
+              let arch = A'.arch
+            end in
+            let module Obj = ObjUtil.Make(O)(Tar) in
+            Obj.dump ()
+        | _ -> utils
     end
 
 
@@ -171,6 +182,7 @@ end = struct
           Misc.pp_prog chan pp
       end
 
+      module Utils = Utils(O)(A)
       module P = GenParser.Make(O)(A) (L)
       module T = Test.Make(A)(Pseudo)
       module Comp = Compile.Make (O)(A)(A)(T) (XXXComp)
@@ -213,16 +225,7 @@ end = struct
                   let module S = MS(Out)(Lang) in
                   S.dump doc compiled)
                 (Tar.outname source) in
-            let utils =
-              match utils with
-              | [] ->
-                  let module O = struct
-                    include O
-                    let arch = A.arch
-                  end in
-                  let module Obj = ObjUtil.Make(O)(Tar) in
-                  Obj.dump ()
-              | _ -> utils  in
+            let utils = Utils.utils utils in
             R.run name out_chan doc allocated source ;
             Completed (A.arch,doc,source,utils,cycles,hash_env)
           end else begin
@@ -307,6 +310,8 @@ end = struct
           let pp = dump_prog_lines prog in
           List.iter (Printf.fprintf chan "%s") pp
       end
+
+      module Utils = Utils(O)(A')
       module P = CGenParser.Make(O)(Pseudo)(A')(L)
       module T = Test.Make(A')(Pseudo)
       module Comp = CCompile.Make(O)(T)
@@ -356,16 +361,7 @@ end = struct
                   let module S = MS(Out)(Lang) in
                   S.dump doc compiled)
                 (Tar.outname source) in
-            let utils =
-              match utils with
-              | [] ->
-                  let module O = struct
-                    include O
-                    let arch = A'.arch
-                  end in
-                  let module Obj = ObjUtil.Make(O)(Tar) in
-                  Obj.dump ()
-              | _ -> utils  in
+            let utils = Utils.utils utils in
             R.run name out_chan doc allocated source ;
             Completed (A.arch,doc,source,utils,cycles,hash_env)
           end else begin
