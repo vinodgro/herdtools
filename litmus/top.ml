@@ -93,43 +93,8 @@ end = struct
 
   module W = Warn.Make(OT)
 
-  module Make
-      (O:Config)
-      (A:Arch.S)
-      (L:GenParser.LexParse with type instruction = A.pseudo)
-      (XXXComp : XXXCompile.S with module A = A)
-      (Lang:Language.S) =
+  module Utils =
     struct
-      module Pseudo = struct
-        type code = int * A.pseudo list
-        let rec fmt_io io = match io with
-        | A.Nop -> ""
-        | A.Instruction ins -> A.dump_instruction ins
-        | A.Label (lbl,io) -> lbl ^ ": " ^ fmt_io io
-        | A.Macro (f,regs) ->
-            Printf.sprintf
-              "%s(%s)"
-              f
-              (String.concat "," (List.map A.pp_reg regs))
-
-        let dump_prog (p,is) = Printf.sprintf "P%i" p::List.map fmt_io is
-
-        let dump_prog_lines prog =
-          let pp = List.map dump_prog prog in
-          let pp = Misc.lines_of_prog pp in
-          List.map (Printf.sprintf "%s;") pp
-
-        let print_prog chan prog =
-          let pp = List.map dump_prog prog in
-          Misc.pp_prog chan pp
-      end
-
-      module P = GenParser.Make(O)(A) (L)
-      module T = Test.Make(A)(Pseudo)
-      module Comp = Compile.Make (O)(A)(A)(T) (XXXComp)
-      module MS = Skel.Make(O)(Pseudo)(A)(T)
-      module R = Run.Make(O)(Tar)(T.D)
-
       let get_cycle t =
         let info = t.MiscParser.info in
         List.assoc "Cycle" info
@@ -172,6 +137,45 @@ end = struct
               t.MiscParser.info in
           { t with MiscParser.info = info; }
         with Not_found -> t
+    end
+
+
+  module Make
+      (O:Config)
+      (A:Arch.S)
+      (L:GenParser.LexParse with type instruction = A.pseudo)
+      (XXXComp : XXXCompile.S with module A = A)
+      (Lang:Language.S) =
+    struct
+      module Pseudo = struct
+        type code = int * A.pseudo list
+        let rec fmt_io io = match io with
+        | A.Nop -> ""
+        | A.Instruction ins -> A.dump_instruction ins
+        | A.Label (lbl,io) -> lbl ^ ": " ^ fmt_io io
+        | A.Macro (f,regs) ->
+            Printf.sprintf
+              "%s(%s)"
+              f
+              (String.concat "," (List.map A.pp_reg regs))
+
+        let dump_prog (p,is) = Printf.sprintf "P%i" p::List.map fmt_io is
+
+        let dump_prog_lines prog =
+          let pp = List.map dump_prog prog in
+          let pp = Misc.lines_of_prog pp in
+          List.map (Printf.sprintf "%s;") pp
+
+        let print_prog chan prog =
+          let pp = List.map dump_prog prog in
+          Misc.pp_prog chan pp
+      end
+
+      module P = GenParser.Make(O)(A) (L)
+      module T = Test.Make(A)(Pseudo)
+      module Comp = Compile.Make (O)(A)(A)(T) (XXXComp)
+      module MS = Skel.Make(O)(Pseudo)(A)(T)
+      module R = Run.Make(O)(Tar)(T.D)
 
       let compile
           hint avoid_cycle utils cycles hash_env
@@ -191,12 +195,12 @@ end = struct
               { filename=name; hash=hash;}
             with Not_found -> assert false in
           if
-            cycle_ok avoid_cycle parsed &&
-            hash_ok hash_env tname hash &&
+            Utils.cycle_ok avoid_cycle parsed &&
+            Utils.hash_ok hash_env tname hash &&
             (not O.limit || nprocs <= avail)
           then begin
             let hash_env = StringMap.add tname hash hash_env in
-            let parsed = change_hint hint doc.Name.name parsed in
+            let parsed = Utils.change_hint hint doc.Name.name parsed in
             let module Alloc = SymbReg.Make(A) in
             let allocated = Alloc.allocate_regs parsed in
             let compiled = Comp.compile allocated in
@@ -314,45 +318,6 @@ end = struct
         | CAst.Global _::xs -> count_procs xs
         | [] -> 0
 
-      let get_cycle t =
-        let info = t.MiscParser.info in
-        List.assoc "Cycle" info
-
-      let cycle_ok avoid t =
-        try
-          let cy = get_cycle t in
-          not (avoid cy)
-        with Not_found -> true
-
-
-      let hash_ok env tname hash =
-        try
-          let ohash = StringMap.find tname env in
-          if String.compare hash.hash ohash.hash <> 0 then begin
-            Warn.user_error "Unconsistent hashes for test %s, previous file %s"
-              tname ohash.filename
-          end else begin
-            W.warn  "Duplicate occurrence of test %s (%s,%s)"
-              tname ohash.filename hash.filename
-          end ;
-          false
-        with Not_found ->  true
-
-      let change_hint hint name t =
-        try
-          let more_info = Hint.get hint name in
-          let info =
-            more_info @
-            List.filter
-              (fun (k,_) ->
-                try
-                  let _ = List.assoc k more_info in
-                  false
-                with Not_found -> true)
-              t.MiscParser.info in
-          { t with MiscParser.info = info; }
-        with Not_found -> t
-
       let compile
           hint avoid_cycle utils cycles hash_env
           name in_chan out_chan splitted  =
@@ -371,12 +336,12 @@ end = struct
               { filename=name; hash=hash;}
             with Not_found -> assert false in
           if
-            cycle_ok avoid_cycle parsed &&
-            hash_ok hash_env tname hash &&
+            Utils.cycle_ok avoid_cycle parsed &&
+            Utils.hash_ok hash_env tname hash &&
             (not O.limit || nprocs <= avail)
           then begin
             let hash_env = StringMap.add tname hash hash_env in
-            let parsed = change_hint hint doc.Name.name parsed in
+            let parsed = Utils.change_hint hint doc.Name.name parsed in
             let module Alloc = CSymbReg.Make(A') in
             let allocated = Alloc.allocate_regs parsed in
             let allocated =
