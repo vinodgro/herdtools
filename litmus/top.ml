@@ -160,6 +160,16 @@ end = struct
              let module S = MS(Out)(Lang) in
              S.dump doc compiled)
           (Tar.outname source)
+
+      let avail = match O.avail with
+        | Some n -> n
+        | None -> 1000
+
+      let hash name parsed =
+        try
+          let hash = List.assoc "Hash" parsed.MiscParser.info in
+          { filename=name; hash=hash;}
+        with Not_found -> assert false
     end
 
 
@@ -208,19 +218,12 @@ end = struct
           let doc = splitted.Splitter.name in
           let tname = doc.Name.name in
           close_in in_chan ;
-          let nprocs = List.length parsed.MiscParser.prog
-          and avail = match O.avail with
-          | Some n -> n
-          | None -> 1000
-          and hash =
-            try
-              let hash = List.assoc "Hash" parsed.MiscParser.info in
-              { filename=name; hash=hash;}
-            with Not_found -> assert false in
+          let nprocs = List.length parsed.MiscParser.prog in
+          let hash = Utils.hash name parsed in
           if
             Utils.cycle_ok avoid_cycle parsed &&
             Utils.hash_ok hash_env tname hash &&
-            (not O.limit || nprocs <= avail)
+            (not O.limit || nprocs <= Utils.avail)
           then begin
             let hash_env = StringMap.add tname hash hash_env in
             let parsed = Utils.change_hint hint doc.Name.name parsed in
@@ -335,19 +338,12 @@ end = struct
           let doc = splitted.Splitter.name in
           let tname = doc.Name.name in
           close_in in_chan ;
-          let nprocs = count_procs parsed.MiscParser.prog
-          and avail = match O.avail with
-          | Some n -> n
-          | None -> 1000
-          and hash =
-            try
-              let hash = List.assoc "Hash" parsed.MiscParser.info in
-              { filename=name; hash=hash;}
-            with Not_found -> assert false in
+          let nprocs = count_procs parsed.MiscParser.prog in
+          let hash = Utils.hash name parsed in
           if
             Utils.cycle_ok avoid_cycle parsed &&
             Utils.hash_ok hash_env tname hash &&
-            (not O.limit || nprocs <= avail)
+            (not O.limit || nprocs <= Utils.avail)
           then begin
             let hash_env = StringMap.add tname hash hash_env in
             let parsed = Utils.change_hint hint doc.Name.name parsed in
