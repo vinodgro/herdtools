@@ -53,6 +53,13 @@ module Make : functor (S: SemExtra.S) -> sig
   val ext : S.event_rel -> S.event_rel
   val internal : S.event_rel -> S.event_rel
 
+  (*scope operations*)
+  val ext_scope : 
+    AST.scope -> S.event_rel -> MiscParser.scope_tree -> S.event_rel
+  val int_scope : 
+    AST.scope -> S.event_rel -> MiscParser.scope_tree -> S.event_rel
+  
+
 (* RF/FR relations for memory *)
   val make_rf_from_rfmap : S.rfmap -> S.event_rel
   val make_rf : S.concrete -> S.event_rel

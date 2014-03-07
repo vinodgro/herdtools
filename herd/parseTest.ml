@@ -102,6 +102,7 @@ module Top (C:Config) = struct
           let module PPCM = PPCMem.Make(ModelConfig)(PPCS) (PPCBarrier) in
           let module X = Make (PPCS) (PPCLexParse) (PPCM) in 
           X.run name chan env splitted
+
       | Archs.ARM ->
 	  let module ARM = ARMArch.Make(C.PC)(SymbValue) in
 	  let module ARMLexParse = struct
@@ -126,6 +127,7 @@ module Top (C:Config) = struct
           let module ARMM = ARMMem.Make(ModelConfig)(ARMS) (ARMBarrier) in
           let module X = Make (ARMS) (ARMLexParse) (ARMM) in 
           X.run name chan env splitted
+
       | Archs.X86 ->
           let module X86 = X86Arch.Make(C.PC)(SymbValue) in
           let module X86LexParse = struct
@@ -147,6 +149,7 @@ module Top (C:Config) = struct
           let module X86M = X86Mem.Make(ModelConfig)(X86S) (X86Barrier) in
           let module X = Make (X86S) (X86LexParse) (X86M) in 
           X.run name chan env splitted
+
       | Archs.CPP11 ->
         let module CPP11 = CPP11Arch.Make(C.PC)(SymbValue) in
         let module CPP11LexParse = struct
@@ -164,6 +167,46 @@ module Top (C:Config) = struct
         end in
         let module CPP11M = CPP11Mem.Make(ModelConfig)(CPP11S) (CPP11Barrier) in
         let module X = Make (CPP11S) (CPP11LexParse) (CPP11M) in 
+        X.run name chan env splitted
+
+      | Archs.OpenCL ->
+        let module OpenCL = OpenCLArch.Make(C.PC)(SymbValue) in
+        let module OpenCLLexParse = struct
+  	  type instruction = OpenCL.pseudo
+	  type token = OpenCLParser.token
+          module Lexer = OpenCLLexer.Make(LexConfig)
+	  let lexer = Lexer.token
+	  let parser = OpenCLParser.main
+        end in
+        let module OpenCLS = OpenCLSem.Make(C)(SymbValue) in
+        let module OpenCLBarrier = struct
+          type a = OpenCL.barrier
+          type b = unit
+          let a_to_b _ = assert false	    
+        end in
+        let module OpenCLM = OpenCLMem.Make(ModelConfig)(OpenCLS) (OpenCLBarrier) in
+        let module X = Make (OpenCLS) (OpenCLLexParse) (OpenCLM) in 
+        X.run name chan env splitted
+
+      | Archs.GPU_PTX ->
+        let module GPU_PTX = GPU_PTXArch.Make(C.PC)(SymbValue) in
+        let module GPU_PTXLexParse = struct
+  	  type instruction = GPU_PTX.pseudo
+	  type token = GPU_PTXParser.token
+          module Lexer = GPU_PTXLexer.Make(LexConfig)
+	  let lexer = Lexer.token
+	  let parser = GPU_PTXParser.main
+        end in
+        let module GPU_PTXS = GPU_PTXSem.Make(C)(SymbValue) in
+        let module GPU_PTXBarrier = struct
+          type a = GPU_PTX.barrier
+          type b = Membar of GPU_PTX.bar_scope
+          let a_to_b a = match a with
+            | GPU_PTX.Membar (scope) -> Membar (scope)
+	    
+        end in
+        let module GPU_PTXM = GPU_PTXMem.Make(ModelConfig)(GPU_PTXS) (GPU_PTXBarrier) in
+        let module X = Make (GPU_PTXS) (GPU_PTXLexParse) (GPU_PTXM) in 
         X.run name chan env splitted
 
     end else env

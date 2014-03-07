@@ -1,0 +1,35 @@
+GPU_PTX MP
+"PodWW Rfe PodRR Fre"
+{
+0:.reg .s32 r1;
+0:.reg .s32 r3;
+0:.reg .b64 r2;
+0:.reg .b64 r4;
+1:.reg .s32 r1;
+1:.reg .s32 r3;
+1:.reg .b64 r2;
+1:.reg .b64 r4;
+2:.reg .s32 r1;
+2:.reg .s32 r3;
+2:.reg .b64 r2;
+2:.reg .b64 r4;
+
+0:r2=x; 0:r4=y;
+1:r2=y; 1:r4=x;
+2:r2=y; 2:r4=x;
+}
+
+ P0                 | P1                  | P2                 ;
+ mov.s32 r1,1       | ld.s32.cg r1,[r2]   | ld.s32.cg r1,[r2]  ;
+ st.s32.wt [r2],r1  | membar.cta          | membar.cta         ;
+ membar.cta         | ld.s32.cg r3,[r4]   | ld.s32.cg r3,[r4]  ;
+ mov.s32 r3,1       |                     |                    ;
+ st.s32.wt [r4],r3  |                     |                    ;  
+
+exists
+(2:r1=1 /\ 2:r3=0)
+
+scopeTree
+(device (cta P0 P1) (cta P2))
+
+x:global, y:global

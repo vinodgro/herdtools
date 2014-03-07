@@ -47,6 +47,7 @@ module PP : sig
   open PrettyConf
   val dotmode : dotmode ref
   val dotcom : dotcom option ref
+  val evince : bool ref
   val gv : bool ref
   val showevents : showevents ref
   val texmacros : bool ref
@@ -76,6 +77,7 @@ module PP : sig
   val showlegend : bool ref
   val showfinalrf : bool ref
   val showinitrf : bool ref
+  val showpoloc : bool ref
   val showfr : bool ref
   val showinitwrites : bool ref
   val dotheader : string option ref

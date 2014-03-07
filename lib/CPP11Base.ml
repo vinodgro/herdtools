@@ -75,14 +75,11 @@ let pp_mem_order o =
 (* Barriers     *)
 (****************)
 
-type barrier =
-| Fence
+type barrier = unit
     
 let all_kinds_of_barriers =  [ ]
   
-let pp_barrier b = 
-  match b with
-  | Fence -> sprintf "fence"
+let pp_barrier _ = assert false
 
 let barrier_compare = Pervasives.compare
 

@@ -40,8 +40,11 @@ module Make(O:Model.Config) (S : SemExtra.S) (B:AllBarrier.S with type a = S.bar
           dsbst : S.event_rel;
           mfence : S.event_rel;
           sfence : S.event_rel;
-          lfence : S.event_rel; }
-
+          lfence : S.event_rel; 
+	  membar_cta : S.event_rel;
+	  membar_gl  : S.event_rel;
+	  membar_sys : S.event_rel;
+        }
 
     let is_that_fence b x =  match E.barrier_of x with
     | Some a -> B.a_to_b a = b
@@ -92,6 +95,9 @@ module Make(O:Model.Config) (S : SemExtra.S) (B:AllBarrier.S with type a = S.bar
         mfence=sep_by_that_fence B.MFENCE po;
         sfence=sep_by_that_fence B.SFENCE po;
         lfence=sep_by_that_fence B.LFENCE po;
+	membar_cta = sep_by_that_fence B.MEMBAR_CTA po;
+	membar_gl  = sep_by_that_fence B.MEMBAR_GL po;
+	membar_sys = sep_by_that_fence B.MEMBAR_SYS po;
       }
 
 

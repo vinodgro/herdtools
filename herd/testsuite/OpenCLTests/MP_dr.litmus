@@ -1,0 +1,11 @@
+OpenCL MP_dr
+{ x=0; y=0; }
+ P0                 | P1                  ;
+ x = 1              | r1 = y.load(rel,wg) ;
+ y.store(1,rel,wg)  | r2 = x              ;
+
+exists (1:r1 = 1 /\ 1:r2 = 0)
+
+scopeTree
+(device (work_group P0) (work_group P1))
+

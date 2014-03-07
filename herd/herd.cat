@@ -50,15 +50,19 @@ let light = lwsync|eieio
 let fence = strong|light
 
 
+(* extensions *)
+let ppoext = (rfe;ppo)|(ppo;rfe)|(rfe;ppo;rfe)
+let fenceext = (rfe;fence)|(fence;rfe)|(rfe;fence;rfe)
+
 (* happens before *)
-let hb = ppo | fence | rfe
+let hb = ppo | ppoext | fence | fenceext
 let GHB = hb
 show GHB
 acyclic hb as thinair
 
 (* prop *)
 let hbstar = hb*
-let propbase = (fence|(rfe;fence));hbstar
+let propbase = (fence|fenceext);hbstar
 show propbase
 
 let chapo = rfe|fre|coe|(fre;rfe)|(coe;rfe)

@@ -58,6 +58,19 @@ rule token = parse
 | "final"    { FINAL }
 | "with"     { WITH }
 | "locations" { LOCATIONS }
+(*for GPU*)
+| "scopeTree" { SCOPETREE }
+| "global"  { GLOBAL }
+| "shared"|"local" { SHARED }
+| "kernel" { KERNEL }
+| "device" {DEVICE }
+| "cta" | "block" | "work_group" { CTA }
+| "warp" | "sub_group" { WARP }
+| "thread" { THREAD }
+| ',' { COMMA }
+| ".reg" {PTX_REG_DEC}
+| ".s32" as x | ".b64" as x | ".b32" as x | ".u64" as x | ".u32" as x {PTX_REG_TYPE x}
+
 | "*" { STAR }
 | name as name { NAME name }
 | eof { EOF }

@@ -67,7 +67,7 @@ module Make(O:Config)(M:XXXMem.S) =
 (* NB: pos and neg are w.r.t. proposition *)
           pos : int ;
           neg : int ;
-(* Number of executions that fail at least one requires clause *)
+(* number of executions that fail at least one requires-clause *)
 	  bad : int ;
 (* shown executions *)
           shown : int;
@@ -119,7 +119,7 @@ module Make(O:Config)(M:XXXMem.S) =
     let open_dot test =
       match O.outputdir with
       | None ->
-          if S.O.PC.gv then
+          if S.O.PC.gv || S.O.PC.evince then
             begin try
               let f,chan = Filename.open_temp_file "herd" ".dot" in
               Some (chan,f)
@@ -273,7 +273,7 @@ module Make(O:Config)(M:XXXMem.S) =
               (fun (_i,_cs,es) -> PP.dump_es chan test es)
               rfms ;
             close_dot ochan ;
-            if S.O.PC.gv then begin
+            if S.O.PC.gv || S.O.PC.evince then begin
               let module SH = Show.Make(S.O.PC) in
               SH.show_file fname
             end ;

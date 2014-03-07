@@ -152,7 +152,8 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
             let locs =
               match loc with
               | A.Location_global _ -> loc::locs
-              | A.Location_reg _ -> locs in
+              | A.Location_reg _ -> locs
+              | _ -> assert false in
             let locs = match v with
             | A.V.Val (Constant.Symbolic _) -> A.Location_global v::locs
             | _ -> locs in
@@ -165,7 +166,8 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
         A.LocSet.filter
           (function
             | A.Location_global _ -> true
-            | A.Location_reg _ -> false)
+            | A.Location_reg _ -> false
+            | _ -> assert false)
           test.Test.observed
       and locs_init = get_all_locs_init test.Test.init_state in
       let locs = A.LocSet.union locs_final locs_init in

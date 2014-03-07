@@ -171,6 +171,8 @@ and opt = parse
         arg }
 | "gv" arg
     { lex_bool PP.gv arg }
+| "evince" arg
+    { lex_bool PP.evince arg }
 | "showevents" arg
     { lex_tag "showevents"
         PrettyConf.parse_showevents PrettyConf.tags_showevents
@@ -202,6 +204,7 @@ and opt = parse
 | "labelbox" arg { lex_bool PP.labelbox arg }
 | "showfinalrf" arg { lex_bool PP.showfinalrf arg }
 | "showinitrf" arg { lex_bool PP.showinitrf arg }
+| "showpoloc" arg { lex_bool PP.showpoloc arg }
 | "showfr" arg { lex_bool PP.showfr arg }
 | "showinitwrites" arg { lex_bool PP.showinitwrites arg }
 | "showthread" arg { lex_bool PP.showthread arg }

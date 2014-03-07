@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Union of relevant PPC, ARM, X86 and CPP11 barriers *)
+(* Union of relevant PPC, ARM, X86, and PTX barriers *)
 module type S =
   sig
     type a (* Native arch barrier *)
@@ -18,7 +18,8 @@ module type S =
       | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
-      | MFENCE | SFENCE | LFENCE
+      | MFENCE | SFENCE | LFENCE      (* X86 *)
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
     val a_to_b : a -> b
     val pp_isync : string
   end
@@ -31,7 +32,8 @@ module FromPPC(B:PPCBarrier.S) = struct
       | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
-      | MFENCE | SFENCE | LFENCE
+      | MFENCE | SFENCE | LFENCE      (* X86 *)
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
 
   let a_to_b a = match B.a_to_b a with
   | B.LWSYNC -> LWSYNC
@@ -49,7 +51,8 @@ module FromARM(AB:ARMBarrier.S) = struct
       | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
-      | MFENCE | SFENCE | LFENCE
+      | MFENCE | SFENCE | LFENCE      (* X86 *)
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
 
   let a_to_b a = match AB.a_to_b a with
   | AB.DSB ARMBase.SY -> DSB
@@ -70,7 +73,8 @@ module FromX86(XB:X86Barrier.S) = struct
       | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
-      | MFENCE | SFENCE | LFENCE
+      | MFENCE | SFENCE | LFENCE      (* X86 *)
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
 
   let a_to_b a = match XB.a_to_b a with
   | XB.MFENCE -> MFENCE
@@ -88,9 +92,46 @@ module FromCPP11(CB:CPP11Barrier.S) = struct
       | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
       | DSB | DMB | ISB               (* ARM barrier *)
       | DSBST | DMBST
-      | MFENCE | SFENCE | LFENCE
+      | MFENCE | SFENCE | LFENCE      (* X86 *)
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
 
   let a_to_b _ = assert false (* no barriers in CPP11 *)
 
   let pp_isync = "???"
 end
+
+module FromOpenCL(OB:OpenCLBarrier.S) = struct
+
+  type a = OB.a
+
+  type b = 
+      | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
+      | DSB | DMB | ISB               (* ARM barrier *)
+      | DSBST | DMBST
+      | MFENCE | SFENCE | LFENCE      (* X86 *)
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
+
+  let a_to_b _ = assert false (* no (hardware) barriers in OpenCL *)
+
+  let pp_isync = "???"
+end
+
+module FromGPU_PTX(GB:GPU_PTXBarrier.S) = struct
+
+  type a = GB.a
+
+  type b = 
+      | SYNC | LWSYNC | ISYNC | EIEIO (* PPC memory model barrier *)
+      | DSB | DMB | ISB               (* ARM barrier *)
+      | DSBST | DMBST
+      | MFENCE | SFENCE | LFENCE      (* X86 *)
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
+
+  let a_to_b a = match GB.a_to_b a with
+  | GB.Membar GPU_PTXBase.CTA -> MEMBAR_CTA
+  | GB.Membar GPU_PTXBase.GL  -> MEMBAR_GL
+  | GB.Membar GPU_PTXBase.SYS -> MEMBAR_SYS
+
+  let pp_isync = "???"
+end
+

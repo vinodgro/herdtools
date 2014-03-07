@@ -29,6 +29,8 @@ type op1 =
 type konst = Empty_set | Empty_rel
 type var = string
 
+type scope = Device | Kernel | Work_Group | Sub_Group | Work_Item
+
 type exp =
   | Konst of  konst
   | Var of var

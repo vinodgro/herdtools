@@ -38,8 +38,6 @@ module Make (C:Sem.Config)(V:Value.S)
     let write_reg r v ii = write_loc CPP11.NA (A.Location_reg (ii.A.proc,r)) v ii
     let write_mem mo a  = write_loc mo (A.Location_global a) 	     
 		 
-    let read_addr a ii = read_mem CPP11.NA (* ? *) a ii
-
     let constant_to_int v = match v with
       | Constant.Concrete vv -> vv
       | _ -> Warn.fatal "Couldn't convert constant to int"
