@@ -26,12 +26,12 @@ module S = S
     let check_event_structure test = match O.model with
     | Generic m ->
         let module X =
-          Generic.Make
+          OpenCLModelChecker.Make
             (struct
               let m = m
               include ModelConfig
              end)(S)(AllBarrier.FromOpenCL(B)) in
-        X.check_event_structure test S.atrb
+        X.check_event_structure test
     | File _ -> assert false
     | m ->
         Warn.fatal "Model %s not implemented for OpenCL" (Model.pp m)

@@ -162,7 +162,7 @@ module Make
                   (Lazy.force vb_pp) ;
                 res
               end else
-                kont conc (conc.S.fs, 0) vb_pp res in
+                kont conc conc.S.fs vb_pp None res in
         U.apply_process_co test  conc process_co res
 
   end

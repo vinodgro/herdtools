@@ -10,7 +10,6 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-open AST
 open Printf
 
 module Make(S : SemExtra.S) = struct
@@ -94,11 +93,11 @@ module Make(S : SemExtra.S) = struct
 	let d2,k2,wg2,sg2,t2 = get_proc_loc_tuple scope_tree e2_int
 	in
 	match s with
-	| Device     -> d1 = d2
-	| Kernel     -> d1 = d2 && k1 = k2
-	| Work_Group -> d1 = d2 && k1 = k2 && wg1 = wg2
-	| Sub_Group  -> d1 = d2 && k1 = k2 && wg1 = wg2 && sg1 = sg2
-	| Work_Item  -> d1 = d2 && k1 = k2 && wg1 = wg2 && sg1 = sg2 && t1 = t2
+	| AST.Device     -> d1 = d2
+	| AST.Kernel     -> d1 = d2 && k1 = k2
+	| AST.Work_Group -> d1 = d2 && k1 = k2 && wg1 = wg2
+	| AST.Sub_Group  -> d1 = d2 && k1 = k2 && wg1 = wg2 && sg1 = sg2
+	| AST.Work_Item  -> d1 = d2 && k1 = k2 && wg1 = wg2 && sg1 = sg2 && t1 = t2
       end
 	    
   let ext_scope scope r scope_tree = 
@@ -167,11 +166,6 @@ module Make(S : SemExtra.S) = struct
 (********)
 (* Misc *)
 (********)
-
-  let get_dir e = match e.E.action with
-  | E.Access (d,_,_) -> d
-  | _ -> assert false
-
 
   let find_source rfmap r =
     try S.RFMap.find  (S.Load r) rfmap
@@ -480,7 +474,7 @@ module Make(S : SemExtra.S) = struct
 (* Mutex serialization candidate generator. *)
 (********************************************)
 
-  let fold_mutex_serialization_candidates conc vb kont res =
+  let fold_mutex_serialization_candidates conc (* vb *) _ kont res =
     let mutex_actions_by_loc = collect_mutex_actions conc.S.str in
     let lo_orders : E.EventRel.t list list =
       LocEnv.fold
@@ -608,9 +602,9 @@ module Make(S : SemExtra.S) = struct
     try
       let pco = 
         E.EventRel.fold
-          (fun (e1,e2 as p) k -> match get_dir e1, get_dir e2 with
-          | E.W,E.W -> E.EventRel.add p k
-          | E.R,E.R ->
+          (fun (e1,e2 as p) k -> match E.get_mem_dir e1, E.get_mem_dir e2 with
+          | Dir.W,Dir.W -> E.EventRel.add p k
+          | Dir.R,Dir.R ->
               begin match
                 find_source rfmap e1,
                 find_source rfmap e2
@@ -621,14 +615,14 @@ module Make(S : SemExtra.S) = struct
               | S.Init,_ -> k
               | _,S.Init -> raise Exit
               end
-          | E.R,E.W ->
+          | Dir.R,Dir.W ->
               begin match
                 find_source rfmap e1
               with
               | S.Store w1 -> E.EventRel.add (w1,e2) k
               | S.Init -> k
               end
-          | E.W,E.R ->
+          | Dir.W,Dir.R ->
               begin match
                 find_source rfmap e2
               with

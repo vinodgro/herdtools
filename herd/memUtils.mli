@@ -10,8 +10,6 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-open AST
-open MiscParser
 module Make : functor (S: SemExtra.S) -> sig
 
 (*************)
@@ -49,7 +47,6 @@ module Make : functor (S: SemExtra.S) -> sig
 
 
 (* Misc, but everywhere... *)
-  val get_dir : S.event -> S.E.dirn
   val find_source :'a S.RFMap.t -> S.event -> 'a
   val rext : S.concrete -> S.event -> bool
   val same_source :  S.concrete -> S.event -> S.event -> bool
@@ -57,8 +54,10 @@ module Make : functor (S: SemExtra.S) -> sig
   val internal : S.event_rel -> S.event_rel
 
   (*scope operations*)
-  val ext_scope : scope -> S.event_rel -> scope_tree -> S.event_rel
-  val int_scope : scope -> S.event_rel -> scope_tree -> S.event_rel
+  val ext_scope : 
+    AST.scope -> S.event_rel -> MiscParser.scope_tree -> S.event_rel
+  val int_scope : 
+    AST.scope -> S.event_rel -> MiscParser.scope_tree -> S.event_rel
   
 
 (* RF/FR relations for memory *)
@@ -174,7 +173,7 @@ NOTICE: The generator takes care of placing stores to final state
         S.concrete ->
           (S.event_rel -> 'a -> 'a) -> 'a -> 'a
 
-        
+
 (* fold over possibilities when saturating memory order wrt atomicity classes.
      'fold_saturated_mem_order es mem_order kont res'
      - es is the event structure for calculation

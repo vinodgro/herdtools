@@ -31,13 +31,10 @@ module Make(O:Model.Config) (S:SemExtra.S) = struct
         let r1 =
           E.EventRel.filter (fun (_,e2) -> E.is_mem_load e2) data_dep in
 
-        let is_data (e1,e2) = match e1.E.action, e2.E.action with
-        | E.Access (E.R,S.A.Location_reg (_,_),v1),
-          E.Access (E.W,S.A.Location_global _,v2) ->
-            v1 == v2
-              (* Oups! relies on the value being substituted
-                 after solving equations! *)
-        | _ -> assert false in
+        let is_data (e1,e2) = 
+          if E.is_reg_load_any e1 && E.is_mem_store e2 then
+	    E.value_of e1 == E.value_of e2
+	  else assert false in
         let r2 =
           E.EventRel.sequence
             (S.restrict E.is_mem E.is_reg_load_any dd)

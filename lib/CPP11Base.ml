@@ -75,14 +75,11 @@ let pp_mem_order o =
 (* Barriers     *)
 (****************)
 
-type barrier =
-| Fence of mem_order
+type barrier = unit
     
 let all_kinds_of_barriers =  [ ]
   
-let pp_barrier b = 
-  match b with
-  | Fence o -> sprintf "fence(%s)" (pp_mem_order o)
+let pp_barrier _ = assert false
 
 let barrier_compare = Pervasives.compare
 
@@ -96,10 +93,9 @@ type store_op = SymbConstant.v
 
 
 type instruction = 
-| Pstore  of loc*store_op*mem_order 
-| Pload   of loc*reg*mem_order
-| Pincr   of loc*mem_order
-| Prmw    of loc*store_op*store_op*mem_order*mem_order
+| Pstore  of loc * store_op * mem_order 
+| Pload   of loc * reg * mem_order
+| Pcas    of loc * store_op * store_op * mem_order * mem_order
 | Plock   of loc
 | Punlock of loc
 | Pfence  of mem_order
@@ -135,16 +131,20 @@ let pp_sop = function
 let dump_instruction i = match i with
   | Pstore(loc,sop,mo) ->
     (match mo with 
-    | NA -> sprintf("%s = %s") (pp_addr loc) (pp_sop sop)
-    | _ -> sprintf("%s.store(%s,%s)") (pp_addr loc) (pp_sop sop) (pp_mem_order mo))
+    | NA -> sprintf("%s = %s") 
+		   (pp_addr loc) (pp_sop sop)
+    | _ -> sprintf("%s.store(%s,%s)") 
+		  (pp_addr loc) (pp_sop sop) (pp_mem_order mo))
   | Pload(loc,reg,mo) ->
     (match mo with 
-    | NA -> sprintf("%s = %s") (pp_reg reg) (pp_addr loc)
-    | _ -> sprintf("%s = %s.load(%s)") (pp_reg reg) (pp_addr loc) (pp_mem_order mo))
-  | Pincr(loc,mo) ->
-    sprintf "%s.incr(%s)" (pp_addr loc) (pp_mem_order mo)
-  | Prmw(loc,sop1,sop2,mo_success,mo_failure) ->
-    sprintf("RMW(%s,%s,%s,%s,%s)") (pp_addr loc) (pp_sop sop1) (pp_sop sop2) (pp_mem_order mo_success) (pp_mem_order mo_failure)
+    | NA -> sprintf("%s = %s") 
+		   (pp_reg reg) (pp_addr loc)
+    | _ -> sprintf("%s = %s.load(%s)") 
+		  (pp_reg reg) (pp_addr loc) (pp_mem_order mo))
+  | Pcas(loc,sop1,sop2,mo_success,mo_failure) ->
+    sprintf("CAS(%s,%s,%s,%s,%s)") 
+	   (pp_addr loc) (pp_sop sop1) (pp_sop sop2) 
+	   (pp_mem_order mo_success) (pp_mem_order mo_failure)
   | Plock(loc) ->
     sprintf("Lock(%s)") (pp_addr loc)
   | Punlock(loc) ->
@@ -191,14 +191,3 @@ let pp_instruction _m _ins = dump_instruction _ins
 let get_next _ins = Warn.fatal "C++11 get_next not implemented"
 
 let allowed_for_symb = []
-
-type atrb = mem_order
-let pp_atrb o = match o with
-  | Acq -> "acq"
-  | Rel -> "rel"
-  | Acq_Rel -> "acq_rel"
-  | SC -> "sc"
-  | Rlx -> "rlx"
-  | NA -> "na"
-  | Con -> "con"
-    

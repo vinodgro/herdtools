@@ -18,10 +18,10 @@ open LexMisc
 open ModelParser
 module LU = LexUtils.Make(O)
 
-let keywords = Hashtbl.create 101
+let table = Hashtbl.create 101
 let () =
   List.iter
-    (fun (s,k) -> Hashtbl.add keywords s k)
+    (fun (s,k) -> Hashtbl.add table s k)
     [
      "MM",MM;  "MR",MR;  "MW",MW;
      "WM",WM; "WW",WW; "WR",WR; "RM",RM; "RW",RW; "RR",RR;
@@ -33,61 +33,46 @@ let () =
      "empty",TESTEMPTY;
      "as",AS; "fun", FUN; "in",IN;
      "provides",PROVIDES; "requires",REQUIRES;
+     "ext",EXT; "int",INT; "noid",NOID;
      "withco",WITHCO; "withoutco", WITHOUTCO;
    ]
 
-(*
-let scopes = Hashtbl.create 101
-let () =
-  List.iter
-    (fun (s,k) -> Hashtbl.add scopes s k)
-    [
-     "work_item",AST.Work_Item; "thread",AST.Work_Item;
-     "sub_group",AST.Sub_Group; "warp",AST.Sub_Group;
-     "work_group",AST.Work_Group; "block",AST.Work_Group; "cta",AST.Work_Group;
-     "kernel", AST.Kernel;
-     "device", AST.Device; 
-   ]
-*)
 
 }
 
-
 let digit = [ '0'-'9' ]
 let alpha = [ 'a'-'z' 'A'-'Z']
-let name  = alpha (alpha|digit|'_' | '.')* '\''?
+let name  = alpha (alpha|digit|'_' | '.' | '-')*
 
 rule token = parse
-| [' ''\t'] {  token lexbuf }
-| '\n'      {  incr_lineno lexbuf; token lexbuf }
-| "(*"      {  LU.skip_comment lexbuf ; token lexbuf }
-| '#' [^'\n']* '\n' {  incr_lineno lexbuf ; token lexbuf }
-| '(' {  LPAR }
-| ')' {   RPAR }
-| '[' {  LBRAC }
-| ']' {   RBRAC }
-| '_' { UNDERSCORE }
-| '0'  {  EMPTY }
-| "-1" { NEGONE }
-| '|'  {  UNION }
-| '&'  {  INTER }
-| '*'  {  STAR }
-| '~'  { COMP }
-| '+'  {  PLUS }
-| '\\'  {  DIFF }
-| '?'  {  OPT }
-| '='  {  EQUAL }
-| ';'  {  SEMI }
-| '^'  { HAT }
-| ','  { COMMA }
-| "->" { ARROW }
+| [' ''\t'] { token lexbuf }
+| '\n'      { incr_lineno lexbuf; token lexbuf }
+| "(*"      { LU.skip_comment lexbuf ; token lexbuf }
+| '#' [^'\n']* '\n' { incr_lineno lexbuf ; token lexbuf }
+| '('   { LPAR }
+| ')'   { RPAR }
+| '['   { LBRAC }
+| ']'   { RBRAC }
+| '_'   { UNDERSCORE }
+| '0'   { EMPTY }
+| '|'   { UNION }
+| '&'   { INTER }
+| '*'   { STAR }
+| '~'   { COMP }
+| '+'   { PLUS }
+| "^-1" { INV }
+| "-1"  { INV }
+| '\\'  { DIFF }
+| '?'   { OPT }
+| '='   { EQUAL }
+| ';'   { SEMI }
+| ','   { COMMA }
+| "->"  { ARROW }
 | '"' ([^'"']* as s) '"' { STRING s } (* '"' *)
-| '2'  { TWO }
-| name as x
-    { 
-      try Hashtbl.find keywords x with Not_found -> VAR x }
+| name as x { 
+    try Hashtbl.find table x with Not_found -> VAR x }
 | eof { EOF }
-| "" { error "Model lexer" lexbuf }
+| ""  { error "Model lexer" lexbuf }
 
 {
 let token lexbuf =

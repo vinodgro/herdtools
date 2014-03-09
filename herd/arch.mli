@@ -28,7 +28,6 @@ module type S =
 
 
     include ArchExtra.S with module I.V = V
-    and type I.arch_atrb = atrb
     and type I.arch_reg = reg
     and type I.arch_instruction = instruction
    end

@@ -32,14 +32,14 @@ rule token = parse
 | "mo_acquire" {MEMORDER (CPP11Base.Acq)}
 | "mo_release" {MEMORDER (CPP11Base.Rel)}
 | "mo_acq_rel" {MEMORDER (CPP11Base.Acq_Rel)}
-| "mo_seq_cst"      {MEMORDER (CPP11Base.SC)}
+| "mo_seq_cst" {MEMORDER (CPP11Base.SC)}
 | "mo_relaxed" {MEMORDER (CPP11Base.Rlx)}
 | "mo_consume" {MEMORDER (CPP11Base.Con)}
 | "fence" { FENCE }
 | "load"  { LD }
 | "store"    { ST }
 | "lock"  { LOCK }
-| "RMW"  { RMW }
+| "CAS"  { CAS }
 | "unlock"    { UNLOCK }
 | name as x
   { match CPP11.parse_reg x with

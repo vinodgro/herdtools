@@ -1,5 +1,11 @@
 "C++11"
 
+(* JW: The set A can now be used to refer to all atomic events. It
+   currently contains:
+   - all reads/writes that have memory_order other than non_atomic
+   - all RMW actions
+   - nothing else
+ *)
 
 (* MB: This file includes a version of the C/C++11 memory model. It
    follows the Lem model, but differs in some details. The main one is
@@ -82,8 +88,8 @@ acyclic deps as thin
    a fence-action pair. These definitions allow us to combine those
    cases.
 *)
-let idf = (po; [B])?
-let fid = ([B]; po)?
+let idf = (po; [F])?
+let fid = ([F]; po)?
 
 (* MB: This is present to expose a possible bug in Herd where program
    order does not relate fences to other actions in the same thread. *)
@@ -113,9 +119,9 @@ let rsco = (co ; [rmw] | coi) & (niw [~rmw])
 *)
 
 
-let rs = [crel]; fid; [atom & W]; (((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co))?
-let swra = ext & (rs; rf; [atom]; idf; [cacq])
-let swul = ext & ([ul]; lo; [lk])
+let rs = [crel]; fid; [A & W] ; (((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co))?
+let swra = ext (rs; rf; [A]; idf; [cacq])
+let swul = ext ([ul]; lo; [lk])
 let pp_asw = asw \ (asw;po)
 show pp_asw
 let sw = pp_asw | swul | swra
@@ -131,7 +137,7 @@ let sw = pp_asw | swul | swra
    synchronisation.
 *)
 let cad = ((rf & po) | dd)+
-let dob = (ext & ([W]; rs; rf; [con])); cad?
+let dob = (ext ([W]; rs; rf; [con])); cad?
 
 
 (* C: happens_before, inter_thread_happens_before, consistent_hb *)
@@ -298,7 +304,7 @@ acyclic GHB
 
 
 (* C: consistent_atomic_rf -- acyclicity of hb union rf for atomic reads: *)
-let arf = rf; [atom]
+let arf = rf; [A]
 let hbarf = hb;arf
 provides irreflexive hbarf as atomicRfConsistent
 (*jade: arf and hbarf are funky names =)*)
@@ -387,9 +393,9 @@ let overstrong_scfr = [SC]; fid; fr; idf; [SC]
 let scfr = ~[_] &
            ( ([sc]    ; rf^-1; hbl  ; [W & sc]) |
              ([sc]    ; rf^-1; [sc] ; co; [sc]) |
-             ([sc & B]; po; fr;     [sc]    ) |
-             (    [sc];     fr; po; [sc & B]) |
-             ([sc & B]; po; fr; po; [sc & B])
+             ([sc & F]; po; fr;     [sc]    ) |
+             (    [sc];     fr; po; [sc & F]) |
+             ([sc & F]; po; fr; po; [sc & F])
            )
 
 (* SC atomics have to respect happens-before: *)
@@ -418,8 +424,8 @@ provides irreflexive mv as consistentLo
 (* C: data_races *)
 let dr = ([W * _] | [_ * W]) &
          loc & 
-         (~[atom * atom]) &
-         ext &
+         (~[A * A]) &
+         ext(unv) &
          ~hb & ~(hb^-1)
 
 (* C: unsequenced_races
@@ -430,7 +436,7 @@ let dr = ([W * _] | [_ * W]) &
 *)
 let ur = ([W * M] | [M * W]) &
          loc &
-         int &
+         int(unv) &
          ~[_] &
          ~po & ~(po^-1)
 

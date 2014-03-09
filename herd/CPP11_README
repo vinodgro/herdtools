@@ -1,52 +1,18 @@
 This file describes the preliminary C++11 model in Herd.
 
-The model can be found in cpp11.cat, (best viewed in ocaml mode)
-
-The model is currently limited to loads and stores with memory orders:
-non-atomic
-relaxed
-release
-acquire
+The model can be found in cpp11.cat. The syntax is quite close
+to OCaml. If you use emacs, see the README file for some instructions
+you can put into your .emacs file to improve the syntax
+highlighting.
 
 For a description of Herd, see the paper at:
 http://diy.inria.fr/herd/
 
 -----------------------------------------------------------------
-NEW FEATURES
-
-I've added some features in order to implement some of the constraints
-required by C++11. These features are:
-
-Relation Complement : Noted by the ~ character, takes the complement 
-                      of the relation
-
-Relation Inverse : Noted by the ' character, takes the inverse of the 
-                   relation
-
-Filter Operation : Used like MM, WM, WR etc, this filters either the 
-                   domain or the range based on attributes defined
-                   by the architecture. For example, in C++11 we may
-		   to consider a relation where at least one operation
-		   is non atomic. 
-		   We do that by filtering non-atomics (an attribute
-		   defined in the CPP11 architecture file) from the
-		   universal relation. i.e.
-
-		   let one_non_atomic = F[non_atomic]F[](unv) |
-                                        F[]F[non_atomic](unv)
-
-		   The syntax (as you can tell from the example)
-		   is F[attribute]F[attribute](relation). An
-		   empty attribute list returns true for all events.
-
-		   The CPP11 architecture supports and memory order
-		   as an attribute. 
-
------------------------------------------------------------------
 Examples
 
 Some examples (mostly based around the MP litmus test) can be found
-in CPP11Tests/
+in testsuite/CPP11Tests.
 
 to run the examples do:
 

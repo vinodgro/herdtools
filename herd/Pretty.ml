@@ -1007,9 +1007,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
   let select_event = match PC.showevents with
   | AllEvents -> (fun _ -> true)
   | MemEvents -> E.is_mem
-  | NonRegEvents ->
-      (fun e -> E.is_mem e || E.is_barrier e || 
-		E.is_commit e || E.is_mutex_action e)
+  | NonRegEvents -> (fun e -> not (E.is_reg_any e))
 
   let select_event = let open Misc in select_event &&& select_non_init
 

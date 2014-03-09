@@ -49,8 +49,6 @@ and type pseudo = A.pseudo
   | Location_reg (i,r) -> A.Location_reg (i,finish_reg r)
   | Location_sreg reg  ->
       let p,r = f_reg reg in A.Location_reg (p,r)
-  | Location_reg_type(_,r,_) -> A.Location_reg (-1,finish_reg r) (*-1 is a flag*)
-  | Location_shared (i,m) -> A.maybev_to_shared_location i m
 
   let finish_state_atom f_reg (loc,v) =
     finish_location f_reg loc, A.V.maybevToV v
@@ -108,12 +106,10 @@ and type pseudo = A.pseudo
 
   let collect_location loc (regs,symbs as c) = match loc with
   | Location_reg (p,r) ->
-      (ProcRegSet.add (p,get_reg r) regs,symbs)
+      ProcRegSet.add (p,get_reg r) regs,symbs
   | Location_sreg reg ->
-     (regs,StringSet.add reg symbs)
+      regs,StringSet.add reg symbs
   | Location_global _ -> c
-  | Location_reg_type (p,r,_) -> ProcRegSet.add (p,get_reg r) regs,symbs
-  | Location_shared (_,_) -> c
 
   let collect_state_atom (loc,(_:maybev)) = collect_location loc
 

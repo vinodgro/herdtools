@@ -152,7 +152,8 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
             let locs =
               match loc with
               | A.Location_global _ -> loc::locs
-              | A.Location_reg _ -> locs in
+              | A.Location_reg _ -> locs
+              | _ -> assert false in
             let locs = match v with
             | A.V.Val (Constant.Symbolic _) -> A.Location_global v::locs
             | _ -> locs in
@@ -165,7 +166,8 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
         A.LocSet.filter
           (function
             | A.Location_global _ -> true
-            | A.Location_reg _ -> false)
+            | A.Location_reg _ -> false
+            | _ -> assert false)
           test.Test.observed
       and locs_init = get_all_locs_init test.Test.init_state in
       let locs = A.LocSet.union locs_final locs_init in
@@ -286,9 +288,9 @@ let get_loc e = match E.location_of e with
 | Some loc -> loc
 | None -> assert false
 
-and get_value e = match e.E.action with
-| E.Access (_,_,v) -> v
-| E.Barrier _|E.Commit -> assert false
+and get_value e = match E.value_of e with
+| Some v -> v
+| None -> assert false
 
 
 
@@ -630,12 +632,6 @@ let compatible_locs_mem e1 e2 =
 	  E.same_location e1 e2 &&
           E.EventRel.mem (e1,e2) po_iico_data)
 
-(*Adding the universal set, there's probably a better way to do it...
-by Tyler Sorensen*)
-    let make_unv es = 
-      E.EventRel.cartesian es.E.events es.E.events
-
-
 (* Store is before rfm load successor *)
     let store_load rfm =
       S.RFMap.fold
@@ -807,7 +803,6 @@ let make_atomic_load_store es =
                    rfmap = rfm ;
                    fs = fsc ;
                    po = po_iico ;
-		   unv = make_unv es;
 	           pos = ppoloc ;
                    pco = pco ;
                  

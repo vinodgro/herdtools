@@ -57,7 +57,7 @@ rule main_pos = parse
      main start lexbuf
     }
 and main start = parse
-| blank* (alpha|digit|'_')+ as arch
+| blank* (alpha|digit)+ as arch
   blank+
   (testname as tname)
   blank*
@@ -125,11 +125,10 @@ and inside_prog  = parse
 | "forall"
 | ('~' blank* "exists" )
 | "exists"
-| "cases" (* not sure if this line should still be here *)
 | "observed"|"Observed"
 | "locations"
    { false,lexeme_start_p lexbuf }
- (* name is for longest match to avoid confusion, in case of eg. forallx *)
+ (* name is for longuest match to avoid confusion, in case of eg. forallx *)
 | (name | _)  { inside_prog lexbuf }
 | "" { error "inside_prog" lexbuf }
 
@@ -137,7 +136,6 @@ and inside_constr  = parse
 | '\n'  { incr_lineno lexbuf ;  inside_constr lexbuf }
 | "(*"  { skip_comment lexbuf ; inside_constr lexbuf }
 | "<<"| eof  { lexeme_start_p lexbuf }
-| "scopeTree" {lexeme_start_p lexbuf}
 | _  { inside_constr lexbuf }
 | "" { error "inside_constr" lexbuf }
 
@@ -159,9 +157,9 @@ let pp_loc chan (i1,i2) =
   Printf.fprintf chan "%i-%i" i1.pos_cnum i2.pos_cnum
 
 let show r =
-  let loc_init,loc_prog,loc_constr,loc_scope = r.locs in
+  let loc_init,loc_prog,loc_constr,loc_cfgs = r.locs in
   Printf.eprintf
-    "Test (arch=%s, name=%s, texname=%s, doc=%s)\nSplited as: init=%a, prog=%a, constr=%a, scopes=%a\n"
+    "Test (arch=%s, name=%s, texname=%s, doc=%s)\nSplited as: init=%a, prog=%a, constr=%a, cfgs=%a\n"
     (Archs.pp r.arch)
     r.name.Name.name
     r.name.Name.texname
@@ -169,7 +167,7 @@ let show r =
     pp_loc loc_init
     pp_loc loc_prog
     pp_loc loc_constr
-    pp_loc loc_scope
+    pp_loc loc_cfgs
 
 let split name chan =
   let lexbuf = from_channel chan in

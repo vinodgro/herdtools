@@ -72,11 +72,11 @@ module S = S
         X.check_event_structure test
     | Generic m ->
         let module X =
-          Generic.Make
+          MachModelChecker.Make
             (struct
               let m = m
               include ModelConfig
              end)(S)(AllBarrier.FromPPC(B)) in
-        X.check_event_structure test []
+        X.check_event_structure test
     | File _ -> assert false
   end

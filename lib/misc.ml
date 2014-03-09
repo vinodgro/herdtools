@@ -46,6 +46,8 @@ external int_compare : int -> int -> int = "caml_int_compare"
 let int_eq (x:int) (y:int) = x == y
 let string_eq (s1:string) (s2:string) = Pervasives.(=) s1 s2
 
+external identity : 'a -> 'a = "%identity"
+
 let is_none = function
   | None -> true
   | Some _ -> false

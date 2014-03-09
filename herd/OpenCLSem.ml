@@ -1,28 +1,24 @@
-open Constant
+(*********************************************************************)
+(*                        Memevents                                  *)
+(*                                                                   *)
+(* Jade Alglave, Luc Maranget, INRIA Paris-Rocquencourt, France.     *)
+(* Susmit Sarkar, Peter Sewell, University of Cambridge, UK.         *)
+(*                                                                   *)
+(*  Copyright 2010 Institut National de Recherche en Informatique et *)
+(*  en Automatique and the authors. All rights reserved.             *)
+(*  This file is distributed  under the terms of the Lesser GNU      *)
+(*  General Public License.                                          *)
+(*********************************************************************)
 
 module Make (C:Sem.Config)(V:Value.S)  
     = 
   struct
 
     module OpenCL = OpenCLArch.Make(C.PC)(V)
-    include SemExtra.Make(C)(OpenCL) 
-(* barrier pretty print *)
-
-(* Todo: add other scopes besides S_device *)
-
-    let bar_acq     = {barrier=OpenCL.Fence (OpenCL.Acq, OpenCL.S_device); 
-                       pp="fence(mo_acquire,S_device)";}
-    let bar_rel     = {barrier=OpenCL.Fence (OpenCL.Rel, OpenCL.S_device); 
-                       pp="fence(mo_release,S_device)";}
-    let bar_sc      = {barrier=OpenCL.Fence (OpenCL.SC, OpenCL.S_device); 
-                       pp="fence(mo_sc,S_device)";}
-    let bar_acq_rel = {barrier=OpenCL.Fence (OpenCL.Acq_Rel, OpenCL.S_device);
-                       pp="fence(mo_acq_rel,S_device)";}
-
-    let barriers = [bar_acq; bar_rel; bar_sc; bar_acq_rel]
-    let atrb = ["acq"; "rel"; "acq_rel"; "sc"; "rlx"; "na"; "wi"; "sg"; "dev"; "all_dev"]
-    let isync = None
-        
+    module Act = OpenCLAction.Make(OpenCL)
+    include SemExtra.Make(C)(OpenCL)(Act)
+    let barriers = []
+    let isync = None      
 
 
 (****************************)	  
@@ -35,28 +31,30 @@ module Make (C:Sem.Config)(V:Value.S)
     let (>>::) = M.(>>::)
     let (>>!) = M.(>>!)
 
-    let read_addr a ii = M.read_mem a ii
+    let read_loc s mo = M.read_loc (fun loc v -> Act.Access (Dir.R, loc, v, mo, s))
+    let read_reg r ii = read_loc OpenCL.S_workitem OpenCL.NA (A.Location_reg (ii.A.proc,r)) ii
+    let read_mem s mo a = read_loc s mo (A.Location_global a)
 
+    let write_loc s mo loc v ii = M.mk_singleton_es (Act.Access (Dir.W, loc, v, mo, s)) ii
+    let write_reg r v ii = write_loc OpenCL.S_workitem OpenCL.NA (A.Location_reg (ii.A.proc,r)) v ii
+    let write_mem s mo a  = write_loc s mo (A.Location_global a) 	     
+		 
     let constant_to_int v = match v with
       | Constant.Concrete vv -> vv
       | _ -> Warn.fatal "Couldn't convert constant to int"
 
     let build_semantics _st i ii = match i with
       | OpenCL.Pload(loc,reg,mo,scope) ->
-        (* Todo: do something with the scope parameter *)
 	M.unitT (OpenCL.maybev_to_location loc) >>=
-	(fun loc -> M.read_loc_atrb loc ii [OpenCL.Mem_order mo; OpenCL.Mem_scope scope]) >>= 
-	  (fun v -> M.write_reg reg v ii) >>! 
+	(fun loc -> read_loc scope mo loc ii) >>= 
+	  (fun v -> write_reg reg v ii) >>! 
 	  B.Next
 
       | OpenCL.Pstore(l,v,mo,scope) ->
-        (* Todo: do something with the scope parameter *)
 	(M.unitT (OpenCL.maybev_to_location l)) >>|
 	    (M.unitT (V.intToV (constant_to_int v))) >>=
-	(fun (loc, vv) -> M.write_loc_atrb loc vv ii [OpenCL.Mem_order mo; OpenCL.Mem_scope scope]) >>! B.Next
+	(fun (loc, vv) -> write_loc scope mo loc vv ii) >>! B.Next
 
-
-      | OpenCL.Pfence(mo,scope) ->
-        (* Todo: should it really be "SC" below? Should it not be "mo"? *)
-	M.create_barrier (OpenCL.Fence (mo, scope)) ii >>! B.Next
+      | OpenCL.Pfence(mr, mo, scope) ->
+	M.mk_singleton_es (Act.Fence(mr, mo, scope)) ii >>! B.Next
   end

@@ -47,7 +47,7 @@ module Top (C:Config) = struct
           let module T = Top.Make(C)(M) in
           T.run test ;
           env
-        with TestHash.Seen -> env
+          with TestHash.Seen -> env
     end
 
   module SP =
@@ -102,6 +102,7 @@ module Top (C:Config) = struct
           let module PPCM = PPCMem.Make(ModelConfig)(PPCS) (PPCBarrier) in
           let module X = Make (PPCS) (PPCLexParse) (PPCM) in 
           X.run name chan env splitted
+
       | Archs.ARM ->
 	  let module ARM = ARMArch.Make(C.PC)(SymbValue) in
 	  let module ARMLexParse = struct
@@ -126,6 +127,7 @@ module Top (C:Config) = struct
           let module ARMM = ARMMem.Make(ModelConfig)(ARMS) (ARMBarrier) in
           let module X = Make (ARMS) (ARMLexParse) (ARMM) in 
           X.run name chan env splitted
+
       | Archs.X86 ->
           let module X86 = X86Arch.Make(C.PC)(SymbValue) in
           let module X86LexParse = struct
@@ -143,7 +145,6 @@ module Top (C:Config) = struct
             | X86.Mfence -> MFENCE
             | X86.Sfence -> SFENCE
             | X86.Lfence -> LFENCE
-
           end in
           let module X86M = X86Mem.Make(ModelConfig)(X86S) (X86Barrier) in
           let module X = Make (X86S) (X86LexParse) (X86M) in 
@@ -161,10 +162,8 @@ module Top (C:Config) = struct
         let module CPP11S = CPP11Sem.Make(C)(SymbValue) in
         let module  CPP11Barrier = struct
           type a = CPP11.barrier
-          type b = Fence of CPP11.mem_order
-          let a_to_b a = match a with
-            | CPP11.Fence o -> Fence o
-	    
+          type b = unit
+          let a_to_b _ = assert false
         end in
         let module CPP11M = CPP11Mem.Make(ModelConfig)(CPP11S) (CPP11Barrier) in
         let module X = Make (CPP11S) (CPP11LexParse) (CPP11M) in 
@@ -182,10 +181,8 @@ module Top (C:Config) = struct
         let module OpenCLS = OpenCLSem.Make(C)(SymbValue) in
         let module OpenCLBarrier = struct
           type a = OpenCL.barrier
-          type b = Fence of OpenCL.mem_order * OpenCL.mem_scope
-          let a_to_b a = match a with
-            | OpenCL.Fence (o,scope) -> Fence (o,scope)
-	    
+          type b = unit
+          let a_to_b _ = assert false	    
         end in
         let module OpenCLM = OpenCLMem.Make(ModelConfig)(OpenCLS) (OpenCLBarrier) in
         let module X = Make (OpenCLS) (OpenCLLexParse) (OpenCLM) in 
@@ -203,9 +200,9 @@ module Top (C:Config) = struct
         let module GPU_PTXS = GPU_PTXSem.Make(C)(SymbValue) in
         let module GPU_PTXBarrier = struct
           type a = GPU_PTX.barrier
-          type b = Fence of GPU_PTX.bar_scope
+          type b = Membar of GPU_PTX.bar_scope
           let a_to_b a = match a with
-            | GPU_PTX.Fence (scope) -> Fence (scope)
+            | GPU_PTX.Membar (scope) -> Membar (scope)
 	    
         end in
         let module GPU_PTXM = GPU_PTXMem.Make(ModelConfig)(GPU_PTXS) (GPU_PTXBarrier) in

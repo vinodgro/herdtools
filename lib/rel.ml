@@ -21,7 +21,6 @@ module type S = sig
 
   module Elts1 : MySet.S with type elt = elt1
   module Elts2 : MySet.S with type elt = elt2
-
   val exists_succ : t -> elt1 -> bool
   val exists_pred : t -> elt2 -> bool
  
@@ -40,8 +39,8 @@ module type S = sig
   val restrict_domain : (elt1 -> bool) -> t -> t
   val restrict_codomain : (elt2 -> bool) -> t -> t
   val restrict_domains : (elt1 -> bool) -> (elt2 -> bool) -> t -> t
-  val restrict_domains_rel : (elt1 -> elt2 -> bool) -> t -> t
-  val contains : t -> elt1 -> elt2 -> bool
+  val restrict_rel : (elt1 -> elt2 -> bool) -> t -> t
+
 end
 
 module Make
@@ -123,11 +122,8 @@ with
 	    set2 k)
 	set1 empty
 
-    let contains rel elt1 elt2 = 
-      exists (fun (x,y) -> (O1.compare elt1 x) = 0 && (O2.compare elt2 y) = 0) rel
-
     let restrict_domain p r = filter (fun (e,_) -> p e) r
     and restrict_codomain p r = filter (fun (_,e) -> p e) r
     and restrict_domains p1 p2 r = filter (fun (e1,e2) -> p1 e1 && p2 e2) r
-    and restrict_domains_rel p r = filter (fun (e1,e2) -> p e1 e2) r
+    and restrict_rel p r = filter (fun (e1,e2) -> p e1 e2) r
   end

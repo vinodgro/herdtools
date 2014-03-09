@@ -42,7 +42,7 @@ let pp a = match a with
 | X86 -> "X86"
 | PPC -> "PPC"
 | ARM -> "ARM"
-| CPP11 -> "C++11"
+| CPP11 -> "CPP11"
 | OpenCL -> "OpenCL"
 | GPU_PTX -> "GPU_PTX"
 

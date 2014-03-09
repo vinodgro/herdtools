@@ -50,7 +50,7 @@ module Make
           | DMB|DSB|DMBST|DSBST
           | MFENCE|LFENCE|SFENCE
             -> true
-          | ISYNC|ISB -> false
+          | _ -> false
           end
       | None -> false
 
@@ -303,14 +303,14 @@ module Make
                 if diff_proc p then
                   let open E in
                   match get_mem_dir x, get_mem_dir y with
-                  | R,R -> assert false
-                  | R,W ->
+                  | Dir.R,Dir.R -> assert false
+                  | Dir.R,Dir.W ->
                       ({ SE.nature = SE.Exe ; event = x ; },
                        { SE.nature = SE.Prop (get_proc x) ; event = y ; })::k
-                  | W,R ->
+                  | Dir.W,Dir.R ->
                       ({ SE.nature = SE.Prop (get_proc y) ; event = x ; },
                        { SE.nature = SE.Exe ; event = y ; })::k
-                  | W,W ->
+                  | Dir.W,Dir.W ->
                       if !Misc.switch then k
                       else
                       ({ SE.nature = SE.Com ; event = x ; },
@@ -385,58 +385,58 @@ module Make
         let p = (x,y) in        
         begin
           SE.is_satisfy xe && (SE.is_satisfy ye || SE.is_init ye) &&
-            (mem p pr.S.addr || mem p pr.S.data)
+          (mem p pr.S.addr || mem p pr.S.data)
         end ||
-          begin
-            SE.is_satisfy xe && SE.is_satisfy ye &&
-              is_that_fence B.LWSYNC ze.SE.event (* Ok for lwsync here: read/read *)
-          end ||
-          begin
-            SE.is_commit xe && SE.is_commit ye &&
-              (mem p pr.S.addr || mem p pr.S.data || mem p pr.S.ctrl)
-          end ||
-          begin
-            E.is_mem x && E.is_mem y &&
-              SE.is_commit xe && SE.is_commit ye &&
-              E.same_location x y
-          end ||
-          begin          
-            SE.is_commit xe && SE.is_commit ye &&
-              (is_fence x || is_fence y) &&
-              (not
-		 ((E.is_load x && is_eieio y) ||
-		     (E.is_load y && is_eieio x)))
-          end ||
-          begin
-            SE.is_commit xe && SE.is_commit ye &&
-              E.is_commit x
-          end ||
-          begin
-            E.is_mem x && E.is_mem y &&
-              SE.is_commit xe && SE.is_commit ye &&
-              mem (x,ze.SE.event) pr.S.addr
-          end ||
-	(* USELESS and dangerous (should be e->e anyway by detour
-	   begin
-	   SE.is_commit xe &&
-	   E.is_load x && E.is_load y &&
-	   U.rext conc y &&
-	   E.same_location x y && not (U.same_source conc x y)
-	   end ||
-	*)
-          begin
-            SE.is_commit xe && SE.is_satisfy ye &&
-              (is_isync x || is_strong x)          
-          end in
-      (****************)
-      (* Model proper *)
-      (****************)
-      (* Group Sela's parameters *)
+        begin
+          SE.is_satisfy xe && SE.is_satisfy ye &&
+          is_that_fence B.LWSYNC ze.SE.event (* Ok for lwsync here: read/read *)
+        end ||
+        begin
+          SE.is_commit xe && SE.is_commit ye &&
+          (mem p pr.S.addr || mem p pr.S.data || mem p pr.S.ctrl)
+        end ||
+        begin
+          E.is_mem x && E.is_mem y &&
+          SE.is_commit xe && SE.is_commit ye &&
+          E.same_location x y
+        end ||
+        begin          
+          SE.is_commit xe && SE.is_commit ye &&
+          (is_fence x || is_fence y) &&
+          (not
+             ((E.is_load x && is_eieio y) ||
+             (E.is_load y && is_eieio x)))
+        end ||
+        begin
+          SE.is_commit xe && SE.is_commit ye &&
+          E.is_commit x
+        end ||
+        begin
+          E.is_mem x && E.is_mem y &&
+          SE.is_commit xe && SE.is_commit ye &&
+          mem (x,ze.SE.event) pr.S.addr
+        end ||
+(* USELESS and dangerous (should be e->e anyway by detour
+   begin
+   SE.is_commit xe &&
+   E.is_load x && E.is_load y &&
+   U.rext conc y &&
+   E.same_location x y && not (U.same_source conc x y)
+   end ||
+ *)
+        begin
+          SE.is_commit xe && SE.is_satisfy ye &&
+          (is_isync x || is_strong x)          
+        end in
+(****************)
+(* Model proper *)
+(****************)
+(* Group Sela's parameters *)
       let m = {SE.fbefore;fafter;flocal;} in
-      (* Restrict to relevant *)
+(* Restrict to relevant *)
       let po = E.EventRel.restrict_domain SE.evt_relevant conc.S.po in
       let evts = E.EventSet.filter SE.evt_relevant conc.S.str.E.events in
-      (* No co dependence *)      
+(* No co dependence *)      
       let rf = U.make_rf conc in
       let loc_ord = SE.splitted_loc_ord m conc evts rf po in
       fun kont res ->  
@@ -452,57 +452,57 @@ module Make
             match O.through with
             | ThroughAll -> false
             | ThroughInvalid|ThroughNone ->
-              let complus = S.tr com in
-              E.EventRel.exists
-                (fun (e1,e2 as p) ->
-                  E.same_proc e1 e2 && not (E.EventRel.mem p po))
-                complus
-              then begin
-		show_failure
-		  test conc
-		  "Failure of coherence"
-		  vb_pp ;
-		res
-              end else begin
-		let evord,(br,ar) = mk_evord m test conc evts vb_pp po com rf co loc_ord in
-		let cord = mk_cord m co evord in
-		let ok_cord = not O.opt.cord || E.EventRel.is_acyclic cord in
-		if
-		  match O.through with
-		  | ThroughAll|ThroughInvalid -> false
-		  | ThroughNone -> not ok_cord
-		    then begin
-		      let vb_pp =
-			lazy begin
-			  let cord =
-			    S.rt (E.EventRel.diff cord (E.EventRel.union br ar)) in
-			  ("cord",cord)::
-			    ("Before",br)::
-			    Lazy.force vb_pp end in
-		      show_failure
-			test conc
-			"cord is cyclic"
-			vb_pp ;
-		      res
-		    end else
-		      let vb_pp =
-			lazy begin
-			  vb_pp_reduced br ar evord vb_pp
-			end in
-		      let ok_evord = SE.SplittedRel.is_acyclic evord in
-		      if
-			match O.through with
-			| ThroughAll|ThroughInvalid -> false
-			| ThroughNone -> not ok_evord then begin
-			  show_failure
-			    test conc
-			    "evord is cyclic"
-			    vb_pp ;
-			  res
-			end else begin           
-			  kont conc (conc.S.fs, 0) vb_pp res
-			end
-		      end in
-		U.apply_process_co test conc process_co res
+                let complus = S.tr com in
+                E.EventRel.exists
+                  (fun (e1,e2 as p) ->
+                    E.same_proc e1 e2 && not (E.EventRel.mem p po))
+                  complus
+          then begin
+            show_failure
+              test conc
+              "Failure of coherence"
+              vb_pp ;
+            res
+          end else begin
+            let evord,(br,ar) = mk_evord m test conc evts vb_pp po com rf co loc_ord in
+            let cord = mk_cord m co evord in
+            let ok_cord = not O.opt.cord || E.EventRel.is_acyclic cord in
+            if
+              match O.through with
+              | ThroughAll|ThroughInvalid -> false
+              | ThroughNone -> not ok_cord
+            then begin
+              let vb_pp =
+                lazy begin
+                  let cord =
+                    S.rt (E.EventRel.diff cord (E.EventRel.union br ar)) in
+                  ("cord",cord)::
+                  ("Before",br)::
+                  Lazy.force vb_pp end in
+              show_failure
+                test conc
+                "cord is cyclic"
+                vb_pp ;
+              res
+            end else
+              let vb_pp =
+                lazy begin
+                  vb_pp_reduced br ar evord vb_pp
+                end in
+              let ok_evord = SE.SplittedRel.is_acyclic evord in
+              if
+                match O.through with
+                | ThroughAll|ThroughInvalid -> false
+                | ThroughNone -> not ok_evord then begin
+                    show_failure
+                      test conc
+                      "evord is cyclic"
+                      vb_pp ;
+                    res
+                end else begin           
+                  kont conc conc.S.fs vb_pp None res
+                end
+          end in
+        U.apply_process_co test conc process_co res
 
-	      end
+  end

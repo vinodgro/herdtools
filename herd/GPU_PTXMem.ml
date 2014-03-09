@@ -26,13 +26,13 @@ module S = S
     let check_event_structure test = match O.model with
     | Generic m ->
         let module X =
-          Generic.Make
+          MachModelChecker.Make
             (struct
               let m = m
               include ModelConfig
              end)(S)(AllBarrier.FromGPU_PTX(B)) in
-        X.check_event_structure test []
+        X.check_event_structure test
     | File _ -> assert false
     | m ->
-        Warn.fatal "Model %s not implemented for C++11" (Model.pp m)
+        Warn.fatal "Model %s not implemented for PTX" (Model.pp m)
 end

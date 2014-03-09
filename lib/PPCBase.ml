@@ -835,5 +835,3 @@ let () =
 
 let get_macro name = Hashtbl.find m_t name
 
-type atrb = None
-let pp_atrb a = Warn.fatal "PPC does not have attributes"

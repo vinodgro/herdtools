@@ -16,7 +16,7 @@ open CPP11
 
 /* Instruction tokens */
 
-%token LD ST FENCE LOCK UNLOCK RMW
+%token LD ST FENCE LOCK UNLOCK CAS
 
 %type <int list * (CPP11Base.pseudo) list list> main 
 %start  main
@@ -63,8 +63,8 @@ instr:
     {Plock ($3)}
   | UNLOCK LPAR loc RPAR
     {Punlock ($3)}
-  | RMW LPAR loc COMMA store_op COMMA store_op COMMA MEMORDER COMMA MEMORDER RPAR
-    {Prmw ($3,$5,$7,$9,$11)}
+  | CAS LPAR loc COMMA store_op COMMA store_op COMMA MEMORDER COMMA MEMORDER RPAR
+    {Pcas ($3,$5,$7,$9,$11)}
 
 store_op :
 | NUM { Concrete $1 }

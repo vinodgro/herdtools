@@ -54,10 +54,15 @@ module type S =  sig
 (* Topological sort *)
   val topo :  Elts.t -> t -> elt0 list
 
+
+(* Continuation based all_topos (see next function) *)
+  val all_topos_kont :  Elts.t -> t -> (elt0 list -> 'a -> 'a) -> 'a -> 'a
+
 (* All toplogical orders, raises Cyclic in case of cycle
    Enhancement: all_topos nodes edges still works
   when edges relates elts not in nodes *)
   
+
   val all_topos : bool (* verbose *)-> Elts.t -> t -> elt0 list list
 
 (* Remove any transitivity edges
@@ -362,16 +367,19 @@ let transitive_closure r = M.of_map (M.tr (M.to_map r))
 
   let all_topos2 = fold_topos_ext () (fun () _n -> some_void) Misc.cons [] 
 
-let all_topos verbose nodes edges =
-  let nss = all_topos2 nodes edges in
-  if verbose then begin
-    let nres = List.length nss in
-    if nres > 1023 then begin
-      Printf.eprintf "Warning: all topos produced %i orderings\n" nres ;
-      flush stderr
-    end
-  end ;
-  nss
+  let all_topos_kont nodes edges kont res =
+    fold_topos_ext () (fun () _n -> some_void) kont res nodes edges
+
+  let all_topos verbose nodes edges =
+    let nss = all_topos2 nodes edges in
+    if verbose then begin
+      let nres = List.length nss in
+      if nres > 1023 then begin
+        Printf.eprintf "Warning: all topos produced %i orderings\n" nres ;
+        flush stderr
+      end
+    end ;
+    nss
 
 
 (***************************)

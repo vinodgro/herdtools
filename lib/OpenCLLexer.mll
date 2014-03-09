@@ -39,6 +39,8 @@ rule token = parse
 | "wg"       {MEMSCOPE (OpenCLBase.S_workgroup)}
 | "dev"          {MEMSCOPE (OpenCLBase.S_device)}
 | "all_dev" {MEMSCOPE (OpenCLBase.S_all_svn_devices)}
+| "global" { MEMREGION (OpenCLBase.Global) }
+| "local" { MEMREGION (OpenCLBase.Local) }
 | "fence" { FENCE }
 | "load"  { LD }
 | "store"    { ST }

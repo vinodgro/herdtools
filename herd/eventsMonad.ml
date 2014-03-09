@@ -14,11 +14,13 @@ module type Config = sig
     val debug : Debug.t
 end
 
-module Make (C:Config) (A:Arch.S) (E:Event.S with module A = A) :
-Monad.S with module A = A and type evt_struct = E.event_structure
-    = struct 
-      
+module Make (C:Config) (A:Arch.S) (E:Event.S with module A = A and module Act.A = A) :
+(Monad.S with module A = A and module E = E 
+	  and type evt_struct = E.event_structure) = 
+struct 
+    
       module A = A
+      module E = E
       module V = A.V
       module VC =
         Valconstraint.Make
@@ -293,7 +295,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 
       let trivial_event_structure e = do_trivial (E.EventSet.singleton e)
 
-      let do_read_loc_atrb atomic loc ii atrb =
+      let read_loc mk_action loc ii =
 	fun eiid ->
 	  V.fold_over_vals
 	    (fun v (eiid1,acc_inner) ->
@@ -303,20 +305,10 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 		  trivial_event_structure
 		    {E.eiid = eiid1 ;
 		     E.iiid = Some ii;
-                     E.atomic = atomic;
-		     E.atrbs = atrb;
-		     E.action = E.Access (E.R, loc, v)})
+		     E.action = mk_action loc v })
 		 acc_inner)) (eiid,Evt.empty)	
 
-
-      let read_loc loc ii = do_read_loc_atrb false loc ii []
-      let read_loc_atrb = do_read_loc_atrb false
-
-      let read_reg r ii = do_read_loc_atrb false (A.Location_reg (ii.A.proc,r)) ii []
-      and read_mem a ii = do_read_loc_atrb false (A.Location_global a) ii []
-      and read_mem_atomic a ii = do_read_loc_atrb true (A.Location_global a) ii [] 
-
-      let do_write_loc_atrb atomic loc v ii atrbs =
+      let mk_singleton_es a ii =
 	fun eiid ->
 	  (eiid+1,
 	   Evt.singleton
@@ -324,75 +316,8 @@ Monad.S with module A = A and type evt_struct = E.event_structure
 	      trivial_event_structure
 		{E.eiid = eiid ;
 		 E.iiid = Some ii;
-                 E.atomic = atomic ;
-		 E.atrbs = atrbs;
-		 E.action = E.Access (E.W, loc, v)}))
+		 E.action = a }))
 
-	    
-      let write_loc loc v ii = do_write_loc_atrb false loc v ii []
-      let write_loc_atrb = do_write_loc_atrb false
-
-      let write_reg r v ii =
-	do_write_loc_atrb false (A.Location_reg (ii.A.proc,r)) v ii []
-      and write_mem a v ii =
-	do_write_loc_atrb false (A.Location_global a) v ii []
-      and write_mem_atomic a v ii =
-        do_write_loc_atrb true (A.Location_global a) v ii []
-      
-      (* The following is just a dummy implementation of RMWs for 
-      the time being. *)
-      let do_rmw_loc loc v1 v2 ii atrbs_success atrbs_failure eiid =
-        let mk_es a eiid atrbs =
-          ((), [],
-	   trivial_event_structure
-	     {E.eiid = eiid ;
-	      E.iiid = Some ii;
-              E.atomic = true ;
-	      E.atrbs = atrbs;
-	      E.action = a})
-          in
-	  (eiid+2,
-	   Evt.add (mk_es (E.RMW (loc, v1, v2)) eiid atrbs_success)  
-             (Evt.add (mk_es (E.Access (E.R, loc, v1)) (eiid + 1) atrbs_failure) 
-                Evt.empty))
-
-      let rmw_loc = do_rmw_loc
-
-      let lock_loc loc ii eiid =
-        let mk_es lock_outcome = 
-          ((), [],
-	   trivial_event_structure
-	     {E.eiid = eiid ;
-	      E.iiid = Some ii;
-              E.atomic = true ;
-	      E.atrbs = [];
-	      E.action = E.Lock (loc, lock_outcome)})
-        in
-	(eiid+2, Evt.add (mk_es E.Locked) (Evt.add (mk_es E.Blocked) Evt.empty))
-
-      let unlock_loc loc ii eiid =
-	(eiid+1,
-	 Evt.singleton
-	   ((), [],
-	    trivial_event_structure
-	      {E.eiid = eiid ;
-	       E.iiid = Some ii;
-               E.atomic = true ;
-	       E.atrbs = [];
-	       E.action = E.Unlock (loc)}))
-          
-      let create_barrier_atrb : A.barrier -> A.inst_instance_id -> A.atrb list -> unit t
-	  = fun b ii atrb->
-	    fun eiid ->
-	      (eiid+1,
-	       Evt.singleton
-		 ((), [],
-		  trivial_event_structure
-		    {E.eiid = eiid ;  E.iiid = Some ii; E.atomic = false ;
-		     E.action = E.Barrier b;
-		     E.atrbs = atrb;}))
-
-      let create_barrier b ii = create_barrier_atrb b ii []
 
       let any_op mk_v mk_c =
 	(fun eiid_next -> 
@@ -442,23 +367,6 @@ Monad.S with module A = A and type evt_struct = E.event_structure
       type evt_struct = E.event_structure
       type output = VC.cnstrnts * evt_struct
 
-      let write_flag r o v1 v2 ii =
-	addT
-	  (A.Location_reg (ii.A.proc,r))
-	  (op o v1 v2) >>= (fun (loc,v) -> write_loc loc v ii)
-	  
-      let commit ii =
-	fun eiid ->
-	  (eiid+1,
-	   Evt.singleton
-	     ((), [],
-	      trivial_event_structure
-		{E.eiid = eiid ;
-		 E.iiid = Some ii;
-                 E.atomic = false ;
-		 E.action = E.Commit;
-		 E.atrbs = [];}))
-
       let initwrites env =
         fun eiid ->
           let eiid,es =
@@ -467,28 +375,7 @@ Monad.S with module A = A and type evt_struct = E.event_structure
                 let ew =
                   {E.eiid = eiid ;
 		   E.iiid = None ;
-                   E.atomic = false ;
-		   E.atrbs = [] ;
- 		   E.action = E.Access (E.W, loc, v) ;} in
-                (eiid+1,ew::es))
-              (eiid,[]) env in
-          let es = E.EventSet.of_list es in
-(*          Printf.eprintf "Init writes %a\n" E.debug_events es; *)
-          eiid,
-          Evt.singleton ((),[],do_trivial es) 
-
-
-      let initwrites env =
-        fun eiid ->
-          let eiid,es =
-            List.fold_left
-              (fun (eiid,es) (loc,v) ->
-                let ew =
-                  {E.eiid = eiid ;
-		   E.iiid = None ;
-                   E.atomic = false ;
-                   E.atrbs = [] ;
- 		   E.action = E.Access (E.W, loc, v) ;} in
+ 		   E.action = E.Act.mk_init_write loc v ;} in
                 (eiid+1,ew::es))
               (eiid,[]) env in
           let es = E.EventSet.of_list es in

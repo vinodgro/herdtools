@@ -56,6 +56,9 @@ module type S =  sig
   
   exception Cyclic
   val topo : Elts.t -> t -> elt0 list
+(* Continuation based all_topos (see next function) *)
+  val all_topos_kont :  Elts.t -> t -> (elt0 list -> 'a -> 'a) -> 'a -> 'a
+(* All toplogical orders, as a list of lists *)
   val all_topos : bool (* verbose *) -> Elts.t -> t -> elt0 list list
 
 (* Remove any transitivity edges

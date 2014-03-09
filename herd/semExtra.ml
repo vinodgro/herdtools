@@ -10,6 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+
 (* Some configuration *)
 module type Config = sig
   val optace : bool
@@ -21,9 +22,9 @@ end
 module type S = sig
   module O : Config (* Options, for Sem consummer *)
   module A   : Arch.S
-  module E : Event.S with module A = A
+  module E : Event.S with module A = A and module Act.A = A
   module M  : Monad.S
-  with module A = A and type evt_struct = E.event_structure
+  with module A = A and module E = E and type evt_struct = E.event_structure
   module C : Constraints.S with module A = A
 
 (* A good place to (re)define all these types *)
@@ -63,8 +64,6 @@ module type S = sig
   val restrict :
       (event -> bool) -> (event -> bool) ->
         event_rel -> event_rel
-  val restrict_rel :
-    (event -> event -> bool) -> event_rel -> event_rel
   val doWW : event_rel -> event_rel
   val doWR : event_rel -> event_rel
   val doRR : event_rel -> event_rel
@@ -73,11 +72,9 @@ module type S = sig
   val seq : event_rel -> event_rel -> event_rel
   val seqs : event_rel list -> event_rel
   val union : event_rel -> event_rel -> event_rel
-  val comp : event_rel -> event_rel -> event_rel
-  val inverse : event_rel -> event_rel
   val unions : event_rel list -> event_rel
 
-  (* relations packed to be shown on Graphs *)
+  (* relations packed to be shown on graphs *)
   type rel_pp = (string * event_rel) list
 
   (* Dependencies : ie complement for ace *)
@@ -132,7 +129,6 @@ type concrete =
      rfmap : rfmap ;           (* rfmap *)
      fs    : state ;           (* final state *)
      po  : event_rel ;         (* program order (in fact po + iico) *)
-     unv  : event_rel ;         (* universal set (all events->all events by Tyler Sorensen for attributes *)
      pos : event_rel ;         (* Same location same processor accesses *)
 (* Write serialization precursor ie uniproc induced constraints over writes *)
      pco : event_rel ;
@@ -164,13 +160,14 @@ type concrete =
 
 end
 
-module Make(C:Config) (A:Arch.S) : S with module A = A =
+module Make(C:Config) (A:Arch.S) (Act:Action.S with module A = A) 
+       : (S with module A = A and module E.Act = Act) =
   struct
     module O = C
-    module A  = A
+    module A = A
     module V = A.V
-    module E = Event.Make(A)
-    module M =  EventsMonad.Make(C)(A)(E)
+    module E = Event.Make(A)(Act)
+    module M = EventsMonad.Make(C)(A)(E)
     module C = Constraints.Make (C.PC)(A)
 
 (* A good place to (re)define all these types *)
@@ -211,7 +208,6 @@ module Make(C:Config) (A:Arch.S) : S with module A = A =
     let tr = E.EventRel.transitive_closure
     let rt = E.EventRel.remove_transitive_edges
     let restrict = E.EventRel.restrict_domains
-    let restrict_rel = E.EventRel.restrict_domains_rel
     let doRR = restrict E.is_mem_load E.is_mem_load
     let doRW = restrict E.is_mem_load E.is_mem_store
     let doWW = restrict E.is_mem_store E.is_mem_store
@@ -222,14 +218,6 @@ module Make(C:Config) (A:Arch.S) : S with module A = A =
       | [r] -> r
       | r::rs -> seq r (seqs rs)      
     let union = E.EventRel.union
-
-    let comp v unv = E.EventRel.restrict_domains_rel 
-      (fun e1 e2 -> 
-	not (E.EventRel.contains v e1 e2) 
-	) unv
-
-    let inverse = E.EventRel.inverse
-
     let unions = E.EventRel.unions
 
         (* relations packed to be shown on graphs *)
@@ -321,7 +309,6 @@ type concrete =
      rfmap : rfmap ;           (* rfmap *)
      fs    : state ;           (* final state *)
      po : event_rel ;
-     unv  : event_rel ;         (* universal set (all events->all events by Tyler Sorensen for attributes *)
      pos : event_rel ;      (* Same location same processor accesses *)
      pco : event_rel ;
 (* View before relation deduced from rfmaps *)
@@ -339,7 +326,6 @@ type concrete =
        po = E.EventRel.empty ;
        pos = E.EventRel.empty ;
        pco = E.EventRel.empty ;
-       unv = E.EventRel.empty ;
        store_load_vbf  = E.EventRel.empty ;
        init_load_vbf = E.EventRel.empty ;
        last_store_vbf = E.EventRel.empty ;

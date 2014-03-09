@@ -1,8 +1,0 @@
-CPP11 MP_relaxed
-"Fre PodWR Fre PodWR"
-{ x=0; }
- P0     | P1   ;
- y=1    | x=3  ;
- y=2    | x=4  ; 
-
-exists (1:r1 = 1 /\ 1:r2 = 0)

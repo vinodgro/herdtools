@@ -93,15 +93,11 @@ let pp_mem_scope s =
 (****************)
 
 (* Todo: distinguish local and global fences. *)
-type barrier =
-| Fence of mem_order * mem_scope
+type barrier = unit
     
 let all_kinds_of_barriers =  [ ]
   
-let pp_barrier b = 
-  match b with
-  | Fence (o,s) -> 
-    sprintf "fence(%s,%s)" (pp_mem_order o) (pp_mem_scope s)
+let pp_barrier _b = assert false
 
 let barrier_compare = Pervasives.compare
 
@@ -113,11 +109,18 @@ type loc = SymbConstant.v
 
 type store_op = SymbConstant.v
 
+type mem_region =
+  | Global
+  | Local
+
+let pp_mem_region = function
+  | Global -> "global"
+  | Local -> "local"
 
 type instruction = 
 | Pstore of loc * store_op * mem_order * mem_scope
 | Pload  of loc * reg * mem_order * mem_scope
-| Pfence of mem_order * mem_scope
+| Pfence of mem_region * mem_order * mem_scope
 
 include Pseudo.Make
     (struct
@@ -154,19 +157,19 @@ let dump_instruction i = match i with
     (match mo with 
     | NA -> sprintf("%s = %s") (pp_reg reg) (pp_addr loc)
     | _ -> sprintf("%s = %s.load(%s,%s)") (pp_reg reg) (pp_addr loc) (pp_mem_order mo) (pp_mem_scope scope))
-  | Pfence(mo,scope) ->  sprintf("fence(%s,%s)") (pp_mem_order mo) (pp_mem_scope scope)
+  | Pfence(mr,mo,scope) ->  sprintf("fence(%s,%s,%s)") (pp_mem_region mr) (pp_mem_order mo) (pp_mem_scope scope)
    
 (* We don't have symbolic registers. This should be enough *)
-let fold_regs (f_reg,f_sreg) = 
+let fold_regs (f_reg,_f_sreg) = 
   let fold_reg reg (y_reg, y_sreg) = match reg with
     | GPRreg _ -> f_reg reg y_reg, y_sreg
     | _ -> y_reg, y_sreg in 
   
-  fun (y_reg,y_sreg as c) ins -> match ins with
+  fun (_y_reg,_y_sreg as c) ins -> match ins with
   | Pload(_,reg,_,_) -> fold_reg (reg) c
   | _ -> c
 
-let map_regs f_reg f_symb = 
+let map_regs f_reg _f_symb = 
   let map_reg reg = match reg with
     | GPRreg _ -> f_reg reg
     | _ -> reg in
@@ -181,24 +184,18 @@ let map_regs f_reg f_symb =
 let norm_ins ins = ins
 
 (*unimplemented so far*)
-let get_reg_list ins = ([], [])
+let get_reg_list _ins = ([], [])
 
-let get_macro name = Warn.fatal "OpenCL get_macro has not been implemented"
-let is_data reg ins = Warn.fatal "OpenCL is_data has not been implemented"
+let get_macro _name = Warn.fatal "OpenCL get_macro has not been implemented"
+let is_data _reg _ins = Warn.fatal "OpenCL is_data has not been implemented"
 
-let map_addrs _f ins = Warn.fatal "OpenCL map_addrs has not been implemented"
-let fold_addrs _f c _ins = Warn.fatal "OpenCL fold_addrs has not been implemented"
+let map_addrs _f _ins = Warn.fatal "OpenCL map_addrs has not been implemented"
 
-let pp_instruction _m ins = Warn.fatal "OpenCL pp_instruction has not been implemented"
+(*This is how PPC and ARM did it...*)
+let fold_addrs _f c _ins = c
 
-let get_next ins = Warn.fatal "OpenCL get_next not implemented"
+let pp_instruction _m _ins = Warn.fatal "OpenCL pp_instruction has not been implemented"
+
+let get_next _ins = Warn.fatal "OpenCL get_next not implemented"
 
 let allowed_for_symb = []
-
-type atrb = 
-| Mem_order of mem_order
-| Mem_scope of mem_scope
-    
-let pp_atrb o = match o with 
-  | Mem_order m -> pp_mem_order m
-  | Mem_scope m -> pp_mem_scope m

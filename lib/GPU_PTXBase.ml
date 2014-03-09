@@ -70,12 +70,13 @@ let pp_bar_scope s = match s with
   | SYS -> "sys"
 
 type barrier =
- | Fence of bar_scope
+ | Membar of bar_scope
 
-let all_kinds_of_barriers =  [ Fence GL ;]
+let all_kinds_of_barriers =  [ Membar GL ;]
+(* Shouldn't the list above include Membar CTA and Membar SYS too? *)
 
 let pp_barrier b = match b with
-  | Fence s -> sprintf "membar.%s" (pp_bar_scope s)
+  | Membar s -> sprintf "membar.%s" (pp_bar_scope s)
   
 
 let barrier_compare = Pervasives.compare
@@ -328,7 +329,7 @@ let is_data _reg _ins = Warn.fatal "GPU_PTX is_data has not been implemented"
 let map_addrs _f _ins = Warn.fatal "GPU_PTX map_addrs has not been implemented"
 
 "ARM and PPC do the same..."
-let fold_addrs f c ins = c
+let fold_addrs _f c _ins = c
 
 let pp_instruction _m _ins = Warn.fatal "GPU_PTX dump_instruction has not been implemented"
 
@@ -340,6 +341,3 @@ let set_shared _i = Warn.fatal "GPU_PTX set_shared has not been implemented"
 let set_global _i = Warn.fatal "GPU_PTX set_global has not been implmeneted"
 
 let get_reg_list _i = Warn.fatal "Litmus GPU_PTX does not implement get_reg_list"
-
-let pp_atrb _a = Warn.fatal "GPU_PTX pp_atrb not implemented yet"
-type atrb = string 

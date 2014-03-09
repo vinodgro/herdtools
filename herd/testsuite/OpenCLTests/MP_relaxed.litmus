@@ -1,0 +1,8 @@
+OpenCL MP_relaxed
+"Fre PodWR Fre PodWR"
+{ x=0; y=0; }
+ P0                | P1                  ;
+ x.store(1,rlx,wg) | r1 = y.load(rlx,wg) ;
+ y.store(1,rlx,wg) | r2 = x.load(rlx,wg) ; 
+
+exists (1:r1 = 1 /\ 1:r2 = 0)
