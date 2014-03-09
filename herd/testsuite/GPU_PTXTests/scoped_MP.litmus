@@ -1,4 +1,4 @@
-GPU_PTX MP
+GPU_PTX scoped_MP
 "PodWW Rfe PodRR Fre"
 {
 0:.reg .s32 r1;

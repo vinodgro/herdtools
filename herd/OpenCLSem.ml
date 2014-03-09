@@ -55,6 +55,6 @@ module Make (C:Sem.Config)(V:Value.S)
 	    (M.unitT (V.intToV (constant_to_int v))) >>=
 	(fun (loc, vv) -> write_loc scope mo loc vv ii) >>! B.Next
 
-      | OpenCL.Pfence(mo,scope) ->
-	M.mk_singleton_es (Act.Fence(mo, scope)) ii >>! B.Next
+      | OpenCL.Pfence(mr, mo, scope) ->
+	M.mk_singleton_es (Act.Fence(mr, mo, scope)) ii >>! B.Next
   end

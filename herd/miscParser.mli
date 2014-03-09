@@ -20,46 +20,17 @@ type location =
   | Location_reg of int * reg
   | Location_sreg of string
   | Location_global of maybev
+  | Location_reg_type of int * reg * string
+  | Location_shared of int * maybev (*for GPU shared memory initializations*)
 
-let location_compare loc1 loc2 = match loc1,loc2 with
-| Location_reg (i1,r1), Location_reg (i2,r2) ->
-    begin match Misc.int_compare i1 i2 with
-    | 0 -> String.compare r1 r2
-    | c -> c
-    end
-| Location_sreg r1,Location_sreg r2 ->
-    String.compare r1 r2
-| Location_global v1,Location_global v2 ->
-    SymbConstant.compare v1 v2
-| Location_reg _,(Location_sreg _|Location_global _) -> -1
-| (Location_sreg _|Location_global _),Location_reg _ -> 1
-| Location_sreg _, Location_global _ -> -1
-| Location_global _, Location_sreg _ -> 1
+val location_compare : location -> location -> int
+val dump_location : location -> string
+val dump_rval : location -> string
+val is_global : location -> bool
+val as_local_proc : int -> location -> reg option
 
-let dump_location = function
-  | Location_reg (i,r) -> Printf.sprintf "%i:%s" i r
-  | Location_sreg s -> s
-  | Location_global v -> SymbConstant.pp_v v
+module LocSet : MySet.S with type elt = location
 
-let dump_rval loc = match loc with
-  | Location_reg (i,r) -> Printf.sprintf "%i:%s" i r
-  | Location_sreg s -> s
-  | Location_global v -> Printf.sprintf "*%s" (SymbConstant.pp_v v)
-
-let is_global = function
-  | Location_global _ -> true
-  | Location_reg _ -> false
-  | Location_sreg _ -> assert false
-
-let as_local_proc i = function
-  | Location_reg (j,reg) -> if i=j then Some reg else None
-  | Location_global _ -> None
-  | Location_sreg _ -> assert false
-
-
-module LocSet =
-  MySet.Make
-    (struct type t = location let compare = location_compare end)
 
 type prop = (location, maybev) ConstrGen.prop
 type constr = prop ConstrGen.constr
@@ -69,17 +40,36 @@ type atom = location * maybev
 type state = atom list
 type outcome = atom list
 
-open Printf
-
-let pp_atom (loc,v) =
-  sprintf "%s=%s" (dump_location loc) (SymbConstant.pp_v v)
-
-let pp_outcome o =
-  String.concat " "
-    (List.map (fun a -> sprintf "%s;" (pp_atom a)) o)
+val pp_atom : atom -> string
+val pp_outcome : outcome -> string
 
 type run_type = Ty of string | Pointer of string
 
+(*********************************)
+(* GPU memory map and scope tree *)
+(*********************************)
+
+type gpu_memory_space = 
+| Global
+| Shared
+
+type thread      = int
+type warp        = thread list
+type cta         = warp list
+type kernel      = cta list
+type device      = kernel list
+
+type scope_tree = 
+| Scope_tree of device list
+| No_scope_tree
+
+type mem_space_map = 
+| Mem_space_map of (string * gpu_memory_space) list
+| No_mem_space_map
+
+val pp_scope_tree : scope_tree -> string
+val pp_memory_space_map : mem_space_map -> string
+val cpu_scope_tree : int -> scope_tree
 
 (* Packed result *)
 type info = (string * string) list
@@ -88,7 +78,10 @@ type ('i, 'p, 'c, 'loc) result =
       init : 'i ;
       prog : 'p ;
       condition : 'c ;
-      locations : ('loc * run_type) list}
+      locations : ('loc * run_type) list ;
+      scope_tree : scope_tree ;
+      mem_space_map : mem_space_map ;
+}
 
 (* Easier to handle *)
 type ('loc,'v,'ins) r3 =
@@ -107,6 +100,6 @@ type ('loc,'v,'code) r4 =
 type 'pseudo t =
     (state, (int * 'pseudo list) list, constr, location) result
 
-let get_hash p =
-  try List.assoc "Hash" p.info
-  with Not_found -> assert false
+
+(* Extract hash *)
+val get_hash :  ('i, 'p, 'c, 'loc) result -> string

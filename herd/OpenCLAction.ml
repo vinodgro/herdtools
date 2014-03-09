@@ -21,7 +21,7 @@ module type S = sig
   module A_ : Arch.S
   type action_ =    
     | Access of Dir.dirn * A_.location * A_.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
-    | Fence of OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | Fence of OpenCLBase.mem_region * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | RMW of A_.location * A_.V.v * A_.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Blocked_RMW of A_.location
   include Action.S with module A = A_ and type action = action_
@@ -37,7 +37,7 @@ struct
 
   type action_ = 
     | Access of dirn * A.location * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
-    | Fence of OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | Fence of OpenCLBase.mem_region * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | RMW of A.location * V.v * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Blocked_RMW of A.location
   type action = action_
@@ -57,10 +57,11 @@ struct
           (OpenCLBase.pp_mem_scope s)
           (pp_location withparen l)
 	  (V.pp_v v)
-    | Fence (mo,s) -> 
-       sprintf "F(%s,%s)"
-	  (OpenCLBase.pp_mem_order mo)
-          (OpenCLBase.pp_mem_scope s)
+    | Fence (mr,mo,s) -> 
+       sprintf "F(%s,%s,%s)"
+         (OpenCLBase.pp_mem_region mr)
+         (OpenCLBase.pp_mem_order mo)
+         (OpenCLBase.pp_mem_scope s)
     | RMW (l,v1,v2,mo,s) ->
        	sprintf "RMW(%s,%s)%s(%s>%s)"
           (OpenCLBase.pp_mem_order mo)
@@ -166,6 +167,14 @@ struct
      | Fence _ -> true
      | _ -> false
 
+   let is_global_fence a = match a with
+     | Fence (OpenCLBase.Global,_,_) -> true
+     | _ -> false
+
+   let is_local_fence a = match a with
+     | Fence (OpenCLBase.Local,_,_) -> true
+     | _ -> false
+
 (* RMWs *)
    let is_rmw a = match a with
      | RMW _ -> true
@@ -182,13 +191,13 @@ struct
    let mo_matches target a = match a with
      | Access(_,_,_,mo,_)
      | RMW (_,_,_,mo,_) 
-     | Fence (mo,_) -> mo=target
+     | Fence (_,mo,_) -> mo=target
      | _ -> false
 
    let scope_matches target a = match a with
      | Access(_,_,_,_,s)
      | RMW (_,_,_,_,s) 
-     | Fence (_,s) -> s=target
+     | Fence (_,_,s) -> s=target
      | _ -> false
 
 (* Architecture-specific sets *)
@@ -196,6 +205,8 @@ struct
      "rmw", is_rmw; 
      "brmw", is_blocked_rmw;
      "F", is_fence;
+     "gF", is_global_fence;
+     "lF", is_local_fence;
    ] @ List.map (fun (k,v) -> (k,mo_matches v)) [
      "acq", OpenCLBase.Acq;
      "sc", OpenCLBase.SC;

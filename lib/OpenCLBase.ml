@@ -109,11 +109,18 @@ type loc = SymbConstant.v
 
 type store_op = SymbConstant.v
 
+type mem_region =
+  | Global
+  | Local
+
+let pp_mem_region = function
+  | Global -> "global"
+  | Local -> "local"
 
 type instruction = 
 | Pstore of loc * store_op * mem_order * mem_scope
 | Pload  of loc * reg * mem_order * mem_scope
-| Pfence of mem_order * mem_scope
+| Pfence of mem_region * mem_order * mem_scope
 
 include Pseudo.Make
     (struct
@@ -150,7 +157,7 @@ let dump_instruction i = match i with
     (match mo with 
     | NA -> sprintf("%s = %s") (pp_reg reg) (pp_addr loc)
     | _ -> sprintf("%s = %s.load(%s,%s)") (pp_reg reg) (pp_addr loc) (pp_mem_order mo) (pp_mem_scope scope))
-  | Pfence(mo,scope) ->  sprintf("fence(%s,%s)") (pp_mem_order mo) (pp_mem_scope scope)
+  | Pfence(mr,mo,scope) ->  sprintf("fence(%s,%s,%s)") (pp_mem_region mr) (pp_mem_order mo) (pp_mem_scope scope)
    
 (* We don't have symbolic registers. This should be enough *)
 let fold_regs (f_reg,_f_sreg) = 
@@ -183,7 +190,9 @@ let get_macro _name = Warn.fatal "OpenCL get_macro has not been implemented"
 let is_data _reg _ins = Warn.fatal "OpenCL is_data has not been implemented"
 
 let map_addrs _f _ins = Warn.fatal "OpenCL map_addrs has not been implemented"
-let fold_addrs _f _c _ins = Warn.fatal "OpenCL fold_addrs has not been implemented"
+
+(*This is how PPC and ARM did it...*)
+let fold_addrs _f c _ins = c
 
 let pp_instruction _m _ins = Warn.fatal "OpenCL pp_instruction has not been implemented"
 

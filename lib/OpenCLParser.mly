@@ -14,6 +14,7 @@ open OpenCL
 %token SEMI COMMA PIPE COLON LPAR RPAR EQ DOT 
 %token <OpenCLBase.mem_order> MEMORDER
 %token <OpenCLBase.mem_scope> MEMSCOPE
+%token <OpenCLBase.mem_region> MEMREGION
 
 /* Instruction tokens */
 
@@ -58,8 +59,8 @@ instr:
     {Pstore ($1,$3,NA,S_workitem)}
   | reg EQ loc
     {Pload ($3,$1,NA,S_workitem)}
-  | FENCE LPAR MEMORDER COMMA MEMSCOPE RPAR
-    {Pfence ($3,$5)}
+  | FENCE LPAR MEMREGION COMMA MEMORDER COMMA MEMSCOPE RPAR
+    {Pfence ($3,$5,$7)}
 
 store_op :
 | NUM { Concrete $1 }
