@@ -1,22 +1,21 @@
 set -e
 DIR=`dirname $0`
-REPOS=svn+ssh://secsvn@svn-rsem019.cl.cam.ac.uk/herdtools
 . $DIR/version.sh
 . $DIR/funs.sh
 TMP=/var/tmp
 FINAL=$TMP/diy-$V
+EXPORT=$FINAL
 /bin/rm -rf $FINAL && mkdir $FINAL
-( cd $FINAL && \
-  svn export -N $REPOS/litmus litmus && \
-  ( cd litmus && svn export -N $REPOS/litmus/generated  ) && \
-  svn export -N $REPOS/gen gen && \
-  svn export -N $REPOS/herd herd && \
-  svn export -N $REPOS/tools tools && \
-  svn export -N $REPOS/lib lib && \
-  svn export -N $REPOS/diy/Makefile.herd Makefile && \
-  svn export -N $REPOS/diy/README.txt README.txt && \
-  svn export -N $REPOS/diy/INSTALL.txt INSTALL.txt && \
-  svn export -N $REPOS/diy/LICENSE.txt  && \
+(
+  extract litmus litmus && \
+  extract gen gen && \
+  extract herd herd && \
+  extract tools tools && \
+  extract lib lib && \
+  extract diy/Makefile.herd Makefile && \
+  extract diy/README.txt README.txt && \
+  extract diy/INSTALL.txt INSTALL.txt && \
+  extract diy/LICENSE.txt  LICENSE.txt && \
   true
 )
 ( cleandir $FINAL/litmus ) && \

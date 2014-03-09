@@ -46,7 +46,7 @@ void free_outs(outs_t *p) {
 }
 
 /* Worth writing as a loop, since called many times */
-static outs_t *loop_add_outcome_outs(outs_t *p, int *k, int i, count_t c, int show) {  
+static outs_t *loop_add_outcome_outs(outs_t *p, intmax_t *k, int i, count_t c, int show) {
   outs_t *r = p ;
   if (p == NULL || k[i] < p->k) {
     r = alloc_outs(k[i]) ;
@@ -76,7 +76,7 @@ static outs_t *loop_add_outcome_outs(outs_t *p, int *k, int i, count_t c, int sh
   }
 }
 
-outs_t *add_outcome_outs(outs_t *p, int *k, int sz, count_t c, int show) {
+outs_t *add_outcome_outs(outs_t *p, intmax_t *k, int sz, count_t c, int show) {
   return loop_add_outcome_outs(p,k,sz-1,c,show) ;
 }
 
@@ -98,7 +98,7 @@ count_t finals_outs(outs_t *p) {
   return r ;
 }
 
-void dump_outs (FILE *chan, dump_outcome *dout,outs_t *p, int *buff,int sz) {
+void dump_outs (FILE *chan, dump_outcome *dout,outs_t *p, intmax_t *buff,int sz) {
   for ( ; p ; p = p->next) {
     buff[sz-1] = p->k ;
     if (p->c > 0) {

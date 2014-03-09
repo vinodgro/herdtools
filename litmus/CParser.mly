@@ -9,7 +9,7 @@
 /*  General Public License.                                          */
 /*********************************************************************/
 
-%token EOF COMMA STAR INT
+%token EOF COMMA STAR VOLATILE
 %token LPAREN RPAREN
 %token <int> PROC
 %token <string> BODY
@@ -22,13 +22,21 @@
 
 main:
 | EOF { [] }
+| BODY main { CAst.Global $1 :: $2 }
 | PROC LPAREN params RPAREN BODY main
-    { {CAst.proc = $1; params = $3; body = $5} :: $6 }
+    { CAst.Test {CAst.proc = $1; params = $3; body = $5} :: $6 }
 
 params:
 | { [] }
-| ty NAME { [{CAst.param_ty = $1; param_name = $2}] }
-| ty NAME COMMA params { {CAst.param_ty = $1; param_name = $2} :: $4 }
+| ty NAME
+    { [{CAst.param_ty = $1; volatile = false; param_name = $2}] }
+| VOLATILE ty NAME
+    { [{CAst.param_ty = $2; volatile = true; param_name = $3}] }
+| ty NAME COMMA params
+    { {CAst.param_ty = $1; volatile = false; param_name = $2} :: $4 }
+| VOLATILE ty NAME COMMA params
+    { {CAst.param_ty = $2; volatile = true; param_name = $3} :: $5 }
 
 ty:
-| INT STAR { CAst.Int_ptr }
+| NAME STAR { RunType.Ty $1 }
+| NAME STAR STAR { RunType.Pointer $1 }

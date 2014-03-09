@@ -46,18 +46,17 @@ module type Config = sig
   val unrollatomic : int option
 end
 
-module Make (Config:Config) (C:XXXCompile.S) =
+module Make (Config:Config) (M:Builder.S) =
   struct
-    module M = Top.Make(Config)(C)
-    module D = DumpAll.Make (Config) (C)
-    open C.E
+    module D = DumpAll.Make (Config) (M)
+    open M.E
 
     let norm = match Config.family with
     | None -> true
     | Some _ -> false
 
-    module Name = Namer.Make(C.A)(C.E)
-    module Norm = Normaliser.Make(Config)(C.E)
+    module Name = Namer.Make(M.A)(M.E)
+    module Norm = Normaliser.Make(Config)(M.E)
 
     let gen ess kont r =
       Misc.fold_cross ess
@@ -66,15 +65,15 @@ module Make (Config:Config) (C:XXXCompile.S) =
 
     open Code
 
-    let er e = C.R.ERS [plain_edge e]
+    let er e = M.R.ERS [plain_edge e]
 
     let all_fences sd d1 d2 =
-      C.A.fold_all_fences
-        (fun f k -> er (C.E.Fenced (f,sd,Dir d1,Dir d2))::k)
+      M.A.fold_all_fences
+        (fun f k -> er (M.E.Fenced (f,sd,Dir d1,Dir d2))::k)
 
     let some_fences sd d1 d2 =
-      C.A.fold_some_fences
-        (fun f k -> er (C.E.Fenced (f,sd,Dir d1,Dir d2))::k)
+      M.A.fold_some_fences
+        (fun f k -> er (M.E.Fenced (f,sd,Dir d1,Dir d2))::k)
         
 (* Limited variations *)
     let app_def_dp o f r = match o with
@@ -84,7 +83,7 @@ module Make (Config:Config) (C:XXXCompile.S) =
     let someR sd d =
       er (Po (sd,Dir R,Dir d))::
       app_def_dp
-        (match d with R -> C.A.ddr_default | W -> C.A.ddw_default)
+        (match d with R -> M.A.ddr_default | W -> M.A.ddw_default)
         (fun dp k -> er (Dp (dp,sd,Dir d))::k)
         (some_fences sd R d [])      
 
@@ -96,7 +95,7 @@ module Make (Config:Config) (C:XXXCompile.S) =
 (* ALL *)
     let allR sd d =
       er (Po (sd,Dir R,Dir d))::
-      (match d with R -> C.A.fold_dpr | W -> C.A.fold_dpw)
+      (match d with R -> M.A.fold_dpr | W -> M.A.fold_dpw)
         (fun dp k -> er (Dp (dp,sd,Dir d))::k)
         (all_fences sd R d [])      
 
@@ -115,17 +114,20 @@ module Make (Config:Config) (C:XXXCompile.S) =
     | "someWW" -> someW Diff W
     | _ -> 
         let es = LexUtil.split s in
-        List.map C.R.parse_relax es
+        List.map M.R.parse_relax es
 
     let parse_edges s =
       let rs = parse_relaxs s in
-      List.fold_right (fun r k -> C.R.edges_of r :: k) rs []
+      List.fold_right (fun r k -> M.R.edges_of r :: k) rs []
 
-    module V = VarAtomic.Make(Config)(C.E) 
+(*
+    module V = VarAtomic.Make(Config)(M.E) 
 
     let varatom_ess ess = List.map V.varatom_es ess
+*)
+    let varatom_ess ess = ess
 
-    let expand_edge es = C.E.expand_edges es Misc.cons
+    let expand_edge es = M.E.expand_edges es Misc.cons
     let expand_edges ess =
       List.flatten (List.map (fun e -> expand_edge e []) ess)
 
@@ -182,6 +184,7 @@ let () =
       let list_edges = !Config.list_edges
       let overload = !Config.overload
       let poll = !Config.poll
+      let docheck = !Config.docheck
       let optcoherence = !Config.optcoherence
       let optcond = !Config.optcond
       let fno = !Config.fno
@@ -191,19 +194,29 @@ let () =
       let nprocs = !Config.nprocs
       let neg = !Config.neg
       let allow_back = false
+      let cpp = match !Config.arch with Archs.CPP -> true | _ -> false
     end in
     let module V = SymbConstant in
     let open Archs in
+    let module T = Top.Make(C) in
     begin match !Config.arch with
     | X86 ->
-        let module M = Make(C)(X86Compile.Make(V)(C)) in
+        let module M = Make(C)(T(X86Compile.Make(V)(C))) in
         M.zyva
     | PPC -> 
         let module PPCConf = struct let eieio = !use_eieio end in
-        let module M = Make(C)(PPCCompile.Make(V)(C)(PPCConf)) in
+        let module M = Make(C)(T(PPCCompile.Make(V)(C)(PPCConf))) in
         M.zyva
     | ARM ->
-        let module M = Make(C)(ARMCompile.Make(V)(C)) in
+        let module M = Make(C)(T(ARMCompile.Make(V)(C))) in
+        M.zyva
+    | C|CPP ->
+        let module CoC = struct
+          include C
+          let typ = !Config.typ
+        end in
+        let module T = CCompile.Make(CoC) in
+        let module M = Make(C)(T) in
         M.zyva
     end pp_es
         with

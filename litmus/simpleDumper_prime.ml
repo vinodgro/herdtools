@@ -31,26 +31,28 @@ end
 module Make(I:I) : sig
   val dump : out_channel ->
     Name.t ->
-    (I.state, (int * I.P.code) list, I.constr, I.location)
+    (I.state, I.P.code list, I.constr, I.location)
         MiscParser.result
       -> unit
   val dump_info : out_channel ->
     Name.t ->
-    (I.state, (int * I.P.code) list, I.constr, I.location)
+    (I.state, I.P.code list, I.constr, I.location)
         MiscParser.result
       -> unit
   val lines :
       Name.t ->
-        (I.state, (int * I.P.code) list, I.constr, I.location)
+        (I.state, I.P.code list, I.constr, I.location)
           MiscParser.result
       -> string list
 end = struct
   open Printf
   open I
 
-  let prog chan prog =
+(*
+    let prog chan prog =
     let pp = List.map I.P.dump_prog prog in
     Misc.pp_prog chan pp
+*)
 (*
     dump_procs chan prog ;
     iter_prog (dump_ios chan)
@@ -70,7 +72,7 @@ end = struct
     | doc -> fprintf chan "\"%s\"\n" doc
     end ;
     fprintf chan "\n{%s}\n\n" (dump_state  t.init) ;
-    prog chan t.prog ;
+    I.P.print_prog chan t.prog ;
     fprintf chan "\n" ;
     begin match t.locations with
     | [] -> ()
@@ -78,8 +80,8 @@ end = struct
         fprintf chan "locations [" ;
         List.iter
           (fun (loc,t) -> match t with
-          | MiscParser.I -> fprintf chan "%s; " (I.dump_location loc)
-          | MiscParser.P -> fprintf chan "%s*; "(I.dump_location loc))
+          | MiscParser.Ty _ -> fprintf chan "%s; " (I.dump_location loc)
+          | MiscParser.Pointer _ -> fprintf chan "%s*; "(I.dump_location loc))
           locs ;
         fprintf chan "]\n"
     end ;
@@ -102,9 +104,7 @@ end = struct
     end @@
     begin
       fun k ->
-      let pp = List.map I.P.dump_prog t.prog in
-      let pp = Misc.lines_of_prog pp in
-      let pp = List.map (sprintf "%s;") pp in
+      let pp = I.P.dump_prog_lines t.prog in
       pp @ ""::k
     end @@
     begin fun k ->
@@ -115,8 +115,8 @@ end = struct
             (String.concat " "
                (List.map
                   (fun (loc,t) -> match t with
-                  | MiscParser.I -> sprintf "%s; " (I.dump_location loc)
-                  | MiscParser.P -> sprintf "%s*; "(I.dump_location loc))
+                  | MiscParser.Ty _ -> sprintf "%s; " (I.dump_location loc)
+                  | MiscParser.Pointer _ -> sprintf "%s*; "(I.dump_location loc))
                   locs))::k
     end @@
     [I.dump_constr t.condition]

@@ -50,6 +50,8 @@ module type Config = sig
   val carch : Archs.System.t Lazy.t
   val xy : bool
   val pldw : bool
+  val c11 : bool
+  val c11_fence : bool
   include DumpParams.Config
 end
 
@@ -292,19 +294,19 @@ end = struct
       test.T.globals @
     List.flatten
       (List.map
-         (fun (proc,(_,outs)) ->
+         (fun (proc,(_,(outs, _))) ->
            List.map
              (fun (reg,t) -> A.Location_reg (proc,reg),t)
              outs)
          test.T.code)
 
   let rec find_type loc env = match env with
-  | [] -> RunType.Int
+  | [] -> RunType.Ty "int"
   | (loc0,t)::env ->
       if A.location_compare loc loc0 = 0 then t
       else find_type loc env
 
-  let find_global_type a = find_type (A.Location_global a)
+  let _find_global_type a = find_type (A.Location_global a)
 
 (* Test condition *)
 
@@ -344,6 +346,7 @@ end = struct
     O.o "#include <time.h>" ;
     O.o "#include <limits.h>" ;
     O.o "#include \"utils.h\"" ;
+    if Cfg.c11 then O.o "#include <stdatomic.h>";
     O.o "#include \"outs.h\"" ;
     if do_affinity then O.o "#include \"affinity.h\"" ;
     O.o "" ;
@@ -660,7 +663,11 @@ let dump_read_timebase () =
 
   let dumb_one_mbar name fence =
     O.f "inline static void %s(void) {"  name ;
-    O.fi "asm __volatile__ (\"%s\" ::: \"memory\");" fence ;
+    (if Cfg.c11_fence then
+       O.oi "atomic_thread_fence(memory_order_acq_rel);"
+     else
+       O.fi "asm __volatile__ (\"%s\" ::: \"memory\");" fence
+    );
     O.o "}"
 
   let dump_mbar_def () =
@@ -700,13 +707,9 @@ let dump_read_timebase () =
 (* Variables *)
 (*************)
 
-  let dump_type t = match t with
-  | RunType.Int -> "int"
-  | RunType.Pointer -> "int*"
-
   let dump_global_type t = match memory with
-  | Direct -> dump_type t
-  | Indirect -> sprintf "%s*" (dump_type t)
+  | Direct -> RunType.dump t
+  | Indirect -> sprintf "%s*" (RunType.dump t)
 
   let dump_vars test =
     O.o "/* Shared variables */" ;
@@ -721,13 +724,13 @@ let dump_read_timebase () =
         let r =
           List.fold_right
             (fun (a,t) k ->
-              O.fi "%s *mem_%s ;" (dump_type t) a ;
+              O.fi "%s *mem_%s ;" (RunType.dump t) a ;
               if Cfg.cautious then
                 List.fold_right
                   (fun (loc,v) k -> match loc,v with
                   | A.Location_reg(p,r),Symbolic s when s = a ->
                       let cpy = A.Out.addr_cpy_name a p in
-                      O.fi "%s* *%s ;" (dump_type t) cpy ;
+                      O.fi "%s* *%s ;" (RunType.dump t) cpy ;
                       (cpy,a)::k
                   | _,_ -> k)
                   test.T.init k
@@ -738,8 +741,8 @@ let dump_read_timebase () =
     end
 
   let is_ptr = function
-    | RunType.Pointer -> true
-    | RunType.Int -> false
+    | RunType.Pointer _ -> true
+    | RunType.Ty _ -> false
 
   let ptr_in_outs env test =
     let locs = get_final_locs test in
@@ -749,7 +752,7 @@ let dump_read_timebase () =
 
   let iter_all_outs f test =
     List.iter
-      (fun (proc,(_,outs)) -> iter_outs f proc outs)
+      (fun (proc,(_,(outs,_))) -> iter_outs f proc outs)
       test.T.code
 
   let dump_out_vars test =
@@ -757,7 +760,7 @@ let dump_read_timebase () =
     iter_all_outs
       (fun proc (reg,t) ->
         O.fi "%s *%s;"
-          (dump_type t)
+          (RunType.dump t)
           (A.Out.dump_out_reg proc reg))
       test
 
@@ -768,8 +771,8 @@ let dump_read_timebase () =
     | A.Location_global s -> sprintf "%s" s in
 
     let pp_fmt loc = match find_type loc env with
-    | RunType.Int -> if Cfg.hexa then "0x%x" else "%i"
-    | RunType.Pointer -> "%s" in
+    | RunType.Ty _ -> if Cfg.hexa then "0x%\"PRIxMAX\"" else "%\"PRIiMAX\""
+    | RunType.Pointer _ -> "%s" in
 
     String.concat " "
       (List.map
@@ -810,11 +813,11 @@ let dump_read_timebase () =
     let cond = test.T.condition in
     let find_type loc =
       let t = find_type loc env in
-      dump_type t in
+      RunType.dump (RunType.strip_atomic t) in
     DC.fundef find_type cond
 
   let dump_cond_fun_call test dump_loc dump_val =
-    DC.funcall (test.T.condition) dump_loc dump_val 
+    DC.funcall (test.T.condition) dump_loc dump_val
 
   let dump_defs_outs doc env test =
     (* If some of the output registers is of pointer type,
@@ -852,7 +855,7 @@ let dump_read_timebase () =
     let outs = get_final_locs test in
     let nouts = List.length outs in
     O.f "#define NOUTS %i" nouts ;
-    O.o "typedef int outcome_t[NOUTS];" ;
+    O.o "typedef intmax_t outcome_t[NOUTS];" ;
     O.o "" ;
     Misc.iteri
       (fun i loc ->
@@ -939,7 +942,7 @@ let dump_read_timebase () =
     end ;
 (* Dumping *)
     O.o
-      "static void do_dump_outcome(FILE *fhist, int *o, count_t c, int show) {" ;
+      "static void do_dump_outcome(FILE *fhist, intmax_t *o, count_t c, int show) {" ;
     let fmt_var = fmt_outcome outs env in
     let fmt ="\"%-6\"PCTR\"%c>" ^ fmt_var ^ "\\n\"" in
     let args =
@@ -949,8 +952,8 @@ let dump_read_timebase () =
            (fun loc ->
              let sloc = dump_loc_name loc in
              match find_type loc env with
-             | RunType.Int -> sprintf "o[%s_f]" sloc
-             | RunType.Pointer -> sprintf "pretty_addr[o[%s_f]]" sloc)
+             | RunType.Ty _ -> sprintf "o[%s_f]" sloc
+             | RunType.Pointer _ -> sprintf "pretty_addr[o[%s_f]]" sloc)
            outs) in
     O.fi "fprintf(fhist,%s,%s);" fmt args ;
     O.o "}" ;
@@ -1028,11 +1031,24 @@ let dump_read_timebase () =
             List.iter
               (fun loc ->
                 O.fi "%s* cpy_%s[N] ;"
-                  (dump_type (find_type loc env)) (dump_loc_name loc))
+                  (RunType.dump (find_type loc env)) (dump_loc_name loc))
               locs
           end
       end
     end
+
+  let do_store t loc v =
+    if RunType.is_atomic t then
+      sprintf "atomic_store_explicit(&%s,%s,memory_order_relaxed)" loc v
+    else
+      sprintf "%s = %s" loc v
+
+  let do_load t loc =
+    if RunType.is_atomic t then
+      sprintf "atomic_load_explicit(&%s,memory_order_relaxed)" loc
+    else loc
+
+  let do_copy t loc1 loc2 = do_store t loc1 (do_load t loc2)
 
   let dump_check_globals env test =
     if do_check_globals then begin
@@ -1046,7 +1062,10 @@ let dump_read_timebase () =
       List.iter
         (fun (a,t) -> match memory with
         | Indirect ->
-            if t=RunType.Int then O.fi "int *mem_%s = _a->mem_%s;" a a
+            begin match t with
+            | RunType.Ty ty -> O.fi "%s *mem_%s = _a->mem_%s;" ty a a
+            | RunType.Pointer _ -> ()
+            end
         | Direct ->
             O.fi "%s *%s = _a->%s;" (dump_global_type t) a a)
         test.T.globals ;
@@ -1056,14 +1075,17 @@ let dump_read_timebase () =
       let dump_test (a,t) =
         let v = find_global_init a test in
         match memory,t with
-        | Indirect,RunType.Int->
-            sprintf "mem_%s[_i] != %s" a  (A.Out.dump_v v)
-        | (Indirect,RunType.Pointer) ->
+        | Indirect,RunType.Ty _ ->
+            let load = do_load t (sprintf "mem_%s[_i]" a) in
+            sprintf "%s != %s" load (A.Out.dump_v v)
+        | (Indirect,RunType.Pointer _) ->
+            let load = do_load t (dump_a_leftval a) in
             sprintf "%s != %s"
-              (dump_a_leftval a) (dump_a_v_casted v)
+              load (dump_a_v_casted v)
         | (Direct,_) ->
+            let load = do_load t (dump_leftval a) in
             sprintf "%s != %s"
-              (dump_leftval a) (dump_a_v_casted v) in
+              load (dump_a_v_casted v) in
       List.iter
         (fun x ->
           O.fii "if (%s%s) fatal(\"check_globals failed\");"
@@ -1088,7 +1110,7 @@ let dump_read_timebase () =
               let a = dump_loc_name loc
               and t = find_type loc env in
               O.fi "%s *%s = _a->%s;" (dump_global_type t) a a ;
-              O.fi "%s **cpy_%s = _a->cpy_%s;" (dump_type t) a a)
+              O.fi "%s **cpy_%s = _a->cpy_%s;" (RunType.dump t) a a)
             locs ;
           O.f "" ;
           O.fi "pb_wait(_a->fst_barrier); " ;
@@ -1096,8 +1118,12 @@ let dump_read_timebase () =
           loop_test_prelude indent2 "" ;
           List.iter
             (fun loc ->
-              O.fiii "cpy_%s[_id][_i] = %s;"
-                (dump_loc_name loc) (dump_loc loc))
+              let t = find_type loc env in
+              let ins =
+                do_copy t
+                  (sprintf "cpy_%s[_id][_i]" (dump_loc_name loc))
+                  (dump_loc loc) in
+              O.fiii "%s;" ins)
             locs ;
           loop_test_postlude indent2 ;
           O.fii "po_reinit(_a->s_or);" ;
@@ -1108,7 +1134,12 @@ let dump_read_timebase () =
           List.iter
             (fun loc ->
               let a = dump_loc_name loc in
-              O.fiii "if (cpy_%s[_id][_i] != cpy_%s[_nxt_id][_i]) { _found = 1; break; }" a a)
+              let t = find_type loc env in
+              let load1 =
+                do_load t (sprintf "cpy_%s[_id][_i]" a)
+              and load2 =
+                do_load t (sprintf "cpy_%s[_nxt_id][_i]" a) in
+              O.fiii "if (%s != %s) { _found = 1; break; }" load1 load2)
             locs ;
           O.oii "}" ;
           let fmt = "%i: Stabilizing final state!\\n" in
@@ -1178,9 +1209,9 @@ let dump_read_timebase () =
       List.iter
         (fun (a,t) ->
           O.fx indent "_a->%s = do_align(_am,sizeof(%s));"
-            (dump_ctx_tag a) (dump_type t) ;
-          O.fx indent "_a->%s = (%s *)_am;" (dump_ctx_tag a) (dump_type t) ;
-          O.fx indent "_am += sizeof(%s)*size_of_test;"  (dump_type t))
+            (dump_ctx_tag a) (RunType.dump t) ;
+          O.fx indent "_a->%s = (%s *)_am;" (dump_ctx_tag a) (RunType.dump t) ;
+          O.fx indent "_am += sizeof(%s)*size_of_test;"  (RunType.dump t))
         test.T.globals ;
       begin match memory with
       | Direct -> ()
@@ -1320,24 +1351,27 @@ let dump_read_timebase () =
       (fun (a,t) ->
         let v = A.find_in_state (A.Location_global a) test.T.init in
         if Cfg.cautious then O.oii "mcautious();" ;
-        match t,memory with
-        | RunType.Int,Indirect ->
-            O.fii "_a->mem_%s[_i] = %s;" a (dump_a_v v)
-        | _,_ ->
-            O.fii "%s = %s;"
-              (dump_a_leftval a) (dump_a_v_casted v))
+        let ins =
+          match t,memory with
+          | RunType.Ty _,Indirect ->
+              do_store t
+                (sprintf "_a->mem_%s[_i]" a) (dump_a_v v)
+          | _,_ ->
+              do_store t
+                (dump_a_leftval a) (dump_a_v_casted v) in
+        O.fii "%s;" ins)
       test.T.globals ;
     begin if do_safer && do_collect_after then
       List.iter
-        (fun (proc,(_,outs)) ->
+        (fun (proc,(_,(outs,_))) ->
           List.iter
             (fun (reg,t) ->
               if Cfg.cautious then O.oii "mcautious();" ;
               O.fii "_a->%s[_i] = %s;"
                 (A.Out.dump_out_reg proc reg)
                 (match t with
-                | RunType.Int -> "-239487" (* Susmit's sentinel *)
-                | RunType.Pointer -> "NULL"))
+                | RunType.Ty _ -> "-239487" (* Susmit's sentinel *)
+                | RunType.Pointer _ -> "NULL"))
             outs)
         test.T.code ;
     end ;
@@ -1374,9 +1408,9 @@ let dump_read_timebase () =
     if do_verbose_barrier_local then O.fi "pm_t *p_mutex;" ;
     O.fi "ctx_t *_a;   /* In this context */" ;
     O.f "} parg_t;" ;
-    O.f "" ;
+    O.f "\n\n%s\n\n" (String.concat "\n" test.T.global_code);
     List.iter
-      (fun (proc,(out,outregs)) ->
+      (fun (proc,(out,(outregs,envVolatile))) ->
         let  do_collect =  do_collect_local && (do_safer || proc=0) in
         O.f "static void *P%i(void *_vb) {" proc ;
         O.fi "mbar();" ;
@@ -1408,7 +1442,7 @@ let dump_read_timebase () =
         | NoBarrier -> ()
         end ;
         O.fi "int _size_of_test = _a->_p->size_of_test;" ;
-        let prf = 
+        let prf =
           List.filter
             (fun (xproc,_,_) -> proc=xproc)
             (Prefetch.parse (get_prefetch_info test)) in
@@ -1416,7 +1450,7 @@ let dump_read_timebase () =
           O.fi "prfone_t *_prft = _a->_p->prefetch->t[%i].t;" proc ;
         if do_staticpl then begin match prf with
         | [] -> ()
-        | _::_ -> 
+        | _::_ ->
             O.oi "unsigned int _static_prefetch = _a->_p->static_prefetch;"
         end ;
         begin match stride with
@@ -1424,15 +1458,17 @@ let dump_read_timebase () =
         | Some _ -> O.fi "int _stride = _a->_p->stride;"
         end ;
         let addrs = A.Out.get_addrs out in
+(*
         List.iter
           (fun a ->
             let t = find_global_type a env in
             O.fi "%s *%s = _a->%s;" (dump_global_type t) a a)
           addrs ;
+*)
         List.iter
           (fun (r,t) ->
             let name = A.Out.dump_out_reg  proc r in
-            O.fi "%s *%s = _a->%s;" (dump_type t) name name)
+            O.fi "%s *%s = _a->%s;" (RunType.dump t) name name)
           outregs ;
 
         let iloop =
@@ -1483,7 +1519,7 @@ let dump_read_timebase () =
             | Preload.StaticNPL Preload.One ->
                 iter
                   (fun f loc ->
-                    O.fx iloop "%s(%s);" f loc)  
+                    O.fx iloop "%s(%s);" f loc)
             | Preload.StaticNPL Preload.Two ->
                 iter
                   (fun f loc ->
@@ -1514,7 +1550,7 @@ let dump_read_timebase () =
                   O.fx j "if (rand_k(&(_a->seed),_static_prefetch) == 0) %s(%s);"
                     f loc) ;
               O.fx j "break;" ;
-              O.fx iloop "}" ;          
+              O.fx iloop "}" ;
           end
         end ;
         begin match barrier with
@@ -1577,8 +1613,13 @@ let dump_read_timebase () =
             (fun (loc,t) k -> match loc with
             | A.Location_reg (p,reg) -> if p = proc then (reg,t)::k else k
             | A.Location_global _ -> k) env [] in
+        let global_env =
+          List.fold_right
+            (fun (loc,t) k -> match loc with
+            | A.Location_reg _ -> k
+            | A.Location_global reg -> (reg,t)::k) env [] in
 (* Dump real code now *)
-        Lang.dump O.out (Indent.as_string iloop) myenv proc out ;
+        Lang.dump O.out (Indent.as_string iloop) myenv global_env envVolatile proc out ;
         if do_verbose_barrier && have_timebase  then begin
           if do_timebase then begin
             O.fx iloop "_a->tb_delta[%i][_i] = _delta;" proc ;
@@ -1606,8 +1647,8 @@ let dump_read_timebase () =
                 (dump_loc_name loc)
                 (let sloc =  dump_ctx_loc "_a->" loc in
                 match find_type loc env with
-                | RunType.Int -> sloc
-                | RunType.Pointer -> sprintf "idx_addr(_a,_i,%s)" sloc))
+                | RunType.Ty _ -> sloc
+                | RunType.Pointer _ -> sprintf "idx_addr(_a,_i,%s)" sloc))
             locs ;
           O.fx iloop "add_outcome(hist,1,_o,%scond);"
             (if remark_pos test then "" else "!") ;
@@ -1789,10 +1830,11 @@ let dump_read_timebase () =
       end ;
       List.iter
         (fun loc ->
+          let t = find_type loc env in
           O.fiii "%s %s = %s;"
-            (dump_type (find_type loc env))
+            (RunType.dump (RunType.strip_atomic t))
             (dump_loc_copy loc)
-            (dump_ctx_loc "ctx." loc) ;
+            (do_load t (dump_ctx_loc "ctx." loc)) ;
           if Cfg.cautious then O.oiii "mcautious();")
         locs ;
       O.oiii "outcome_t o;" ;
@@ -1805,10 +1847,13 @@ let dump_read_timebase () =
         | locs -> begin
             List.iter
               (fun loc ->
+                let t = find_type loc env in
                 loop_proc_prelude indent3 ;
                 O.fiv
-                  "if (%s != ctx.cpy_%s[_p][_i]) fatal(\"%s: global %s unstabilized\") ;"
-                  (dump_loc_copy loc) (dump_loc_name loc)
+                  "if (%s != %s) fatal(\"%s: global %s unstabilized\") ;"
+                  (dump_loc_copy loc)
+                  (do_load t
+                     (sprintf "ctx.cpy_%s[_p][_i]" (dump_loc_name loc)))
                   (doc.Name.name)  (dump_loc_name loc) ;
                 loop_proc_postlude indent3)
               locs ;
@@ -1830,8 +1875,8 @@ let dump_read_timebase () =
           O.fiii "o[%s_f] = %s;"
             (dump_loc_name loc)
             (match find_type loc env with
-            | RunType.Int -> dump_loc_copy loc
-            | RunType.Pointer -> sprintf "idx_addr(&ctx,_i,%s)" (dump_loc_copy loc)))
+            | RunType.Ty _ -> dump_loc_copy loc
+            | RunType.Pointer _ -> sprintf "idx_addr(&ctx,_i,%s)" (dump_loc_copy loc)))
         locs ;
       O.fiii "add_outcome(hist,1,o,%scond);"
         (if remark_pos test then "" else "!") ;
@@ -2329,7 +2374,7 @@ let dump_read_timebase () =
                   (fun loc ->
                     sprintf "{ global_names[%i], none, }"
                       (find_index loc vars))
-                  addrs)) ;            
+                  addrs)) ;
           O.fi "prfproc_t _prf_%i = { %i, _prf_t_%i}; "
             i (List.length addrs) i)
         test.T.code ;

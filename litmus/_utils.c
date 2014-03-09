@@ -846,6 +846,7 @@ po_t *po_create(int nprocs) {
   p->cond = pc_create() ;
   p->nprocs = p->count = nprocs ;
   p->val = 0 ;
+  p->turn = 0 ;
   return p ;
 }
 
@@ -856,26 +857,34 @@ void po_free(po_t *p) {
 
 void po_reinit(po_t *p) {
   pc_lock(p->cond) ;
+  int t = p->turn ;
   --p->count ;
   if (p->count == 0) {
     p->count = p->nprocs ;
     p->val = 0 ;
+    p->turn = !t ;
     pc_broadcast(p->cond) ;
   } else {
-    pc_wait(p->cond) ;
+    do {
+      pc_wait(p->cond) ;
+    } while (p->turn == t) ;
   }
   pc_unlock(p->cond) ;
 }
 
 int po_wait(po_t *p, int v) {
   pc_lock(p->cond) ;
+  int t = p->turn ;
   --p->count ;
   p->val = p->val || v ;
   if (p->count == 0) {
     p->count = p->nprocs ;
+    p->turn = !t ;
     pc_broadcast(p->cond) ;
   } else {
-    pc_wait(p->cond) ;
+    do {
+      pc_wait(p->cond) ;
+    } while (p->turn == t) ;
   }
   int r = p->val ;
   pc_unlock(p->cond) ;

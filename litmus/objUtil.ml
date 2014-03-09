@@ -16,7 +16,7 @@ open Printf
 
 let cp_lib_file src dst =
   let _,in_chan = MyName.open_lib src in
-  begin try MySys.cp in_chan dst 
+  begin try MySys.cp in_chan dst
   with e -> close_in in_chan  ; raise e end ;
   close_in in_chan
 
@@ -29,6 +29,7 @@ module type Config = sig
   val targetos : TargetOS.t
   val driver : Driver.t
   val affinity : Affinity.t
+  val arch : Archs.t
 end
 
 module Make(O:Config)(Tar:Tar.S) =
@@ -50,6 +51,8 @@ module Make(O:Config)(Tar:Tar.S) =
 
     let cpy fnames name ext = do_cpy fnames ("_" ^ name) name ext
 
+    let cpy' fnames src dst ext = do_cpy fnames ("_" ^ src) dst ext
+
     let affinity_base () = match O.targetos with
     | Linux -> "_linux_affinity"
     | AIX -> "_aix_affinity"
@@ -60,14 +63,19 @@ module Make(O:Config)(Tar:Tar.S) =
       let fnames = match O.driver with
       | Driver.Shell -> fnames
       | Driver.C|Driver.XCode -> cpy fnames "toh" ".sh" in
-      let fnames=  cpy fnames "show" ".awk" in
+      let fnames = match O.arch with
+        | `C ->
+            cpy' fnames "showC" "show" ".awk"
+        | `X86 | `ARM | `PPC | `PPCGen ->
+            cpy fnames "show" ".awk"
+      in
       let fnames = cpy fnames "utils" ".c" in
       let fnames = cpy fnames "utils" ".h" in
       let fnames = cpy fnames "outs" ".c" in
       let fnames = cpy fnames "outs" ".h" in
       let fnames =
         match O.affinity with
-        | Affinity.No -> fnames 
+        | Affinity.No -> fnames
         | _ ->
             let affi = affinity_base () in
             let fnames = do_cpy fnames affi "affinity" ".c" in
@@ -76,4 +84,3 @@ module Make(O:Config)(Tar:Tar.S) =
       fnames
 
   end
-

@@ -22,17 +22,17 @@ module type DiyConfig = sig
   val upto : bool
 end
 
-module Make(C:XXXCompile.S)(O:DiyConfig) = struct
+module Make(C:Builder.S)(O:DiyConfig) = struct
 
 open C.E
 open C.R
 
 let parse_fence s k =  match s with
-  | One f -> C.parse_fence f::k
+  | One f -> C.E.parse_fence f::k
   | Seq [] -> k
   | Seq (fs) ->
       List.fold_right
-        (fun s k -> C.parse_fence s::k)
+        (fun s k -> C.E.parse_fence s::k)
         fs k
 
 let parse_relaxs = List.map parse_relax
@@ -151,6 +151,9 @@ let () =
   let relax_list = split !Config.relaxs
   and safe_list = split !Config.safes 
   and one_list = if !Config.one then Some !lc else None in
+
+  let cpp = match !Config.arch with CPP -> true  |  _ -> false in
+
   let module Co = struct
 (* Dump all *)
     let verbose = !Config.verbose
@@ -189,7 +192,9 @@ let () =
     let eprocs = !Config.eprocs
     let nprocs = !Config.nprocs
     let neg = !Config.neg
-  end in
+    let cpp = cpp
+    let docheck = !Config.docheck
+ end in
   let module C = struct
     let verbose = !Config.verbose
     let list_edges = !Config.list_edges
@@ -201,17 +206,26 @@ let () =
     let unrollatomic = !Config.unrollatomic
     let allow_back = match !Config.mode with
     | Sc|Critical|Thin -> false
-    | _ -> true
+    | _ -> true          
   end in
+  let module T = Top.Make(Co) in
   let f = match !Config.arch with
   | PPC ->
-      let module M = Make(PPCCompile.Make(V)(C)(PPCArch.Config))(Co) in
+      let module M = Make(T(PPCCompile.Make(V)(C)(PPCArch.Config)))(Co) in
     M.go
   | X86 ->
-    let module M = Make(X86Compile.Make(V)(C))(Co) in
+    let module M = Make(T(X86Compile.Make(V)(C)))(Co) in
     M.go
   | ARM ->
-      let module M = Make(ARMCompile.Make(V)(C))(Co) in
+      let module M = Make(T(ARMCompile.Make(V)(C)))(Co) in
+      M.go
+  | C|CPP ->
+      let module CoC = struct
+        include Co
+        include C
+        let typ = !Config.typ
+      end in
+      let module M = Make(CCompile.Make(CoC))(Co) in
       M.go in
   try
     f !Config.size relax_list safe_list one_list ;

@@ -62,26 +62,19 @@ module type S = sig
 
   val after_dump : out_channel -> string -> int -> t -> unit
 
-  (* TODO: Remove this ugly module *)
-  module Reexport : sig
-    module O : Config
-    module A : I with type arch_reg = arch_reg
-    module V : Constant.S
+  val comment : char
+  val memory : Memory.t
+  val cautious : bool
 
-    module RegSet : MySet.S with type elt = A.arch_reg
+  module RegSet : MySet.S with type elt = arch_reg
 
-    val to_string : ins -> string
-    val trashed_regs : t -> RegSet.t
-    val dump_trashed_reg : A.arch_reg -> string
-    val dump_copies : out_channel -> string -> (A.arch_reg * RunType.t) list -> int -> t -> unit
-    val dump_outputs : out_channel -> int -> t -> RegSet.t -> unit
-    val dump_inputs : out_channel -> t -> RegSet.t -> unit
-    val dump_clobbers : out_channel -> 'a -> unit
-    val dump_save_copies : out_channel -> string -> int -> t -> unit
-
-    val before_dump : out_channel -> string -> (arch_reg * RunType.t) list -> int -> t -> RegSet.t -> unit
-  end
-
+  val to_string : ins -> string
+  val before_dump : out_channel -> string -> (arch_reg * RunType.t) list -> int -> t -> RegSet.t -> unit
+  val trashed_regs : t -> RegSet.t
+  val dump_outputs : out_channel -> int -> t -> RegSet.t -> unit
+  val dump_inputs : out_channel -> t -> RegSet.t -> unit
+  val dump_clobbers : out_channel -> 'a -> unit
+  val compile_out_reg : int -> arch_reg -> string
 end
 
 module Make(O:Config) (A:I) (V:Constant.S): S
@@ -246,15 +239,13 @@ struct
   let copy_name s = sprintf "_tmp_%s" s
 
   let dump_type env reg =
-    try match List.assoc reg env with
-    | RunType.Int -> "int"
-    | RunType.Pointer -> "void *"
-    with Not_found -> "int"
+    try RunType.dump (List.assoc reg env) with
+      | Not_found -> "int"
 
 
   let dump_addr a = match O.memory with
-  | Direct -> sprintf "&%s[_i]" a
-  | Indirect -> sprintf "%s[_i]" a
+  | Direct -> sprintf "&_a->%s[_i]" a
+  | Indirect -> sprintf "_a->%s[_i]" a
 
   let dump_v v = match v with
   | Concrete i -> sprintf "%i" i
@@ -314,9 +305,9 @@ struct
         (List.map
            (match O.memory with
            | Direct ->
-               (fun (_,a) -> sprintf "[%s] \"=m\" (%s[_i])" a a)
+               (fun (_,a) -> sprintf "[%s] \"=m\" (_a->%s[_i])" a a)
            | Indirect ->
-               (fun (_,a) -> sprintf "[%s] \"=m\" (*%s[_i])" a a)
+               (fun (_,a) -> sprintf "[%s] \"=m\" (*_a->%s[_i])" a a)
            )
            t.addrs
          @List.map
@@ -427,24 +418,7 @@ struct
       dump_save_copies chan indent proc t
     end
 
-  (* TODO: Remove this ugly module *)
-  module Reexport = struct
-    module A = A
-    module O = O
-    module V = V
-
-    module RegSet = RegSet
-
-    let to_string = to_string
-    let trashed_regs = trashed_regs
-    let dump_trashed_reg = dump_trashed_reg
-    let dump_copies = dump_copies
-    let dump_outputs = dump_outputs
-    let dump_inputs = dump_inputs
-    let dump_clobbers = dump_clobbers
-    let dump_save_copies = dump_save_copies
-
-    let before_dump = before_dump
-  end
-
+  let comment = A.comment
+  let memory = O.memory
+  let cautious = O.cautious
 end

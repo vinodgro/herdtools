@@ -29,9 +29,6 @@ type sd = Same|Diff
 (* Direction of related events *)
 type extr = Dir of dir | Irr 
 
-(* Atomicity of events *)
-type atom = Atomic | Plain | Reserve
-
 (* Associated pretty print & generators *)
 let pp_dir = function
   | W -> "W"
@@ -50,18 +47,12 @@ let pp_sd = function
   | Same -> "s"
   | Diff -> "d"
 
-let pp_atom = function
-  | Atomic -> "A"
-  | Plain -> "P"
-  | Reserve -> "R"
-
 let fold_ie f r = f Ext (f Int r)
 let fold_sd f r = f Diff (f Same r)
 let fold_extr f r = f (Dir W) (f (Dir R) (f Irr r))
 let fold_sd_extr f = fold_sd (fun sd -> fold_extr (fun e -> f sd e))
 let fold_sd_extr_extr f =
   fold_sd_extr (fun sd e1 -> fold_extr (fun e2 -> f sd e1 e2))
-let fold_atom f r = f Reserve (f Atomic (f Plain r))
 
 type check =  Sc | Uni | Thin | Critical | Free | Ppo | Transitive | Total
 
@@ -76,3 +67,8 @@ let pp_com = function
   | CWs -> "Ws"
 
 let fold_com f r = f CRf (f CFr (f CWs r))
+
+(* Info in tests *)
+type info = (string * string) list
+
+let plain = "Na"

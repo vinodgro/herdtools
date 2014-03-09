@@ -52,7 +52,7 @@ module type I = sig
 end
 
 module NoAdd = struct
-  type v = ()
+  type v = unit
   let add () _t = ()
 end
 

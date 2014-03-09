@@ -12,5 +12,7 @@
 module type S = sig
   type code
 
-  val dump_prog : (int * code) -> string list
+  val dump_prog : code -> string list
+  val print_prog : out_channel -> code list -> unit
+  val dump_prog_lines : code list -> string list
 end

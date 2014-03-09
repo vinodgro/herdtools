@@ -180,6 +180,7 @@ typedef struct {
   int nprocs ;
   int count ;
   volatile int val ;
+  volatile int turn ;
 } po_t ;
 
 po_t *po_create(int nprocs) ;

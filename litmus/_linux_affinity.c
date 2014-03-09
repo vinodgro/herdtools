@@ -69,7 +69,7 @@ static void warm_up(int sz, tsc_t d) {
 
 cpus_t *read_force_affinity(int n_avail, int verbose) {
   int sz = n_avail <= 1 ? 1 : n_avail ;
-  tsc_t max = sec / 10 ;
+  tsc_t max = sec / 100 ;
 
   for ( ; ; ) {
     warm_up(sz+1,max) ;
@@ -121,6 +121,20 @@ void write_one_affinity(int a) {
   }
 }
 
+/* Get the number of present cpus, fragile */
+
+static const char *present = "/sys/devices/system/cpu/present" ;
+
+static int get_present(void) {
+  FILE *fp = fopen(present,"r") ;
+  if (fp == NULL) return -1 ;
+  int r1,r2 ;
+  int n = fscanf(fp,"%d-%d\n",&r1,&r2) ;
+  fclose(fp) ;
+  if (n != 2) return -1 ;
+  return r2-r1+1 ;
+}
+
 void force_one_affinity(int a, int sz,int verbose, char *name) {
   if (a >= 0) {
     cpu_set_t mask;
@@ -132,9 +146,11 @@ void force_one_affinity(int a, int sz,int verbose, char *name) {
       if (r != 0) {
         if (verbose)
           fprintf(stderr,"%s: force %i failed\n",name,a) ;
-        //        tsc_t lim = timeofday()+ sec / 1000 ;
-        //        while (timeofday() < lim) ;
-        warm_up(2,sec/10) ;
+        int nwarm = get_present() ;
+        if (verbose > 1)
+          fprintf(stderr,"%s: present=%i\n",name,nwarm) ;
+        if (nwarm < 0) nwarm = sz+1 ;
+        warm_up(nwarm,sec/100) ;
       }
     } while (r != 0) ;
   }

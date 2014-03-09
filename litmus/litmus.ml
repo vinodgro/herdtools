@@ -119,6 +119,8 @@ let opts =
      (get_gccopts `C)
    end ;
    argstring "-gcc" Option.gcc "<name> name of gcc" ;
+   argbool "-c11" Option.c11 "enable the C11 standard";
+   argbool "-c11_fence" Option.c11_fence "enable the C11 standard";
    argstring "-linkopt" Option.linkopt "<flags> set gcc link option(s)" ;
    "-gas",
    Arg.Bool set_gas,
@@ -238,6 +240,12 @@ let () =
       let xy = !xy
       let pldw = !pldw
       let gcc = !gcc
+      let c11 = !c11
+      let c11_fence =
+        let b = !c11_fence in
+        if b && not c11 then
+          Warn.fatal "The use of C11 fence cannot be enabled without C11 enabled (use -c11 true)";
+        b
       let crossrun = !crossrun
       let driver = !driver
       let sleep = !sleep

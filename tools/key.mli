@@ -59,7 +59,9 @@ module Make(Opt:Config) : sig
    and first column *)
   module Cond : sig
 
-    type info =  { cond : LogConstr.constr option ; unsure : bool ; }
+    type info = 
+        { cond : LogConstr.constr option ; unsure : bool ;
+          kind : LogState.kind; }
 
     val add : LogState.t -> info t array
     val adds : LogState.t list -> info t array

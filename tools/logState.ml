@@ -55,7 +55,7 @@ type parsed_sts = {
 
 type sts = parsed_sts (* + sorted *)
 
-type kind = Allow | Require | Forbid | NoKind | ErrorKind
+type kind = Allow | Require | Forbid | NoKind | ErrorKind | Undefined
 type validation = Ok | No | DontKnow | Run
 
 
@@ -205,12 +205,14 @@ let pp_kind = function
   | Forbid -> "Forbid"
   | NoKind -> "???"
   | ErrorKind -> "----"
+  | Undefined -> "Undefined"
 
 let parse_kind = function
   | "Allow"|"Allowed" -> Some Allow
   | "Require" | "Required" -> Some Require
   | "Forbid"|"Forbidden" -> Some Forbid
   | ""|"Unknown"|"???"|"---" -> Some NoKind
+  | "Undefined" -> Some Undefined
   | _ -> None
 
 let pp_validation = function
@@ -846,7 +848,7 @@ let uniq _is_litmus name =
     | Allow ->
         if gt0 p then Ok else No
     | Forbid | Require -> if gt0 n then No else Ok
-    | NoKind -> DontKnow
+    | NoKind|Undefined -> DontKnow
     | ErrorKind -> assert false in
     { tname = t1.tname ; condition=cond; kind=k ;
       states = union_states t1.states t2.states ;

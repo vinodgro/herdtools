@@ -15,6 +15,7 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
   struct
 
     module ARM = ARMArch.Make(V)
+
     include CompileCommon.Make(Cfg)(ARM)
 
 
@@ -247,20 +248,20 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
 (*************)
 
     let emit_access  st p init e = match e.dir,e.atom with
-    | R,Plain ->
+    | R,None ->
         let r,init,cs,st = emit_load st p init e.loc in
         Some r,init,cs,st
-    | R,Reserve ->
+    | R,Some Reserve ->
         let r,init,cs,st = emit_ldrex st p init e.loc  in
         Some r,init,cs,st
-    | R,Atomic ->
+    | R,Some Atomic ->
         let r,init,cs,st = emit_fno st p init e.loc  in
         Some r,init,cs,st
-    | W,Plain ->
+    | W,None ->
         let init,cs,st = emit_store st p init e.loc e.v in
         None,init,cs,st
-    | W,Reserve -> Warn.fatal "No store with reservation"
-    | W,Atomic ->
+    | W,Some Reserve -> Warn.fatal "No store with reservation"
+    | W,Some Atomic ->
         let init,cs,st = emit_sta st p init e.loc e.v in
         None,init,cs,st
         
@@ -269,20 +270,20 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
       let r2,st = next_reg st in
       let c =  I_XOR (DontSetFlags,r2,r1,r1) in
       match e.dir,e.atom with
-      | R,Plain ->
+      | R,None ->
           let r,init,cs,st = emit_load_idx st p init e.loc r2 in
           Some r,init, Instruction c::cs,st
-      | R,Reserve ->
+      | R,Some Reserve ->
           let r,init,cs,st = emit_ldrex_idx st p init e.loc r2 in
           Some r,init, Instruction c::cs,st
-      | R,Atomic ->
+      | R,Some Atomic ->
           let r,init,cs,st = emit_fno_idx st p init e.loc r2 in
           Some r,init, Instruction c::cs,st
-      | W,Plain ->
+      | W,None ->
           let init,cs,st = emit_store_idx st p init e.loc r2 e.v in
           None,init,Instruction c::cs,st
-      | W,Reserve -> Warn.fatal "No store with reservation"
-      | W,Atomic ->
+      | W,Some Reserve -> Warn.fatal "No store with reservation"
+      | W,Some Atomic ->
           let init,cs,st = emit_sta_idx st p init e.loc r2 e.v in
           None,init,Instruction c::cs,st
 
@@ -295,13 +296,13 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
             [Instruction (I_XOR (DontSetFlags,r2,r1,r1)) ;
              Instruction (I_ADD (DontSetFlags,r2,r2,e.v)) ; ] in
           begin match e.atom with
-          | Plain ->
+          | None ->
               let init,cs,st = emit_store_reg st p init e.loc r2 in
               None,init,cs2@cs,st
-          | Atomic ->
+          | Some Atomic ->
               let init,cs,st = emit_sta_reg st p init e.loc r2 in
               None,init,cs2@cs,st              
-          | Reserve ->
+          | Some Reserve ->
                Warn.fatal "No store with reservation"
           end
 

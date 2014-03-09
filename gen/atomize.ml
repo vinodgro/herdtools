@@ -23,7 +23,7 @@ module type Config = sig
   val lowercase : bool
 end
 
-module Make (A:Arch.S) =
+module Make (A:Fence.S) =
     struct
       module E = Edge.Make(A)
       module Namer = Namer.Make(A)(E)
@@ -35,22 +35,23 @@ module Make (A:Arch.S) =
       | Ext -> true
       | Int -> false
 
+      let atomic = Some A.default_atom
+
       let atomize es =
-        let open E in
         match es with
         | [] -> []
         | fst::_ ->
             let rec do_rec es = match es with
               | [] -> []
               | [e] ->
-                  if is_ext fst || is_ext e then
-                    [ { e with a2 = Atomic; } ]
+                  if E.is_ext fst || E.is_ext e then
+                    [ { e with E.a2 = atomic ; } ]
                   else
                     es
               | e1::e2::es ->
-                  if is_ext e1 || is_ext e2 then
-                    let e1 = { e1 with a2 = Atomic; } in
-                    let e2 = { e2 with a1 = Atomic; } in
+                  if E.is_ext e1 || E.is_ext e2 then
+                    let e1 = { e1 with E.a2 = atomic; } in
+                    let e2 = { e2 with E.a1 = atomic; } in
                     e1::do_rec (e2::es)
                   else e1::do_rec (e2::es) in
             match do_rec es with
@@ -58,7 +59,7 @@ module Make (A:Arch.S) =
             | fst::rem as es ->
                 let lst = Misc.last es in
                 if is_ext fst || is_ext lst then
-                  { fst with a1 = Atomic;}::rem
+                  { fst with E.a1 = atomic;}::rem
                 else es
             
       let parse_line s =
@@ -115,5 +116,9 @@ let () =
       M.zyva
   | ARM ->
       let module M = Make(ARMArch.Make(V)) in
-      M.zyva)
+      M.zyva
+  | C ->
+      let module M = Make(CArch) in
+      M.zyva
+  | CPP -> Warn.fatal "CCP arch in atomize")      
      pp_es

@@ -17,6 +17,69 @@ module type Config = sig
   val barrier : Barrier.t
 end
 
+module Generic (A : Arch.Base) = struct
+  let base =  RunType.Ty "int"
+  and pointer = RunType.Pointer "int"
+
+  let typeof = function
+    | Constant.Concrete _ -> base
+    | Constant.Symbolic _ -> pointer
+
+  let type_in_final p reg final flocs =
+    Misc.proj_opt
+      base
+      (ConstrGen.fold_constr
+         (fun a t ->
+            let open ConstrGen in
+            match a with
+            | LV (A.Location_reg (q,r),v) when p=q && A.reg_compare reg r = 0 ->
+                begin match typeof v,t with
+                | (RunType.Ty s1, Some (RunType.Ty s2))
+                | (RunType.Pointer s1, Some (RunType.Pointer s2))
+                  when Misc.string_eq s1 s2 ->
+                    t
+                | (ty, None) -> Some ty
+                | (_, Some _) ->
+                    (* TODO: Improve the warning *)
+                    Warn.fatal "Type missmatch between the locations and \
+                                the final condition"
+                end
+            | _ -> t)
+         final
+         (List.fold_right
+            (fun (loc,t) k -> match loc with
+               | A.Location_reg (q,r) when p=q && A.reg_compare reg r = 0 ->
+                   begin match t with
+                   | MiscParser.Ty s -> Some (RunType.Ty s)
+                   | MiscParser.Pointer s -> Some (RunType.Pointer s)
+                   end
+               | _ -> k)
+            flocs
+            None)
+      )
+
+    let add_addr_type a ty env =
+(*      Printf.eprintf "Type %s : %s\n" key a (RunType.dump ty) ; *)
+      try
+        let tz = StringMap.find a env in
+        match ty,tz with
+        | (RunType.Pointer s1, RunType.Pointer s2)
+        | (RunType.Ty s1, RunType.Ty s2) when Misc.string_eq s1 s2 -> env
+(* All default cases expressed,
+   will produce a warning if RunType.t is extended *)
+        | (RunType.Pointer _|RunType.Ty _),(RunType.Pointer _|RunType.Ty _) ->
+            (* TODO: Improve the warning *)
+            Warn.fatal
+              "Type missmatch detected on location %s, required %s vs. found %s"
+              a (RunType.dump ty) (RunType.dump tz)
+      with
+        Not_found -> StringMap.add a ty env
+
+    let add_value v env = match v with
+    | Constant.Concrete _ -> env
+    | Constant.Symbolic a -> add_addr_type a (RunType.Ty "int") env
+end
+
 module Make
     (O:Config)
     (A_complete : Arch.S)
@@ -25,7 +88,7 @@ module Make
       and type location = A_complete.location
       and module Out = A_complete.Out
     )
-    (T:Test.S with module A = A and type P.code = A_complete.pseudo list)
+    (T:Test.S with module A = A and type P.code = int * A_complete.pseudo list)
     (C:XXXCompile.S with module A = A_complete) =
   struct
     open Printf
@@ -34,6 +97,7 @@ module Make
     module A = A_complete
     module V = A.V
     module Constr = T.C
+    module Generic = Generic(A)
     open A.Out
 
     let rec extract_pseudo ins = match ins with
@@ -314,78 +378,50 @@ let lblmap_code =
             code = code; })
         pecs
 
-    let typeof v = match v with
-    | Concrete _ -> RunType.Int
-    | Symbolic _ -> RunType.Pointer
-
-    let add_addr_type a ty env =
-      try
-        let tz = StringMap.find a env in
-        let ty =
-          match ty,tz with
-          | RunType.Int,RunType.Int -> RunType.Int
-          | (RunType.Pointer,_)|(_,RunType.Pointer) -> RunType.Pointer in
-        StringMap.add a ty env
-      with
-        Not_found -> StringMap.add a ty env
-
-    let add_value v env = match v with
-    | Concrete _ -> env
-    | Symbolic a -> add_addr_type a RunType.Int env
-
     let comp_globals init code =
       let env =
         List.fold_right
           (fun (loc,v) env ->
-            let env = add_value v env in
             match loc with
-            | A.Location_global (a) ->
-                add_addr_type a (typeof v) env
+            | A.Location_global a ->
+(*                let env = Generic.add_value v env in *)
+                Generic.add_addr_type a (Generic.typeof v) env
             | _ -> env)
           init StringMap.empty in
       let env =
         List.fold_right
           (fun (_,t) ->
             List.fold_right
-              (fun (_,a) -> add_addr_type a RunType.Int)
+              (fun (_,a) -> Generic.add_addr_type a (RunType.Ty "int"))
               t.addrs)
           code env in
+(* Add uninitialised globals referenced as values in init,
+   Those may be accessed by code *)
+      let env =
+         List.fold_right
+          (fun (_,v) env ->
+            match v with
+            | Constant.Symbolic a ->
+                begin try
+                  let _ = StringMap.find a env in
+                  env
+                with Not_found  ->
+                  StringMap.add a Generic.base env
+                end
+            | _ -> env)
+          init env in
       StringMap.fold
         (fun a ty k -> (a,ty)::k)
         env []
 
-    let type_in_final p reg final flocs =
-      ConstrGen.fold_constr
-        (fun a t ->
-          let open ConstrGen in
-          match a with
-          | LV (A.Location_reg (q,r),v) when p=q && A.reg_compare reg r = 0 ->
-            begin match typeof v,t with
-            | (_,RunType.Pointer)
-            | (RunType.Pointer,_) -> RunType.Pointer
-            | RunType.Int,RunType.Int -> RunType.Int
-            end
-          | _ -> t)
-        final
-        (List.fold_right
-           (fun (loc,t) k -> match loc with
-           | A.Location_reg (q,r) when p=q && A.reg_compare reg r = 0 ->
-               begin match t with
-               | MiscParser.I -> k
-               | MiscParser.P -> RunType.Pointer
-               end
-           | _ -> k)
-           flocs
-           RunType.Int)
-
     let type_out p t final flocs =
       List.map
-        (fun reg -> reg,type_in_final p reg final flocs)
+        (fun reg -> reg,Generic.type_in_final p reg final flocs)
         t.final
 
     let type_outs code final flocs =
       List.map
-        (fun (p,t) -> p,(t,type_out p t final flocs))
+        (fun (p,t) -> p,(t, (type_out p t final flocs, [])))
         code
 
     let compile t =
@@ -404,6 +440,7 @@ let lblmap_code =
         condition = final;
         globals = comp_globals init code;
         flocs = List.map fst locs ;
+        global_code = [];
         src = t;
       }
 

@@ -11,3 +11,4 @@ true: -traverse
 <mlog2cond.{d.byte,byte,native}>:use_str
 <mcompare.{d.byte,byte,native}>:use_unix,use_str
 <mprog.{d.byte,byte,native}>:use_str
+<knames.{d.byte,byte,native}>:use_str

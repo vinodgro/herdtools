@@ -9,6 +9,8 @@
 (*********************************************************************)
 
 module type S = sig
+(* Atoms *)
+  include Atom.S
 (* Fences *)
   type fence
   val compare_fence : fence -> fence -> int

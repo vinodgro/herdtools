@@ -28,6 +28,7 @@ module type CommonConfig = sig
   val safer : Safer.t
   val speedcheck : Speedcheck.t
   val isync : bool
+  val c11 : bool
   include DumpParams.Config
 end
 
@@ -64,7 +65,7 @@ let target_os =
     O.targetos
   else begin
     if Sys.file_exists "/mach_kernel"
-    then begin 
+    then begin
       W.warn "OS: Darwin" ;
       TargetOS.Mac
     end else begin
@@ -74,7 +75,8 @@ let target_os =
   end
 
 let get_gcc_opts =
-  let std_opts = "-Wall -std=gnu99 " ^  O.gccopts in
+  let std = if O.c11 then "gnu11" else "gnu99" in
+  let std_opts = sprintf "-Wall -std=%s " std ^  O.gccopts in
   let opts =
     match target_os with
     | TargetOS.Mac -> begin match O.word with

@@ -4,41 +4,49 @@ splines=true;
  
 overlap=scale;
  
-compound=true;
- 
+margin="0.0";
+
+pad="0.2";
+
+margin="0.0";
+
+fontname="Arial";
+
+/* legend */
+fontsize=8 label="Test IRIW "; 
+
 
 /* the unlocked events */
-eiid0 [shape=plaintext  ] [color=blue] [rank=sink] [label="(a) Ry1" ];
-eiid1 [shape=plaintext  ] [color=blue] [rank=sink] [label="(b) Rx0" ];
-eiid2 [shape=plaintext  ] [color=blue] [rank=sink] [label="(c) Wx1" ];
-eiid3 [shape=plaintext  ] [color=blue] [rank=sink] [label="(d) Rx1" ];
-eiid4 [shape=plaintext  ] [color=blue] [rank=sink] [label="(e) Ry0" ];
-eiid5 [shape=plaintext  ] [color=blue] [rank=sink] [label="(f) Wy1" ];
+ proc0_label_node [ shape=plaintext,fontsize=8,label = "Thread 0",pos="1.000000,0.500000!" ][fixedsize="true"][width=0.45][height=0.1]; 
+eiid0 [shape=plaintext ,fontsize=8 ] [color=blue] [rank=sink] [label="a: W[x]=1" pos="1.000000,0.350000!"][fixedsize="true"][width=0.45][height=0.1];
+ proc1_label_node [ shape=plaintext,fontsize=8,label = "Thread 1",pos="1.700000,0.500000!" ][fixedsize="true"][width=0.45][height=0.1]; 
+eiid1 [shape=plaintext ,fontsize=8 ] [color=blue] [rank=sink] [label="b: R[x]=1" pos="1.700000,0.350000!"][fixedsize="true"][width=0.45][height=0.1];
+eiid2 [shape=plaintext ,fontsize=8 ] [color=blue] [rank=sink] [label="c: R[y]=0" pos="1.700000,0.000000!"][fixedsize="true"][width=0.45][height=0.1];
+ proc2_label_node [ shape=plaintext,fontsize=8,label = "Thread 2",pos="2.400000,0.500000!" ][fixedsize="true"][width=0.45][height=0.1]; 
+eiid3 [shape=plaintext ,fontsize=8 ] [color=blue] [rank=sink] [label="d: W[y]=1" pos="2.400000,0.350000!"][fixedsize="true"][width=0.45][height=0.1];
+ proc3_label_node [ shape=plaintext,fontsize=8,label = "Thread 3",pos="3.100000,0.500000!" ][fixedsize="true"][width=0.45][height=0.1]; 
+eiid4 [shape=plaintext ,fontsize=8 ] [color=blue] [rank=sink] [label="e: R[y]=1" pos="3.100000,0.350000!"][fixedsize="true"][width=0.45][height=0.1];
+eiid5 [shape=plaintext ,fontsize=8 ] [color=blue] [rank=sink] [label="f: R[x]=0" pos="3.100000,0.000000!"][fixedsize="true"][width=0.45][height=0.1];
 
 /* the intra_causality_data edges */
 
 
 /* the intra_causality_control edges */
 
- /* the rfmap edges */
-finaleiid2 [shape=none, label=""];
-eiid2 -> finaleiid2 [label="rf", color="red", fontcolor="red"];
-finaleiid5 [shape=none, label=""];
-eiid5 -> finaleiid5 [label="rf", color="red", fontcolor="red"];
-initeiid1 [label="", shape=point , color="red"];
-initeiid1 -> eiid1 [label="rf", color="red", fontcolor="red"];
-initeiid4 [label="", shape=point , color="red"];
-initeiid4 -> eiid4 [label="rf", color="red", fontcolor="red"];
+/* the poi edges */
+eiid1 -> eiid2 [label="po",fontsize=8][arrowsize="0.3"];
+eiid4 -> eiid5 [label="po",fontsize=8][arrowsize="0.3"];
+/* the rfmap edges */
+eiid0 -> eiid1 [label="rf", color="red", fontcolor="red",fontsize=8][arrowsize="0.3"];
+initeiid2 [label="", shape=point , width=0.03, height=0.03 , color="red", pos="1.300000,0.100000!"];
+initeiid2 -> eiid2 [label="rf", color="red", fontcolor="red",fontsize=8][arrowsize="0.3"];
+eiid3 -> eiid4 [label="rf", color="red", fontcolor="red",fontsize=8][arrowsize="0.3"];
+initeiid5 [label="", shape=point , width=0.03, height=0.03 , color="red", pos="2.700000,0.100000!"];
+initeiid5 -> eiid5 [label="rf", color="red", fontcolor="red",fontsize=8][arrowsize="0.3"];
 
 /* the view order edges */
 
 /* The viewed-before edges */
-eiid0 -> eiid1 [label="PodRR", color="brown", fontcolor="brown", style="setlinewidth(3)"];
-eiid3 -> eiid4 [label="PodRR", color="brown", fontcolor="brown", style="setlinewidth(3)"];
-eiid1 -> eiid2 [label="Fre", color="brown", fontcolor="brown", style="setlinewidth(3)"];
-eiid4 -> eiid5 [label="Fre", color="brown", fontcolor="brown", style="setlinewidth(3)"];
-eiid2 -> eiid3 [label="Rfe", color="brown", fontcolor="brown", style="setlinewidth(3)"];
-eiid5 -> eiid0 [label="Rfe", color="brown", fontcolor="brown", style="setlinewidth(3)"];
 /* The calculated basic viewed-before edges */
 
 /* the groupA and groupB of barriers */

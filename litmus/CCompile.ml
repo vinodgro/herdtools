@@ -18,36 +18,19 @@ end
 
 module Make
     (O:Config)
-    (T:Test.S with type P.code = CAst.t and type A.reg = string) =
+    (T:Test.S with type P.code = CAst.t and type A.reg = string and type A.loc_reg = string) =
   struct
 
     module A = T.A
     module C = T.C
+    module Generic = Compile.Generic(A)
 
-    let add_addr_type a ty env =
-      try
-        let tz = StringMap.find a env in
-        let ty =
-          match ty,tz with
-          | RunType.Int,RunType.Int -> RunType.Int
-          | (RunType.Pointer,_)|(_,RunType.Pointer) -> RunType.Pointer in
-        StringMap.add a ty env
-      with
-        Not_found -> StringMap.add a ty env
-
-    let add_value v env = match v with
-    | Constant.Concrete _ -> env
-    | Constant.Symbolic a -> add_addr_type a RunType.Int env
-
-    let typeof v = match v with
-    | Constant.Concrete _ -> RunType.Int
-    | Constant.Symbolic _ -> RunType.Pointer
+    type t =
+      | Test of A.Out.t
+      | Global of string
 
     let add_param {CAst.param_ty; param_name} =
-      let ty_of_cty = function
-        | CAst.Int_ptr -> RunType.Pointer
-      in
-      StringMap.add param_name (ty_of_cty param_ty)
+      StringMap.add param_name param_ty
 
     let add_params = List.fold_right add_param
 
@@ -55,15 +38,18 @@ module Make
       let env =
         List.fold_right
           (fun (loc,v) env ->
-            let env = add_value v env in
+            let env = Generic.add_value v env in
             match loc with
             | A.Location_global (a) ->
-                add_addr_type a (typeof v) env
+                Generic.add_addr_type a (Generic.typeof v) env
             | _ -> env)
           init StringMap.empty in
       let env =
         List.fold_right
-          (fun (_, {CAst.params; _}) -> add_params params)
+          (function
+            | CAst.Test {CAst.params; _} -> add_params params
+            | _ -> Misc.identity
+          )
           code
           env
       in
@@ -71,29 +57,103 @@ module Make
         (fun a ty k -> (a,ty)::k)
         env []
 
-    let get_globals proc =
-      let f acc = function
-        | A.Location_reg (p, name) when p = proc -> name :: acc
-        | A.Location_reg _
-        | A.Location_global _ -> acc
-      in
+    let get_local proc f acc = function
+      | A.Location_reg (p, name) when p = proc -> f name acc
+      | A.Location_reg _
+      | A.Location_global _ -> acc
+
+    let get_locals proc =
+      let f acc (x, ty) = get_local proc (fun x -> Misc.cons (x, ty)) acc x in
       List.fold_left f []
 
-    let comp_template proc final =
+     let ins_of_string inputs outputs x =
+       { A.Out.memo = x
+       ; inputs
+       ; outputs
+       ; label = None
+       ; branch = []
+       ; cond = false
+       ; comment = false
+       }
+
+     let string_of_params =
+       let f {CAst.param_name; _} = param_name in
+       List.map f
+
+    let get_addrs code =
+      let _,addrs =
+        List.fold_right
+          (fun x (n,k) -> n+1,(n,x)::k)
+          (string_of_params code.CAst.params)
+          (0,[]) in
+      addrs
+
+    let comp_template proc init final code =
+      let addrs = get_addrs code in
+      let inputs = string_of_params code.CAst.params in
       { A.Out.init = []
-      ; addrs = []
+      ; addrs
       ; final
-      ; code = []
+      ; code = [ins_of_string inputs final code.CAst.body]
       }
 
-    let comp_code final =
+    let get_reg_from_loc = function
+      | A.Location_reg (_, reg) -> reg
+      | A.Location_global reg -> reg
+
+    let locations p final flocs =
+      let module LocMap =
+        MyMap.Make
+          (struct
+            type t = A.location
+            let compare = A.location_compare
+          end)
+      in
+      let locations_atom reg acc = match reg with
+        | ConstrGen.LV (loc, _) ->
+            let reg = get_reg_from_loc loc in
+            LocMap.add loc (Generic.type_in_final p reg final flocs) acc
+        | ConstrGen.LL (loc1, loc2) ->
+            let reg1 = get_reg_from_loc loc1 in
+            let reg2 = get_reg_from_loc loc2 in
+            LocMap.add
+              loc1
+              (Generic.type_in_final p reg1 final flocs)
+              (LocMap.add loc2 (Generic.type_in_final p reg2 final flocs) acc)
+      in
+      let locations_flocs acc = function
+        | (x, MiscParser.Ty s) -> LocMap.add x (RunType.Ty s) acc
+        | (x, MiscParser.Pointer s) -> LocMap.add x (RunType.Pointer s) acc
+      in
+      let locs = ConstrGen.fold_constr locations_atom final LocMap.empty in
+      let locs = List.fold_left locations_flocs locs flocs in
+      LocMap.bindings locs
+
+    let comp_code final init flocs procs =
       List.fold_left
-        (fun acc (proc, _) ->
-           let final = get_globals proc (C.locations final) in
-           let regs = List.map (fun x -> (x, RunType.Pointer)) final in
-           (proc, (comp_template proc final, regs)) :: acc
+        (fun acc -> function
+           | CAst.Test code ->
+               let proc = code.CAst.proc in
+               let regs = get_locals proc (locations proc final flocs) in
+               let final = List.map fst regs in
+               let volatile =
+                 let f acc = function
+                   | {CAst.volatile = true; param_name; _} -> param_name :: acc
+                   | {CAst.volatile = false; _} -> acc
+                 in
+                 List.fold_left f [] code.CAst.params
+               in
+               acc @ [(proc, (comp_template proc init final code, (regs, volatile)))]
+           | CAst.Global _ -> acc
         )
-        []
+        [] procs
+
+    let get_global_code =
+      let f acc = function
+        | CAst.Global x -> acc @ [x]
+        | CAst.Test _ -> acc
+      in
+      List.fold_left f []
 
     let compile t =
       let
@@ -105,10 +165,11 @@ module Make
         } = t in
       { T.init = init;
         info = info;
-        code = comp_code final code;
+        code = comp_code final init locs code;
         condition = final;
         globals = comp_globals init code;
         flocs = List.map fst locs;
+        global_code = get_global_code code;
         src = t;
       }
 

@@ -16,6 +16,7 @@ let nprocs = ref 4
 let size = ref 6
 let one = ref false 
 let arch = ref PPC
+let typ = ref TypBase.Int
 let tarfile = ref None
 let prefix = ref None
 let safes = ref None 
@@ -31,6 +32,7 @@ let max_relax = ref 100
 type 'a cumul = Empty | All | Set of 'a
 let cumul = ref All
 let poll = ref false
+let docheck = ref false
 let fmt = ref 3
 let no = ref None
 let addnum = ref true
@@ -44,7 +46,7 @@ type do_observers =
   | Local   (* Local observer when possible *)
 let do_observers = ref Avoid
 type obs_type = Straight | Fenced | Loop
-let obs_type = ref Fenced
+let obs_type = ref Straight
 
 let upto = ref true
 let optcond = ref true
@@ -118,6 +120,13 @@ let common_specs =
     | None -> false
     | Some a -> arch := a ; true)
     Archs.tags "specify architecture"::
+  Util.parse_tag
+    "-type"
+    (fun tag -> match TypBase.parse tag with
+    | None -> false
+    | Some a -> typ := a ; true)
+    TypBase.tags
+    (sprintf "specify base type, default %s" (TypBase.pp !typ))::
    ("-o", Arg.String (fun s -> tarfile := Some s),
     "<name.tar> output litmus tests in archive <name.tar> (default, output in curent directory)")::
   ("-c", Arg.Bool (fun b ->  canonical_only := b),
@@ -146,6 +155,8 @@ let common_specs =
    "<n> shorthand for -unrollatomic <n>")::
   ("-poll",Arg.Bool (fun b -> poll := b),
      "<bool> poll on loaded values, as much as possible")::
+  ("-check",Arg.Bool (fun b -> docheck := b),
+     "<bool> check loaded values in test code")::
   ("-neg", Arg.Bool (fun b -> neg := b),
     "<bool> negate final condition (default false)")::
   ("-coherence_decreasing", Arg.Set coherence_decreasing,

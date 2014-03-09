@@ -26,12 +26,14 @@ module type S = sig
     | Reg of Code.proc * arch_reg
     | Loc of Code.loc
 
+  val of_loc : Code.loc -> location
+  val of_reg : Code.proc -> arch_reg -> location
+
   val pp_location : location -> string
   val location_compare : location -> location -> int
 
-(* Initial & final states *)
+(* Initial states *)
   type init = (location * string) list
-  type final = (location * Ints.t) list
 
 (***********************)
 (* Register allocation *)
@@ -52,9 +54,6 @@ module Make(I:I) : S with type arch_reg = I.arch_reg
     | Reg of int * arch_reg
     | Loc of string
 
-  type init = (location * string) list
-  type final = (location * Ints.t) list
-
   let location_compare loc1 loc2 = match loc1,loc2 with
   | Reg _,Loc _ -> -1
   | Loc _,Reg _ -> 1
@@ -70,6 +69,11 @@ module Make(I:I) : S with type arch_reg = I.arch_reg
         if I.is_symbolic r then I.pp_reg r
         else sprintf "%i:%s" i (I.pp_reg r)
     | Loc loc -> loc
+
+  let of_loc loc = Loc loc
+  let of_reg p r = Reg (p,r)
+
+  type init = (location * string) list
 
   type st = arch_reg list
 

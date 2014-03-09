@@ -19,12 +19,12 @@ module type I = sig
 end
 
 module Make(I:I) : sig
-  type code =  (int * I.P.code) list
+  type code =  I.P.code list
   type test =  (I.A.state, code, I.C.constr, I.A.location)  MiscParser.result
   val dump : out_channel -> Name.t -> test -> unit
   val lines : Name.t -> test -> string list
 end = struct
-  type code =  (int * I.P.code) list
+  type code =  I.P.code list
   type test =  (I.A.state, code, I.C.constr, I.A.location)  MiscParser.result
   include SimpleDumper_prime.Make
       (struct

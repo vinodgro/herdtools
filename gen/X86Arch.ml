@@ -10,7 +10,25 @@
 
 module Make(V:Constant.S) =
   struct
+    open Code
     include X86Base
+
+    type atom = Atomic
+    let default_atom = Atomic
+
+    let applies_atom a d = match a,d with
+    | Atomic,Dir W -> true
+    | _,_ -> false
+
+    let compare_atom = Pervasives.compare
+    let sig_of_atom = function
+      | Atomic -> 'A'
+
+    let pp_as_a = None
+    let pp_atom = function
+      | Atomic -> "A"
+    let fold_atom f k = f Atomic k
+
     module V = V
 
 (**********)

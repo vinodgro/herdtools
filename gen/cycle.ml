@@ -11,17 +11,16 @@
 open Printf
 open Code
 
-let rev = "$Rev: 9696 $"
-
 module type S = sig
   type edge
+  type atom
 
   type event =
       { loc : loc ;
         v   : v ;
         dir : dir ;
         proc : Code.proc ;
-        atom : atom ;
+        atom : atom option ;
         rmw : bool ;        
         idx : int ; }
 
@@ -79,21 +78,23 @@ module type Config = sig
 end
 
 module Make (O:Config) (E:Edge.S) :
-    S with type edge = E.edge
+    S with type edge = E.edge and type atom = E.atom
 = struct
 
   type edge = E.edge
+  type atom = E.atom
 
   type event =
       { loc : loc ;
         v   : v ;
         dir : dir ;
         proc : Code.proc ;
-        atom : atom ;
+        atom : atom option ;
         rmw : bool ;
         idx : int ; }
 
-  let evt_null = { loc="*" ; v=(-1) ; dir=R; proc=(-1); atom=Plain; rmw=false; idx=(-1); }
+  let evt_null = 
+    { loc="*" ; v=(-1) ; dir=R; proc=(-1); atom=None; rmw=false; idx=(-1); }
 
   let make_wsi idx loc =
     { evt_null with dir=W ; loc=loc; idx=idx; v=0;}
@@ -120,7 +121,8 @@ module Make (O:Config) (E:Edge.S) :
 
   let debug_dir d = match d with W -> "W" | R -> "R"
 
-  let debug_atom a = match a with Atomic -> "A" | Reserve -> "R" | Plain -> ""
+  let debug_atom a =
+    match a with None -> "" | Some a -> E.pp_atom a
 
   let debug_evt e =
     sprintf "%s%s %s %i" (debug_dir e.dir) (debug_atom e.atom) e.loc e.v
@@ -357,13 +359,15 @@ let set_dir n0 =
         else
           Warn.fatal "Impossible direction %s %s"
             (E.pp_edge p.edge) (E.pp_edge m.edge) in
-    let a = match p.edge.E.a2,m.edge.E.a1 with
-    | Atomic,Atomic -> Atomic
-    | Plain,Plain -> Plain
-    | Reserve,Reserve -> Reserve
-    | _,_ ->
-        Warn.fatal "Impossible atomicity %s %s"
-          (E.pp_edge p.edge) (E.pp_edge m.edge) in
+    let a =
+      let a2 = p.edge.E.a2 and a1 = m.edge.E.a1 in
+      if E.compare_atomo a1 a2 = 0 then a1
+      else
+        if a1 = None && E.is_ext p.edge then a2
+        else if a2 = None &&  E.is_ext m.edge then a1
+        else
+          Warn.fatal "Impossible atomicity %s %s"
+            (E.pp_edge p.edge) (E.pp_edge m.edge) in
         
     m.evt <- { m.evt with dir=d; atom=a; rmw=is_rmw d m} ;
     if m.next != n0 then do_rec p.next m.next in

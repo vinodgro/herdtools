@@ -16,18 +16,21 @@ module type S = sig
   module P : PseudoAbstract.S
 
   type src =
-    ((A.location * Constant.v) list, (int * P.code) list,
+    ((A.location * Constant.v) list, P.code list,
           C.constr, A.location)
          MiscParser.result
 
   type 'a type_env = ('a * RunType.t) list
+  type env_volatile = string list
+
   type t =
     { init : A.state ;
       info : MiscParser.info ;
-      code : (int * (A.Out.t * A.reg type_env)) list ;
+      code : (int * (A.Out.t * (A.reg type_env * env_volatile))) list ;
       condition : C.constr ;
       globals : string type_env ;
       flocs : A.location list ;
+      global_code : string list;
       src : src ; }
 
   val find_our_constraint : t -> C.constr
@@ -46,16 +49,20 @@ struct
 
   type 'a type_env = ('a * RunType.t) list
   type src =
-    ((A.location * Constant.v) list, (int * P.code) list,
+    ((A.location * Constant.v) list, P.code list,
           C.constr, A.location)
          MiscParser.result
+
+  type env_volatile = string list
+
   type t =
     { init : A.state ;
       info : MiscParser.info ;
-      code : (int * (A.Out.t * A.reg type_env)) list ;
+      code : (int * (A.Out.t * (A.reg type_env * env_volatile))) list ;
       condition : C.constr ;
       globals : string type_env ;
       flocs : A.location list ;
+      global_code : string list;
       src : src ; }
 
   let find_our_constraint test = test.condition
