@@ -200,7 +200,7 @@ end = struct
             R.run name out_chan doc allocated source ;
             Completed (A.arch,doc,source,utils,cycles,hash_env)
           end else begin
-            W.warn
+            Warn.warn_always
               "Test %s not performed" doc.Name.name ;
             Absent A.arch
           end
