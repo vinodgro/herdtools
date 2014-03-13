@@ -16,8 +16,7 @@ let dump = function
   | Ty x -> x
   | Pointer x -> x ^ "*"
 
-(* Awfull ack TODO : more explict atomics *)
-let atomic_prf = "atomic_"
+let atomic_prf = "_Atomic "
 let alen = String.length atomic_prf
 let is_atomic_type s =
   String.length s >= alen && String.sub s 0 alen = atomic_prf

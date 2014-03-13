@@ -9,10 +9,11 @@
 /*  General Public License.                                          */
 /*********************************************************************/
 
-%token EOF COMMA STAR VOLATILE
+%token EOF COMMA STAR VOLATILE UNSIGNED SIGNED ATOMIC LONG DOUBLE BOOL
 %token LPAREN RPAREN
 %token <int> PROC
 %token <string> BODY
+%token <string> ATOMIC_NAME
 %token <string> NAME
 
 %start main
@@ -38,5 +39,23 @@ params:
     { {CAst.param_ty = $2; volatile = true; param_name = $3} :: $5 }
 
 ty:
-| NAME STAR { RunType.Ty $1 }
-| NAME STAR STAR { RunType.Pointer $1 }
+| typ STAR { RunType.Ty $1 }
+| typ STAR STAR { RunType.Pointer $1 }
+
+atyp:
+| typ { $1 }
+| ATOMIC typ { "_Atomic " ^ $2 }
+
+typ:
+| ATOMIC_NAME { $1 }
+| ty_attr NAME { $1 ^ $2 }
+| ty_attr LONG { $1 ^ "long" }
+| ty_attr DOUBLE { $1 ^ "double" }
+| ty_attr LONG LONG { $1 ^ "long long" }
+| ty_attr LONG DOUBLE { $1 ^ "long double" }
+| BOOL { "_Bool" }
+
+ty_attr:
+| { "" }
+| UNSIGNED { "unsigned " }
+| SIGNED { "signed " }
