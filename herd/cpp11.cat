@@ -45,7 +45,10 @@
    they should be compiled using 'neato', not 'dot'   
 *)
 
-
+(* MB: TODO I need location kinds for equivalence: *)
+let set atomicloc = 0
+let set nonatomicloc = 0
+let set mutexloc = 0
 
 
 (* SC atomics have acquire and release semantics. *)
@@ -72,7 +75,7 @@ Tyler: Are you working on the instruction semantics? Have you implemented any so
 
 The existing dependency calculation for other Herd models is probably ONLY from reads to other actions. That might be ok. We can't tell right now.
 *)
-let dd = data | addr
+let dd = (data | addr)+
 
 
 (* Thin air check: It is not clear whether to check this. *)
@@ -119,11 +122,11 @@ let rsco = (co ; [rmw] | coi) & (niw [~rmw])
 *)
 
 
-let rs = [crel]; fid; [A & W] ; (((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co))?
+let rs = [crel]; fid; [A & W]; (((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co))?
 let swra = ext (rs; rf; [A]; idf; [cacq])
 let swul = ext ([ul]; lo; [lk])
 let pp_asw = asw \ (asw;po)
-show pp_asw
+(* show pp_asw *)
 let sw = pp_asw | swul | swra
 
 (* C: no_consume_hb *)
@@ -157,7 +160,25 @@ let hbl = hb & loc
 let pol = po & loc
 (*acyclic (rfe | hb) as thinair (* Too strong! This kills thin-air *)*)
 
-let com = rf | fr | co
+
+let corr = fr;rf;hbl
+let corw = co;rf;hbl
+let cowr = fr;hbl
+let coww = co;hbl
+
+
+provides irreflexive (corr | cowr | corw | coww) as coherence
+
+let rmwv = rf;[rmw] | (co;fr) | (co;rf)
+
+provides irreflexive rmwv as rmwAtomicity
+
+
+
+(*
+let com = rf | (~[_] & fr) | co
+*)
+
 
 (* START *)
 (*
@@ -172,7 +193,9 @@ provides acyclic (pol | com) as uniproc
 *)
 (* Question: Is the model with the restrictions from START above the
    same as the model with the following hbuniproc? *)
-provides acyclic (hbl | com) as hbuniproc
+(*provides acyclic (hbl | com) as hbuniproc*)
+
+
 
 (* MB: Above is an adjustment of the standard uniproc:
 
@@ -277,10 +300,10 @@ provides acyclic (hbl | com) as hbuniproc
   simplifications that involve hb, it is such a complicated relation.
 *)
 let vse = [W];hbl;[R] & ~(hbl; [W]; hbl)
-show vse
+(*show vse*)
 
 (* C: consistent_non_atomic_rf -- must read from vse: *)
-let narf = rf; [na]
+let narf = rf; [nonatomicloc]
 let narfvse = narf;~(vse^-1)
 provides irreflexive narfvse as nonAtomicRfConsistent
 
@@ -304,7 +327,7 @@ acyclic GHB
 
 
 (* C: consistent_atomic_rf -- acyclicity of hb union rf for atomic reads: *)
-let arf = rf; [A]
+let arf = rf; [atomicloc]
 let hbarf = hb;arf
 provides irreflexive hbarf as atomicRfConsistent
 (*jade: arf and hbarf are funky names =)*)
@@ -407,9 +430,9 @@ let schb = [sc]; hb; [sc]
    The three components probably overlap, which is unfortunate. We
    should think about simplifications of this...
 *)
-let sc = schb | scco | scfr
-provides acyclic sc as scConsistent
-show sc
+let scp = schb | scco | scfr
+provides acyclic scp as scConsistent
+show scp
 
 
 
@@ -422,10 +445,9 @@ provides irreflexive mv as consistentLo
 
 
 (* C: data_races *)
-let dr = ([W * _] | [_ * W]) &
+let dr = ext([W * _] | [_ * W]) &
          loc & 
          (~[A * A]) &
-         ext(unv) &
          ~hb & ~(hb^-1)
 
 (* C: unsequenced_races
@@ -434,9 +456,8 @@ let dr = ([W * _] | [_ * W]) &
    avoid that in Herd, so in the proofs of equivalence, we will need
    to assume the existance of a good location-kind map.
 *)
-let ur = ([W * M] | [M * W]) &
+let ur = int([W * M] | [M * W]) &
          loc &
-         int(unv) &
          ~[_] &
          ~po & ~(po^-1)
 
@@ -460,52 +481,3 @@ requires empty dr as dataRace
 requires empty ur as unsequencedRace 
 requires empty bl as badLock
 requires empty lu as badUnlock
-
-
-
-(********************************)
-(* Trying out functions in herd.*)
-
-(* Note that arguments to functions
-   must be enclosed in parentheses. So you must write "f(x)", not 
-   "f x". Same for formal parameters: write "fun (x) -> e" not 
-   "fun x -> e". *)
-
-(* Top-level functions *)
-let twice(r) = r ; r (* note "(r)" not "r" *)
-let rfrf = twice(rf)
-show rfrf
-
-(* Inner functions *)
-let rfrfrf = 
-  let thrice(r) = r ; r ; r in 
-  thrice(rf)
-show rfrfrf
-
-(* Can't write the following, because in function application,
-   which is written f(x), the "f" must be a variable, not an
-   expression that evaluates to a variable. *)
-(*
-let rfrfrfrf = (fun (r) -> r ; r ; r ; r) (rf) 
-*)
-
-(* But we can write this: *)
-let fourtimes = fun (r) -> r ; r ; r ; r
-let rfrfrfrf = fourtimes(rf) 
-show rfrfrfrf
-
-(* Multiple arguments *)
-let swap (r,s) = s ; r
-let rfpo = swap(po,rf)
-(*show rfpo*)
-
-
-
-(* Here are a list of functions that might be useful above. *)
-
-(* non-intervening set *)
-let ni(s,r) = ~(r; [s] ;r)
-
-let irrefl_then_subset(r1,r2) = r1^-1;~r2
-
-let max_preds(r) = r & ~(r; r)

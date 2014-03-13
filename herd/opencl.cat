@@ -13,10 +13,9 @@ let pp_asw = asw \ (asw;po)
 let pol = po & loc
 let com = rf | fr | co
 
-(* JW: Should the following three lines have "|"s rather than "&"s? *)
-let set gtewi  = wi & wg & dev & all_dev
-let set gtewg  = wg & dev & all_dev
-let set gtedev = dev & all_dev
+let set gtewi  = wi | wg | dev | all_dev
+let set gtewg  = wg | dev | all_dev
+let set gtedev = dev | all_dev
 let dwi_scope  = [gtewi * gtewi]
 let dwg_scope  = [gtewg * gtewg]
 let ddev_scope = [gtedev * gtedev]
