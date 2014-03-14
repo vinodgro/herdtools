@@ -16,7 +16,8 @@ type info = { filename : string ;  hash : string ; }
 
 type answer =
   | Completed of
-      Archs.t * Name.t * string * string list
+      Archs.t * Name.t (* Test arch and name *)
+        * string (* C source file of test *)
         * StringSet.t (* cycles *)
         * info StringMap.t (* name -> hash *)
   | Interrupted of Archs.t * exn

@@ -91,7 +91,30 @@ module Top (OT:TopConfig) (Tar:Tar.S) : sig
   val from_files : string list -> unit
 end = struct
 
+(************************************************************)
+(* Some configuration dependent stuff, to be performed once *)
+(************************************************************)
+
+(* Avoid cycles *)
+  let read_no fname =
+    Misc.input_protect
+      (fun chan -> MySys.read_list chan (fun s -> Some s))
+      fname
+
+  let avoid_cycle =
+    let xs = match OT.no with
+    | None -> []
+    | Some fname -> read_no fname in
+    let set = StringSet.of_list xs in
+    fun cy -> StringSet.mem cy set
+
+(* hints *)
+  let hint = match OT.hint with
+  | None -> Hint.empty
+  | Some fname -> Hint.read fname
+
   module W = Warn.Make(OT)
+
 
   module Utils (O:Config) (A:Arch.S) (A':Arch.Base) (Lang:Language.S)
       (Pseudo:PseudoAbstract.S) =
@@ -143,17 +166,6 @@ end = struct
           { t with MiscParser.info = info; }
         with Not_found -> t
 
-      let get_utils utils =
-        match utils with
-        | [] ->
-            let module O = struct
-              include O
-              let arch = A'.arch
-            end in
-            let module Obj = ObjUtil.Make(O)(Tar) in
-            Obj.dump ()
-        | _ -> utils
-
       let dump source doc compiled =
         Misc.output_protect
           (fun chan ->
@@ -163,10 +175,18 @@ end = struct
              S.dump doc compiled)
           (Tar.outname source)
 
-      let avail = match O.avail with
-        | Some n -> n
-        | None -> 1000
+      let limit_ok nprocs = match O.avail with
+      | None|Some 0 -> true
+      | Some navail -> nprocs <= navail
 
+      let warn_limit name nprocs = match O.avail with
+      | None|Some 0 -> ()
+      | Some navail ->
+          if nprocs > navail then
+            Warn.warn_always
+              "%stest with more threads (%i) than available (%i) is compiled"
+              (Pos.str_pos0 name.Name.file) nprocs navail
+ 
       let hash name parsed =
         try
           let hash = List.assoc "Hash" parsed.MiscParser.info in
@@ -175,7 +195,7 @@ end = struct
 
       let compile
           parse count_procs compile allocate
-          hint avoid_cycle utils cycles hash_env
+          cycles hash_env
           name in_chan out_chan splitted =
         try begin
           let parsed = parse in_chan splitted in
@@ -184,24 +204,23 @@ end = struct
           close_in in_chan ;
           let nprocs = count_procs parsed.MiscParser.prog in
           let hash = hash name parsed in
+          let cycle_ok = cycle_ok avoid_cycle parsed
+          and hash_ok = hash_ok hash_env tname hash
+          and limit_ok = limit_ok nprocs in
           if
-            cycle_ok avoid_cycle parsed &&
-            hash_ok hash_env tname hash &&
-            (not O.limit || nprocs <= avail)
+            cycle_ok && hash_ok && limit_ok
           then begin
+            warn_limit doc nprocs ;
             let hash_env = StringMap.add tname hash hash_env in
             let parsed = change_hint hint doc.Name.name parsed in
-            let module Alloc = CSymbReg.Make(A') in
             let allocated = allocate parsed in
             let compiled = compile allocated in
             let source = MyName.outname name ".c" in
             dump source doc compiled;
-            let utils = get_utils utils in
             R.run name out_chan doc allocated source ;
-            Completed (A.arch,doc,source,utils,cycles,hash_env)
+            Completed (A.arch,doc,source,cycles,hash_env)
           end else begin
-            Warn.warn_always
-              "Test %s not performed" doc.Name.name ;
+            W.warn "%stest not compiled" (Pos.str_pos0 doc.Name.file) ;
             Absent A.arch
           end
         end with e -> Interrupted (A.arch,e)
@@ -356,8 +375,7 @@ end = struct
 
   module SP = Splitter.Make(LexConfig)
 
-  let from_chan hint avoid_cycle fst cycles
-      hash_env name in_chan out_chan =
+  let from_chan cycles hash_env name in_chan out_chan =
 (* First split the input file in sections *)
     let { Splitter.arch=arch ; _ } as splitted =
       SP.split name in_chan in
@@ -417,8 +435,7 @@ end = struct
               end in
               let module Compile = PPCCompile.Make(V)(OC) in
               let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
-              X.compile hint avoid_cycle fst cycles hash_env
-                name in_chan out_chan splitted
+              X.compile cycles hash_env name in_chan out_chan splitted
           | `PPCGen ->
               let module Arch' = PPCGenArch.Make(OC)(V) in
               let module LexParse = struct
@@ -430,7 +447,7 @@ end = struct
               end in
               let module Compile = PPCGenCompile.Make(V)(OC) in
               let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
-              X.compile hint avoid_cycle fst cycles hash_env
+              X.compile cycles hash_env
                 name in_chan out_chan splitted
           | `X86 ->
               let module Arch' = X86Arch.Make(OC)(V) in
@@ -443,7 +460,7 @@ end = struct
               end in
               let module Compile = X86Compile.Make(V)(OC) in
               let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
-              X.compile hint avoid_cycle fst cycles hash_env
+              X.compile cycles hash_env
                 name in_chan out_chan splitted
           | `ARM ->
               let module Arch' = ARMArch.Make(OC)(V) in
@@ -456,7 +473,7 @@ end = struct
               end in
               let module Compile = ARMCompile.Make(V)(OC) in
               let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
-              X.compile hint avoid_cycle fst cycles hash_env
+              X.compile cycles hash_env
                 name in_chan out_chan splitted
           | `C ->
               let module Arch' = (val (match Lazy.force Cfg.carch with
@@ -472,24 +489,23 @@ end = struct
                 let parser = CParser.main
               end in
               let module X = Make'(Cfg)(Arch')(LexParse)(Lang) in
-              X.compile hint avoid_cycle fst cycles hash_env
+              X.compile cycles hash_env
                 name in_chan out_chan splitted
           in
           aux arch
       | None ->
           W.warn "Test %s not performed because -carch is not given but required while using C arch" tname ;
           Absent arch
-    end else begin
-      W.warn "Test %s not performed" tname ;
+    end else begin (* Excluded explicitely, (check_tname), do not warn *)
       Absent arch
     end
 
   let from_file
-      hint avoid_cycles fst cycles hash_env
+      cycles hash_env
       name out_chan =
     Misc.input_protect
       (fun in_chan ->
-        from_chan hint avoid_cycles fst cycles hash_env
+        from_chan cycles hash_env
           name in_chan out_chan) name
 
 (* Call generic tar builder/runner *)

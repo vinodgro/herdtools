@@ -24,6 +24,7 @@ val debug_pos : out_channel -> position -> unit
 
 (* Understood by emacs *)
 val pp_pos0 : out_channel -> string -> unit   (* no position available *)
+val str_pos0 : string -> string
 val pp_pos : out_channel -> position -> unit  (* one *)
 val pp_lnum : out_channel -> position -> unit  (* one, line number only *)
 val pp_pos2 : out_channel -> (position * position) -> unit (* two *)

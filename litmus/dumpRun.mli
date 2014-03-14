@@ -19,8 +19,6 @@ open Answer
 module type Config = sig
   val gcc : string
   val index : string option
-  val no : string option
-  val hint : string option
   val crossrun : Crossrun.t
   val sleep : int
   val tarname : string
@@ -33,10 +31,8 @@ end
 
 module type OneTest = sig
   val from_file :
-      Hint.table ->
-        (StringSet.elt -> bool) ->
-          string list -> StringSet.t -> Answer.info  StringMap.t ->
-            string -> out_channel -> answer
+      StringSet.t -> Answer.info  StringMap.t ->
+        string -> out_channel -> answer
 end
 
 module Make :

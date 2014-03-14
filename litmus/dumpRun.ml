@@ -20,8 +20,6 @@ open Printf
 module type Config = sig
   val gcc : string
   val index : string option
-  val no : string option
-  val hint : string option
   val crossrun : Crossrun.t
   val sleep : int
   val tarname : string
@@ -33,10 +31,7 @@ end
 
 module type OneTest = sig
   val from_file :
-      Hint.table ->
-        (StringSet.elt -> bool) ->
-          string list -> StringSet.t -> Answer.info StringMap.t ->
-            string -> out_channel -> answer
+      StringSet.t -> Answer.info StringMap.t -> string -> out_channel -> answer
 end
 
 
@@ -58,28 +53,12 @@ end = struct
       output_line chan ""
     end
 
-  let read_no fname =
-    Misc.input_protect
-      (fun chan -> MySys.read_list chan (fun s -> Some s))
-      fname
-
   open Speedcheck
   let do_dont =
     match Cfg.speedcheck with
     | AllSpeed -> true
     | NoSpeed|SomeSpeed -> false
 
-
-  let avoid_cycles =
-    let xs = match Cfg.no with
-    | None -> []
-    | Some fname -> read_no fname in
-    let set = StringSet.of_list xs in
-    fun cy -> StringSet.mem cy set
-
-  let hint = match Cfg.hint with
-  | None -> Hint.empty
-  | Some fname -> Hint.read fname
 
   module type ArchConf = sig
     val word : Word.t
@@ -153,18 +132,18 @@ let run_tests names out_chan =
   let exp = match Cfg.index with
   | None -> None
   | Some exp -> Some (open_out exp) in
-  let  arch,docs,sources,utils,_,_ =
+  let  arch,docs,sources,_,_ =
     Misc.fold_argv
-      (fun name (_,docs,srcs,fst,cycles,hash_env) ->
-        match CT.from_file hint avoid_cycles fst cycles hash_env
+      (fun name (_,docs,srcs,cycles,hash_env) ->
+        match CT.from_file cycles hash_env
             name out_chan with
-        | Completed (a,doc,src,fst,cycles,hash_env) ->
+        | Completed (a,doc,src,cycles,hash_env) ->
             begin match exp with
             | None -> ()
             | Some exp -> fprintf exp "%s\n" name
             end ;
-            a,(doc::docs),(src::srcs),fst,cycles,hash_env
-        | Absent a -> a,docs,srcs,fst,cycles,hash_env
+            a,(doc::docs),(src::srcs),cycles,hash_env
+        | Absent a -> a,docs,srcs,cycles,hash_env
         | Interrupted (a,e) ->
             let msg =  match e with
             | Misc.Exit -> "None"
@@ -175,12 +154,19 @@ let run_tests names out_chan =
                 msg
             | e -> raise e  in
             report_failure name msg out_chan ;
-            a,docs,srcs,fst,cycles,hash_env)
-      names (`X86,[],[],[],StringSet.empty,StringMap.empty) in
+            a,docs,srcs,cycles,hash_env)
+      names (`X86,[],[],StringSet.empty,StringMap.empty) in
   begin match exp with
   | None -> ()
   | Some exp -> close_out exp
   end ;
+  let utils =
+    let module O = struct
+      include Cfg
+      let arch = arch
+    end in
+    let module Obj = ObjUtil.Make(O)(Tar) in
+    Obj.dump () in
   arch,docs,sources,utils
 
 (* Run tests (command line mode) *)
