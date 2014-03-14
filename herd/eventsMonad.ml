@@ -208,6 +208,14 @@ struct
 	      Evt.map (fun (vin,vcl,es) -> (vin, (VC.Assign (vin, (VC.Atom v))) :: vcl, es)) poss_with_old_cnstrnts in 
 	    (eiid1, poss_with_upd_cnstrnts)
 
+
+(* Add a constraint *)
+ let addNeqConstraintT : V.v -> V.v -> 'a t -> 'a t
+   = fun v1 v2 s eiid ->
+     let (eiid, sact) = s eiid in
+     (eiid, Evt.map (fun (r,cs,es) ->
+         (r,(VC.Assign (v1, VC.Unop(Op.Not, v2)))::cs,es)) sact)
+            
 (* Choosing dependant upon flag,
    notice that, once determined v is either one or zero *)
       let choiceT : V.v -> 'a t -> 'a t -> 'a t =

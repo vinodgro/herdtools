@@ -459,7 +459,7 @@ let dr = ext([W * _] | [_ * W]) &
 let ur = int([W * M] | [M * W]) &
          loc &
          ~[_] &
-         ~po & ~(po^-1)
+         ~(po+) & ~((po+)^-1)
 
 
 

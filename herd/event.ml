@@ -303,7 +303,7 @@ struct
     let same_proc e1 e2 = match proc_of e1, proc_of e2 with
     | Some p1,Some p2 -> Misc.int_eq p1 p2
     | (None,Some _)|(Some _,None) -> false
-    | None,None -> true (* ??? *)
+    | None,None -> true
 
     let progorder_of e = match e.iiid with
     | Some i -> Some i.A.program_order_index

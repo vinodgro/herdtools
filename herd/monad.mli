@@ -48,7 +48,8 @@ module type S =
     val addT : 'a -> 'b t -> ('a * 'b) t
     val filterT : A.V.v -> A.V.v t -> A.V.v t
     val choiceT : A.V.v -> 'a t -> 'a t -> 'a t  
-    val altT : 'a t -> 'a t -> 'a t  
+    val altT : 'a t -> 'a t -> 'a t 
+    val addNeqConstraintT : A.V.v -> A.V.v -> 'a t -> 'a t 
 
     val tooFar : string -> unit t
 

@@ -95,7 +95,7 @@ type store_op = SymbConstant.v
 type instruction = 
 | Pstore  of loc * store_op * mem_order 
 | Pload   of loc * reg * mem_order
-| Pcas    of loc * store_op * store_op * mem_order * mem_order
+| Pcas    of loc * loc * store_op * mem_order * mem_order * bool
 | Plock   of loc
 | Punlock of loc
 | Pfence  of mem_order
@@ -141,10 +141,11 @@ let dump_instruction i = match i with
 		   (pp_reg reg) (pp_addr loc)
     | _ -> sprintf("%s = %s.load(%s)") 
 		  (pp_reg reg) (pp_addr loc) (pp_mem_order mo))
-  | Pcas(loc,sop1,sop2,mo_success,mo_failure) ->
-    sprintf("CAS(%s,%s,%s,%s,%s)") 
-	   (pp_addr loc) (pp_sop sop1) (pp_sop sop2) 
-	   (pp_mem_order mo_success) (pp_mem_order mo_failure)
+  | Pcas(obj,exp,des,mo_success,mo_failure,strong) ->
+    sprintf("%sCAS(%s,%s,%s,%s,%s)") 
+      (if strong then "S" else "W")
+      (pp_addr obj) (pp_addr exp) (pp_sop des) 
+      (pp_mem_order mo_success) (pp_mem_order mo_failure)     
   | Plock(loc) ->
     sprintf("Lock(%s)") (pp_addr loc)
   | Punlock(loc) ->

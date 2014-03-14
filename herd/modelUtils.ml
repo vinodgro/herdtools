@@ -34,7 +34,11 @@ module Make(O:Model.Config) (S:SemExtra.S) = struct
         let is_data (e1,e2) = 
           if E.is_reg_load_any e1 && E.is_mem_store e2 then
 	    E.value_of e1 == E.value_of e2
-	  else assert false in
+          (* JW: I removed the "assert false" in the following line
+             because the assertion fails if a single instruction
+             gives rise to multiple memory accesses (as is the
+             case for a failed CAS in C++11) *)
+	  else (*assert false*) false in
         let r2 =
           E.EventRel.sequence
             (S.restrict E.is_mem E.is_reg_load_any dd)

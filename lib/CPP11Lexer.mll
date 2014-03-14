@@ -39,7 +39,8 @@ rule token = parse
 | "load"  { LD }
 | "store"    { ST }
 | "lock"  { LOCK }
-| "CAS"  { CAS }
+| "WCAS"  { WCAS }
+| "SCAS"  { SCAS }
 | "unlock"    { UNLOCK }
 | name as x
   { match CPP11.parse_reg x with
