@@ -39,10 +39,12 @@ module Generic (A : Arch.Base) = struct
                   when Misc.string_eq s1 s2 ->
                     t
                 | (ty, None) -> Some ty
-                | (_, Some _) ->
-                    (* TODO: Improve the warning *)
-                    Warn.fatal "Type missmatch between the locations and \
-                                the final condition"
+                | (loc_ty, Some cond_ty) ->
+                    Warn.fatal
+                      "Type missmatch between the locations \
+                       (type: %s) and the final condition (type: %s)"
+                      (RunType.dump loc_ty)
+                      (RunType.dump cond_ty)
                 end
             | _ -> t)
          final
@@ -68,7 +70,6 @@ module Generic (A : Arch.Base) = struct
 (* All default cases expressed,
    will produce a warning if RunType.t is extended *)
         | (RunType.Pointer _|RunType.Ty _),(RunType.Pointer _|RunType.Ty _) ->
-            (* TODO: Improve the warning *)
             Warn.fatal
               "Type missmatch detected on location %s, required %s vs. found %s"
               a (RunType.dump ty) (RunType.dump tz)
