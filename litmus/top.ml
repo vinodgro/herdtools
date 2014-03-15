@@ -116,7 +116,10 @@ end = struct
   module W = Warn.Make(OT)
 
 
-  module Utils (O:Config) (A:Arch.S) (A':Arch.Base) (Lang:Language.S)
+  module Utils (O:Config) (A:Arch.S) (A':Arch.Base)
+           (Lang:Language.S
+            with type arch_reg = A'.Out.arch_reg
+             and type t = A'.Out.t)
       (Pseudo:PseudoAbstract.S) =
     struct
       module T = Test.Make(A')(Pseudo)
@@ -186,7 +189,7 @@ end = struct
             Warn.warn_always
               "%stest with more threads (%i) than available (%i) is compiled"
               (Pos.str_pos0 name.Name.file) nprocs navail
- 
+
       let hash name parsed =
         try
           let hash = List.assoc "Hash" parsed.MiscParser.info in
@@ -231,8 +234,7 @@ end = struct
       (O:Config)
       (A:Arch.S)
       (L:GenParser.LexParse with type instruction = A.pseudo)
-      (XXXComp : XXXCompile.S with module A = A)
-      (Lang:Language.S) =
+      (XXXComp : XXXCompile.S with module A = A) =
     struct
       module Pseudo = struct
         type code = int * A.pseudo list
@@ -258,6 +260,7 @@ end = struct
           Misc.pp_prog chan pp
       end
 
+      module Lang = ASMLang.Make(A.I)(A.Out)
       module Utils = Utils(O)(A)(A)(Lang)(Pseudo)
       module P = GenParser.Make(O)(A) (L)
       module Comp = Compile.Make (O)(A)(A)(Utils.T) (XXXComp)
@@ -274,8 +277,7 @@ end = struct
   module Make'
       (O:Config)
       (A:Arch.S)
-      (L:CGenParser.LexParse)
-      (Lang:Language.S) =
+      (L:CGenParser.LexParse) =
     struct
       module A' = struct
         module V = A.V
@@ -295,8 +297,6 @@ end = struct
           let global_compare = String.compare
 
           let comment = A.I.comment
-          let reg_class _ = assert false (* Unused *)
-          let internal_init _ = assert false (* Unused *)
           let reg_to_string x = x
           let forbidden_regs = []
           let arch = `C
@@ -345,6 +345,7 @@ end = struct
           List.iter (Printf.fprintf chan "%s") pp
       end
 
+      module Lang = CLang.Make(A'.Out)
       module Utils = Utils(O)(A)(A')(Lang)(Pseudo)
       module P = CGenParser.Make(O)(Pseudo)(A')(L)
       module Comp = CCompile.Make(O)(Utils.T)
@@ -418,11 +419,6 @@ end = struct
       match get_cfg (arch, OT.carch) with
       | Some cfg ->
           let module Cfg = (val cfg : Config) in
-          let get_lang = function
-          | `PPC | `PPCGen | `X86 | `ARM -> (module ASMLang.Make : Language.S)
-          | `C -> (module CLang.Make : Language.S)
-          in
-          let module Lang = (val (get_lang arch) : Language.S) in
           let aux = function
           | `PPC ->
               let module Arch' = PPCArch.Make(OC)(V) in
@@ -434,7 +430,7 @@ end = struct
                 let parser = PPCParser.main
               end in
               let module Compile = PPCCompile.Make(V)(OC) in
-              let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
+              let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
               X.compile cycles hash_env name in_chan out_chan splitted
           | `PPCGen ->
               let module Arch' = PPCGenArch.Make(OC)(V) in
@@ -446,7 +442,7 @@ end = struct
                 let parser = PPCGenParser.main
               end in
               let module Compile = PPCGenCompile.Make(V)(OC) in
-              let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
+              let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
               X.compile cycles hash_env
                 name in_chan out_chan splitted
           | `X86 ->
@@ -459,7 +455,7 @@ end = struct
                 let parser = X86Parser.main
               end in
               let module Compile = X86Compile.Make(V)(OC) in
-              let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
+              let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
               X.compile cycles hash_env
                 name in_chan out_chan splitted
           | `ARM ->
@@ -472,7 +468,7 @@ end = struct
                 let parser = ARMParser.main
               end in
               let module Compile = ARMCompile.Make(V)(OC) in
-              let module X = Make(Cfg)(Arch')(LexParse)(Compile)(Lang) in
+              let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
               X.compile cycles hash_env
                 name in_chan out_chan splitted
           | `C ->
@@ -488,7 +484,7 @@ end = struct
                 let lexer = CLexer.main
                 let parser = CParser.main
               end in
-              let module X = Make'(Cfg)(Arch')(LexParse)(Lang) in
+              let module X = Make'(Cfg)(Arch')(LexParse) in
               X.compile cycles hash_env
                 name in_chan out_chan splitted
           in

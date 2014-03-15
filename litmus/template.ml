@@ -16,10 +16,6 @@ module type I = sig
   val forbidden_regs : arch_reg list
   val reg_compare : arch_reg -> arch_reg -> int
   val reg_to_string : arch_reg -> string
-(* Initial value of internal registers *)
-  val internal_init : arch_reg -> (string * string) option
-(* gcc assembly template register class *)
-  val reg_class : arch_reg -> string
 (* gas line comment char *)
   val comment : char
 end
@@ -60,21 +56,16 @@ module type S = sig
   val dump_v : Constant.v -> string
   val addr_cpy_name : string -> int -> string
 
-  val after_dump : out_channel -> string -> int -> t -> unit
+  val clean_reg : string -> string
+  val tag_reg : arch_reg -> string
 
   val comment : char
   val memory : Memory.t
   val cautious : bool
 
-  module RegSet : MySet.S with type elt = arch_reg
-
   val to_string : ins -> string
-  val before_dump : out_channel -> string -> (arch_reg * RunType.t) list -> int -> t -> RegSet.t -> unit
-  val trashed_regs : t -> RegSet.t
-  val dump_outputs : out_channel -> int -> t -> RegSet.t -> unit
-  val dump_inputs : out_channel -> t -> RegSet.t -> unit
-  val dump_clobbers : out_channel -> 'a -> unit
   val compile_out_reg : int -> arch_reg -> string
+  val dump_type : ('a * RunType.t) list -> 'a -> string
 end
 
 module Make(O:Config) (A:I) (V:Constant.S): S
@@ -126,14 +117,6 @@ struct
   let error msg = raise (Error msg)
 
 
-  module RegSet =
-    MySet.Make
-      (struct
-        type t = A.arch_reg
-        let compare = A.reg_compare
-      end)
-
-
   let escape_percent s =
     Misc.map_string
       (fun c -> match c with
@@ -156,15 +139,10 @@ struct
   let tag_reg reg = clean_reg (A.reg_to_string reg)
 
   let tag_reg_ref reg = sprintf "%%[%s]" (tag_reg reg)
-  and tag_reg_def reg = sprintf "[%s]" (tag_reg reg)
 
   let dump_out_reg proc reg =
     sprintf "out_%i_%s"
       proc
-      (clean_reg (A.reg_to_string reg))
-
-  let dump_trashed_reg reg =
-    sprintf "trashed_%s"
       (clean_reg (A.reg_to_string reg))
 
   let compile_out_reg proc reg =
@@ -236,8 +214,6 @@ struct
     with Internal msg ->
       error (sprintf "memo: %s, error: %s" t.memo msg)
 
-  let copy_name s = sprintf "_tmp_%s" s
-
   let dump_type env reg =
     try RunType.dump (List.assoc reg env) with
       | Not_found -> "int"
@@ -252,171 +228,6 @@ struct
   | Symbolic a -> dump_addr a
 
   let addr_cpy_name s p = sprintf "_addr_%s_%i" s p
-
-  let dump_copies chan indent env proc t =
-(*
-    List.iter
-      (fun (_,a) ->
-        fprintf chan "%sint *%s = %s;\n" indent (copy_name a)
-        (match O.memory with
-        | Memory.Direct -> sprintf "&%s[_i]" a
-        | Memory.Indirect -> sprintf "%s[_i]" a) ;
-        fprintf chan "%smbar();\n" indent)
-      t.addrs ;
-*)
-    List.iter
-      (fun reg ->
-        fprintf chan "%s%s %s = %s;\n" indent
-          (dump_type env reg)
-          (copy_name (dump_out_reg proc reg))
-          (compile_out_reg proc reg) ;
-        fprintf chan "%smcautious();\n" indent)
-      t.final ;
-    begin match O.memory with
-    | Indirect ->
-        List.iter
-          (fun (reg,v) -> match v with
-          | Symbolic a ->
-              fprintf chan "%svoid *%s = %s;\n" indent
-                (copy_name (tag_reg reg))
-                (dump_v v) ;
-              fprintf chan "%s_a->%s[_i] = %s;\n" indent
-                (addr_cpy_name a proc)  (copy_name (tag_reg reg)) ;
-              fprintf chan "%smcautious();\n" indent
-          | Concrete _ -> ())
-          t.init
-    | Direct -> ()
-    end ;
-    ()
-
-  let dump_save_copies chan indent proc t =
-    List.iter
-      (fun reg ->
-        fprintf chan "%smcautious();\n" indent ;
-        fprintf chan "%s%s = %s;\n" indent
-          (compile_out_reg proc reg)
-          (copy_name (dump_out_reg proc reg)))
-      t.final ;
-    ()
-
-  let dump_outputs chan proc t trashed =
-    let outs =
-      String.concat ","
-        (List.map
-           (match O.memory with
-           | Direct ->
-               (fun (_,a) -> sprintf "[%s] \"=m\" (_a->%s[_i])" a a)
-           | Indirect ->
-               (fun (_,a) -> sprintf "[%s] \"=m\" (*_a->%s[_i])" a a)
-           )
-           t.addrs
-         @List.map
-             (fun reg ->
-               if O.cautious then
-                 sprintf "%s \"%s\" (%s)"
-                 (tag_reg_def reg)
-                 (A.reg_class reg)
-                 (copy_name (dump_out_reg proc reg))
-               else
-                 sprintf "%s \"%s\" (%s)"
-                 (tag_reg_def reg)
-                 (A.reg_class reg)
-                 (compile_out_reg proc reg))
-             t.final
-         @RegSet.fold
-             (fun reg k ->
-               sprintf "%s \"%s\" (%s)"
-                 (tag_reg_def reg)
-                 (A.reg_class reg)
-                 (dump_trashed_reg reg)::k)
-             trashed []) in
-    fprintf chan ":%s\n" outs
-
-  let all_regs t =
-    let all_ins ins =
-      RegSet.union (RegSet.of_list (ins.inputs@ins.outputs)) in
-    List.fold_right all_ins t.code  (RegSet.of_list t.final)
-
-  let trashed_regs t =
-    let trashed_ins ins = RegSet.union (RegSet.of_list ins.outputs) in
-    let all_trashed =
-      List.fold_right trashed_ins t.code RegSet.empty in
-    RegSet.diff all_trashed (RegSet.of_list t.final)
-
-
-  let dump_inputs chan t trashed =
-    let all = all_regs t in
-    let in_outputs = RegSet.union trashed  (RegSet.of_list t.final) in
-(*
-    eprintf "Outputs in In: %a\n"
-      (fun chan rs -> RegSet.pp chan "," pp_reg rs)
-      in_outputs ;
-*)
-    let dump_pair reg v =
-      let dump_v = (* catch those addresses that are saved in a variable *)
-        if O.cautious then match O.memory with
-        | Indirect ->
-            (fun v -> match v with
-            | Symbolic _ -> copy_name (tag_reg reg)
-            | Concrete _ -> dump_v v)
-        | Direct -> dump_v
-        else dump_v in
-      if RegSet.mem reg in_outputs then begin
-        match A.internal_init reg with
-        | None -> sprintf "\"%s\" (%s)" (tag_reg_def reg) (dump_v v)
-        | Some (s,_) -> sprintf "\"%s\" (%s)" (tag_reg_def reg) s
-      end else match A.internal_init reg with
-      | None ->
-          sprintf "%s \"r\" (%s)" (tag_reg_def reg) (dump_v v)
-      | Some (s,_) ->
-          sprintf "%s \"r\" (%s)" (tag_reg_def reg) s in
-
-    (* Input from state *)
-    let ins =
-      List.map
-        (fun (reg,v) -> dump_pair reg v)
-        t.init in
-    (* All other inputs, apparently needed to get gcc to
-       allocate registers avoiding all registers in template *)
-    let rem =
-      RegSet.diff
-        all
-        (List.fold_right
-           (fun (reg,_) -> RegSet.add reg) t.init in_outputs) in
-    let rem =
-      RegSet.fold
-        (fun reg k ->
-          let v = Concrete 0 in
-          dump_pair reg v::k)
-        rem [] in
-
-    fprintf chan ":%s\n" (String.concat "," (ins@rem))
-
-
-  let dump_clobbers chan _t =
-    fprintf chan ":%s\n"
-      (String.concat ","
-         (List.map (fun s -> sprintf "\"%s\"" s)
-            ("cc"::"memory"::
-             List.map A.reg_to_string A.forbidden_regs)))
-
-  let before_dump chan indent env proc t trashed =
-    RegSet.iter
-      (fun reg ->
-        let ty = match A.internal_init reg with
-        | Some (_,ty) -> ty
-        | None -> "int" in
-        fprintf chan "%s%s %s;\n"
-          indent ty (dump_trashed_reg reg))
-      trashed ;
-    if O.cautious then begin
-      dump_copies chan indent env proc t
-    end
-
-  let after_dump chan indent proc t =
-    if O.cautious then begin
-      dump_save_copies chan indent proc t
-    end
 
   let comment = A.comment
   let memory = O.memory

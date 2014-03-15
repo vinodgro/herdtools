@@ -61,12 +61,11 @@ module Make
          (A:Arch.Base)
          (T:Test.S with type P.code = P.code and module A = A)
          (O:Indent.S)
-         (Lang:Language.S) : sig
+         (Lang:Language.S with type arch_reg = T.A.reg and type t = A.Out.t) : sig
   val dump : Name.t -> T.t -> unit
 end = struct
   module A = T.A
   module C = T.C
-  module Lang = Lang(A.Out)
   open Constant
 
 (* Final Conditions *)

@@ -11,6 +11,9 @@
 
 module Make(Tmpl:Template.S) = struct
 
+  type arch_reg = Tmpl.arch_reg
+  type t = Tmpl.t
+
   let dump chan indent env globEnv envVolatile proc t =
     let out x = Printf.fprintf chan x in
     out "%sdo {\n" indent;

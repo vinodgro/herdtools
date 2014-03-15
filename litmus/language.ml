@@ -9,14 +9,17 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-module type S = functor (Tmpl:Template.S) -> sig
+module type S = sig
+  type arch_reg
+  type t
+
   val dump :
     out_channel ->
     string ->
-    (Tmpl.arch_reg * RunType.t) list ->
+    (arch_reg * RunType.t) list ->
     (string * RunType.t) list ->
     string list ->
     int ->
-    Tmpl.t ->
+    t ->
     unit
 end
