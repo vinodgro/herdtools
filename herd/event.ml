@@ -286,7 +286,6 @@ struct
     let is_visible_location  = function 
       | A.Location_global _ -> true
       | A.Location_reg _ -> false
-      | _ -> assert false
 
     let same_location e1 e2 = 
       if (location_of e1 = None || location_of e2 = None) then

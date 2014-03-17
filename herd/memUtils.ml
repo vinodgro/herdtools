@@ -102,7 +102,7 @@ module Make(S : SemExtra.S) = struct
 	    
   let ext_scope scope r scope_tree = 
     let scope_tree = match scope_tree with
-    | MiscParser.Scope_tree s -> s
+    | ScopeTree.Scope_tree s -> s
     | _ -> Warn.fatal "ext_scope function requires a scope tree"
     in
     E.EventRel.filter 
@@ -110,7 +110,7 @@ module Make(S : SemExtra.S) = struct
 
   let int_scope scope r scope_tree = 
     let scope_tree = match scope_tree with
-    | MiscParser.Scope_tree s -> s
+    | ScopeTree.Scope_tree s -> s
     | _ -> Warn.fatal "int_scope function requires a scope tree"
     in
     E.EventRel.filter 

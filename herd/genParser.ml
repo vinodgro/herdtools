@@ -168,6 +168,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
     module LexConfig = struct let debug = O.debuglexer end
     module LU = LexUtils.Make (LexConfig)
     module SL = StateLexer.Make (LexConfig)
+    module STL = ScopeTreeLexer.Make (LexConfig)
 
     let parse_init lexbuf =
       call_parser "init" lexbuf SL.token StateParser.init
@@ -212,10 +213,10 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       (*Just for GPUs to get scope tree and memory map*)
       let scope_tree, mem_map = 
 	if A.arch != Archs.GPU_PTX
-	then (MiscParser.cpu_scope_tree (List.length procs), MiscParser.No_mem_space_map)
+	then (ScopeTree.cpu_scope_tree (List.length procs), ScopeTree.No_mem_space_map)
 	else  
 	  call_parser_loc "scope tree and memory map"
-	    chan scope_loc SL.token StateParser.scopes_and_memory_map
+	    chan scope_loc STL.token ScopeTreeParser.scopes_and_memory_map
       in
       
       let all_locs =

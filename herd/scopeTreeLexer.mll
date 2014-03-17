@@ -15,7 +15,7 @@
 module Make(O:LexUtils.Config) = struct
 open Lexing
 open LexMisc
-open StateParser
+open ScopeTreeParser
 module LU = LexUtils.Make(O)
 }
 
@@ -29,44 +29,24 @@ let num = decimal | hexadecimal
 
 rule token = parse
 | [' ''\t'] { token lexbuf }
+| eof { EOF }
 | '\n'      { incr_lineno lexbuf; token lexbuf }
 | "(*"      { LU.skip_comment lexbuf ; token lexbuf }
-| num as num
-    {NUM (int_of_string num) }
 | 'P' (decimal as x)
     { PROC (int_of_string x) }
-| '%' (name as name) { SYMB_REG name }
-| ';' { SEMI }
 | ':' { COLON }
-| '[' { LBRK }
-| ']' { RBRK }
 | '('  { LPAR }
 | ')' { RPAR }
-| '=' { EQUAL }
-| '+' { PLUS_DISJ }
-| "=>" { IMPLIES }
- | "/\\" {AND}
-| "\\/" {OR}
-| '~'| "not" { NOT }
-| "true"     { TRUE }
-| "false"     { FALSE }
-| "observed"|"Observed"   { OBSERVED }
-| "and" { TOKAND }
-| "exists"   { EXISTS }
-| "forall"   { FORALL }
-| "cases"    { CASES }
-| "final"    { FINAL }
-| "with"     { WITH }
-| "locations" { LOCATIONS }
-(*for GPU*)
-| ".reg" {PTX_REG_DEC}
-| ".s32" as x | ".b64" as x | ".b32" as x | ".u64" as x | ".u32" as x {PTX_REG_TYPE x}
-
-| "*" { STAR }
+| "scopeTree" { SCOPETREE }
+| "global"  { GLOBAL }
+| "shared"|"local" { SHARED }
+| "kernel" { KERNEL }
+| "device" {DEVICE }
+| "cta" | "block" | "work_group" { CTA }
+| "warp" | "sub_group" { WARP }
+| "thread" { THREAD }
+| ',' { COMMA }
 | name as name { NAME name }
-| eof { EOF }
-| "<<" { error "<<" lexbuf }
-| "" { error "Init lex" lexbuf }
 
 {
  let token lexbuf =

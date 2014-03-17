@@ -22,8 +22,8 @@ type ('prog,'nice_prog,'start,'state,'constr,'loc,'locset) t =
      cond : 'constr ;
      flocs : 'loc list ;
      observed : 'locset ;
-     scope_tree : MiscParser.scope_tree ;
-     mem_map : MiscParser.mem_space_map ;
+     scope_tree : ScopeTree.scope_tree ;
+     mem_map : ScopeTree.mem_space_map ;
    }
 
 (* Name and nothing else *)

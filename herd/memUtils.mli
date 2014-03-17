@@ -53,9 +53,9 @@ module Make : functor (S: SemExtra.S) -> sig
 
   (*scope operations*)
   val ext_scope : 
-    AST.scope -> S.event_rel -> MiscParser.scope_tree -> S.event_rel
+    AST.scope -> S.event_rel -> ScopeTree.scope_tree -> S.event_rel
   val int_scope : 
-    AST.scope -> S.event_rel -> MiscParser.scope_tree -> S.event_rel
+    AST.scope -> S.event_rel -> ScopeTree.scope_tree -> S.event_rel
   
 
 (* RF/FR relations for memory *)
