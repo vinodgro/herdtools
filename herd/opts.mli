@@ -10,8 +10,9 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Parsing of command line options and reading of configuration files
-   modify mutable variables defined here *)
+(** Parsing of command line options and reading of configuration files *)
+
+(* modify mutable variables defined here *)
 
 (* Myself *)
 val prog : string

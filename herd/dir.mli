@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Directions for memory accesses: read or write. *)
+(** Directions for memory accesses: read or write. *)
 
 type dirn = R | W 
 

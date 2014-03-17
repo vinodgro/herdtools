@@ -10,12 +10,9 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(***********************************************)
-(* Extra functionalities for all architectures *)
-(***********************************************)
+(** Extra functionalities for all architectures *)
 
-(* Input signature, a reduced Arch.ARCH *)
-
+(** Input signature, a reduced [Arch.ARCH] *)
 module type I = sig
   module V : Value.S
 
@@ -27,7 +24,7 @@ module type I = sig
 
 end
 
-(* Output signature, fonctionalities added *)
+(** Output signature, functionalities added *)
 module type S = sig
 
   module I : I

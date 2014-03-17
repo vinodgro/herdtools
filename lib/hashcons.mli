@@ -13,7 +13,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(*s Hash tables for hash consing. 
+(** Hash tables for hash consing. 
 
     Hash consed values are of the
     following type [hash_consed]. The field [tag] contains a unique

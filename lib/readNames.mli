@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Read name (or kind files) for names *)
+(** Read name (or kind files) for names *)
 
 val from_file : string -> (string -> 'a -> 'a) -> 'a -> 'a
 val from_files : string list -> (string -> 'a -> 'a) -> 'a -> 'a

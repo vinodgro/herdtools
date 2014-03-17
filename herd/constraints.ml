@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Constraints in litmus files *)
+
 open Printf
 
 module type Config = sig

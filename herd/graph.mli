@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Various graph layouts *)
+
 type t = Free | Cluster | Columns
 
 val tags : string list

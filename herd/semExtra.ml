@@ -10,6 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Centralized definition for types to be included by the XXXSem *)
 
 (* Some configuration *)
 module type Config = sig
@@ -18,7 +19,7 @@ module type Config = sig
   module PC : PrettyConf.S
 end
 
-(* Centralized definition for types to be included by the XXXSem *)
+
 module type S = sig
   module O : Config (* Options, for Sem consummer *)
   module A   : Arch.S

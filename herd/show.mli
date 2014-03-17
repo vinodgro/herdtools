@@ -10,9 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(***********************************************************)
-(* Show dot files as Postscript, controled by '-gv' option *)
-(***********************************************************)   
+(** Show dot files as Postscript, controlled by '-gv' option *)
 
 module Make : functor (O:PrettyConf.S)  -> sig
 (* Fork a gv window to show that file *)

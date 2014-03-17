@@ -10,8 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Generic part of constraint [ie the one to be checked
-   at the end of test run *)
+(** Generic part of constraint (ie the one to be checked
+   at the end of test run) *)
 
 
 (* Type of propositions and constraint *)

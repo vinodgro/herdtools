@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** A monad for event structures *)
+
 module type Config = sig
     val debug : Debug.t
 end

@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Define barrier type for X86 architecture *)
+
 module type S =
   sig
     type a (* Native arch barrier *)

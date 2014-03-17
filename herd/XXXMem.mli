@@ -10,8 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Common signature of PPCMem, X86Mem, ARMMem,
-   for abstract usage *)
+(** Common signature of PPCMem, X86Mem, ARMMem, for abstract usage *)
 
 module type S = sig
   val model : Model.t

@@ -10,7 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Current architecture *)
+(** All architectures *)
+
 type t =
   | X86
   | PPC

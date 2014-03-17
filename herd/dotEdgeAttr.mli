@@ -10,6 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Edge attributes in .dot files *)
 
 type t
 

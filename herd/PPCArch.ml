@@ -10,7 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Specific to PPC  *)
+(** Define PPC architecture *)
+
 module Make (C:Arch.Config) (V:Value.S)
 =
   struct

@@ -10,5 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Symbolic constants *)
+
 type v = Constant.v
 include Constant.S

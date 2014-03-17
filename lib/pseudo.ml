@@ -10,7 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Closed signature for basic view of architectures *)
+(** Closed signature for basic view of architectures *)
+
 module type S = sig
   type ins
   type reg_arg

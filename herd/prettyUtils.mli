@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Utilities for pretty-printing *)
+
 module Make : functor (S:SemExtra.S) -> sig
   (* Organize events, first by proc, then by po *)
   val make_by_proc_and_poi : S.event_structure -> S.event_set list list

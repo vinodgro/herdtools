@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Litmus tests *)
+
 type ('prog,'nice_prog,'start,'state,'constr, 'loc, 'locset) t =
     {
      arch : Archs.t ; 

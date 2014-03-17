@@ -10,6 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Semantics of X86 instructions *)
 
 module Make (C:Sem.Config)(V : Value.S)
     =

@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Operations on relations *)
+
 module type S =  sig
   type elt0
 

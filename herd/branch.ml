@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Branching in code *)
+
 module type S = sig
   type lbl = string
   type v

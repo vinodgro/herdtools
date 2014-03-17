@@ -10,9 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(**************************************************************)
-(* Facility for gouping outpout files in directory or archive *)
-(**************************************************************)
+(** Facility for grouping output files in directory or archive *)
 
 (* Input *)
 module type Option = sig

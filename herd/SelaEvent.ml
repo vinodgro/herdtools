@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Utilites for Sela's models *)
+(** Utilities for Sela's models *)
 
 open Printf
 

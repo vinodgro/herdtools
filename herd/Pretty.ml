@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Producing .dot output *)
+
 open Test
 open Printf
 

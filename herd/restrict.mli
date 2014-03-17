@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Output restriction *)
+(** Output restriction *)
 
 
 type t = Observed | NonAmbiguous | No | CondOne

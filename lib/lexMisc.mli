@@ -10,9 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(*************************)
-(* Misc lexing utilities *)
-(*************************)
+(** Misc lexing utilities *)
 
 open Lexing
 

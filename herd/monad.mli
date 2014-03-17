@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(*********************************************************************************************************************)
+(** A monad for event structures *)
 
 (* Define a monad, which is a composition of event set state and a single variable state 
    (to pick new eiids *)

@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Entry point to Herd  *)
+
 open Printf
 open Archs
 open Opts

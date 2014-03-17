@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Define barrier type for ARM architecture *)
+
 module type S = sig
   type a
   type b = ISB | DMB of ARMBase.barrier_option | DSB of ARMBase.barrier_option

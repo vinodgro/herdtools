@@ -10,9 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(****************************************)
-(* Basic arch definitions made abstract *)
-(****************************************)
+(** Basic arch definitions made abstract *)
 
 module type S = sig
   (* Who am I ? *)

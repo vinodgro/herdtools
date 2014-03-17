@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Debug tags *)
+(** Debug tags *)
 
 type t = {
   solver : bool ;

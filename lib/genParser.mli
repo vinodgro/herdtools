@@ -10,9 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(*********************************************************)
-(* A 'generic' parsing module for memevents/litmus files *)
-(*********************************************************)
+(** A 'generic' parsing module for memevents/litmus files *)
 
 (* Wapper (takes care of parsing exceptions *)
 val call_parser :

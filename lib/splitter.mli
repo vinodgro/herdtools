@@ -10,7 +10,9 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(** BEWARE: This interface files is common to memevents and litmus **)
+(** Split litmus files into their various components *)
+
+(* BEWARE: This interface files is common to memevents and litmus *)
 
 (* The splitter
    - Parses the first (significant) line of litmus files,

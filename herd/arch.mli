@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Basic arch, ie with no definition of what a global location is *)
+
 module type Config = sig
   val texmacros : bool
   val hexa : bool
@@ -18,14 +20,9 @@ end
 module type S =
   sig
 
-(******************************************************************)
-(* Basic arch, ie with no definition of what a global location is *)
-(******************************************************************)
-
     include ArchBase.S
 
     module V : Value.S
-
 
     include ArchExtra.S with module I.V = V
     and type I.arch_reg = reg

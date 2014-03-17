@@ -10,9 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(******************************)
-(* A simple constraint solver *)
-(******************************)
+(** A simple constraint solver *)
 
 (* Constraints: v is any value: a constant cst or a variable S.
     Possible constraints are

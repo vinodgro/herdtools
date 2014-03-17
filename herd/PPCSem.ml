@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Semantics of PPC instructions *)
+
 module Make (C:Sem.Config)(V:Value.S)  
     = 
   struct

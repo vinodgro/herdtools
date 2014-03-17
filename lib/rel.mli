@@ -10,6 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Implementation of relations *)
 
 module type S = sig
 

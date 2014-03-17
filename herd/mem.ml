@@ -10,6 +10,9 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Produce event structures (which include variables) + constraints,
+   using instruction semantics *)
+
 module type Config = sig
   val verbose : int
   val optace : bool
@@ -24,8 +27,7 @@ module type S = sig
 
   module S : Sem.Semantics
 
-(* Produce event structures [which include variables] + constraints,
-   using instruction semantics *)
+
   type result =
      {
       event_structures : (int * S.M.VC.cnstrnts * S.event_structure) list ;

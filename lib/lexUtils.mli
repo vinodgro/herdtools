@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Utility functions for lexers *)
+
 (* The Lexing module of standard library defines
      - input buffers for ocamllex lexers [type lexbuf]
      - position in streams being lexed [type position]

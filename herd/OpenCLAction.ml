@@ -10,6 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Define OpenCL actions *)
 
 open Printf
 

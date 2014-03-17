@@ -9,6 +9,9 @@
 (*  This file is distributed  under the terms of the Lesser GNU      *)
 (*  General Public License.                                          *)
 (*********************************************************************)
+
+(** Parse tags *)
+
 module type Opt = sig
   type t
   val tags : string list

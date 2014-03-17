@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Pretty printing configuration *)
+(** Pretty printing configuration *)
 
 (* What to show *)
 type show =

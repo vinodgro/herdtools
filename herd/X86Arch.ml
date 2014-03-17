@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Define X86 architecture *)
+
 module Make (C:Arch.Config)(V:Value.S) =
   struct
     include X86Base

@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Read models (the content of .cat files) *)
+
 module Make : functor(O:LexUtils.Config) -> sig
   val token : Lexing.lexbuf -> ModelParser.token
 end

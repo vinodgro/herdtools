@@ -10,9 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(*****************)
-(* Parsable dump *)
-(*****************)
+(** Parsable dump *)
+
 module type I = sig
   module A : ArchBase.S
 

@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Simple signal handler managment *)
+(** Simple signal handler management *)
 
 val push : (unit -> unit) -> unit
 val pop : unit -> unit

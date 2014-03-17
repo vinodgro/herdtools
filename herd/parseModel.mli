@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Parse a .cat file at the given path *)
+
 module Make : functor (O:LexUtils.Config)  -> sig
   val parse : string -> AST.pp_t
 end

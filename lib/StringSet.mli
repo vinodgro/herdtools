@@ -10,5 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Sets of strings *)
+
 include MySet.S with type elt = string
 

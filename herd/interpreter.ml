@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Interpreter for a user-specified model *)
+
 open Printf
 
 module type S = sig

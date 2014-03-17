@@ -10,6 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Implementation of the action interface for machine models *)
 
 open Printf
 

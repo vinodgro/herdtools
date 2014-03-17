@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Extensible arrays *)
+(** Extensible arrays *)
 
 type 'a t
 

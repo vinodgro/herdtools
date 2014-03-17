@@ -10,4 +10,6 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Operations on symbolic values *)
+
 include Value.S

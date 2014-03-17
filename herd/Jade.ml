@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Jade's model for PPC/ARM *)
+(** Jade's model for PPC/ARM *)
 
 open Printf	
 

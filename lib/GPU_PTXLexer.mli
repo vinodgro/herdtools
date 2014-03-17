@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Lexing PTX assembly *)
+
 module Make : functor(O:LexUtils.Config) -> sig
   val token : Lexing.lexbuf -> GPU_PTXParser.token
 end

@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Define barrier type for PPC architecture *)
+
 module type S =
   sig
     type a (* Native arch barrier *)

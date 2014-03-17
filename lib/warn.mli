@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Warning messages for the user *)
+
 module type Config = sig val verbose : int end
 
 module Make : functor(O:Config) ->

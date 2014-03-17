@@ -10,7 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Sela Haim's axiomatic model for PPC, second version *)
+(** Sela Haim's axiomatic model for PPC, second version *)
+
 open Printf	
 
 module type Config =

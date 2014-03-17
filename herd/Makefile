@@ -33,6 +33,9 @@ byte native d.byte: version
 	@for prog in $(PROGS:.byte=.$@) ; \
 	do ln -sf $$prog `basename $$prog .$@` ; done
 
+doc:
+	$(OCB) documentation.docdir/index.html
+
 clean::
 	-$(OCB) -clean
 

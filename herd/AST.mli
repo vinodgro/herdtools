@@ -10,22 +10,23 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Syntax tree of model definition *)
+(** Syntax tree of model definitions *)
+
 type pos = { pos:int; len:int;}
 type direction = 
   | Write | Read | WriteRead | Atomic | Plain
-  | Unv_Set (* universal set *)
-  | Bar_Set (* set of barriers *)
+  | Unv_Set (** universal set *)
+  | Bar_Set (** set of barriers *)
 type op2 = 
   | Union | Inter | Diff (* these apply to sets and relations *)
-  | Seq (* sequential composition of relations *) 
-  | Cartesian (* build a relation from two sets *)
+  | Seq (** sequential composition of relations *) 
+  | Cartesian (** build a relation from two sets *)
 type op1 =
   | Plus | Star | Opt | Select of direction * direction
-  | Inv  (* Relation inverse *)
-  | Ext  (* External subrelation (events from <> threads) *)
-  | Int  (* Internal subrelation (events from = threads) *)
-  | NoId (* Irreflexive subrelation (<> events, aka r\id) *)
+  | Inv  (** Relation inverse *)
+  | Ext  (** External subrelation (events from <> threads) *)
+  | Int  (** Internal subrelation (events from = threads) *)
+  | NoId (** Irreflexive subrelation (<> events, aka r\id) *)
 type konst = Empty_set | Empty_rel
 type var = string
 
@@ -55,6 +56,6 @@ type ins =
   | Show of string list
   | ShowAs of exp * string
 
-(* Name X model definition *)
+(** Name X model definition *)
 type t = bool * string * ins list
 type pp_t = string * t

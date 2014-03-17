@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Operations on events *)
+
 open Printf
 
 module type S = sig
@@ -37,7 +39,7 @@ module type S = sig
   val debug_event : out_channel -> event -> unit
 
 (***************************)
-(* Procs and program ordre *)
+(* Procs and program order *)
 (***************************)
 
   val proc_of       : event -> A.proc option

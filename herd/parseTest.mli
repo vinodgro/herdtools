@@ -10,9 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(*******************************)
-(* Run a test from source file *)
-(*******************************)
+(** Run a test from source file *)
 
 module type Config = sig
   val model : Model.t option

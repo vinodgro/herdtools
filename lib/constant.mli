@@ -10,6 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Constants in code *)
 
 type v =
   | Concrete of int

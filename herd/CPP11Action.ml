@@ -10,6 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Define CPP11 actions *)
 
 open Printf
 

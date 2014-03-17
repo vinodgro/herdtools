@@ -10,7 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Map for renaming, also provides an order *)
+(** Map for renaming, also provides an order *)
+
 type 'a t 
 
 val empty : 'a t

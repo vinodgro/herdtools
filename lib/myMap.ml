@@ -9,6 +9,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Operations on maps *)
+
 open Printf
 
 module type S = sig

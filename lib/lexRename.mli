@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Read renaming maps *)
+
 exception Error
 
 module type Config  = sig

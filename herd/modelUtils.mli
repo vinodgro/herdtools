@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Simple utilities used in many models *)
+(** Simple utilities used in many models *)
 
 module  Make : functor (O:Model.Config) -> functor (S:SemExtra.S) -> sig
 (*******************************************)

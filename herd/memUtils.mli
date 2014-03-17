@@ -10,11 +10,9 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-module Make : functor (S: SemExtra.S) -> sig
+(** Utilities used when generating event structures *)
 
-(*************)
-(* Utilities *)
-(*************)
+module Make : functor (S: SemExtra.S) -> sig
 
 (* Program order as a relation *)
   val iico : S.event_structure -> S.event_rel

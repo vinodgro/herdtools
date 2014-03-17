@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Define ARM architecture *)
+
 module Make (C:Arch.Config) (V:Value.S) =
   struct
     include ARMBase

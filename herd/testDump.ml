@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Dump a test *)
+(** Dump a test *)
 
 module Make(S: Sem.Semantics) : sig
   type test =

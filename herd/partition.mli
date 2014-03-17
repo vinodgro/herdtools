@@ -10,12 +10,12 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Imperative disjoint set data structure *)
+(** Imperative disjoint set data structure *)
 
 module Make (O:Set.OrderedType) : sig
   type t
 
-(* All creation steps must preceed union/find operations *)
+(* All creation steps must precede union/find operations *)
   val create : unit -> t
   val add : t -> O.t -> t
 

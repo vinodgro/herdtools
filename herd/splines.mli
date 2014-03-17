@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Edges in graphical output *)
+
 type t = Spline | Line | Polyline | Ortho | Curved | No
 
 val tags : string list

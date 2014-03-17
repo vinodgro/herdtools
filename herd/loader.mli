@@ -10,9 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(************************************************)
-(* "load" program in memory, somehow abstracted *)
-(************************************************)
+(** "load" program in memory, somehow abstracted *)
+
 module type S = sig
   type nice_prog
   type program

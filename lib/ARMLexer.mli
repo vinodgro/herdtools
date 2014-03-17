@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Lexing ARM assembly *)
+
 module Make : functor(O:LexUtils.Config) -> sig
   val token : Lexing.lexbuf -> ARMParser.token
 end

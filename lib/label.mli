@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Labels in code *)
+
 type t = string
 val reset : unit -> unit
 val next_label : string -> t

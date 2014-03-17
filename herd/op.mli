@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Syntax of unary, binary and ternary operations *)
+
 (**********)
 (* Binary *)
 (**********)

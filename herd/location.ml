@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Locations, e.g. registers and memory cells *)
+
 module type Config  = sig
   val texmacros : bool
 end

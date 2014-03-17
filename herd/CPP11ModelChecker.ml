@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Check an event structure against a CPP11 model *)
+
 module type Config = sig
   val m : AST.pp_t
   include Model.Config

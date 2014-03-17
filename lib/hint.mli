@@ -9,11 +9,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-
-
-(*******************************************)
-(* Passing hints from generators to litmus *)
-(*******************************************)
+(** Passing hints from generators to litmus *)
 
 type t = (string * string) list
 

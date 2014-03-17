@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Support for Jade's PPC/ARM model *)
+
 open Printf
 
 module Make(O:Model.Config) (S : SemExtra.S) (B:AllBarrier.S with type a = S.barrier) =

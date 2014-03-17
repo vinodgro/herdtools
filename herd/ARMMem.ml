@@ -10,9 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(*****************************)
-(* Entry to models for ARM   *)
-(*****************************)
+(** Entry to models for ARM  *)
 
 module type Config = sig
   val model : Model.t

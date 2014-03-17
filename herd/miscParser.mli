@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* The basic types of architectures and semantics, just parsed *)
+(** The basic types of architectures and semantics, just parsed *)
 
 type maybev = SymbConstant.v
 

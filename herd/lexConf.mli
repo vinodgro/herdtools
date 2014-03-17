@@ -10,6 +10,6 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Read configuration files *)
+(** Read configuration files *)
 
 val lex : string -> unit

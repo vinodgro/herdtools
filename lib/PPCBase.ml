@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Define registers, barriers, and instructions for PPC *) 
+
 (* Who am i ? *)
 let arch = Archs.ppc
 

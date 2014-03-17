@@ -10,10 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-
-(**********************)
-(* Model indentifiers *)
-(**********************)
+(** Model identifiers *)
 
 type cav12_opt =  { cord : bool ; strongst : bool ; }
 

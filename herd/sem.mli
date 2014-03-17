@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Semantics of instructions *)
+
 module type Config = sig
   include SemExtra.Config
 end

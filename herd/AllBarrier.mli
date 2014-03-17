@@ -10,7 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Union of relevant PPC, ARM, x86, and PTX barriers *)
+(** Union of relevant PPC, ARM, x86, and PTX barriers *)
+
 module type S =
   sig
     type a (* Native arch barrier *)

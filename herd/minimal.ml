@@ -10,9 +10,9 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-open Printf
+(** A really generic minimal model *)
 
-(* A really generic minimal model *)
+open Printf
 
 module type Cfg = sig
   val uniproc : bool

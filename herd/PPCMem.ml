@@ -10,9 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(*****************************)
-(* Entry to models for Power *)
-(*****************************)
+(** Entry to models for PPC  *)
 
 module type Config = sig
   val model : Model.t

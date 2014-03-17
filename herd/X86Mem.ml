@@ -10,10 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(***************************)
-(* Entry to models for X86 *)
-(***************************)
-
+(** Entry to models for X86  *)
 
 module type Config = sig
   val model : Model.t

@@ -10,9 +10,9 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(***********************)
-(* Positions in a file *)
-(***********************)
+
+(** Positions in a file *)
+
 open Lexing
 
 type pos2 = position * position

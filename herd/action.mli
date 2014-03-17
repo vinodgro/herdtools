@@ -10,6 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** An architecture-independent interface for actions *)
 
 module type S = sig
 

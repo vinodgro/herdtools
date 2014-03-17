@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Additional operations on sets *)
+
 module type OrderedType = Set.OrderedType
 
 module type S = sig

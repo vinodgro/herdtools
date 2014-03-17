@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* 'Speed' tags *)
+(** 'Speed' tags *)
 
 type t = False | True | Fast
 

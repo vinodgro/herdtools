@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Define registers, barriers, and instructions for ARM *) 
+
 open Printf
 
 (* Who am i ? *)

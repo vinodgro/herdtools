@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Values, ie constants and variables *)
+
 module type S =
     sig
 

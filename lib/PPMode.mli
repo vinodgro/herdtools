@@ -10,4 +10,6 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Modes for pretty-printing *)
+
 type t = Ascii | Latex | Dot | DotFig

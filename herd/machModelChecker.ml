@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Check an event structure against a machine model *)
+
 module type Config = sig
   val m : AST.pp_t
   include Model.Config

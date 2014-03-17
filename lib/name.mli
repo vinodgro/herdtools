@@ -10,7 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* All names associated with a test *)
+(** All names associated with a test *)
+
 type t =
   {
    name : string ; (* Test name *)

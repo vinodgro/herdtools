@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Semantics of CPP11 instructions *)
+
 module Make (C:Sem.Config)(V:Value.S)  
     = 
   struct

@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Lexing PPC assembly *)
+
 module Make : functor(O:LexUtils.Config) -> sig
   val token : Lexing.lexbuf -> PPCParser.token
 end

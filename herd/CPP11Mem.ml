@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(*Mostly taken from the X86 Model*)
+(** Entry to models for CPP11  *)
 
 module type Config = sig
   val model : Model.t

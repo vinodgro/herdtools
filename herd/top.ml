@@ -10,7 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* Top level loop : execute test according to model *)
+(** Top level loop : execute test according to model *)
+
 module type Config = sig
   val auto : bool
   val show : PrettyConf.show
