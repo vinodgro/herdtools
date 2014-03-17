@@ -35,11 +35,8 @@ module type S = sig
  type location =
     | Location_reg of int*loc_reg
     | Location_global of loc_global
-    | Location_shared of int*loc_global
 
   val maybev_to_location : MiscParser.maybev -> location
-  val maybev_to_shared_location : int->MiscParser.maybev -> location
-
   val dump_location : location -> string (* Just dump *)
   val pp_location : location -> string
   val location_compare : location -> location -> int
@@ -58,16 +55,13 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
     type location =
       | Location_reg of int*loc_reg
       | Location_global of loc_global
-      | Location_shared of int*loc_global
 
     let maybev_to_location m = Location_global (A.maybev_to_global m)
-    let maybev_to_shared_location i m = Location_shared (i, A.maybev_to_global m)
 
     let dump_location = function
       | Location_reg (proc,r) ->
           string_of_int proc ^ ":" ^ A.pp_reg r
       | Location_global a -> A.pp_global a
-      | Location_shared (i,a) -> string_of_int i ^ "::" ^ A.pp_global a
 
     let pp_location l = match l with
     | Location_reg (proc,r) -> 
@@ -75,7 +69,6 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
 	if C.texmacros 
 	then "\\asm{Proc " ^ bodytext ^ "}" else bodytext
     | Location_global a -> A.pp_global a
-    | Location_shared(i,s) -> string_of_int i ^ "::" ^ A.pp_global s
 
 
 (*
@@ -93,14 +86,6 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
     | Location_global a1, Location_global a2 -> A.global_compare a1 a2 
     | Location_reg _, Location_global _ -> -1
     |  Location_global _, Location_reg _ -> 1
-    | Location_reg _, Location_shared (_,_) -> -1
-    | Location_shared (_,_), Location_reg _ -> 1
-    | Location_global a1, Location_shared (_,a2) -> A.global_compare a1 a2 
-    | Location_shared (_,a1), Location_global a2 -> A.global_compare a1 a2 
-    | Location_shared (i,s), Location_shared (i1,s1) -> 
-      if i > i1 then 1
-      else if i < i1 then -1
-      else A.global_compare s s1 
 
     let location_equal l1 l2 = location_compare l1 l2 = 0
 

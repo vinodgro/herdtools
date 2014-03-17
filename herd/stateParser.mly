@@ -70,6 +70,11 @@ location_reg:
 | PROC COLON reg  {Location_reg ($1,$3)}
 | NUM COLON reg   {Location_reg ($1,$3)}
 | SYMB_REG        {Location_sreg $1 }
+/* PTX registers */
+| NUM COLON PTX_REG_DEC PTX_REG_TYPE reg 
+                  {Location_reg($1,$5)}
+| PROC COLON PTX_REG_DEC PTX_REG_TYPE reg 
+                  {Location_reg($1,$5)}
 
 location_deref:
 | location_reg { $1 }
@@ -79,25 +84,18 @@ location_deref:
 location:
 | location_reg { $1 }
 | LBRK maybev RBRK {Location_global $2}
-/* Hum, for backward compatibility, and compatiility with printer */
+/* Hum, for backward compatibility, and compatibility with printer */
 | maybev { Location_global $1 }
 
-gpu_reg_dec:
-| NUM COLON PTX_REG_DEC PTX_REG_TYPE reg {Location_reg_type($1,$5,$4)}
-| PROC COLON PTX_REG_DEC PTX_REG_TYPE reg {Location_reg_type($1,$5,$4)}
-
-
 atom:
+| location {($1,Concrete 0)}
 | location EQUAL maybev {($1,$3)}
-| NUM COLON COLON maybev EQUAL maybev {(Location_shared ($1,$4), $6)}
-| gpu_reg_dec {($1, Concrete 1)}    
 
 atom_semi_list: 
 | {[]}
 | SEMI {[]}
 | atom {$1::[]}
 | atom SEMI atom_semi_list  {$1::$3}
-
 
 /* For final state constraints */
 

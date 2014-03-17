@@ -3,20 +3,16 @@ GPU_PTX scoped_MP
 {
 0:.reg .s32 r1;
 0:.reg .s32 r3;
-0:.reg .b64 r2;
-0:.reg .b64 r4;
+0:.reg .b64 r2 = x;
+0:.reg .b64 r4 = y;
 1:.reg .s32 r1;
 1:.reg .s32 r3;
-1:.reg .b64 r2;
-1:.reg .b64 r4;
+1:.reg .b64 r2 = y;
+1:.reg .b64 r4 = x;
 2:.reg .s32 r1;
 2:.reg .s32 r3;
-2:.reg .b64 r2;
-2:.reg .b64 r4;
-
-0:r2=x; 0:r4=y;
-1:r2=y; 1:r4=x;
-2:r2=y; 2:r4=x;
+2:.reg .b64 r2 = y;
+2:.reg .b64 r4 = x;
 }
 
  P0                 | P1                  | P2                 ;

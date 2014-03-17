@@ -18,10 +18,8 @@ type reg = string (* Registers not yet parsed *)
 
 type location =
   | Location_reg of int * reg
-  | Location_sreg of string
+  | Location_sreg of string (** symbolic register *)
   | Location_global of maybev
-  | Location_reg_type of int * reg * string
-  | Location_shared of int * maybev (*for GPU shared memory initializations*)
 
 val location_compare : location -> location -> int
 val dump_location : location -> string

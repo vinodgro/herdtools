@@ -20,8 +20,6 @@ type location =
   | Location_reg of int * reg
   | Location_sreg of string
   | Location_global of maybev
-  | Location_reg_type of int * reg * string
-  | Location_shared of int * maybev (*for GPU shared memory initializations*)
 
 let location_compare loc1 loc2 = match loc1,loc2 with
 | Location_reg (i1,r1), Location_reg (i2,r2) ->
@@ -38,37 +36,15 @@ let location_compare loc1 loc2 = match loc1,loc2 with
 | Location_sreg _, Location_global _ -> -1
 | Location_global _, Location_sreg _ -> 1
 
-(*Comparing register declarations, they beat everything else
-  Hopefully this is the right way to do it.*)
-
-| Location_reg_type (i1,r1,_), Location_reg_type (i2,r2,_) ->
-    begin match Misc.int_compare i1 i2 with
-    | 0 -> String.compare r1 r2
-    | c -> c
-    end
-| Location_reg_type _, _ -> 1
-| _, Location_reg_type _ -> -1
-
-| Location_shared (i1,v1), Location_shared (i2,v2) -> 
-  if i1 > i2 then 1
-  else if i2 > i1 then -1
-  else SymbConstant.compare v1 v2
-| Location_shared _, _ -> -1
-| _, Location_shared _ -> 1
-
 let dump_location = function
   | Location_reg (i,r) -> Printf.sprintf "%i:%s" i r
   | Location_sreg s -> s
   | Location_global v -> SymbConstant.pp_v v
-  | Location_reg_type (i1,r1,s) -> Printf.sprintf "%i: .reg %s %s" i1 s r1
-  | Location_shared (i1,v1) -> Printf.sprintf "%i::%s" i1 (SymbConstant.pp_v v1)
 
 let dump_rval loc = match loc with
   | Location_reg (i,r) -> Printf.sprintf "%i:%s" i r
   | Location_sreg s -> s
   | Location_global v -> Printf.sprintf "*%s" (SymbConstant.pp_v v)
-  | Location_reg_type (i1,r1,s) -> Printf.sprintf "%i: .reg %s %s" i1 s r1
-  | Location_shared (i1,v1) -> Printf.sprintf "%i::%s" i1 (SymbConstant.pp_v v1)
 
 let is_global = function
   | Location_global _ -> true

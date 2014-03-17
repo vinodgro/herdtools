@@ -109,7 +109,7 @@ module type S = sig
   module LabelMap : Map.S with type key = string
 
 
-  (* Programm loaded in memory *)
+  (* Program loaded in memory *)
   type program = code LabelMap.t
 
   (* A starting address per proc *)
@@ -173,7 +173,7 @@ module Make(C:Config) (I:I) : S with module I = I
 
   let undetermined_vars_in_loc l =  match l with
   | Location_reg _ -> None
-  | Location_global a | Location_shared (_,a) ->
+  | Location_global a ->
       if I.V.is_var_determined a then None
       else Some a
 
@@ -182,13 +182,10 @@ module Make(C:Config) (I:I) : S with module I = I
   | Location_reg _  -> l
   | Location_global a ->
       Location_global (I.V.simplify_var soln a)
-  | Location_shared (i,a) -> 
-      Location_shared (i, I.V.simplify_var soln a)
 
   let map_loc fv loc = match loc with
   | Location_reg _ -> loc
   | Location_global a -> Location_global (fv a)
-  | Location_shared (i,a) -> Location_shared (i, fv a)
 
 (***************************************************)
 (* State operations, implemented with library maps *)

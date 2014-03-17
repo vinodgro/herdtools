@@ -9,7 +9,7 @@ Witnesses
 Positive: 1 Negative: 3
 Condition exists (1:r1=1 /\ 1:r3=0)
 Observation MP Sometimes 1 3
-Hash=c670205393f947baed3762a24bc1bcca
+Hash=2c2c93931bf5f0e37da35886c6614023
 
 Test scoped_MP Allowed
 States 4
@@ -22,5 +22,5 @@ Witnesses
 Positive: 3 Negative: 9
 Condition exists (2:r1=1 /\ 2:r3=0)
 Observation scoped_MP Sometimes 3 9
-Hash=700094ff0db0a365838b2564dce2c759
+Hash=261aa00f298ecc79766cf0b8b9e91bb1
 
