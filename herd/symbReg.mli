@@ -17,7 +17,7 @@ open ConstrGen
 module Make(A:Arch.S) : sig
   val allocate_regs : A.pseudo MiscParser.t ->
     ((A.location * A.V.v) list,
-     (int * A.pseudo list) list,
+     (Proc.proc * A.pseudo list) list,
      (A.location, A.V.v) prop constr,
      A.location)
       MiscParser.result

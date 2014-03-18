@@ -302,7 +302,7 @@ struct
     | None -> None
 
     let same_proc e1 e2 = match proc_of e1, proc_of e2 with
-    | Some p1,Some p2 -> Misc.int_eq p1 p2
+    | Some p1,Some p2 -> Proc.proc_eq p1 p2
     | (None,Some _)|(Some _,None) -> false
     | None,None -> true
 
@@ -337,9 +337,9 @@ struct
     let get_mem_dir e = Act.get_mem_dir e.action 
 
 (* relative to the registers of the given proc *)
-    let is_reg_store e (p:int) = Act.is_reg_store e.action p
-    let is_reg_load e (p:int) = Act.is_reg_load e.action p
-    let is_reg e (p:int) = Act.is_reg e.action p
+    let is_reg_store e (p:Proc.proc) = Act.is_reg_store e.action p
+    let is_reg_load e (p:Proc.proc) = Act.is_reg_load e.action p
+    let is_reg e (p:Proc.proc) = Act.is_reg e.action p
 
 (* Store/Load anywhere *)
     let is_store e = Act.is_store e.action 
@@ -502,7 +502,7 @@ struct
       let rec add_env p e = function
 	| [] -> assert false
 	| (q,es as c)::env ->
-	    if Misc.int_eq p q then
+	    if Proc.proc_eq p q then
 	      (q, S.add e es)::env
 	    else
 	      c::add_env p e env
@@ -533,7 +533,7 @@ struct
       let p1 = proc_of e1 and p2 = proc_of e2 in
       match p1,p2 with
       | Some p1,Some p2 ->
-          if Misc.int_eq p1 p2 then [p1]
+          if Proc.proc_eq p1 p2 then [p1]
           else []
       | _,_ -> []
 
@@ -545,7 +545,7 @@ struct
        let p1 = proc_of e1 and p2 = proc_of e2 in
        match p1,p2 with
        | Some p1, Some p2 ->
-           if Misc.int_eq p1 p2 then [p1]
+           if Proc.proc_eq p1 p2 then [p1]
            else if is_mem_store e1 then [p2]
            else if is_mem_store e2 then [p1]
            else [] (* Can occur for X86CC -> no projected relation *)

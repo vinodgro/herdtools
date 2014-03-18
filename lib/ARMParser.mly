@@ -28,7 +28,7 @@ open ARMBase
 %token I_ADD I_ADDS I_AND I_ANDS I_B I_BEQ I_BNE I_CMP I_MOV I_MOVNE I_MOVEQ I_XOR I_XORS I_DMB I_DSB I_ISB I_CBZ I_CBNZ
 %token I_LDR I_LDREX I_LDRNE I_LDREQ I_STR I_STRNE I_STREQ I_STREX
 %token I_SY I_ST I_ISH I_ISHST I_NSH I_NSHST I_OSH I_OSHST
-%type <int list * (ARMBase.pseudo) list list> main 
+%type <Proc.proc list * (ARMBase.pseudo) list list> main 
 %start  main
 
 %nonassoc SEMI
@@ -42,10 +42,8 @@ semi_opt:
 | SEMI { () }
 
 proc_list:
-| PROC SEMI
-    {[$1]}
-
-| PROC PIPE proc_list  { $1::$3 }
+| PROC SEMI {[Proc.int_to_proc $1]}
+| PROC PIPE proc_list  { Proc.int_to_proc $1 :: $3 }
 
 iol_list :
 |  instr_option_list SEMI

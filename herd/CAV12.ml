@@ -75,13 +75,13 @@ module Make
         PP.show_legend test  legend conc (Lazy.force vb_pp)
 
 (* Utilities *)
-    let proc_eq = Misc.int_eq
+    (* let proc_eq = Misc.int_eq *)
     let one_store (e1,e2) = E.is_mem_store e1 || E.is_mem_store e2
     and same_proc (e1,e2) = E.same_proc e1 e2
     and diff_proc (e1,e2) = not  (E.same_proc e1 e2)
-    and get_proc e = match E.proc_of e with
+   (* and get_proc e = match E.proc_of e with
     | Some p -> p
-    | None -> -1
+    | None -> -1*)
 
     let is_fence_exe e = match e.SE.nature with
     | SE.Exe ->
@@ -92,7 +92,10 @@ module Make
     | _ -> false
 
     let is_self_propagate e = match e.SE.nature with
-    | SE.Prop j -> proc_eq j (get_proc e.SE.event)
+    | SE.Prop (Some j) -> begin
+      match E.proc_of e.SE.event with
+      | Some p -> Proc.proc_eq j p
+      | None -> false end
     | _ -> false
 
           (* Meaningless events *)
@@ -161,13 +164,16 @@ module Make
         (fun (x1e,y1e) k ->
           let x = x1e.SE.event
           and y = y1e.SE.event in
-          let py = get_proc y in
-          if
-            m.SE.fbefore (x,y) &&
-            SE.relevant_to_proc x1e py && 
-            SE.relevant_to_proc y1e py
-          then (x,y)::k
-          else k)
+          let pyo = E.proc_of y in
+          match pyo with
+          | None -> k
+          | Some py ->
+            if
+              m.SE.fbefore (x,y) &&
+              SE.relevant_to_proc x1e py && 
+              SE.relevant_to_proc y1e py
+            then (x,y)::k
+            else k)
         evord []
 
     let before_of m evord = E.EventRel.of_list (before_sources m evord)
@@ -177,13 +183,15 @@ module Make
         (fun (x1e,y1e) k ->
           let x = x1e.SE.event
           and y = y1e.SE.event in
-          let px = get_proc x in
-          
-          if
-            m.SE.fafter (x,y) &&
-            SE.relevant_to_proc x1e px
-          then (x,y)::k
-          else k)
+          let pxo = E.proc_of x in
+          match pxo with
+          | None -> k
+          | Some px ->
+            if
+              m.SE.fafter (x,y) &&
+              SE.relevant_to_proc x1e px
+            then (x,y)::k
+            else k)
         evord []
 
     let show_reduced = true
@@ -210,10 +218,16 @@ module Make
 (* Compute nature of relevant events *)
     let nature_of_relevant i x =
       if SE.globally_visible x then begin
-        if proc_eq (get_proc x) i then
+        if 
+          begin 
+            match E.proc_of x with
+            | None -> false 
+            | Some p -> Proc.proc_eq p i 
+          end 
+        then
           SE.Com
         else
-          SE.Prop i
+          SE.Prop (Some i)
       end else if E.is_mem_load x then
         SE.Exe
       else
@@ -286,13 +300,16 @@ module Make
             E.EventSet.fold
               (fun e k -> 
                 if SE.globally_visible e then
-                  let j = get_proc e
+                  let jo = E.proc_of e
                   and ecom = { SE.nature = SE.Com ; event = e; } in
-                  List.fold_left
-                    (fun k i ->
-                      if proc_eq j i then k
-                      else (ecom,{ SE.nature=SE.Prop i ; event = e; })::k)
-                    k ps
+                  match jo with
+                  | None -> k
+                  | Some j ->
+                    List.fold_left
+                      (fun k i ->
+                         if Proc.proc_eq j i then k
+                         else (ecom,{ SE.nature=SE.Prop (Some i) ; event = e; })::k)
+                      k ps
                 else k)
               evts [] in
           SE.SplittedRel.of_list pairs
@@ -307,15 +324,15 @@ module Make
                   | Dir.R,Dir.R -> assert false
                   | Dir.R,Dir.W ->
                       ({ SE.nature = SE.Exe ; event = x ; },
-                       { SE.nature = SE.Prop (get_proc x) ; event = y ; })::k
+                       { SE.nature = SE.Prop (E.proc_of x) ; event = y ; })::k
                   | Dir.W,Dir.R ->
-                      ({ SE.nature = SE.Prop (get_proc y) ; event = x ; },
+                      ({ SE.nature = SE.Prop (E.proc_of y) ; event = x ; },
                        { SE.nature = SE.Exe ; event = y ; })::k
                   | Dir.W,Dir.W ->
                       if !Misc.switch then k
                       else
                       ({ SE.nature = SE.Com ; event = x ; },
-                       { SE.nature = SE.Prop (get_proc x) ; event = y ; })::k
+                       { SE.nature = SE.Prop (E.proc_of x) ; event = y ; })::k
                 else k)
               com [] in
           SE.SplittedRel.of_list pairs in

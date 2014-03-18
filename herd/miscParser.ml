@@ -17,13 +17,13 @@ type maybev = SymbConstant.v
 type reg = string (* Registers not yet parsed *)
 
 type location =
-  | Location_reg of int * reg
+  | Location_reg of Proc.proc * reg
   | Location_sreg of string
   | Location_global of maybev
 
 let location_compare loc1 loc2 = match loc1,loc2 with
 | Location_reg (i1,r1), Location_reg (i2,r2) ->
-    begin match Misc.int_compare i1 i2 with
+    begin match Proc.proc_compare i1 i2 with
     | 0 -> String.compare r1 r2
     | c -> c
     end
@@ -37,12 +37,12 @@ let location_compare loc1 loc2 = match loc1,loc2 with
 | Location_global _, Location_sreg _ -> 1
 
 let dump_location = function
-  | Location_reg (i,r) -> Printf.sprintf "%i:%s" i r
+  | Location_reg (i,r) -> Printf.sprintf "%s:%s" (Proc.pp_proc i) r
   | Location_sreg s -> s
   | Location_global v -> SymbConstant.pp_v v
 
 let dump_rval loc = match loc with
-  | Location_reg (i,r) -> Printf.sprintf "%i:%s" i r
+  | Location_reg (i,r) -> Printf.sprintf "%s:%s" (Proc.pp_proc i) r
   | Location_sreg s -> s
   | Location_global v -> Printf.sprintf "*%s" (SymbConstant.pp_v v)
 
@@ -95,7 +95,7 @@ type ('i, 'p, 'c, 'loc) result =
 (* Easier to handle *)
 type ('loc,'v,'ins) r3 =
       (('loc * 'v) list,
-       (int * 'ins list) list,
+       (Proc.proc * 'ins list) list,
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
        'loc) result
 
@@ -107,7 +107,7 @@ type ('loc,'v,'code) r4 =
 
 (* Result of generic parsing *)
 type 'pseudo t =
-    (state, (int * 'pseudo list) list, constr, location) result
+    (state, (Proc.proc * 'pseudo list) list, constr, location) result
 
 let get_hash p =
   try List.assoc "Hash" p.info

@@ -59,14 +59,14 @@ module Make(S : SemExtra.S) = struct
 
 (*Scope operations*)
 
-  let get_proc_loc_tuple scope_tree num = 
+  let get_proc_loc_tuple scope_tree proc = 
     let result = ref (-1,-1,-1,-1,-1) in
     List.iteri (fun dev -> 
       List.iteri (fun ker -> 
         List.iteri (fun cta -> 
           List.iteri (fun wrp -> 
             List.iter (fun thd ->
-              if thd = num then
+              if thd = Proc.proc_to_int proc then
                 result := (dev,ker,cta,wrp,thd)
             )
           )
@@ -77,16 +77,10 @@ module Make(S : SemExtra.S) = struct
 
   (*TODO fix scopes and init writes!*)
   let inside_scope e1 e2 s scope_tree =
-    let e1_int = match (E.proc_of e1) with
-      | Some x -> x
-      | _ -> -1
-    in
-    let e2_int = match (E.proc_of e2) with
-      | Some x -> x
-      | _ -> -1
-    in
-    if (e1_int = -1 || e2_int = -1) then true 
-    else
+    match E.proc_of e1, E.proc_of e2 with
+    | None, _ -> true
+    | _, None -> true
+    | Some e1_int, Some e2_int ->
       begin
 	let d1,k1,wg1,sg1,t1 = get_proc_loc_tuple scope_tree e1_int
 	in 
