@@ -106,9 +106,9 @@ and type pseudo = A.pseudo
 
   let collect_location loc (regs,symbs as c) = match loc with
   | Location_reg (p,r) ->
-      (ProcRegSet.add (p,get_reg r) regs,symbs)
+      ProcRegSet.add (p,get_reg r) regs,symbs
   | Location_sreg reg ->
-     (regs,StringSet.add reg symbs)
+      regs,StringSet.add reg symbs
   | Location_global _ -> c
 
   let collect_state_atom (loc,(_:maybev)) = collect_location loc

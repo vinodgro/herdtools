@@ -80,6 +80,7 @@ let pp_outcome o =
 
 type run_type = Ty of string | Pointer of string
 
+
 (* Packed result *)
 type info = (string * string) list
 type ('i, 'p, 'c, 'loc) result =
@@ -88,8 +89,8 @@ type ('i, 'p, 'c, 'loc) result =
       prog : 'p ;
       condition : 'c ;
       locations : ('loc * run_type) list;
-      scope_tree : ScopeTree.scope_tree ;
-      mem_space_map : ScopeTree.mem_space_map ;
+(*      scope_tree : ScopeTree.scope_tree ;
+      mem_space_map : ScopeTree.mem_space_map ; *)
 }
 
 (* Easier to handle *)
