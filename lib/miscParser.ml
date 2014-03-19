@@ -88,7 +88,10 @@ type ('i, 'p, 'c, 'loc) result =
       init : 'i ;
       prog : 'p ;
       condition : 'c ;
-      locations : ('loc * run_type) list}
+      locations : ('loc * run_type) list;
+(*      scope_tree : ScopeTree.scope_tree ;
+      mem_space_map : ScopeTree.mem_space_map ; *)
+}
 
 (* Easier to handle *)
 type ('loc,'v,'ins) r3 =

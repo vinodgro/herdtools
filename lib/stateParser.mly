@@ -26,7 +26,11 @@ open ConstrGen
 %token EQUAL PLUS_DISJ
 %token FINAL FORALL EXISTS OBSERVED TOKAND NOT AND OR IMPLIES CASES WITH
 %token LOCATIONS STAR
-%token LBRK RBRK LPAR RPAR SEMI COLON
+%token LBRK RBRK LPAR RPAR SEMI COLON 
+
+%token PTX_REG_DEC 
+%token <string> PTX_REG_TYPE
+
 
 %left PLUS_DISJ OR
 %left AND
@@ -65,6 +69,11 @@ location_reg:
 | PROC COLON reg  {Location_reg ($1,$3)}
 | NUM COLON reg   {Location_reg ($1,$3)}
 | SYMB_REG        {Location_sreg $1 }
+/* PTX registers */
+| NUM COLON PTX_REG_DEC PTX_REG_TYPE reg 
+                  {Location_reg($1,$5)}
+| PROC COLON PTX_REG_DEC PTX_REG_TYPE reg 
+                  {Location_reg($1,$5)}
 
 location_deref:
 | location_reg { $1 }
@@ -74,10 +83,11 @@ location_deref:
 location:
 | location_reg { $1 }
 | LBRK maybev RBRK {Location_global $2}
-/* Hum, for backward compatibility, and compatiility with printer */
+/* Hum, for backward compatibility, and compatibility with printer */
 | maybev { Location_global $1 }
 
 atom:
+| location {($1,Concrete 0)}
 | location EQUAL maybev {($1,$3)}
 
 atom_semi_list:

@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* The basic types of architectures and semantics, just parsed *)
+(** The basic types of architectures and semantics, just parsed *)
 
 type maybev = SymbConstant.v
 
@@ -18,7 +18,7 @@ type reg = string (* Registers not yet parsed *)
 
 type location =
   | Location_reg of int * reg
-  | Location_sreg of string
+  | Location_sreg of string (** symbolic register *)
   | Location_global of maybev
 
 val location_compare : location -> location -> int
@@ -50,7 +50,10 @@ type ('i, 'p, 'c, 'loc) result =
       init : 'i ;
       prog : 'p ;
       condition : 'c ;
-      locations : ('loc * run_type) list}
+      locations : ('loc * run_type) list ;
+      (* scope_tree : ScopeTree.scope_tree ;
+      mem_space_map : ScopeTree.mem_space_map ; *)
+}
 
 (* Easier to handle *)
 type ('loc,'v,'ins) r3 =

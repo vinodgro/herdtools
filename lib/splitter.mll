@@ -57,7 +57,7 @@ rule main_pos = parse
      main start lexbuf
     }
 and main start = parse
-| blank* (alpha|digit)+ as arch
+| blank* (alpha|digit|'_')+ as arch
   blank+
   (testname as tname)
   blank*
@@ -125,10 +125,11 @@ and inside_prog  = parse
 | "forall"
 | ('~' blank* "exists" )
 | "exists"
+| "cases" (* not sure if this line should still be here *)
 | "observed"|"Observed"
 | "locations"
    { false,lexeme_start_p lexbuf }
- (* name is for longuest match to avoid confusion, in case of eg. forallx *)
+ (* name is for longest match to avoid confusion, in case of eg. forallx *)
 | (name | _)  { inside_prog lexbuf }
 | "" { error "inside_prog" lexbuf }
 
@@ -136,6 +137,7 @@ and inside_constr  = parse
 | '\n'  { incr_lineno lexbuf ;  inside_constr lexbuf }
 | "(*"  { skip_comment lexbuf ; inside_constr lexbuf }
 | "<<"| eof  { lexeme_start_p lexbuf }
+(*| "scopeTree" {lexeme_start_p lexbuf}*)
 | _  { inside_constr lexbuf }
 | "" { error "inside_constr" lexbuf }
 

@@ -10,6 +10,8 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+(** Operations on symbolic registers *)
+
 open ConstrGen
 
 module Make(A:Arch.S) : sig
