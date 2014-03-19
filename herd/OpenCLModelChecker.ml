@@ -75,7 +75,7 @@ module Make
            "rf", pr.S.rf;
            "rfe", U.ext pr.S.rf;
            "rfi", U.internal pr.S.rf;
-         ] @ 
+         ] (* @ 
          List.fold_left (fun z (k,v) ->
              ("ext-" ^ k, U.ext_scope v unv test.Test.scope_tree) :: 
              ("int-" ^ k, U.int_scope v unv test.Test.scope_tree) :: 
@@ -88,7 +88,7 @@ module Make
            "cta", AST.Work_Group;
 	   "kernel", AST.Kernel;
 	   "dev", AST.Device; 
-	 ]) in
+	 ] *)) in
       let m =
         List.fold_left
           (fun m (k,v) -> StringMap.add k (lazy (I.Set (E.EventSet.filter v evts))) m)
