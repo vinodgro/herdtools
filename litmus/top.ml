@@ -220,8 +220,18 @@ end = struct
             let compiled = compile allocated in
             let source = MyName.outname name ".c" in
             dump source doc compiled;
+            if not OT.is_out then begin
+              let _utils =
+                let module O = struct
+                  include OT
+                  let arch = A'.arch
+                end in
+                let module Obj = ObjUtil.Make(O)(Tar) in
+                Obj.dump () in
+              ()
+            end ;
             R.run name out_chan doc allocated source ;
-            Completed (A.arch,doc,source,cycles,hash_env)
+            Completed (A'.arch,doc,source,cycles,hash_env)
           end else begin
             W.warn "%stest not compiled" (Pos.str_pos0 doc.Name.file) ;
             Absent A.arch
