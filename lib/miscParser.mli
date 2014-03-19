@@ -51,8 +51,8 @@ type ('i, 'p, 'c, 'loc) result =
       prog : 'p ;
       condition : 'c ;
       locations : ('loc * run_type) list ;
-      (* scope_tree : ScopeTree.scope_tree ;
-      mem_space_map : ScopeTree.mem_space_map ; *)
+      scope_tree : ScopeTree.scope_tree option ;
+      mem_space_map : MemSpaceMap.mem_space_map option ;
 }
 
 (* Easier to handle *)

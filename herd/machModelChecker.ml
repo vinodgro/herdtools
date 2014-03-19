@@ -55,7 +55,7 @@ module Make
         List.fold_left
           (fun m (k,v) -> StringMap.add k (lazy (I.Rel v)) m)
           StringMap.empty
-          ["id",id;
+          (["id",id;
 	   "unv", unv;
            "atom",conc.S.atomic_load_store;
            "po",S.restrict E.is_mem E.is_mem conc.S.po;
@@ -86,7 +86,27 @@ module Make
            "mfence",prb.JU.mfence;
            "sfence",prb.JU.sfence;
            "lfence",prb.JU.lfence;
-          ] in
+(* PTX fences *)
+	   "membar.cta", prb.JU.membar_cta;
+	   "membar.gl", prb.JU.membar_gl;
+	   "membar.sys", prb.JU.membar_sys;
+          ] @ 
+          (match test.Test.scope_tree with
+           | None -> []
+           | Some scope_tree ->
+        List.fold_left (fun z (k,v) ->
+            ("ext-" ^ k, U.ext_scope v unv scope_tree) :: 
+            ("int-" ^ k, U.int_scope v unv scope_tree) :: 
+            z ) [] [ 
+          "wi", AST.Work_Item; 
+          "thread", AST.Work_Item;
+          "sg", AST.Sub_Group; "warp", AST.Sub_Group;
+          "wg", AST.Work_Group; 
+          "block", AST.Work_Group; 
+          "cta", AST.Work_Group;
+	  "kernel", AST.Kernel;
+	  "dev", AST.Device; 
+	])) in
       let m =
         List.fold_left
           (fun m (k,v) -> StringMap.add k (lazy (I.Set (E.EventSet.filter v evts))) m)

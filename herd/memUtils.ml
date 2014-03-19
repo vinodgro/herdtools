@@ -101,18 +101,10 @@ module Make(S : SemExtra.S) = struct
       end
 	    
   let ext_scope scope r scope_tree = 
-    let scope_tree = match scope_tree with
-    | ScopeTree.Scope_tree s -> s
-    | _ -> Warn.fatal "ext_scope function requires a scope tree"
-    in
     E.EventRel.filter 
       (fun (e1,e2) -> not (inside_scope e1 e2 scope scope_tree)) r 
 
   let int_scope scope r scope_tree = 
-    let scope_tree = match scope_tree with
-    | ScopeTree.Scope_tree s -> s
-    | _ -> Warn.fatal "int_scope function requires a scope tree"
-    in
     E.EventRel.filter 
       (fun (e1,e2) -> inside_scope e1 e2 scope scope_tree) r
 

@@ -59,7 +59,9 @@ module type LexParse = sig
   val lexer : Lexing.lexbuf -> token
   val parser :
         (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
-	  int list * instruction list list
+	  int list * instruction list list *
+          (ScopeTree.scope_tree option * 
+           MemSpaceMap.mem_space_map option)
 end
 
 (* Output signature *)
@@ -174,7 +176,8 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       call_parser "init" lexbuf SL.token StateParser.init
 
     let parse_prog lexbuf =
-      let procs,prog = call_parser "prog" lexbuf L.lexer L.parser in
+      let procs,prog,_ = 
+        call_parser "prog" lexbuf L.lexer L.parser in
       check_procs procs ;
       let prog = transpose procs prog in
       let prog = expn_prog prog in
@@ -200,7 +203,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let init =
 	call_parser_loc "init"
 	  chan init_loc SL.token StateParser.init in
-      let procs,prog =
+      let procs,prog,(scope_tree,mem_space_map) =
 	call_parser_loc "prog" chan prog_loc L.lexer L.parser in
       check_procs procs ;
       let prog = transpose procs prog in
@@ -209,16 +212,6 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
 	call_parser_loc "final"
 	  chan constr_loc SL.token StateParser.constraints in
       check_regs procs init locs final ;
-(*
-      (*Just for GPUs to get scope tree and memory map*)
-      let scope_tree, mem_map = 
-	if A.arch != Archs.GPU_PTX
-	then (ScopeTree.cpu_scope_tree (List.length procs), ScopeTree.No_mem_space_map)
-	else  
-	  call_parser_loc "scope tree and memory map"
-	    chan scope_loc STL.token ScopeTreeParser.scopes_and_memory_map
-      in
-*)
       let all_locs =
         MiscParser.LocSet.union
           (MiscParser.LocSet.of_list (List.map fst locs))
@@ -228,8 +221,8 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
          MiscParser.info; init; prog = prog;
          condition = final; 
          locations = locs;
-(*	 scope_tree = scope_tree;
-	 mem_space_map = mem_map;*)
+	 scope_tree = scope_tree;
+	 mem_space_map = mem_space_map;
        } in
       let name  = name.Name.name in
       let parsed =

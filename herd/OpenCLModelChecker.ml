@@ -76,19 +76,22 @@ module Make
            "rfe", U.ext pr.S.rf;
            "rfi", U.internal pr.S.rf;
          ] @ 
-         List.fold_left (fun z (k,v) ->
-             ("ext-" ^ k, U.ext_scope v unv (!ScopeTree.scope_tree)) :: 
-             ("int-" ^ k, U.int_scope v unv (!ScopeTree.scope_tree)) :: 
-             z ) [] [ 
-           "wi", AST.Work_Item; 
-           "thread", AST.Work_Item;
-           "sg", AST.Sub_Group; "warp", AST.Sub_Group;
-           "wg", AST.Work_Group; 
-           "block", AST.Work_Group; 
-           "cta", AST.Work_Group;
-	   "kernel", AST.Kernel;
-	   "dev", AST.Device; 
-	 ]) in
+         (match test.Test.scope_tree with
+           | None -> []
+           | Some scope_tree ->
+        List.fold_left (fun z (k,v) ->
+            ("ext-" ^ k, U.ext_scope v unv scope_tree) :: 
+            ("int-" ^ k, U.int_scope v unv scope_tree) :: 
+            z ) [] [ 
+          "wi", AST.Work_Item; 
+          "thread", AST.Work_Item;
+          "sg", AST.Sub_Group; "warp", AST.Sub_Group;
+          "wg", AST.Work_Group; 
+          "block", AST.Work_Group; 
+          "cta", AST.Work_Group;
+	  "kernel", AST.Kernel;
+	  "dev", AST.Device; 
+	])) in
       let m =
         List.fold_left
           (fun m (k,v) -> StringMap.add k (lazy (I.Set (E.EventSet.filter v evts))) m)

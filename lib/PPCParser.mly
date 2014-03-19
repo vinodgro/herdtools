@@ -39,15 +39,15 @@ open PPC
 %token COMMENT
 %token <string> STRING
 
-%type <int list * (PPCBase.pseudo) list list> main 
+%type <int list * (PPCBase.pseudo) list list * (ScopeTree.scope_tree option * MemSpaceMap.mem_space_map option)> main 
 %start  main
 
 %nonassoc SEMI
 %%
 
 main:
-| semi_opt proc_list iol_list EOF { $2,$3 }
-| semi_opt proc_list EOF { $2,[] }
+| semi_opt proc_list iol_list EOF { $2,$3,(None,None) }
+| semi_opt proc_list EOF { $2,[],(None,None) }
 
 semi_opt:
 | { () }

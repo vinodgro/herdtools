@@ -18,15 +18,15 @@ open CPP11
 
 %token LD ST FENCE LOCK UNLOCK SCAS WCAS
 
-%type <int list * (CPP11Base.pseudo) list list> main 
+%type <int list * (CPP11Base.pseudo) list list * (ScopeTree.scope_tree option * MemSpaceMap.mem_space_map option)> main 
 %start  main
 
 %nonassoc SEMI
 %%
 
 main:
-| semi_opt proc_list iol_list EOF { $2,$3 }
-| semi_opt proc_list EOF          { $2,[] }
+| semi_opt proc_list iol_list EOF { $2,$3,(None,None) }
+| semi_opt proc_list EOF          { $2,[],(None,None) }
 
 semi_opt:
 |      { () }

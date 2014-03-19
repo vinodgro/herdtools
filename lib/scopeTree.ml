@@ -7,12 +7,10 @@ type warp        = thread list
 type cta         = warp list
 type kernel      = cta list
 type device      = kernel list
+type scope_tree  = device list
 
-type scope_tree = 
-| Scope_tree of device list
-| No_scope_tree
 
-let scope_tree = ref No_scope_tree
+(* let scope_tree = ref No_scope_tree *)
     
 let rec create_list total acc l = 
   if acc = total then l
@@ -26,7 +24,7 @@ let cpu_scope_tree n =
   let ker = List.map (fun x -> [x]) cta in
   let dev = List.map (fun x -> [x]) ker in
   let top = List.map (fun x -> [x]) dev in
-  Scope_tree(top)
+  top
 
 let pp_warp w =
   let mapped_list = List.map (fun (i) -> sprintf "P%d" i) w in
@@ -48,8 +46,3 @@ let pp_scope_tree s =
   let mapped_list = List.map (fun (k) -> pp_device k) s in
   String.concat " " mapped_list
   
-
-let pp_scope_tree s = 
-  match s with
-  | Scope_tree s ->  pp_scope_tree s
-  | _ -> ""

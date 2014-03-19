@@ -38,7 +38,7 @@ module S = S
     let check_event_structure test = match O.model with
     | Generic m ->
         let module X =
-          GPU_PTXModelChecker.Make
+          MachModelChecker.Make
             (struct
               let m = m
               include ModelConfig
