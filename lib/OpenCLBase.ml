@@ -215,3 +215,4 @@ let get_next _ins = Warn.fatal "OpenCL get_next not implemented"
 let allowed_for_symb = []
 
 include ScopeTree
+include MemSpaceMap

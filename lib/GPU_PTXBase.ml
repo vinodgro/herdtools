@@ -357,3 +357,4 @@ let set_global _i = Warn.fatal "GPU_PTX set_global has not been implmeneted"
 let get_reg_list _i = Warn.fatal "Litmus GPU_PTX does not implement get_reg_list"
 
 include ScopeTree
+include MemSpaceMap
