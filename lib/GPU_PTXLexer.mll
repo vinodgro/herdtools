@@ -43,9 +43,9 @@ rule token = parse
 | '{' { LBRACE }
 | '}' { RBRACE }
 | "membar" { MEMBAR }
-| ".cta" {CTA (GPU_PTX.CTA)}
-| ".gl"  {GL (GPU_PTX.GL)}
-| ".sys" {SYS (GPU_PTX.SYS)}
+| ".cta" {DOTCTA}
+| ".gl"  {DOTGL}
+| ".sys" {DOTSYS}
 | "ld" {LD}
 | "st" {ST}
 | "mov" {MOV}
@@ -65,6 +65,14 @@ rule token = parse
 | ".volatile" {VOL}
 | ".shared" {SH (GPU_PTX.Shared)}
 | ".global" {GLOB (GPU_PTX.Global)}
+| "scopeTree" { SCOPETREE }
+| "global"  { GLOBAL }
+| "shared"|"local" { SHARED }
+| "kernel" { KERNEL }
+| "device" {DEVICE }
+| "cta" | "block" | "work_group" { CTA }
+| "warp" | "sub_group" { WARP }
+| "thread" { THREAD }
 | name as x
   { match GPU_PTX.parse_reg x with
   | Some r -> ARCH_REG r

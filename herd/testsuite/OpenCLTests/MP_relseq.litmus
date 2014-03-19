@@ -6,4 +6,8 @@ OpenCL MP_relseq
  y.store(1,rel,wg) | r2 = x                              ;
  y.store(2,rlx,wg) |                                     ;
 
-exists (1:r1 = 2 /\ 1:r2 = 0)
+scopeTree
+(device (work_group P0) (work_group P1))
+
+exists 
+(1:r1 = 2 /\ 1:r2 = 0)

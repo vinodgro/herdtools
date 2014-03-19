@@ -213,3 +213,5 @@ let pp_instruction _m _ins = Warn.fatal "OpenCL pp_instruction has not been impl
 let get_next _ins = Warn.fatal "OpenCL get_next not implemented"
 
 let allowed_for_symb = []
+
+include ScopeTree

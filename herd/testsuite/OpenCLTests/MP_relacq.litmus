@@ -5,4 +5,8 @@ OpenCL MP_relacq
  x = 1                             | r1 = y.load(acq,wg) ;
  y.store(1,rel,wg) | r2 = x                              ;
 
-exists (1:r1 = 1 /\ 1:r2 = 0)
+scopeTree
+(device (work_group P0) (work_group P1))
+
+exists 
+(1:r1 = 1 /\ 1:r2 = 0)

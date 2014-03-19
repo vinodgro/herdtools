@@ -22,10 +22,10 @@ GPU_PTX scoped_MP
  mov.s32 r3,1       |                     |                    ;
  st.s32.wt [r4],r3  |                     |                    ;  
 
-exists
-(2:r1=1 /\ 2:r3=0)
-
 scopeTree
 (device (cta P0 P1) (cta P2))
 
 x:global, y:global
+
+exists
+(2:r1=1 /\ 2:r3=0)

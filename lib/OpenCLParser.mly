@@ -24,11 +24,15 @@ open OpenCL
 %start  main
 
 %nonassoc SEMI
+
+%token SCOPETREE GLOBAL SHARED DEVICE KERNEL CTA WARP THREAD COMMA PTX_REG_DEC 
+
+%type <unit> scopes_and_memory_map
+
 %%
 
 main:
-| semi_opt proc_list iol_list EOF { $2,$3 }
-| semi_opt proc_list EOF          { $2,[] }
+| semi_opt proc_list iol_list scopes_and_memory_map EOF { $2,$3 }
 
 semi_opt:
 |      { () }
@@ -71,3 +75,64 @@ reg:
 loc:
 | NAME { Symbolic $1 }
 
+/* 
+   Parsing a simple S expression that needs to have a certain value.
+*/
+
+scopes_and_memory_map : 
+| SCOPETREE scope_tree memory_map 
+   {OpenCLBase.scope_tree := Scope_tree($2); 
+    OpenCLBase.mem_space_map := $3}
+
+scope_tree :
+|  device_list {$1}
+
+device_list :
+|  device { [$1] }
+|  device device_list { [$1]@$2 }
+
+device:
+|  LPAR DEVICE kernel_list RPAR {$3}
+
+kernel_list :
+|  kernel { [$1] }
+|  kernel kernel_list { [$1]@$2 }
+|  cta_list {List.map (fun x -> [x]) $1}
+
+kernel:
+|  LPAR KERNEL cta_list RPAR {$3}
+
+cta_list:
+|  cta { [$1] }
+|  cta cta_list { [$1]@$2 }
+|  warp_list {List.map (fun x -> [x]) $1}
+
+cta:
+| LPAR CTA warp_list RPAR {$3}
+
+warp_list:
+|  warp { [$1] }
+|  warp warp_list { [$1]@$2 }
+|  thread_list {List.map (fun x -> [x]) $1}
+
+warp:
+| LPAR WARP thread_list RPAR { $3 }
+
+thread_list:
+|  thread { [$1] }
+|  thread thread_list { [$1]@$2 }
+
+thread:
+| PROC {$1}
+
+memory_map:
+| memory_map_list { Mem_space_map($1) }
+|                 { No_mem_space_map }
+
+memory_map_list:
+| memory_map_atom { [$1] }
+| memory_map_atom COMMA memory_map_list { [$1]@$3 }
+
+memory_map_atom:
+| NAME COLON GLOBAL { ($1,OpenCLBase.GlobalMem) }
+| NAME COLON SHARED { ($1,OpenCLBase.SharedMem) }

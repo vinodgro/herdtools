@@ -137,7 +137,6 @@ and inside_constr  = parse
 | '\n'  { incr_lineno lexbuf ;  inside_constr lexbuf }
 | "(*"  { skip_comment lexbuf ; inside_constr lexbuf }
 | "<<"| eof  { lexeme_start_p lexbuf }
-(*| "scopeTree" {lexeme_start_p lexbuf}*)
 | _  { inside_constr lexbuf }
 | "" { error "inside_constr" lexbuf }
 

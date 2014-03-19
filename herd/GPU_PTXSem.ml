@@ -21,9 +21,9 @@ module Make (C:Sem.Config)(V:Value.S)
     include SemExtra.Make(C)(GPU_PTX)(Act)
 
 (* barrier pretty print *)
-    let bar_cta = {barrier=GPU_PTX.Membar GPU_PTX.CTA; pp="membar.cta";}
-    let bar_gl = {barrier=GPU_PTX.Membar GPU_PTX.GL; pp="membar.gl";}
-    let bar_sys = {barrier=GPU_PTX.Membar GPU_PTX.SYS; pp="membar.sys";}
+    let bar_cta = {barrier=GPU_PTX.Membar GPU_PTX.CTA_bar; pp="membar.cta";}
+    let bar_gl = {barrier=GPU_PTX.Membar GPU_PTX.GL_bar; pp="membar.gl";}
+    let bar_sys = {barrier=GPU_PTX.Membar GPU_PTX.SYS_bar; pp="membar.sys";}
 
     let barriers = [bar_cta; bar_gl; bar_sys]
 

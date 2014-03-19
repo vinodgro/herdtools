@@ -44,6 +44,14 @@ rule token = parse
 | "fence" { FENCE }
 | "load"  { LD }
 | "store"    { ST }
+| "scopeTree" { SCOPETREE }
+| "global"  { GLOBAL }
+| "shared"|"local" { SHARED }
+| "kernel" { KERNEL }
+| "device" {DEVICE }
+| "cta" | "block" | "work_group" { CTA }
+| "warp" | "sub_group" { WARP }
+| "thread" { THREAD }
 | name as x
   { match OpenCL.parse_reg x with
   | Some r -> ARCH_REG r

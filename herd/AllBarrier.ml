@@ -128,9 +128,9 @@ module FromGPU_PTX(GB:GPU_PTXBarrier.S) = struct
       | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
 
   let a_to_b a = match GB.a_to_b a with
-  | GB.Membar GPU_PTXBase.CTA -> MEMBAR_CTA
-  | GB.Membar GPU_PTXBase.GL  -> MEMBAR_GL
-  | GB.Membar GPU_PTXBase.SYS -> MEMBAR_SYS
+  | GB.Membar GPU_PTXBase.CTA_bar -> MEMBAR_CTA
+  | GB.Membar GPU_PTXBase.GL_bar  -> MEMBAR_GL
+  | GB.Membar GPU_PTXBase.SYS_bar -> MEMBAR_SYS
 
   let pp_isync = "???"
 end

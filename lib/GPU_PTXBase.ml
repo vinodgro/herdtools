@@ -74,19 +74,19 @@ let pc = PC
 (****************)
 
 type bar_scope = 
-| CTA
-| GL
-| SYS
+| CTA_bar
+| GL_bar
+| SYS_bar
 
 let pp_bar_scope s = match s with
-  | CTA -> "cta"
-  | GL -> "gl"
-  | SYS -> "sys"
+  | CTA_bar -> "cta"
+  | GL_bar -> "gl"
+  | SYS_bar -> "sys"
 
 type barrier =
  | Membar of bar_scope
 
-let all_kinds_of_barriers =  [ Membar GL ;]
+let all_kinds_of_barriers =  [ Membar GL_bar ;]
 (* Shouldn't the list above include Membar CTA and Membar SYS too? *)
 
 let pp_barrier b = match b with
@@ -355,3 +355,5 @@ let set_shared _i = Warn.fatal "GPU_PTX set_shared has not been implemented"
 let set_global _i = Warn.fatal "GPU_PTX set_global has not been implmeneted"
 
 let get_reg_list _i = Warn.fatal "Litmus GPU_PTX does not implement get_reg_list"
+
+include ScopeTree

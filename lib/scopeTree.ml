@@ -1,17 +1,17 @@
+open Printf
+
 (*********************************)
 (* GPU memory map and scope tree *)
 (*********************************)
 
-open Printf
-
 type gpu_memory_space = 
-| Global
-| Shared
+| GlobalMem
+| SharedMem
 
 let pp_gpu_memory_space x =
   match x with
-  | Global -> "global"
-  | Shared -> "shared"
+  | GlobalMem -> "global"
+  | SharedMem -> "shared"
 
 type thread      = int
 type warp        = thread list
@@ -22,6 +22,8 @@ type device      = kernel list
 type scope_tree = 
 | Scope_tree of device list
 | No_scope_tree
+
+let scope_tree = ref No_scope_tree
     
 let rec create_list total acc l = 
   if acc = total then l
@@ -36,12 +38,12 @@ let cpu_scope_tree n =
   let dev = List.map (fun x -> [x]) ker in
   let top = List.map (fun x -> [x]) dev in
   Scope_tree(top)
-  
-  
 
 type mem_space_map = 
 | Mem_space_map of (string * gpu_memory_space) list
 | No_mem_space_map
+
+let mem_space_map = ref No_mem_space_map
 
 let pp_warp w =
   let mapped_list = List.map (fun (i) -> sprintf "P%d" i) w in

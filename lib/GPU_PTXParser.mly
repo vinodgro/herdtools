@@ -20,7 +20,7 @@ open GPU_PTX
 %token <GPU_PTXBase.op_type> S32 B64 B32 U64 U32
 %token <GPU_PTXBase.state_space> GLOB SH
 %token <GPU_PTXBase.cache_op> CA CG CV WB WT
-%token <GPU_PTXBase.bar_scope> CTA GL SYS
+%token DOTCTA DOTGL DOTSYS
 %token <int> NUM
 %token <string> NAME
 %token <int> PROC
@@ -32,16 +32,19 @@ open GPU_PTX
 /* Instruction tokens */
 %token ST LD MEMBAR MOV ADD AND CVT VOL
 
-
-
 %type <int list * (GPU_PTXBase.pseudo) list list> main 
 %start  main
 
 %nonassoc SEMI
+
+%token SCOPETREE GLOBAL SHARED DEVICE KERNEL CTA WARP THREAD COMMA PTX_REG_DEC 
+
+%type <unit> scopes_and_memory_map
+
 %%
 
 main:
-| semi_opt proc_list iol_list EOF { $2,$3 }
+| semi_opt proc_list iol_list scopes_and_memory_map EOF { $2,$3 }
 
 semi_opt:
 | { () }
@@ -101,9 +104,9 @@ ins_op:
 | NUM {Im $1}
 
 bscope:
-| CTA {$1}
-| GL  {$1}
-| SYS {$1}
+| DOTCTA {GPU_PTXBase.CTA_bar}
+| DOTGL  {GPU_PTXBase.GL_bar}
+| DOTSYS {GPU_PTXBase.SYS_bar}
 
 ins_type:
 | S32 {$1}
@@ -127,3 +130,65 @@ cop:
  
 reg:
 | ARCH_REG { $1 }
+
+/* 
+   Parsing a simple S expression that needs to have a certain value.
+*/
+
+scopes_and_memory_map : 
+| SCOPETREE scope_tree memory_map 
+   {GPU_PTXBase.scope_tree := Scope_tree($2); 
+    GPU_PTXBase.mem_space_map := $3}
+
+scope_tree :
+|  device_list {$1}
+
+device_list :
+|  device { [$1] }
+|  device device_list { [$1]@$2 }
+
+device:
+|  LPAR DEVICE kernel_list RPAR {$3}
+
+kernel_list :
+|  kernel { [$1] }
+|  kernel kernel_list { [$1]@$2 }
+|  cta_list {List.map (fun x -> [x]) $1}
+
+kernel:
+|  LPAR KERNEL cta_list RPAR {$3}
+
+cta_list:
+|  cta { [$1] }
+|  cta cta_list { [$1]@$2 }
+|  warp_list {List.map (fun x -> [x]) $1}
+
+cta:
+| LPAR CTA warp_list RPAR {$3}
+
+warp_list:
+|  warp { [$1] }
+|  warp warp_list { [$1]@$2 }
+|  thread_list {List.map (fun x -> [x]) $1}
+
+warp:
+| LPAR WARP thread_list RPAR { $3 }
+
+thread_list:
+|  thread { [$1] }
+|  thread thread_list { [$1]@$2 }
+
+thread:
+| PROC {$1}
+
+memory_map:
+| memory_map_list { Mem_space_map($1) }
+|                 { No_mem_space_map }
+
+memory_map_list:
+| memory_map_atom { [$1] }
+| memory_map_atom COMMA memory_map_list { [$1]@$3 }
+
+memory_map_atom:
+| NAME COLON GLOBAL { ($1,GPU_PTXBase.GlobalMem) }
+| NAME COLON SHARED { ($1,GPU_PTXBase.SharedMem) }
