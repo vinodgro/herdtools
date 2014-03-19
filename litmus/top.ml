@@ -85,6 +85,7 @@ module type Config = sig
   include Skel.Config
   include Run.Config
   val limit : bool
+  val sysarch : Archs.System.t
 end
 
 module Top (OT:TopConfig) (Tar:Tar.S) : sig
@@ -117,9 +118,9 @@ end = struct
 
 
   module Utils (O:Config) (A:Arch.S) (A':Arch.Base)
-           (Lang:Language.S
-            with type arch_reg = A'.Out.arch_reg
-             and type t = A'.Out.t)
+      (Lang:Language.S
+      with type arch_reg = A'.Out.arch_reg
+      and type t = A'.Out.t)
       (Pseudo:PseudoAbstract.S) =
     struct
       module T = Test.Make(A')(Pseudo)
@@ -172,10 +173,10 @@ end = struct
       let dump source doc compiled =
         Misc.output_protect
           (fun chan ->
-             let module Out =
-               Indent.Make(struct let out = chan end) in
-             let module S = MS(Out)(Lang) in
-             S.dump doc compiled)
+            let module Out =
+              Indent.Make(struct let out = chan end) in
+            let module S = MS(Out)(Lang) in
+            S.dump doc compiled)
           (Tar.outname source)
 
       let limit_ok nprocs = match O.avail with
@@ -414,94 +415,84 @@ end = struct
         include OT
         include ODep
         let debuglexer = debuglexer
-        let carch = lazy (assert false)
+        let sysarch = match arch with
+        | #Archs.System.t as a -> a
+        | `C -> begin match OT.carch with
+          | Some a -> a
+          | None  -> Warn.fatal "Test %s not performed because -carch is not given but required while using C arch" tname
+        end
       end in
-      let get_cfg = function
-      | `PPC, _ | `PPCGen, _ | `X86, _ | `ARM, _ -> Some (module OX : Config)
-      | `C, Some given_carch ->
-          let module OX = struct
-            include OX
-            let carch = lazy given_carch
-          end in
-          Some (module OX : Config)
-      | `C, None -> None
+      let module Cfg = OX in
+      let aux = function
+        | `PPC ->
+            let module Arch' = PPCArch.Make(OC)(V) in
+            let module LexParse = struct
+              type instruction = Arch'.pseudo
+              type token = PPCParser.token
+              module Lexer = PPCLexer.Make(LexConfig)
+              let lexer = Lexer.token
+              let parser = PPCParser.main
+            end in
+            let module Compile = PPCCompile.Make(V)(OC) in
+            let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
+            X.compile cycles hash_env name in_chan out_chan splitted
+        | `PPCGen ->
+            let module Arch' = PPCGenArch.Make(OC)(V) in
+            let module LexParse = struct
+              type instruction = Arch'.pseudo
+              type token = PPCGenParser.token
+              module Lexer = PPCGenLexer.Make(LexConfig)
+              let lexer = Lexer.token
+              let parser = PPCGenParser.main
+            end in
+            let module Compile = PPCGenCompile.Make(V)(OC) in
+            let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
+            X.compile cycles hash_env
+              name in_chan out_chan splitted
+        | `X86 ->
+            let module Arch' = X86Arch.Make(OC)(V) in
+            let module LexParse = struct
+              type instruction = Arch'.pseudo
+              type token = X86Parser.token
+              module Lexer = X86Lexer.Make(LexConfig)
+              let lexer = Lexer.token
+              let parser = X86Parser.main
+            end in
+            let module Compile = X86Compile.Make(V)(OC) in
+            let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
+            X.compile cycles hash_env
+              name in_chan out_chan splitted
+        | `ARM ->
+            let module Arch' = ARMArch.Make(OC)(V) in
+            let module LexParse = struct
+              type instruction = Arch'.pseudo
+              type token = ARMParser.token
+              module Lexer = ARMLexer.Make(LexConfig)
+              let lexer = Lexer.token
+              let parser = ARMParser.main
+            end in
+            let module Compile = ARMCompile.Make(V)(OC) in
+            let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
+            X.compile cycles hash_env
+              name in_chan out_chan splitted
+        | `C ->
+            let module Arch' = (val (match OX.sysarch with
+            | `PPC -> (module PPCArch.Make(OC)(V) : Arch.S)
+            | `PPCGen -> (module PPCGenArch.Make(OC)(V) : Arch.S)
+            | `X86 -> (module X86Arch.Make(OC)(V) : Arch.S)
+            | `ARM -> (module ARMArch.Make(OC)(V) : Arch.S)
+                                    ) : Arch.S)
+            in
+            let module LexParse = struct
+              type token = CParser.token
+              let lexer = CLexer.main
+              let parser = CParser.main
+            end in
+            let module X = Make'(Cfg)(Arch')(LexParse) in
+            X.compile cycles hash_env
+              name in_chan out_chan splitted
       in
-      match get_cfg (arch, OT.carch) with
-      | Some cfg ->
-          let module Cfg = (val cfg : Config) in
-          let aux = function
-          | `PPC ->
-              let module Arch' = PPCArch.Make(OC)(V) in
-              let module LexParse = struct
-                type instruction = Arch'.pseudo
-                type token = PPCParser.token
-                module Lexer = PPCLexer.Make(LexConfig)
-                let lexer = Lexer.token
-                let parser = PPCParser.main
-              end in
-              let module Compile = PPCCompile.Make(V)(OC) in
-              let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
-              X.compile cycles hash_env name in_chan out_chan splitted
-          | `PPCGen ->
-              let module Arch' = PPCGenArch.Make(OC)(V) in
-              let module LexParse = struct
-                type instruction = Arch'.pseudo
-                type token = PPCGenParser.token
-                module Lexer = PPCGenLexer.Make(LexConfig)
-                let lexer = Lexer.token
-                let parser = PPCGenParser.main
-              end in
-              let module Compile = PPCGenCompile.Make(V)(OC) in
-              let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
-              X.compile cycles hash_env
-                name in_chan out_chan splitted
-          | `X86 ->
-              let module Arch' = X86Arch.Make(OC)(V) in
-              let module LexParse = struct
-                type instruction = Arch'.pseudo
-                type token = X86Parser.token
-                module Lexer = X86Lexer.Make(LexConfig)
-                let lexer = Lexer.token
-                let parser = X86Parser.main
-              end in
-              let module Compile = X86Compile.Make(V)(OC) in
-              let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
-              X.compile cycles hash_env
-                name in_chan out_chan splitted
-          | `ARM ->
-              let module Arch' = ARMArch.Make(OC)(V) in
-              let module LexParse = struct
-                type instruction = Arch'.pseudo
-                type token = ARMParser.token
-                module Lexer = ARMLexer.Make(LexConfig)
-                let lexer = Lexer.token
-                let parser = ARMParser.main
-              end in
-              let module Compile = ARMCompile.Make(V)(OC) in
-              let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
-              X.compile cycles hash_env
-                name in_chan out_chan splitted
-          | `C ->
-              let module Arch' = (val (match Lazy.force Cfg.carch with
-                | `PPC -> (module PPCArch.Make(OC)(V) : Arch.S)
-                | `PPCGen -> (module PPCGenArch.Make(OC)(V) : Arch.S)
-                | `X86 -> (module X86Arch.Make(OC)(V) : Arch.S)
-                | `ARM -> (module ARMArch.Make(OC)(V) : Arch.S)
-                ) : Arch.S)
-              in
-              let module LexParse = struct
-                type token = CParser.token
-                let lexer = CLexer.main
-                let parser = CParser.main
-              end in
-              let module X = Make'(Cfg)(Arch')(LexParse) in
-              X.compile cycles hash_env
-                name in_chan out_chan splitted
-          in
-          aux arch
-      | None ->
-          W.warn "Test %s not performed because -carch is not given but required while using C arch" tname ;
-          Absent arch
+      aux arch
     end else begin (* Excluded explicitely, (check_tname), do not warn *)
       Absent arch
     end

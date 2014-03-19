@@ -47,7 +47,6 @@ module type Config = sig
   val signaling : bool
   val syncconst : int
   val morearch : MoreArch.t
-  val carch : Archs.System.t Lazy.t
   val xy : bool
   val pldw : bool
   val c11 : bool
@@ -56,7 +55,7 @@ module type Config = sig
 end
 
 module Make
-         (Cfg:Config)
+         (Cfg:sig include Config val sysarch : Archs.System.t end)
          (P:sig type code end)
          (A:Arch.Base)
          (T:Test.S with type P.code = P.code and module A = A)
@@ -114,13 +113,13 @@ end = struct
   let do_timebase = match barrier with
   | TimeBase -> true
   | _ -> false
-  let rec have_timebase = function
+
+  let have_timebase = function
   | `ARM -> false
   | `PPCGen
   | `PPC|`X86 -> true
-  | `C -> have_timebase (Lazy.force Cfg.carch :> Archs.t)
 
-  let have_timebase = have_timebase A.arch
+  let have_timebase = have_timebase Cfg.sysarch
 
   let do_collect_local = match Cfg.collect with
   | Collect.Local|Collect.Both ->
@@ -453,7 +452,7 @@ let dump_read_timebase () =
     O.o "typedef uint64_t tb_t ;" ;
     O.o "#define PTB PRIu64" ;
     O.o "" ;
-    let rec aux = function
+    let aux = function
     | `X86 ->
        O.o "inline static tb_t read_timebase(void) {" ;
        O.oi "unsigned int a,d;" ;
@@ -486,15 +485,14 @@ let dump_read_timebase () =
        O.oi "return r;" ;
        O.o "}"
    | `ARM -> assert false
-   | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
     in
-    aux A.arch
+    aux Cfg.sysarch
    end
 
   let lab_ext = if do_numeric_labels then "" else "_lab"
 
   let dump_tb_barrier_def () =
-    let rec fname =
+    let fname =
       function
       | `PPCGen
       | `PPC -> sprintf "_ppc_barrier%s.c" lab_ext
@@ -507,9 +505,8 @@ let dump_read_timebase () =
           | _ -> ()
           end ;
           sprintf "_arm_barrier%s.c" lab_ext
-      | `C -> fname (Lazy.force Cfg.carch :> Archs.t)
     in
-    let fname = fname A.arch in
+    let fname = fname Cfg.sysarch in
     ObjUtil.insert_lib_file O.out fname
 
   let dump_user_barrier_vars () = O.oi "int volatile *barrier;"
@@ -571,7 +568,7 @@ let dump_read_timebase () =
 
   let flush_def ()=
     O.o "inline static void cache_flush(void *p) {" ;
-    let rec aux = function
+    let aux = function
     | `PPCGen|`PPC ->
         O.o "asm __volatile__ (" ;
         asm "dcbf 0,%[p]" ;
@@ -582,15 +579,14 @@ let dump_read_timebase () =
         O.o ": : [p] \"r\" (p) : \"memory\");"
     | `ARM -> (* No cache flush for ARM? *)
         ()
-    | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
     in
-    aux A.arch ;
+    aux Cfg.sysarch ;
     O.o "}"
 
   let touch_def ()=
     O.o "inline static void cache_touch(void *p) {" ;
     O.o "asm __volatile__ (" ;
-    let rec aux = function
+    let aux = function
     | `PPCGen|`PPC ->
         asm "dcbt 0,%[p]" ;
         O.o ": : [p] \"r\" (p) : \"memory\");"
@@ -600,14 +596,13 @@ let dump_read_timebase () =
     | `ARM ->
         asm "pld [%[p]]" ;
         O.o ": : [p] \"r\" (p) : \"memory\");"
-    | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
     in
-    aux A.arch ;
+    aux Cfg.sysarch ;
     O.o "}"
 
   let touch_store_def ()=
     O.o "inline static void cache_touch_store(void *p) {" ;
-    let rec aux = function
+    let aux = function
     | `PPCGen|`PPC ->
         O.o "asm __volatile__ (" ;
         asm "dcbtst 0,%[p]" ;
@@ -622,9 +617,8 @@ let dump_read_timebase () =
         O.o "asm __volatile__ (" ;
         asm (if Cfg.pldw then "pldw [%[p]]" else "pld [%[p]]") ;
         O.o ": : [p] \"r\" (p) : \"memory\");"
-    | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
     in
-    aux A.arch ;
+    aux Cfg.sysarch ;
     O.o "}"
 
   let get_prefetch_info test =
@@ -672,7 +666,7 @@ let dump_read_timebase () =
   let dump_mbar_def () =
     O.o "" ;
     O.o "/* Full memory barrier */" ;
-    let rec aux inst = function
+    let aux inst = function
       | `PPCGen|`PPC -> "sync"
       | `X86 -> "mfence"
       | `ARM ->
@@ -680,12 +674,11 @@ let dump_read_timebase () =
           | MoreArch.ARMv6K -> ""
           | _ -> inst
           end
-      | `C -> aux inst (Lazy.force Cfg.carch :> Archs.t)
     in
-    dumb_one_mbar "mbar" (aux "dsb" A.arch) ;
+    dumb_one_mbar "mbar" (aux "dsb" Cfg.sysarch) ;
     if Cfg.cautious then begin
       O.o "" ;
-      dumb_one_mbar "mcautious" (aux "dmb" A.arch)
+      dumb_one_mbar "mcautious" (aux "dmb" Cfg.sysarch)
     end
 
 (* All of them *)
@@ -1595,16 +1588,15 @@ let dump_read_timebase () =
         end ;
         if do_isync then begin match barrier with
         | User | User2 | UserFence | UserFence2 | TimeBase ->
-            let rec aux = function
+            let aux = function
             | `PPCGen
             | `PPC ->
                 O.fx iloop "asm __volatile__ (\"isync\" : : : \"memory\");"
             | `ARM ->
                 O.fx iloop "asm __volatile__ (\"isb\" : : : \"memory\");"
             | `X86 -> ()
-            | `C -> aux (Lazy.force Cfg.carch :> Archs.t)
             in
-            aux A.arch
+            aux Cfg.sysarch
         | Pthread|NoBarrier -> ()
         end ;
         let myenv =
