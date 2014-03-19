@@ -17,6 +17,7 @@
 open Answer
 
 module type Config = sig
+  val carch : Archs.System.t option
   val gcc : string
   val index : string option
   val crossrun : Crossrun.t

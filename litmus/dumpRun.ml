@@ -18,6 +18,7 @@ open Answer
 open Printf
 
 module type Config = sig
+  val carch : Archs.System.t option
   val gcc : string
   val index : string option
   val crossrun : Crossrun.t
@@ -67,6 +68,13 @@ end = struct
   end
 
   let get_arch arch =
+    let arch = match arch with
+    | `C ->
+        begin match Cfg.carch with
+        | Some a -> a
+        | None -> assert false
+        end
+    | #Archs.System.t as a -> a in
     let opt = Option.get_default arch in
     let opt = Cfg.mkopt opt in
     let module M = struct

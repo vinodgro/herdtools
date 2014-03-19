@@ -234,7 +234,7 @@ end = struct
             Completed (A'.arch,doc,source,cycles,hash_env)
           end else begin
             W.warn "%stest not compiled" (Pos.str_pos0 doc.Name.file) ;
-            Absent A.arch
+            Absent A'.arch
           end
         end with e -> Interrupted (A.arch,e)
     end

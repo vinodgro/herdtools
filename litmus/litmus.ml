@@ -141,7 +141,8 @@ let opts =
      None
    end ;
    begin let module P = ParseTag.Make(Archs.System) in
-   P.parse_withfun "-carch" Option.set_carch "Target architechture (C arch only)" None end ;
+   P.parse_withfun "-carch"
+     Option.set_carch "Target architechture (C arch only)" None end ;
    argbool "-pldw" Option.pldw "use pldw instruction (ARM)" ;
 (********)
 (* Misc *)
