@@ -61,18 +61,18 @@ module Make(O:Config)(Tar:Tar.S)(D:Test) =
     let do_show out_chan in_chan =
       read_by_line in_chan
         (fun line prev ->
-      let open Showcode in
-      begin match prev with
-      | Next -> fprintf out_chan "%s\n" line
-      | No|Now -> ()
-      end ;
-      let here = Showcode.see line in
-      begin match here with
-      | Now -> fprintf out_chan "%s\n" line
-      | No|Next -> ()
-      end ;
-      here)
-    Showcode.No
+          let open Showcode in
+          begin match prev with
+          | Next -> fprintf out_chan "%s\n" line
+          | No|Now -> ()
+          end ;
+          let here = Showcode.see line in
+          begin match here with
+          | Now -> fprintf out_chan "%s\n" line
+          | No|Next -> ()
+          end ;
+          here)
+        Showcode.No
 
     let showcode chan name =
       ignore (Misc.input_protect (do_show chan) name)
