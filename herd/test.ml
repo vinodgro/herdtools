@@ -22,8 +22,8 @@ type ('prog,'nice_prog,'start,'state,'constr,'loc,'locset) t =
      cond : 'constr ;
      flocs : 'loc list ;
      observed : 'locset ;
-    (* scope_tree : ScopeTree.scope_tree ;
-     mem_map : ScopeTree.mem_space_map ; *)
+     scope_tree : ScopeTree.scope_tree ;
+     mem_map : ScopeTree.mem_space_map ;
    }
 
 (* Name and nothing else *)
@@ -58,8 +58,8 @@ module Make(A:Arch.S) =
            prog = nice_prog ;
            condition = final ; 
            locations = locs ;
-	   (*scope_tree = scope_tree ;
-	   mem_space_map = mem_map ;*)
+	   scope_tree = scope_tree ;
+	   mem_space_map = mem_map ;
 	 } = t in
 
       let prog,starts = Load.load nice_prog in
@@ -82,8 +82,8 @@ module Make(A:Arch.S) =
        cond = final ;
        flocs = flocs ;
        observed = observed ;       
-       (*scope_tree = scope_tree ;
-       mem_map = mem_map ;*)
+       scope_tree = scope_tree ;
+       mem_map = mem_map ;
      }
 
 

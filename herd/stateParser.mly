@@ -90,12 +90,11 @@ atom:
 | location {($1,Concrete 0)}
 | location EQUAL maybev {($1,$3)}
 
-atom_semi_list:
+atom_semi_list: 
 | {[]}
 | SEMI {[]}
 | atom {$1::[]}
 | atom SEMI atom_semi_list  {$1::$3}
-
 
 /* For final state constraints */
 
@@ -199,3 +198,4 @@ prop:
     { Implies ($1,$3) }
 | LPAR prop RPAR
     { $2 }
+

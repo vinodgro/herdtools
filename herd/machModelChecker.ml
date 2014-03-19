@@ -90,7 +90,7 @@ module Make
 	   "membar.cta", prb.JU.membar_cta;
 	   "membar.gl", prb.JU.membar_gl;
 	   "membar.sys", prb.JU.membar_sys;
-          ] (* @ 
+          ] @ 
         List.fold_left (fun z (k,v) ->
             ("ext-" ^ k, U.ext_scope v unv test.Test.scope_tree) :: 
             ("int-" ^ k, U.int_scope v unv test.Test.scope_tree) :: 
@@ -103,7 +103,7 @@ module Make
           "cta", AST.Work_Group;
 	  "kernel", AST.Kernel;
 	  "dev", AST.Device; 
-	] *)) in
+	]) in
       let m =
         List.fold_left
           (fun m (k,v) -> StringMap.add k (lazy (I.Set (E.EventSet.filter v evts))) m)
