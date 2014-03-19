@@ -20,7 +20,7 @@ open OpenCL
 
 %token LD ST FENCE
 
-%type <Proc.proc list * (OpenCLBase.pseudo) list list> main 
+%type <int list * (OpenCLBase.pseudo) list list> main 
 %start  main
 
 %nonassoc SEMI
@@ -35,8 +35,8 @@ semi_opt:
 | SEMI { () }
 
 proc_list:
-| PROC SEMI           { [Proc.int_to_proc $1] }
-| PROC PIPE proc_list { Proc.int_to_proc $1 :: $3 }
+| PROC SEMI           { [$1] }
+| PROC PIPE proc_list { $1::$3 }
 
 iol_list :
 |  instr_option_list SEMI          { [$1] }

@@ -525,8 +525,8 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
   let pp_node_ii chan ii = match ii with
   | None -> ()
   | Some ii ->
-      fprintf chan "proc:%s poi:%i\\l"
-        (Proc.pp_proc ii.A.proc)
+      fprintf chan "proc:%i poi:%i\\l"
+        ii.A.proc
         ii.A.program_order_index
 
 (*
@@ -553,7 +553,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
 (************************)
 (* Position computation *)
 (************************)
-    let max_proc = List.length (E.procs_of es) - 1 in
+    let max_proc = Misc.last (E.procs_of es) in
     (* Collect events (1) by proc, then (2) by poi *)
     let events_by_proc_and_poi = PU.make_by_proc_and_poi es in
     let maxy,envy =  order_events es events_by_proc_and_poi in
@@ -574,13 +574,11 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
     let maxy =
       if E.EventSet.is_empty inits then maxy
       else maxy +. 1.0 in
- (*   let get_proc e = match E.proc_of e with
+    let get_proc e = match E.proc_of e with
     | Some p -> p
-    | None -> (-1) in *)
-
-    let get_posx_int e = match E.proc_of e with
-    | Some p -> Proc.proc_to_int p
     | None -> (-1) in
+
+    let get_posx_int e = get_proc e in
 
     let get_posx e =
       if E.is_mem_store_init e then
@@ -648,7 +646,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
      *)
 
     let last_thread e e' =
-      let p = get_posx_int e and p' = get_posx_int e' in
+      let p = get_proc e and p' = get_proc e' in
       p = p' && p = max_proc in  
 
 
@@ -890,9 +888,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
             let lbl = match PC.graph with
             | Graph.Free ->
                 if PC.showthread then
-                  match E.proc_of e with
-                  | None -> "po:_"
-                  | Some p -> sprintf "po:%s" (Proc.pp_proc p)
+                  sprintf "po:%i" (get_proc e)
                 else "po"
             | Graph.Columns|Graph.Cluster ->
                 "po" in

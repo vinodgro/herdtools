@@ -24,7 +24,7 @@ module type S = sig
   val evt_relevant : event -> bool
   val globally_visible : event -> bool
 
-  type nature = Exe | Com | Prop of Proc.proc option
+  type nature = Exe | Com | Prop of int
 
   type splitted =
       { nature:nature ; event:event; }
@@ -33,7 +33,7 @@ module type S = sig
   val is_init : splitted -> bool
   val is_commit : splitted -> bool
 
-  val relevant_to_proc : splitted -> Proc.proc -> bool
+  val relevant_to_proc : splitted -> int -> bool
 
   val pp_splitted : splitted -> string
 
@@ -106,13 +106,12 @@ and type concrete = S.concrete
  
     let globally_visible x = E.is_mem_store x || Conf.visible_fence x
 
-    type nature = Exe | Com | Prop of Proc.proc option
+    type nature = Exe | Com | Prop of int
 
     let pp_nature = function
       | Exe -> "e"
-      | Com -> "c"  
-      | Prop None -> "t"          
-      | Prop (Some p) -> sprintf "t%s" (Proc.pp_proc p)
+      | Com -> "c"            
+      | Prop i -> sprintf "t%i" i
 
     let nature_compare n1 n2 = Pervasives.compare n1 n2
 
@@ -147,15 +146,16 @@ and type concrete = S.concrete
         | Exe -> true
         | Com|Prop _ -> false
 
-    let relevant_to_proc xe (i:Proc.proc) =
+    let proc_eq = Misc.int_eq
+
+    let relevant_to_proc xe i =
       let x = xe.event in
       let px = match E.proc_of x with
       | Some px -> px | None -> assert false  in
-      if Proc.proc_eq px i then locally_relevant xe
+      if proc_eq px i then locally_relevant xe
       else
         match xe.nature with
-        | Prop None -> false
-        | Prop (Some j) -> Proc.proc_eq i j
+        | Prop j -> proc_eq i j
         | Exe|Com -> false
 
     type e2pred = event * event -> bool

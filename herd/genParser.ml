@@ -59,14 +59,14 @@ module type LexParse = sig
   val lexer : Lexing.lexbuf -> token
   val parser :
         (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
-	  Proc.proc list * instruction list list
+	  int list * instruction list list
 end
 
 (* Output signature *)
 module type S = sig
   type pseudo
   type init = MiscParser.state
-  type prog = (Proc.proc * pseudo list) list
+  type prog = (int * pseudo list) list
   type locations = MiscParser.LocSet.t
 
   val parse_init : Lexing.lexbuf -> init
@@ -85,7 +85,7 @@ module Make
   struct
     type pseudo = A.pseudo
     type init = MiscParser.state
-    type prog = (Proc.proc * pseudo list) list
+    type prog = (int * pseudo list) list
     type locations = MiscParser.LocSet.t
 
 
@@ -107,17 +107,17 @@ module Make
 (* Various basic checks *)
 (************************)
 
-let check_procs (procs: Proc.proc list) =
+let check_procs procs =
   Misc.iteri
     (fun k p ->
-      if k <> Proc.proc_to_int p then
+      if k <> p then
         Warn.fatal "Processes must be P0, P1, ...")
     procs
 
 let check_loc procs loc = match loc with
 | MiscParser.Location_reg (p,_) ->
     if not (List.mem p procs) then
-      Warn.fatal "Bad process P%s" (Proc.pp_proc p)
+      Warn.fatal "Bad process P%i" p
 | _ -> ()
 
 let check_atom procs a =

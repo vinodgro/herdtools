@@ -33,7 +33,7 @@ module type S = sig
  type loc_global
 
  type location =
-    | Location_reg of Proc.proc * loc_reg
+    | Location_reg of int*loc_reg
     | Location_global of loc_global
 
   val maybev_to_location : MiscParser.maybev -> location
@@ -53,19 +53,19 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
     type loc_global = A.arch_global
 
     type location =
-      | Location_reg of Proc.proc * loc_reg
+      | Location_reg of int*loc_reg
       | Location_global of loc_global
 
     let maybev_to_location m = Location_global (A.maybev_to_global m)
 
     let dump_location = function
       | Location_reg (proc,r) ->
-          Proc.pp_proc proc ^ ":" ^ A.pp_reg r
+          string_of_int proc ^ ":" ^ A.pp_reg r
       | Location_global a -> A.pp_global a
 
     let pp_location l = match l with
     | Location_reg (proc,r) -> 
-	let bodytext = Proc.pp_proc proc ^ ":" ^ A.pp_reg r in
+	let bodytext = string_of_int proc ^ ":" ^ A.pp_reg r in
 	if C.texmacros 
 	then "\\asm{Proc " ^ bodytext ^ "}" else bodytext
     | Location_global a -> A.pp_global a
@@ -82,7 +82,7 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
       
     let location_compare l1 l2 = match l1,l2 with
     | Location_reg (p1,r1), Location_reg (p2,r2) ->
-        pair_compare Proc.proc_compare p1 p2 A.reg_compare r1 r2
+        pair_compare Misc.int_compare p1 p2 A.reg_compare r1 r2
     | Location_global a1, Location_global a2 -> A.global_compare a1 a2 
     | Location_reg _, Location_global _ -> -1
     |  Location_global _, Location_reg _ -> 1

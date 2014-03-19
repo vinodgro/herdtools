@@ -51,7 +51,7 @@ module Make(S : SemExtra.S) = struct
   let observed test es =
     let locs = S.outcome_locations test in
     let xss = make_by_proc_and_poi es in
-    let xss = Misc.mapi (fun i x -> Proc.int_to_proc i, x) xss in
+    let xss = Misc.mapi (fun i x -> i,x) xss in
     let _,obs =
       List.fold_right
         (fun (i,ess) (locs,obs) ->
@@ -84,7 +84,7 @@ module Make(S : SemExtra.S) = struct
 
   let all_regs_that_read es =
     let xss = make_by_proc_and_poi es in
-    let xss = Misc.mapi (fun i x -> Proc.int_to_proc i, x) xss in
+    let xss = Misc.mapi (fun i x -> i,x) xss in
     let locs =
       List.fold_right
         (fun (i,ess) locs ->

@@ -31,7 +31,7 @@ module type S = sig
 
   type global_loc = I.V.v 
  
-  type proc = Proc.proc
+  type proc = int
   val pp_proc : proc -> string
 
   type program_order_index = int
@@ -135,9 +135,9 @@ module Make(C:Config) (I:I) : S with module I = I
 
   type global_loc = I.V.v
 
-  type proc = Proc.proc
+  type proc = int
 
-  let pp_proc = Proc.pp_proc
+  let pp_proc = string_of_int
 
   type program_order_index = int
   let pp_prog_order_index = string_of_int
@@ -153,7 +153,7 @@ module Make(C:Config) (I:I) : S with module I = I
     }
 
 
-  let inst_instance_compare i1 i2 = match Proc.proc_compare i1.proc i2.proc with
+  let inst_instance_compare i1 i2 = match Misc.int_compare i1.proc i2.proc with
   | 0 -> Misc.int_compare i1.program_order_index i2.program_order_index
   | r -> r
 

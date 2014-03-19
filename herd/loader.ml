@@ -54,7 +54,7 @@ and type start_points = A.start_points =
     let rec load = function
     | [] -> A.LabelMap.empty,[]
     | (proc,code)::prog ->
-	let addr = 1000 * ((Proc.proc_to_int proc)+1) in
+	let addr = 1000 * (proc+1) in
 	let mem,starts = load prog in
 	let mem,start = load_code addr mem code in
 	mem,(proc,start)::starts

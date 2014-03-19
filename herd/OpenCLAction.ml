@@ -122,15 +122,15 @@ struct
     | _ -> assert false
 
 (* relative to the registers of the given proc *)
-    let is_reg_store a (p:Proc.proc) = match a with
+    let is_reg_store a (p:int) = match a with
     | Access (W,A.Location_reg (q,_),_,_,_) -> p = q
     | _ -> false
 
-    let is_reg_load a (p:Proc.proc) = match a with
+    let is_reg_load a (p:int) = match a with
     | Access (R,A.Location_reg (q,_),_,_,_) -> p = q
     | _ -> false
 
-    let is_reg a (p:Proc.proc) = match a with
+    let is_reg a (p:int) = match a with
     | Access (_,A.Location_reg (q,_),_,_,_) -> p = q
     | _ -> false
 

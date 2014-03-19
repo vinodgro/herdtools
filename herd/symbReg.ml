@@ -79,7 +79,7 @@ and type pseudo = A.pseudo
   module ProcRegSet = 
     MySet.Make
       (struct
-	type t = Proc.proc * A.reg
+	type t = int * A.reg
 	let compare (p1,r1) (p2,r2) = match compare p1 p2 with
 	| 0 -> A.reg_compare r1 r2
 	| r -> r

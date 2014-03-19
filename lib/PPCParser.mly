@@ -39,7 +39,7 @@ open PPC
 %token COMMENT
 %token <string> STRING
 
-%type <Proc.proc list * (PPCBase.pseudo) list list> main 
+%type <int list * (PPCBase.pseudo) list list> main 
 %start  main
 
 %nonassoc SEMI
@@ -54,8 +54,10 @@ semi_opt:
 | SEMI { () }
 
 proc_list:
-| PROC SEMI {[Proc.int_to_proc $1]}
-| PROC PIPE proc_list { Proc.int_to_proc $1 :: $3 }
+| PROC SEMI
+    {[$1]}
+
+| PROC PIPE proc_list  { $1::$3 }
 
 iol_list :
 |  instr_option_list SEMI

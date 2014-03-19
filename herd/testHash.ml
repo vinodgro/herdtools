@@ -39,7 +39,7 @@ module Make(A:ArchBase.S)
       open Printf
 
       type init = (MiscParser.location * SymbConstant.v) list
-      type prog = (Proc.proc * A.pseudo list) list
+      type prog = (int * A.pseudo list) list
       type locations =  MiscParser.LocSet.t
 
 

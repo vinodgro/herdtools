@@ -17,7 +17,7 @@ type maybev = SymbConstant.v
 type reg = string (* Registers not yet parsed *)
 
 type location =
-  | Location_reg of Proc.proc * reg
+  | Location_reg of int * reg
   | Location_sreg of string (** symbolic register *)
   | Location_global of maybev
 
@@ -25,7 +25,7 @@ val location_compare : location -> location -> int
 val dump_location : location -> string
 val dump_rval : location -> string
 val is_global : location -> bool
-val as_local_proc : Proc.proc -> location -> reg option
+val as_local_proc : int -> location -> reg option
 
 module LocSet : MySet.S with type elt = location
 
@@ -58,7 +58,7 @@ type ('i, 'p, 'c, 'loc) result =
 (* Easier to handle *)
 type ('loc,'v,'ins) r3 =
       (('loc * 'v) list,
-       (Proc.proc * 'ins list) list,
+       (int * 'ins list) list,
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
        'loc) result
 
@@ -70,7 +70,7 @@ type ('loc,'v,'code) r4 =
 
 (* Result of generic parsing *)
 type 'pseudo t =
-    (state, (Proc.proc * 'pseudo list) list, constr, location) result
+    (state, (int * 'pseudo list) list, constr, location) result
 
 
 (* Extract hash *)

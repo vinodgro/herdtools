@@ -66,14 +66,14 @@ maybev:
 | NAME { Symbolic $1 }
 
 location_reg:
-| PROC COLON reg  {Location_reg (Proc.int_to_proc $1,$3)}
-| NUM COLON reg   {Location_reg (Proc.int_to_proc $1,$3)}
+| PROC COLON reg  {Location_reg ($1,$3)}
+| NUM COLON reg   {Location_reg ($1,$3)}
 | SYMB_REG        {Location_sreg $1 }
 /* PTX registers */
 | NUM COLON PTX_REG_DEC PTX_REG_TYPE reg 
-                  {Location_reg(Proc.int_to_proc $1,$5)}
+                  {Location_reg($1,$5)}
 | PROC COLON PTX_REG_DEC PTX_REG_TYPE reg 
-                  {Location_reg(Proc.int_to_proc $1,$5)}
+                  {Location_reg($1,$5)}
 
 location_deref:
 | location_reg { $1 }
