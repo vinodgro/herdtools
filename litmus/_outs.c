@@ -29,7 +29,7 @@ static void debug(int *t, int i, int j) {
 
 void *malloc_check(size_t sz) ;
 
-static outs_t *alloc_outs(int k) {
+static outs_t *alloc_outs(intmax_t k) {
   outs_t *r = malloc_check(sizeof(*r)) ;
   r->k = k ;
   r->c = 0 ;
