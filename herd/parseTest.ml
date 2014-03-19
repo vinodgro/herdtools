@@ -163,7 +163,7 @@ module Top (C:Config) = struct
         let module  CPP11Barrier = struct
           type a = CPP11.barrier
           type b = unit
-          let a_to_b _ = assert false
+          let a_to_b _ = ()
         end in
         let module CPP11M = CPP11Mem.Make(ModelConfig)(CPP11S) (CPP11Barrier) in
         let module X = Make (CPP11S) (CPP11LexParse) (CPP11M) in 
@@ -182,7 +182,7 @@ module Top (C:Config) = struct
         let module OpenCLBarrier = struct
           type a = OpenCL.barrier
           type b = unit
-          let a_to_b _ = assert false	    
+          let a_to_b _ = ()	    
         end in
         let module OpenCLM = OpenCLMem.Make(ModelConfig)(OpenCLS) (OpenCLBarrier) in
         let module X = Make (OpenCLS) (OpenCLLexParse) (OpenCLM) in 
