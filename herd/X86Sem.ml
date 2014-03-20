@@ -38,24 +38,24 @@ module Make (C:Sem.Config)(V : Value.S)
     let read_loc = 
       M.read_loc (mk_read false)
     let read_reg r ii = 
-      M.read_loc (mk_read false) (A.Location_reg (ii.A.proc,r)) ii
+      M.read_loc (mk_read false) (A.mk_Location_reg (ii.A.proc,r)) ii
     let read_mem a ii  = 
-      M.read_loc (mk_read false) (A.Location_global a) ii
+      M.read_loc (mk_read false) (A.mk_Location_global a) ii
     let read_mem_atomic a ii = 
-      M.read_loc (mk_read true) (A.Location_global a) ii
+      M.read_loc (mk_read true) (A.mk_Location_global a) ii
 		 
     let write_loc loc v ii = 
       M.mk_singleton_es (Act.Access (Dir.W, loc, v, false)) ii
     let write_reg r v ii = 
-      M.mk_singleton_es (Act.Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, (A.mk_Location_reg (ii.A.proc,r)), v, false)) ii
     let write_mem a v ii  = 
-      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, A.mk_Location_global a, v, false)) ii
     let write_mem_atomic a v ii = 
-      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, true)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, A.mk_Location_global a, v, true)) ii
 
     let write_flag r o v1 v2 ii =
 	M.addT
-	  (A.Location_reg (ii.A.proc,r))
+	  (A.mk_Location_reg (ii.A.proc,r))
 	  (M.op o v1 v2) >>= (fun (loc,v) -> write_loc loc v ii)
 
     let create_barrier b ii = 
@@ -66,10 +66,10 @@ module Make (C:Sem.Config)(V : Value.S)
 
     let lval_ea ea ii = match ea with
     | X86.Effaddr_rm32 (X86.Rm32_reg r)->
-	M.unitT (X86.Location_reg (ii.X86.proc,r))
+	M.unitT (X86.mk_Location_reg (ii.X86.proc,r))
     | X86.Effaddr_rm32 (X86.Rm32_deref r)     ->
         read_reg r ii >>=
-	fun vreg -> M.unitT (X86.Location_global vreg)
+	fun vreg -> M.unitT (X86.mk_Location_global vreg)
     | X86.Effaddr_rm32 (X86.Rm32_abs v)->
 	M.unitT (X86.maybev_to_location v)
 	  

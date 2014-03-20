@@ -152,11 +152,12 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
         List.fold_left
           (fun locs (loc,v) ->
             let locs =
-              match loc with
-              | A.Location_global _ -> loc::locs
-              | A.Location_reg _ -> locs in
+              if A.is_reg_loc loc then locs
+              else loc :: locs 
+            in
             let locs = match v with
-            | A.V.Val (Constant.Symbolic _) -> A.Location_global v::locs
+            | A.V.Val (Constant.Symbolic _) ->
+              A.mk_Location_global v :: locs
             | _ -> locs in
             locs)
           [] (A.state_to_list init) in
@@ -165,9 +166,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
     let get_all_mem_locs test =
       let locs_final =
         A.LocSet.filter
-          (function
-            | A.Location_global _ -> true
-            | A.Location_reg _ -> false)
+          (fun loc -> not (A.is_reg_loc loc))
           test.Test.observed
       and locs_init = get_all_locs_init test.Test.init_state in
       let locs = A.LocSet.union locs_final locs_init in

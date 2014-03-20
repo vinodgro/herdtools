@@ -171,21 +171,15 @@ module Make(C:Config) (I:I) : S with module I = I
         let global_compare = I.V.compare
       end)
 
-  let undetermined_vars_in_loc l =  match l with
-  | Location_reg _ -> None
-  | Location_global a ->
-      if I.V.is_var_determined a then None
-      else Some a
+  let undetermined_vars_in_loc = 
+    loc_fold 
+      (fun _ -> None) 
+      (fun a -> if I.V.is_var_determined a then None else Some a)
 
+  let simplify_vars_in_loc soln =
+    loc_map (fun pr -> pr) (I.V.simplify_var soln)
 
-  let simplify_vars_in_loc soln l = match l with
-  | Location_reg _  -> l
-  | Location_global a ->
-      Location_global (I.V.simplify_var soln a)
-
-  let map_loc fv loc = match loc with
-  | Location_reg _ -> loc
-  | Location_global a -> Location_global (fv a)
+  let map_loc fv = loc_map (fun pr -> pr) fv
 
 (***************************************************)
 (* State operations, implemented with library maps *)

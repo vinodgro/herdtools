@@ -241,9 +241,10 @@ module Make (C:Config) (A : Arch.S) :
         | DotFig -> "\\\\mbox{" ^ s ^ "}"
                                         
 
-        let pp_rvalue loc = match loc with
-          | A.Location_global _ -> sprintf "*%s" (A.pp_location loc)
-          | _ -> A.pp_location loc
+        let pp_rvalue loc = 
+          sprintf "%s%s"
+            (if A.is_reg_loc loc then "" else "*")
+            (A.pp_location loc)
 
         let pp_atom m a =
           match a with

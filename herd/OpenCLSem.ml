@@ -34,12 +34,12 @@ module Make (C:Sem.Config)(V:Value.S)
     let (>>!) = M.(>>!)
 
     let read_loc s mo = M.read_loc (fun loc v -> Act.Access (Dir.R, loc, v, mo, s))
-    let read_reg r ii = read_loc OpenCL.S_workitem OpenCL.NA (A.Location_reg (ii.A.proc,r)) ii
-    let read_mem s mo a = read_loc s mo (A.Location_global a)
+    let read_reg r ii = read_loc OpenCL.S_workitem OpenCL.NA (A.mk_Location_reg (ii.A.proc,r)) ii
+    let read_mem s mo a = read_loc s mo (A.mk_Location_global a)
 
     let write_loc s mo loc v ii = M.mk_singleton_es (Act.Access (Dir.W, loc, v, mo, s)) ii
-    let write_reg r v ii = write_loc OpenCL.S_workitem OpenCL.NA (A.Location_reg (ii.A.proc,r)) v ii
-    let write_mem s mo a  = write_loc s mo (A.Location_global a) 	     
+    let write_reg r v ii = write_loc OpenCL.S_workitem OpenCL.NA (A.mk_Location_reg (ii.A.proc,r)) v ii
+    let write_mem s mo a  = write_loc s mo (A.mk_Location_global a) 	     
 		 
     let constant_to_int v = match v with
       | Constant.Concrete vv -> vv

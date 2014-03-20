@@ -283,9 +283,7 @@ struct
       Act.location_compare e1.action e2.action
 
 (* Visible locations *)
-    let is_visible_location  = function 
-      | A.Location_global _ -> true
-      | A.Location_reg _ -> false
+    let is_visible_location loc = not (A.is_reg_loc loc) 
 
     let same_location e1 e2 = 
       if (location_of e1 = None || location_of e2 = None) then

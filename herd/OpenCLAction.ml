@@ -85,11 +85,11 @@ struct
     | _ -> None
 
     let location_reg_of a = match a with
-    | Access (_,A.Location_reg (_,r),_,_,_) -> Some r
+    | Access (_,loc,_,_,_) -> A.as_reg_loc loc
     | _ -> None
 
     let global_loc_of a = match a with
-    | Access (_,A.Location_global loc,_,_,_) -> Some loc
+    | Access (_,loc,_,_,_) -> A.as_global_loc loc
     | _ -> None
 
     let location_compare a1 a2 = match location_of a1,location_of a2 with
@@ -99,39 +99,51 @@ struct
 
 (* relative to memory *)
     let is_mem_store a = match a with
-    | Access (W,A.Location_global _,_,_,_) -> true
+    | Access (W,loc,_,_,_) -> not (A.is_reg_loc loc)
     | _ -> false
 
     let is_mem_load a = match a with
-    | Access (R,A.Location_global _,_,_,_) -> true
+    | Access (R,loc,_,_,_) -> not (A.is_reg_loc loc)
     | _ -> false
 
     let is_mem a = match a with
-    | Access (_,A.Location_global _,_,_,_) -> true
+    | Access (_,loc,_,_,_) -> not (A.is_reg_loc loc)
     | _ -> false
 
     (* The following definition of is_atomic
        is quite arbitrary. *)
     let is_atomic a = match a with
-    | Access (_,A.Location_global _,_,mo,_) -> mo != OpenCLBase.NA
+    | Access (_,loc,_,mo,_) -> 
+      not (A.is_reg_loc loc) && mo != OpenCLBase.NA
     | RMW _ -> true
     | _ -> false
 
     let get_mem_dir a = match a with
-    | Access (d,A.Location_global _,_,_,_) -> d
+    | Access (d,loc,_,_,_) -> 
+      assert (not (A.is_reg_loc loc)); 
+      d
     | _ -> assert false
 
 (* relative to the registers of the given proc *)
     let is_reg_store a (p:int) = match a with
-    | Access (W,A.Location_reg (q,_),_,_,_) -> p = q
+    | Access (W,loc,_,_,_) -> 
+      begin match A.get_reg_owner loc with
+        | None -> false
+        | Some q -> p = q end
     | _ -> false
 
     let is_reg_load a (p:int) = match a with
-    | Access (R,A.Location_reg (q,_),_,_,_) -> p = q
+    | Access (R,loc,_,_,_) ->
+      begin match A.get_reg_owner loc with
+        | None -> false
+        | Some q -> p = q end
     | _ -> false
 
     let is_reg a (p:int) = match a with
-    | Access (_,A.Location_reg (q,_),_,_,_) -> p = q
+    | Access (_,loc,_,_,_) ->
+      begin match A.get_reg_owner loc with
+        | None -> false
+        | Some q -> p = q end
     | _ -> false
 
 
@@ -145,15 +157,15 @@ struct
     | _ -> false
 
     let is_reg_any a = match a with
-    | Access (_,A.Location_reg _,_,_,_) -> true
+    | Access (_,loc,_,_,_) -> A.is_reg_loc loc
     | _ -> false
 
     let is_reg_store_any a = match a with
-    | Access (W,A.Location_reg _,_,_,_) -> true
+    | Access (W,loc,_,_,_) -> A.is_reg_loc loc
     | _ -> false
 
     let is_reg_load_any a = match a with
-    | Access (R,A.Location_reg _,_,_,_) -> true
+    | Access (R,loc,_,_,_) -> A.is_reg_loc loc
     | _ -> false
 
 (* Barriers *)

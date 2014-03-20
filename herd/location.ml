@@ -32,15 +32,25 @@ module type S = sig
  type loc_reg
  type loc_global
 
- type location =
+ type location (* =
     | Location_reg of int*loc_reg
-    | Location_global of loc_global
+    | Location_global of loc_global *)
 
   val maybev_to_location : MiscParser.maybev -> location
   val dump_location : location -> string (* Just dump *)
   val pp_location : location -> string
   val location_compare : location -> location -> int
   val location_equal : location -> location -> bool
+  val loc_fold : ((int*loc_reg) -> 'a) -> (loc_global -> 'a) ->
+    location -> 'a
+  val loc_map : ((int*loc_reg) -> (int*loc_reg)) -> 
+    (loc_global -> loc_global) -> location -> location
+  val is_reg_loc : location -> bool
+  val mk_Location_global : loc_global -> location
+  val mk_Location_reg : (int*loc_reg) -> location
+  val as_reg_loc : location -> loc_reg option
+  val as_global_loc : location -> loc_global option
+  val get_reg_owner : location -> int option
 
   module LocSet : MySet.S with type elt = location
 end
@@ -95,4 +105,34 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
           type t = location
           let compare = location_compare
         end)
+
+    let loc_fold f g = function
+      | Location_reg (p,r) -> f (p,r)
+      | Location_global a -> g a
+
+    let loc_map f g = function
+      | Location_reg (p,r) -> 
+        let (p',r') = f (p,r) in Location_reg (p',r')
+      | Location_global a -> Location_global (g a)
+
+    let is_reg_loc = function
+      | Location_reg _ -> true
+      | Location_global _ -> false
+
+    let mk_Location_global x = Location_global x
+    let mk_Location_reg (p,r) = Location_reg (p,r)
+        
+    let as_reg_loc = function
+      | Location_reg (_,r) -> Some r
+      | Location_global _ -> None
+
+    let get_reg_owner = function
+      | Location_reg (p,_) -> Some p
+      | Location_global _ -> None
+
+    let as_global_loc = function
+      | Location_reg _ -> None
+      | Location_global a -> Some a
+
+
   end
