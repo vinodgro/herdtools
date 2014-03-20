@@ -190,4 +190,4 @@ memory_map_list:
 
 memory_map_atom:
 | NAME COLON GLOBAL { ($1,GPU_PTXBase.GlobalMem) }
-| NAME COLON SHARED { ($1,GPU_PTXBase.SharedMem) }
+| NAME COLON SHARED { ($1,GPU_PTXBase.LocalMem) }

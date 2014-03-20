@@ -7,6 +7,8 @@ OpenCL MP_dr
 scopeTree
 (device (work_group P0) (work_group P1))
 
+x:local, y:global
+
 exists 
 (1:r1 = 1 /\ 1:r2 = 0)
 

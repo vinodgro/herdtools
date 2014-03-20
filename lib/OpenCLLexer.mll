@@ -39,14 +39,12 @@ rule token = parse
 | "wg"       {MEMSCOPE (OpenCLBase.S_workgroup)}
 | "dev"          {MEMSCOPE (OpenCLBase.S_device)}
 | "all_dev" {MEMSCOPE (OpenCLBase.S_all_svn_devices)}
-| "global" { MEMREGION (OpenCLBase.Global) }
-| "local" { MEMREGION (OpenCLBase.Local) }
+| "global" { MEMREGION (OpenCLBase.GlobalMem) }
+| "local" { MEMREGION (OpenCLBase.LocalMem) }
 | "fence" { FENCE }
 | "load"  { LD }
 | "store"    { ST }
 | "scopeTree" { SCOPETREE }
-| "global"  { GLOBAL }
-| "shared"|"local" { SHARED }
 | "kernel" { KERNEL }
 | "device" {DEVICE }
 | "cta" | "block" | "work_group" { CTA }

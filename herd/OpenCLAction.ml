@@ -22,7 +22,7 @@ module type S = sig
   module A_ : Arch.S
   type action_ =    
     | Access of Dir.dirn * A_.location * A_.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
-    | Fence of OpenCLBase.mem_region * OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | RMW of A_.location * A_.V.v * A_.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Blocked_RMW of A_.location
   include Action.S with module A = A_ and type action = action_
@@ -38,7 +38,7 @@ struct
 
   type action_ = 
     | Access of dirn * A.location * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
-    | Fence of OpenCLBase.mem_region * OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | RMW of A.location * V.v * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Blocked_RMW of A.location
   type action = action_
@@ -60,7 +60,7 @@ struct
 	  (V.pp_v v)
     | Fence (mr,mo,s) -> 
        sprintf "F(%s,%s,%s)"
-         (OpenCLBase.pp_mem_region mr)
+         (OpenCLBase.pp_gpu_memory_space mr)
          (OpenCLBase.pp_mem_order mo)
          (OpenCLBase.pp_mem_scope s)
     | RMW (l,v1,v2,mo,s) ->
@@ -169,11 +169,11 @@ struct
      | _ -> false
 
    let is_global_fence a = match a with
-     | Fence (OpenCLBase.Global,_,_) -> true
+     | Fence (OpenCLBase.GlobalMem,_,_) -> true
      | _ -> false
 
    let is_local_fence a = match a with
-     | Fence (OpenCLBase.Local,_,_) -> true
+     | Fence (OpenCLBase.LocalMem,_,_) -> true
      | _ -> false
 
 (* RMWs *)

@@ -1,9 +1,5 @@
 "OpenCL"
 
-(* JW: Some things missing... *)
-let set global_loc = 0
-let set local_loc = 0
-
 let set cacq = acq | sc
 let set crel = rel | sc
 

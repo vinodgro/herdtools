@@ -14,7 +14,7 @@ open OpenCL
 %token SEMI COMMA PIPE COLON LPAR RPAR EQ DOT 
 %token <OpenCLBase.mem_order> MEMORDER
 %token <OpenCLBase.mem_scope> MEMSCOPE
-%token <OpenCLBase.mem_region> MEMREGION
+%token <OpenCLBase.gpu_memory_space> MEMREGION
 
 /* Instruction tokens */
 
@@ -25,7 +25,7 @@ open OpenCL
 
 %nonassoc SEMI
 
-%token SCOPETREE GLOBAL SHARED DEVICE KERNEL CTA WARP THREAD COMMA PTX_REG_DEC 
+%token SCOPETREE DEVICE KERNEL CTA WARP THREAD COMMA PTX_REG_DEC 
 
 %type <ScopeTree.scope_tree option * MemSpaceMap.mem_space_map option> scopes_and_memory_map
 
@@ -133,5 +133,5 @@ memory_map_list:
 | memory_map_atom COMMA memory_map_list { [$1]@$3 }
 
 memory_map_atom:
-| NAME COLON GLOBAL { ($1,OpenCLBase.GlobalMem) }
-| NAME COLON SHARED { ($1,OpenCLBase.SharedMem) }
+| NAME COLON MEMREGION { ($1,$3) }
+| NAME COLON MEMREGION { ($1,$3) }
