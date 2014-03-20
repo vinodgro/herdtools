@@ -46,9 +46,9 @@ and type pseudo = A.pseudo
 
   let finish_location f_reg loc = match loc with
   | Location_global m -> A.maybev_to_location m
-  | Location_reg (i,r) -> A.mk_Location_reg (i,finish_reg r)
+  | Location_reg (i,r) -> A.Location_reg (i,finish_reg r)
   | Location_sreg reg  ->
-      let p,r = f_reg reg in A.mk_Location_reg (p,r)
+      let p,r = f_reg reg in A.Location_reg (p,r)
 
   let finish_state_atom f_reg (loc,v) =
     finish_location f_reg loc, A.V.maybevToV v

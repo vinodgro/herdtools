@@ -44,24 +44,24 @@ module Make (C:Sem.Config)(V:Value.S)
     let read_loc = 
       M.read_loc (mk_read false)
     let read_reg r ii = 
-      M.read_loc (mk_read false) (A.mk_Location_reg (ii.A.proc,r)) ii
+      M.read_loc (mk_read false) (A.Location_reg (ii.A.proc,r)) ii
     let read_mem a ii  = 
-      M.read_loc (mk_read false) (A.mk_Location_global a) ii
+      M.read_loc (mk_read false) (A.Location_global a) ii
     let read_mem_atomic a ii = 
-      M.read_loc (mk_read true) (A.mk_Location_global a) ii
+      M.read_loc (mk_read true) (A.Location_global a) ii
 		 
     let write_loc loc v ii = 
       M.mk_singleton_es (Act.Access (Dir.W, loc, v, false)) ii
     let write_reg r v ii = 
-      M.mk_singleton_es (Act.Access (Dir.W, (A.mk_Location_reg (ii.A.proc,r)), v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
     let write_mem a v ii  = 
-      M.mk_singleton_es (Act.Access (Dir.W, A.mk_Location_global a, v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, false)) ii
     let write_mem_atomic a v ii = 
-      M.mk_singleton_es (Act.Access (Dir.W, A.mk_Location_global a, v, true)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, true)) ii
 
     let write_flag r o v1 v2 ii =
 	M.addT
-	  (A.mk_Location_reg (ii.A.proc,r))
+	  (A.Location_reg (ii.A.proc,r))
 	  (M.op o v1 v2) >>= (fun (loc,v) -> write_loc loc v ii)
 
     let create_barrier b ii = 
@@ -137,7 +137,7 @@ module Make (C:Sem.Config)(V:Value.S)
       let proc = ii.PPC.proc in
       ((read_reg rA ii >>| read_reg rB ii) >>=
        (fun (vA,vB) ->
-	 M.addT (PPC.mk_Location_reg (proc,rD)) (M.op op vA vB)
+	 M.addT (PPC.Location_reg (proc,rD)) (M.op op vA vB)
 	   >>= (fun (l,v) ->
  	     write_loc l v ii >>|	  
 	     flags with_flags 0 v V.zero ii))) >>! B.Next
@@ -147,7 +147,7 @@ module Make (C:Sem.Config)(V:Value.S)
       let proc = ii.PPC.proc in
       (read_reg rA ii >>=
        (fun vA ->
-	 M.addT (PPC.mk_Location_reg (proc,rD)) (M.op op vA im) >>=
+	 M.addT (PPC.Location_reg (proc,rD)) (M.op op vA im) >>=
 	 (fun (l,v) ->
  	   write_loc l v ii >>|	  
 	   flags with_flags 0 v V.zero ii))) >>! B.Next
