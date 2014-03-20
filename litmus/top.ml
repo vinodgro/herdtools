@@ -117,7 +117,7 @@ end = struct
   module W = Warn.Make(OT)
 
 
-  module Utils (O:Config) (A:Arch.S) (A':Arch.Base)
+  module Utils (O:Config) (A':Arch.Base)
       (Lang:Language.S
       with type arch_reg = A'.Out.arch_reg
       and type t = A'.Out.t)
@@ -237,7 +237,7 @@ end = struct
             W.warn "%stest not compiled" (Pos.str_pos0 doc.Name.file) ;
             Absent A'.arch
           end
-        end with e -> Interrupted (A.arch,e)
+        end with e -> Interrupted (A'.arch,e)
     end
 
 
@@ -272,7 +272,7 @@ end = struct
       end
 
       module Lang = ASMLang.Make(A.I)(A.Out)
-      module Utils = Utils(O)(A)(A)(Lang)(Pseudo)
+      module Utils = Utils(O)(A)(Lang)(Pseudo)
       module P = GenParser.Make(O)(A) (L)
       module Comp = Compile.Make (O)(A)(A)(Utils.T) (XXXComp)
 
@@ -357,7 +357,7 @@ end = struct
       end
 
       module Lang = CLang.Make(A'.Out)
-      module Utils = Utils(O)(A)(A')(Lang)(Pseudo)
+      module Utils = Utils(O)(A')(Lang)(Pseudo)
       module P = CGenParser.Make(O)(Pseudo)(A')(L)
       module Comp = CCompile.Make(O)(Utils.T)
 
