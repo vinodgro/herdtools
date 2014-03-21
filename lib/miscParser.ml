@@ -90,7 +90,7 @@ type ('i, 'p, 'c, 'loc) result =
       condition : 'c ;
       locations : ('loc * run_type) list ;
       scope_tree : ScopeTree.scope_tree option ;
-      mem_space_map : MemSpaceMap.mem_space_map option ;
+      mem_space_map : MemSpaceMap.mem_space_map ;
 }
 
 (* Easier to handle *)

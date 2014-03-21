@@ -25,7 +25,7 @@ type ('prog,'nice_prog,'start,'state,'constr, 'loc, 'locset) t =
      flocs : 'loc list ;
      observed : 'locset ;
      scope_tree : ScopeTree.scope_tree option ;
-     mem_space_map : MemSpaceMap.mem_space_map option ;
+     mem_space_map : MemSpaceMap.mem_space_map ;
    }
 
 val simple_name :

@@ -61,7 +61,7 @@ module type LexParse = sig
         (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
 	  int list * instruction list list *
           (ScopeTree.scope_tree option * 
-           MemSpaceMap.mem_space_map option)
+           MemSpaceMap.mem_space_map)
 end
 
 (* Output signature *)

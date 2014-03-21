@@ -105,21 +105,17 @@ module Make
            "A", E.is_atomic;
 	   "I", E.is_mem_store_init;
          ] @ 
-         (match test.Test.mem_space_map with
-           | None -> []
-           | Some msm -> [
-               "global_loc", (fun e -> 
-                   match E.location_of e with
-                   | Some (E.A.Location_global a) ->
-                     MemSpaceMap.is_global msm (E.A.V.pp_v a) 
-                   | _ -> false);
-               "local_loc", (fun e -> 
-                   match E.location_of e with
-                   | Some (E.A.Location_global a) ->
-                     MemSpaceMap.is_global msm (E.A.V.pp_v a) 
-                   | _ -> false);
-             ]
-         )) in
+         ["global_loc", (fun e -> 
+              match E.location_of e with
+              | Some (E.A.Location_global a) ->
+                MemSpaceMap.is_global test.Test.mem_space_map (E.A.V.pp_v a) 
+              | _ -> false);
+          "local_loc", (fun e -> 
+              match E.location_of e with
+              | Some (E.A.Location_global a) ->
+                MemSpaceMap.is_global test.Test.mem_space_map (E.A.V.pp_v a) 
+              | _ -> false);
+         ]) in
       let m = 
 	List.fold_left
 	  (fun m (k,v) -> StringMap.add k (lazy (I.Set (E.EventSet.filter (fun e -> v e.E.action) evts))) m)

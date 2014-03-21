@@ -32,12 +32,12 @@ open X86
 %token  I_READ I_SETNB I_JE I_JNE
 %token  I_CMPXCHG
 
-%type <int list * (X86Base.pseudo) list list * (ScopeTree.scope_tree option * MemSpaceMap.mem_space_map option)> main 
+%type <int list * (X86Base.pseudo) list list * (ScopeTree.scope_tree option * MemSpaceMap.mem_space_map)> main 
 %start  main
 
 %nonassoc SEMI
 %%
-main: semi_opt proc_list iol_list EOF { $2,$3, (None,None) }
+main: semi_opt proc_list iol_list EOF { $2,$3, (None,[]) }
 
 
 semi_opt:
