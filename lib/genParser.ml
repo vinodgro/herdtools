@@ -61,7 +61,8 @@ module type LexParse = sig
         (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
 	  int list * instruction list list *
           (ScopeTree.scope_tree option * 
-           MemSpaceMap.mem_space_map)
+           MemSpaceMap.mem_space_map *
+           LocationKindMap.lk_map)
 end
 
 (* Output signature *)
@@ -203,7 +204,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let init =
 	call_parser_loc "init"
 	  chan init_loc SL.token StateParser.init in
-      let procs,prog,(scope_tree,mem_space_map) =
+      let procs,prog,(scope_tree,mem_space_map,lk_map) =
 	call_parser_loc "prog" chan prog_loc L.lexer L.parser in
       check_procs procs ;
       let prog = transpose procs prog in
@@ -223,6 +224,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
          locations = locs;
 	 scope_tree = scope_tree;
 	 mem_space_map = mem_space_map;
+         lk_map = lk_map;
        } in
       let name  = name.Name.name in
       let parsed =

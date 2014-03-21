@@ -5,4 +5,7 @@ CPP11 MP_relacq
  x = 1                       | r1 = y.load(mo_acquire) ;
  y.store(1,mo_release)       | r2 = x ;
 
+LK
+x:nonatomic, y:atomic
+
 exists (1:r1 = 1 /\ 1:r2 = 0)

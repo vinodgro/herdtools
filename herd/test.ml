@@ -24,6 +24,7 @@ type ('prog,'nice_prog,'start,'state,'constr,'loc,'locset) t =
      observed : 'locset ;
      scope_tree : ScopeTree.scope_tree option ;
      mem_space_map : MemSpaceMap.mem_space_map ;
+     lk_map : LocationKindMap.lk_map ;
    }
 
 (* Name and nothing else *)
@@ -60,6 +61,7 @@ module Make(A:Arch.S) =
            locations = locs ;
 	   scope_tree = scope_tree ;
 	   mem_space_map = mem_space_map ;
+           lk_map = lk_map ;
 	 } = t in
 
       let prog,starts = Load.load nice_prog in
@@ -84,6 +86,7 @@ module Make(A:Arch.S) =
        observed = observed ;       
        scope_tree = scope_tree ;
        mem_space_map = mem_space_map ;
+       lk_map = lk_map ;
      }
 
 

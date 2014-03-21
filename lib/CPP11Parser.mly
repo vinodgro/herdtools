@@ -7,26 +7,29 @@ open CPP11
 %}
 
 %token EOF
+%token LK
 %token <CPP11Base.reg> ARCH_REG
 %token <int> NUM
 %token <string> NAME
 %token <int> PROC
 %token SEMI COMMA PIPE COLON LPAR RPAR EQ DOT 
 %token <CPP11Base.mem_order> MEMORDER
+%token <CPP11Base.location_kind> LOCATIONKIND
 
 /* Instruction tokens */
 
 %token LD ST FENCE LOCK UNLOCK SCAS WCAS
 
-%type <int list * (CPP11Base.pseudo) list list * (ScopeTree.scope_tree option * MemSpaceMap.mem_space_map)> main 
+%type <LocationKindMap.lk_map> lk_map
+%type <int list * (CPP11Base.pseudo) list list * (ScopeTree.scope_tree option * MemSpaceMap.mem_space_map * LocationKindMap.lk_map)> main 
 %start  main
 
 %nonassoc SEMI
 %%
 
 main:
-| semi_opt proc_list iol_list EOF { $2,$3,(None,[]) }
-| semi_opt proc_list EOF          { $2,[],(None,[]) }
+| semi_opt proc_list iol_list lk_map EOF { $2,$3,(None,[],$4) }
+| semi_opt proc_list lk_map EOF          { $2,[],(None,[],$3) }
 
 semi_opt:
 |      { () }
@@ -76,4 +79,16 @@ reg:
 
 loc:
 | NAME { Symbolic $1 }
+
+lk_map:
+| LK lk_list { $2 }
+|         { [] }
+
+lk_list:
+| lk { [$1] }
+| lk COMMA lk_list { $1 :: $3 }
+
+lk:
+| NAME COLON LOCATIONKIND { ($1,$3) }
+| NAME COLON LOCATIONKIND { ($1,$3) }
 

@@ -32,14 +32,14 @@ open GPU_PTX
 /* Instruction tokens */
 %token ST LD MEMBAR MOV ADD AND CVT VOL
 
-%type <int list * (GPU_PTXBase.pseudo) list list * (ScopeTree.scope_tree option * MemSpaceMap.mem_space_map)> main 
+%type <int list * (GPU_PTXBase.pseudo) list list * (ScopeTree.scope_tree option * MemSpaceMap.mem_space_map * LocationKindMap.lk_map)> main 
 %start  main
 
 %nonassoc SEMI
 
 %token SCOPETREE GLOBAL SHARED DEVICE KERNEL CTA WARP THREAD COMMA PTX_REG_DEC 
 
-%type <ScopeTree.scope_tree option * MemSpaceMap.mem_space_map> scopes_and_memory_map
+%type <ScopeTree.scope_tree option * MemSpaceMap.mem_space_map * LocationKindMap.lk_map> scopes_and_memory_map
 
 %%
 
@@ -137,7 +137,7 @@ reg:
 
 scopes_and_memory_map : 
 | SCOPETREE scope_tree memory_map 
-   {(Some $2, $3)}
+   {(Some $2, $3, [])}
 
 scope_tree :
 |  device_list {$1}

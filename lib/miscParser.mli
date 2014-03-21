@@ -53,6 +53,7 @@ type ('i, 'p, 'c, 'loc) result =
       locations : ('loc * run_type) list ;
       scope_tree : ScopeTree.scope_tree option ;
       mem_space_map : MemSpaceMap.mem_space_map ;
+      lk_map : LocationKindMap.lk_map ;
 }
 
 (* Easier to handle *)

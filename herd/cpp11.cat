@@ -45,12 +45,6 @@
    they should be compiled using 'neato', not 'dot'   
 *)
 
-(* MB: TODO I need location kinds for equivalence: *)
-let set atomicloc = 0
-let set nonatomicloc = 0
-let set mutexloc = 0
-
-
 (* SC atomics have acquire and release semantics. *)
 let set cacq = acq | sc
 let set crel = rel | sc

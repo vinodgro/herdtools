@@ -6,4 +6,7 @@ CPP11 MP_fence
  fence(mo_release)           | fence(mo_acquire)       ;
  y.store(1,mo_relaxed)       | r2 = x.load(mo_relaxed) ; 
 
+LK
+x:atomic, y:atomic
+
 exists (1:r1 = 1 /\ 1:r2 = 0)

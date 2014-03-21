@@ -35,6 +35,9 @@ rule token = parse
 | "mo_seq_cst" {MEMORDER (CPP11Base.SC)}
 | "mo_relaxed" {MEMORDER (CPP11Base.Rlx)}
 | "mo_consume" {MEMORDER (CPP11Base.Con)}
+| "mutex"      {LOCATIONKIND (CPP11Base.LK_mutex)}
+| "atomic"     {LOCATIONKIND (CPP11Base.LK_atomic)}
+| "nonatomic"  {LOCATIONKIND (CPP11Base.LK_nonatomic)}
 | "fence" { FENCE }
 | "load"  { LD }
 | "store"    { ST }
@@ -42,6 +45,7 @@ rule token = parse
 | "WCAS"  { WCAS }
 | "SCAS"  { SCAS }
 | "unlock"    { UNLOCK }
+| "LK" { LK }
 | name as x
   { match CPP11.parse_reg x with
   | Some r -> ARCH_REG r
