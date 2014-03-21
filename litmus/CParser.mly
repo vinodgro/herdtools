@@ -39,8 +39,8 @@ params:
     { {CAst.param_ty = $2; volatile = true; param_name = $3} :: $5 }
 
 ty:
-| typ STAR { RunType.Ty $1 }
-| typ STAR STAR { RunType.Pointer $1 }
+| atyp STAR { RunType.Ty $1 }
+| atyp STAR STAR { RunType.Pointer $1 }
 
 atyp:
 | typ { $1 }
