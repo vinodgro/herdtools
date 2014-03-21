@@ -114,6 +114,9 @@ let options = [
   ( "-evince",
     Arg.Unit (fun _ -> PP.evince := true),
     "<non-default>  fork evince to show output graphs") ;
+  ( "-dumplem",
+    Arg.Unit (fun _ -> dumplem := true),
+    "<non-default> convert the given model to Lem format") ;
   ("-unroll",
    Arg.Int (fun x -> unroll := x),
    sprintf "<int> branch unrolling upper limit, default %i" !unroll);
@@ -428,6 +431,7 @@ let () =
     let outputdir = !outputdir
     let suffix = !suffix
     let dumpes = !dumpes
+    let dumplem = !dumplem
 
     module PC = struct
       let verbose = verbose

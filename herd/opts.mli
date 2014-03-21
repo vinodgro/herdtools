@@ -36,12 +36,13 @@ val show : PrettyConf.show ref
 val nshow :int option ref
 val auto : bool ref
 val restrict : Restrict.t ref
-  val showkind : bool ref
+val showkind : bool ref
 val shortlegend : bool ref
 val outcomereads : bool ref
 val outputdir : string option ref
 val suffix : string ref
 val dumpes : bool ref
+val dumplem : bool ref
 
 (* Pretty printing configuration, deserves its own module *)
 module PP : sig
