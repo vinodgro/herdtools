@@ -14,8 +14,8 @@ CFG=conti.cfg saumur.cfg saumur.close.cfg doko.cfg squale.cfg hpcx.cfg \
  mike.cfg youpla.cfg hopla.cfg corei7.cfg x86.cfg nexus10.cfg nexus7.cfg \
  odroid-xu.cfg odroid-xu-ubuntu.cfg
 
-
-OCB=ocamlbuild -cflags -w,A-4-9-27-29-45 -classic-display
+OCBOPT=-no-ocamlfind
+OCB=ocamlbuild $(OCBOPT) -cflags -w,A-4-9-27-29-45 -classic-display
 all: native
 
 install:

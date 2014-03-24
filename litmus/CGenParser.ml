@@ -181,7 +181,8 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
          condition = final;
          locations = locs;
          scope_tree = None;
-         mem_space_map = None;
+         mem_space_map = [];
+         lk_map = [];
        } in
       let name  = name.Name.name in
       let parsed =
