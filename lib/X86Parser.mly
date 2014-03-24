@@ -32,12 +32,12 @@ open X86
 %token  I_READ I_SETNB I_JE I_JNE
 %token  I_CMPXCHG
 
-%type <int list * (X86Base.pseudo) list list * (ScopeTree.scope_tree option * MemSpaceMap.mem_space_map * LocationKindMap.lk_map)> main 
+%type <int list * (X86Base.pseudo) list list * MiscParser.gpu_data option> main 
 %start  main
 
 %nonassoc SEMI
 %%
-main: semi_opt proc_list iol_list EOF { $2,$3, (None,[],[]) }
+main: semi_opt proc_list iol_list EOF { $2,$3, None }
 
 
 semi_opt:

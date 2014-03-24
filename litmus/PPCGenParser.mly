@@ -65,14 +65,14 @@ open PPCGen
 %token COMMENT
 %token <string> STRING
 
-%type <int list * (PPCGenBase.pseudo) list list * (ScopeTree.scope_tree option * MemSpaceMap.mem_space_map * LocationKindMap.lk_map) > main 
+%type <int list * (PPCGenBase.pseudo) list list * MiscParser.gpu_data option > main
 %start  main
 
 %nonassoc SEMI
 %%
 
 main:
-| semi_opt proc_list iol_list_opt EOF { $2,$3,(None,[],[]) }
+| semi_opt proc_list iol_list_opt EOF { $2,$3,None }
 
 semi_opt:
 | { () }

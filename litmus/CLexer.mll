@@ -10,6 +10,7 @@
 (*********************************************************************)
 
 {
+(* Compiled efficiently by the next version of ocaml *)
 let tr_name = function
 | "volatile" -> CParser.VOLATILE
 | "unsigned" -> CParser.UNSIGNED

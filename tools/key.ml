@@ -137,7 +137,7 @@ module Make(Opt:Config) = struct
     let add_col t1 =
       Array.map
         (fun t ->          
-          let k,c =
+          let _k,c =
             let c,from_log =
               try
                 Some (TblRename.find_value Opt.conds t.tname),false

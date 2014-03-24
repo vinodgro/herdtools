@@ -20,19 +20,19 @@ open OpenCL
 
 %token LD ST FENCE
 
-%type <int list * (OpenCLBase.pseudo) list list * (ScopeTree.scope_tree option * MemSpaceMap.mem_space_map * LocationKindMap.lk_map)> main 
+%type <int list * (OpenCLBase.pseudo) list list * MiscParser.gpu_data option> main 
 %start  main
 
 %nonassoc SEMI
 
 %token SCOPETREE DEVICE KERNEL CTA WARP THREAD COMMA PTX_REG_DEC 
 
-%type <ScopeTree.scope_tree option * MemSpaceMap.mem_space_map * LocationKindMap.lk_map> scopes_and_memory_map
+%type <MiscParser.gpu_data> scopes_and_memory_map
 
 %%
 
 main:
-| semi_opt proc_list iol_list scopes_and_memory_map EOF { $2,$3,$4 }
+| semi_opt proc_list iol_list scopes_and_memory_map EOF { $2,$3,Some $4 }
 
 semi_opt:
 |      { () }
@@ -81,7 +81,7 @@ loc:
 
 scopes_and_memory_map : 
 | SCOPETREE scope_tree memory_map 
-   { Some $2, $3, [] }
+   { { MiscParser.scope_tree=Some $2; mem_space_map=$3; lk_map=[]; } }
 
 scope_tree :
 |  device_list {$1}

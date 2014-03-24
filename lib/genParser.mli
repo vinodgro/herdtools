@@ -33,11 +33,7 @@ module type LexParse = sig
   val lexer : Lexing.lexbuf -> token
   val parser :
        (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
-	 int list * instruction list list *
-          (ScopeTree.scope_tree option * 
-           MemSpaceMap.mem_space_map * 
-           LocationKindMap.lk_map)
- 
+	 int list * instruction list list * MiscParser.gpu_data option
 end
 
 module type S = sig

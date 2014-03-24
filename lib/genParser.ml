@@ -59,10 +59,7 @@ module type LexParse = sig
   val lexer : Lexing.lexbuf -> token
   val parser :
         (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
-	  int list * instruction list list *
-          (ScopeTree.scope_tree option * 
-           MemSpaceMap.mem_space_map *
-           LocationKindMap.lk_map)
+	  int list * instruction list list * MiscParser.gpu_data option
 end
 
 (* Output signature *)
@@ -204,7 +201,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let init =
 	call_parser_loc "init"
 	  chan init_loc SL.token StateParser.init in
-      let procs,prog,(scope_tree,mem_space_map,lk_map) =
+      let procs,prog,gpu_data =
 	call_parser_loc "prog" chan prog_loc L.lexer L.parser in
       check_procs procs ;
       let prog = transpose procs prog in
@@ -222,9 +219,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
          MiscParser.info; init; prog = prog;
          condition = final; 
          locations = locs;
-	 scope_tree = scope_tree;
-	 mem_space_map = mem_space_map;
-         lk_map = lk_map;
+         gpu_data;
        } in
       let name  = name.Name.name in
       let parsed =

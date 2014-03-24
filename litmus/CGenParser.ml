@@ -180,9 +180,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
          MiscParser.info; init; prog = prog;
          condition = final;
          locations = locs;
-         scope_tree = None;
-         mem_space_map = [];
-         lk_map = [];
+         gpu_data = None ;
        } in
       let name  = name.Name.name in
       let parsed =

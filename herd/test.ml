@@ -59,9 +59,7 @@ module Make(A:Arch.S) =
            prog = nice_prog ;
            condition = final ; 
            locations = locs ;
-	   scope_tree = scope_tree ;
-	   mem_space_map = mem_space_map ;
-           lk_map = lk_map ;
+           gpu_data = gpu_data ;
 	 } = t in
 
       let prog,starts = Load.load nice_prog in
@@ -73,6 +71,12 @@ module Make(A:Arch.S) =
           | ConstrGen.LV (loc,_v) -> A.LocSet.add loc r
           | ConstrGen.LL (l1,l2) -> A.LocSet.add l1 (A.LocSet.add l2 r))
           final locs in
+(* Hum, half satisfactory,  but steems from the test structure having
+   three fields that are gpu-specific *)
+      let scope_tree, mem_space_map,lk_map = match gpu_data with
+      | None -> None,[],[]
+      | Some { MiscParser.scope_tree; mem_space_map; lk_map; } ->
+          scope_tree, mem_space_map,lk_map in
       {
        arch = A.arch ;
        name = name ;

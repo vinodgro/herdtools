@@ -45,15 +45,21 @@ type run_type = Ty of string | Pointer of string
 
 (* Packed result *)
 type info = (string * string) list
+type gpu_data = {
+      scope_tree : ScopeTree.scope_tree option ;
+      mem_space_map : MemSpaceMap.mem_space_map ;
+      lk_map : LocationKindMap.lk_map ;
+  }
+
+val empty_gpu : gpu_data
+
 type ('i, 'p, 'c, 'loc) result =
     { info : info ;
       init : 'i ;
       prog : 'p ;
       condition : 'c ;
       locations : ('loc * run_type) list ;
-      scope_tree : ScopeTree.scope_tree option ;
-      mem_space_map : MemSpaceMap.mem_space_map ;
-      lk_map : LocationKindMap.lk_map ;
+      gpu_data : gpu_data option ;
 }
 
 (* Easier to handle *)
