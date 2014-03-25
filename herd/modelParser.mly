@@ -130,12 +130,12 @@ formalsN:
 
 setexp:
 | VAR { Var $1 }
-| EMPTY { Konst Empty_set }
+| EMPTY { Konst (Empty SET) }
 | UNDERSCORE { Var "_" }
-| setexp UNION setexp { do_op Union $1 $3 }
-| setexp DIFF setexp { do_op Diff $1 $3 }
-| setexp INTER setexp { do_op Inter $1 $3 }
-| COMP setexp { Op (Diff, [Var "_"; $2]) }
+| setexp UNION setexp { do_op (Union SET) $1 $3 }
+| setexp DIFF setexp { do_op (Diff SET) $1 $3 }
+| setexp INTER setexp { do_op (Inter SET) $1 $3 }
+| COMP setexp { Op1 (Comp SET, $2) }
 | LPAR setexp RPAR { $2 }
 
 exp:
@@ -145,20 +145,20 @@ exp:
 | base { $1 }
 
 base:
-| EMPTY { Konst Empty_rel }
+| EMPTY { Konst (Empty RLN) }
 | select LPAR exp RPAR { Op1 ($1,$3) }
 |  exp0 { $1 }
 | LBRAC setexp STAR setexp RBRAC {Op (Cartesian, [$2; $4])}
-| LBRAC setexp RBRAC {Op (Inter, [Op (Cartesian, [$2; $2]); Var "id"])}
+| LBRAC setexp RBRAC {Op1(Set_to_rln,$2)}
 | base STAR { Op1(Star,$1) }
 | base PLUS { Op1(Plus,$1) }
 | base OPT { Op1(Opt,$1) }
 | base INV { Op1(Inv,$1) }
 | base SEMI base { do_op Seq $1 $3 }
-| base UNION base { do_op Union $1 $3 }
-| base DIFF base { do_op Diff $1 $3 }
-| COMP base { Op (Diff, [Var "unv"; $2]) }
-| base INTER base { do_op Inter $1 $3 }
+| base UNION base { do_op (Union RLN) $1 $3 }
+| base DIFF base { do_op (Diff RLN) $1 $3 }
+| COMP base { Op1 (Comp RLN, $2) }
+| base INTER base { do_op (Inter RLN) $1 $3 }
 | LPAR exp RPAR { $2 }
 
 exp0:

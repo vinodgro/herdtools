@@ -25,6 +25,9 @@ module type S =  sig
 (* Inverse *)
   val inverse : t -> t
 
+(* Set to relation *)
+  val set_to_rln : Elts.t -> t
+
 (* Are e1 and e2 related by the transitive closure of relation.
    Does not detect cycles *)
   val mem_transitive : elt1 * elt2 -> t -> bool
@@ -101,6 +104,9 @@ struct
 
 (* Inverse *)
   let inverse t = fold (fun (x,y) k -> add (y,x) k) t empty
+
+(* Set to relation *)
+  let set_to_rln s = Elts.fold (fun x k -> add (x,x) k) s empty
 
 (* Internal tranformation to successor map *)
 

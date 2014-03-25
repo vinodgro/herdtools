@@ -29,10 +29,10 @@ open CPP11
 
 main:
 | semi_opt proc_list iol_list lk_map EOF
-    {let gpu = { MiscParser.empty_gpu with lk_map=$4 } in
+    {let gpu = { MiscParser.empty_gpu with MiscParser.lk_map=$4 } in
      $2,$3,Some gpu }
 | semi_opt proc_list lk_map EOF
-    { let gpu = { MiscParser.empty_gpu with lk_map=$3 } in     
+    { let gpu = { MiscParser.empty_gpu with MiscParser.lk_map=$3 } in     
       $2,[],Some gpu }
 
 semi_opt:

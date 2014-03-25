@@ -266,7 +266,6 @@ module Make(O:Config)(M:XXXMem.S) =
 (* So small a race condition... *)
       Handler.push (fun () -> erase_dot ochan) ;
       if O.dumplem then begin
-        printf "Dumping lem...\n";
         match M.model with
         | Model.Generic (_,(_,_,prog)) -> 
           Herd2lem.lem_of_prog stdout prog; 

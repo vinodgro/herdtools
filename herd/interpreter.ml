@@ -152,45 +152,59 @@ module Make
         | Plain -> fun e -> not (E.is_atomic e) in
 
       let rec eval env = function
-        | Konst Empty_rel -> empty_rel
-	| Konst Empty_set -> empty_set
+        | Konst (Empty RLN) -> empty_rel
+	| Konst (Empty SET) -> empty_set
         | Var k -> find_env env k
         | Fun (xs,body) ->
             Clo {clo_args=xs; clo_env=env; clo_body=body; }
         | Op1 (op,e) ->
-            begin
-              let v = eval_rel env e in
+          begin match eval env e with
+            | Clo _ -> 
+              Warn.user_error 
+                "Expected a set or a relation, found a closure"
+            | Set v -> begin match op with
+                | Set_to_rln -> Rel (E.EventRel.set_to_rln v)
+                | Comp _ -> 
+                  Set (E.EventSet.diff (eval_set env (Var "_")) v)
+                | _ -> 
+                  Warn.user_error "Expected a relation, found a set"
+              end
+            | Rel v -> 
               Rel
                 (match op with
-                | Inv -> E.EventRel.inverse v
-                | Int -> U.internal v
-                | Ext -> U.ext v
-                | NoId ->
-                    E.EventRel.filter
-                      (fun (e1,e2) -> not (E.event_equal e1 e2))
-                      v
-                | Plus -> S.tr v
-                | Star -> S.union (S.tr v) id
-                | Opt -> S.union v id
-                | Select (s1,s2) ->
-                    let f1 = is_dir s1 and f2 = is_dir s2 in
-                    S.restrict f1 f2 v)
-            end
+                 | Inv -> E.EventRel.inverse v
+                 | Int -> U.internal v
+                 | Ext -> U.ext v
+                 | NoId ->
+                   E.EventRel.filter
+                     (fun (e1,e2) -> not (E.event_equal e1 e2))
+                     v
+                 | Plus -> S.tr v
+                 | Star -> S.union (S.tr v) id
+                 | Opt -> S.union v id
+                 | Comp _ -> 
+                   E.EventRel.diff (eval_rel env (Var "unv")) v
+                 | Select (s1,s2) ->
+                   let f1 = is_dir s1 and f2 = is_dir s2 in
+                   S.restrict f1 f2 v
+                 | Set_to_rln -> 
+                   Warn.user_error "Expected a set, found a relation")
+          end
         | Op (op,es) ->
             begin
               let vs = List.map (eval env) es in
 	      if List.for_all is_rel vs then begin
 		let vs = List.map as_rel vs in
 		let v = match op with
-		  | Union -> S.unions vs
+		  | Union _ -> S.unions vs
 		  | Seq -> S.seqs vs
-		  | Diff ->
+		  | Diff _ ->
                      begin match vs with
 		     | [] -> assert false
 		     | v::vs ->
 			List.fold_left E.EventRel.diff v vs
                      end
-		  | Inter ->
+		  | Inter _ ->
                      begin match vs with
 		     | [] -> assert false
                      | v::vs ->
@@ -201,15 +215,15 @@ module Make
 	      end else if List.for_all is_set vs then begin
 		let vs = List.map as_set vs in
 		match op with
-		  | Union -> Set (E.EventSet.unions vs)
+		  | Union _ -> Set (E.EventSet.unions vs)
 		  | Seq -> assert false
-		  | Diff ->
+		  | Diff _ ->
                      begin match vs with
 		     | [] -> assert false
 		     | v::vs ->
 			Set (List.fold_left E.EventSet.diff v vs)
                      end
-		  | Inter ->
+		  | Inter _ ->
                      begin match vs with
 		     | [] -> assert false
                      | v::vs ->
@@ -245,6 +259,7 @@ module Make
             eval env e
 
       and eval_rel env e = as_rel (eval env e)
+      and eval_set env e = as_set (eval env e)
       and eval_clo env e = as_clo (eval env e)
 
 (* For let *)

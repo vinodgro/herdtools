@@ -27,6 +27,9 @@ module type S =  sig
 (* Inverse *)
   val inverse : t -> t
 
+(* Set to relation *)
+  val set_to_rln : Elts.t -> t
+
 (* Are e1 and e2 related by the transitive closure of relation.
    Does not detect cycles *)
   val mem_transitive : elt1 * elt2 -> t -> bool
