@@ -44,8 +44,8 @@ and lem_of_op1 chan e = function
   | Int -> fprintf chan "(int %a)" lem_of_exp e
   | NoId -> fprintf chan "(noid %a)" lem_of_exp e
   | Set_to_rln -> fprintf chan "(stor %a)" lem_of_exp e
-  | Comp SET -> fprintf chan "(comps %a)" lem_of_exp e
-  | Comp RLN -> fprintf chan "(compr %a)" lem_of_exp e
+  | Comp SET -> fprintf chan "(comps X %a)" lem_of_exp e
+  | Comp RLN -> fprintf chan "(compr X %a)" lem_of_exp e
 
 and lem_of_exp chan = function
   | Konst k -> lem_of_konst chan k
@@ -108,7 +108,9 @@ let lem_of_ins chan = function
   | ShowAs _ -> ()
 
 let lem_of_prog chan prog = 
-  fprintf chan "import Herd\n\n";
+  fprintf chan "open import Pervasives\n";
+  fprintf chan "open import Relation\n";
+  fprintf chan "open import Herd\n\n";
   List.iter (fprintf chan "%a\n\n" lem_of_ins) prog;
   fprintf chan "let provides X =\n";
   fprintf chan "  herd_provides X &&\n";
