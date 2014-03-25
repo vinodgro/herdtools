@@ -851,7 +851,7 @@ let make_atomic_load_store es =
         rfm
 
     let calculate_rf_with_cnstrnts test es cs kont kont_loop res =
-      match (solve_regs test es cs) with
+      match solve_regs test es cs with
       | None -> res
       | Some (es,rfm,cs) ->
           if C.debug.Debug.solver && C.verbose > 0 then begin

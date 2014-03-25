@@ -208,6 +208,8 @@ module type S = sig
   val location_compare : event -> event -> int
   val same_location : event -> event -> bool
   val same_value : event -> event -> bool
+(* Value is ==, used for data dependencies *)
+  val same_subst_value : event -> event -> bool
   val is_visible_location : A.location -> bool
 
 
@@ -295,6 +297,16 @@ struct
 
     let same_value e1 e2 = match value_of e1, value_of e2 with
     | Some v1,Some v2 -> V.compare v1 v2 = 0
+    | _,_ -> assert false
+
+(* Used for detecting data dependencies,
+   e1 is a reg load and e2 is a mem store, from the same instruction.
+   As a consequence : values exists and are determined.
+   Physical equality ofvalues implies that e1 is teh data port.
+   Converse should hold in the current implementation... *)
+
+    let same_subst_value e1 e2 = match value_of e1, value_of e2 with
+    | Some (V.Val v1),Some (V.Val v2) -> v1 == v2
     | _,_ -> assert false
 
     let proc_of e = match e.iiid with
@@ -414,12 +426,12 @@ struct
     module EventRel = InnerRel.Make(OrderedEvent)
     type event_rel = EventRel.t
 
-    let debug_event chan e = fprintf chan "%s" (pp_eiid e)
+    let debug_event_in_rel chan e = fprintf chan "%s" (pp_eiid e)
 
     let debug_rel chan r =
       EventRel.pp chan ","
         (fun chan (e1,e2) -> fprintf chan "%a -> %a"
-            debug_event e1 debug_event e2)
+            debug_event_in_rel e1 debug_event_in_rel e2)
         r
 
     module Atomicity =

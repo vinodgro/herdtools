@@ -1,4 +1,4 @@
-##Top level makefile for local installaton of source tree
+##Top level makefile for local installation of source tree
 SRC=herd gen litmus tools
 PREFIX=$$HOME
 OCBOPT=
