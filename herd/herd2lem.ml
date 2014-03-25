@@ -40,8 +40,8 @@ and lem_of_op1 chan e = function
   | Opt -> fprintf chan "(rc X %a)" lem_of_exp e
   | Select _ -> fprintf chan "Select not done yet"
   | Inv -> fprintf chan "(inv %a)" lem_of_exp e
-  | Ext -> fprintf chan "(ext %a)" lem_of_exp e
-  | Int -> fprintf chan "(int %a)" lem_of_exp e
+  | Ext -> fprintf chan "(ext X %a)" lem_of_exp e
+  | Int -> fprintf chan "(int X %a)" lem_of_exp e
   | NoId -> fprintf chan "(noid %a)" lem_of_exp e
   | Set_to_rln -> fprintf chan "(stor %a)" lem_of_exp e
   | Comp SET -> fprintf chan "(comps X %a)" lem_of_exp e
