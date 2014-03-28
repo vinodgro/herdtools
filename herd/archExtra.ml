@@ -29,8 +29,8 @@ module type S = sig
 
   module I : I
 
-  type global_loc = I.V.v 
- 
+  type global_loc = I.V.v
+
   type proc = int
   val pp_proc : proc -> string
 
@@ -166,7 +166,9 @@ module Make(C:Config) (I:I) : S with module I = I
         let reg_compare = I.reg_compare
 
         type arch_global = I.V.v
-        let maybev_to_global =  I.V.maybevToV
+        let string_to_global = I.V.nameToV
+        let symbConstant_to_global = I.V.symbConstantToV
+        let maybev_to_global = I.V.maybevToV
         let pp_global = I.V.pp_v
         let global_compare = I.V.compare
       end)
@@ -253,7 +255,7 @@ module Make(C:Config) (I:I) : S with module I = I
 
   let look_in_state st loc =
     match undetermined_vars_in_loc loc with
-    | Some _ -> 
+    | Some _ ->
     (* if loc is not determined, then we cannot get its
        content yet *)
 	raise LocUndetermined
@@ -303,5 +305,3 @@ module Make(C:Config) (I:I) : S with module I = I
   type constr = prop ConstrGen.constr
 
 end
-
-

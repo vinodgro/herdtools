@@ -36,4 +36,4 @@ module Make :
 
     val refresh_labels : string -> prog -> prog
     val digest : init -> prog -> locations -> string
-  end    
+  end

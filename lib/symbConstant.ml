@@ -12,7 +12,7 @@
 
 type v = Constant.v
 open Constant
-        
+
 let intToV i = Concrete i
 and nameToV s = Symbolic s
 

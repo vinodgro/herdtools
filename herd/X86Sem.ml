@@ -34,23 +34,23 @@ module Make (C:Sem.Config)(V : Value.S)
     let (>>!) = M.(>>!)
 
     let mk_read ato loc v = Act.Access (Dir.R, loc, v, ato)
-					      
-    let read_loc = 
+
+    let read_loc =
       M.read_loc (mk_read false)
-    let read_reg r ii = 
+    let read_reg r ii =
       M.read_loc (mk_read false) (A.Location_reg (ii.A.proc,r)) ii
-    let read_mem a ii  = 
+    let read_mem a ii  =
       M.read_loc (mk_read false) (A.Location_global a) ii
-    let read_mem_atomic a ii = 
+    let read_mem_atomic a ii =
       M.read_loc (mk_read true) (A.Location_global a) ii
-		 
-    let write_loc loc v ii = 
+
+    let write_loc loc v ii =
       M.mk_singleton_es (Act.Access (Dir.W, loc, v, false)) ii
-    let write_reg r v ii = 
+    let write_reg r v ii =
       M.mk_singleton_es (Act.Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
-    let write_mem a v ii  = 
+    let write_mem a v ii  =
       M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, false)) ii
-    let write_mem_atomic a v ii = 
+    let write_mem_atomic a v ii =
       M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, true)) ii
 
     let write_flag r o v1 v2 ii =
@@ -58,10 +58,10 @@ module Make (C:Sem.Config)(V : Value.S)
 	  (A.Location_reg (ii.A.proc,r))
 	  (M.op o v1 v2) >>= (fun (loc,v) -> write_loc loc v ii)
 
-    let create_barrier b ii = 
+    let create_barrier b ii =
       M.mk_singleton_es (Act.Barrier b) ii
 
-    let commit ii = 
+    let commit ii =
       M.mk_singleton_es (Act.Commit) ii
 
     let lval_ea ea ii = match ea with
@@ -71,8 +71,8 @@ module Make (C:Sem.Config)(V : Value.S)
         read_reg r ii >>=
 	fun vreg -> M.unitT (X86.Location_global vreg)
     | X86.Effaddr_rm32 (X86.Rm32_abs v)->
-	M.unitT (X86.maybev_to_location v)
-	  
+	M.unitT (X86.symbConstant_to_location v)
+
     let rval_ea ea ii =
       lval_ea ea ii >>=  fun loc -> read_loc loc ii
 
@@ -80,7 +80,7 @@ module Make (C:Sem.Config)(V : Value.S)
     | X86.Operand_effaddr ea -> rval_ea ea ii
     | X86.Operand_immediate s -> M.unitT (V.intToV s)
 
-    let flip_flag v = M.op Op.Xor v V.one	
+    let flip_flag v = M.op Op.Xor v V.one
 	(* Set flags by comparing v1 v2 *)
     let write_zf v1 v2 ii =  write_flag X86.ZF Op.Eq v1 v2 ii
     let write_sf v1 v2 ii =  write_flag X86.SF Op.Gt v1 v2 ii
@@ -96,7 +96,7 @@ module Make (C:Sem.Config)(V : Value.S)
       (lval_ea ea1 ii >>| lval_ea ea2 ii) >>=
       fun (l1,l2) ->
 	(read_loc l1 ii >>| read_loc l2 ii) >>=
-	fun (v1,v2) -> 
+	fun (v1,v2) ->
 	  (write_loc l1 v2 ii >>| write_loc l2 v1 ii) >>! B.Next
 *)
 
@@ -138,7 +138,7 @@ module Make (C:Sem.Config)(V : Value.S)
 	lval_ea ea ii >>=
 	fun loc -> read_loc loc ii >>=
 	  fun v ->
-	    M.op Op.Sub v V.one >>= 
+	    M.op Op.Sub v V.one >>=
 	    fun v ->
 	      (write_loc loc v ii >>|
               write_sf v V.zero ii >>|
@@ -182,22 +182,22 @@ module Make (C:Sem.Config)(V : Value.S)
 	(read_reg X86.ZF ii >>| read_reg X86.SF ii) >>=
 	fun (v1,v2) ->
 	  M.op Op.Or v1 v2 >>=
-	  fun v -> B.bccT v lbl 
+	  fun v -> B.bccT v lbl
     | X86.I_JCC (X86.C_GT,lbl) ->
 	read_reg X86.SF ii >>=
-	fun v -> B.bccT v lbl 
-    | X86.I_JCC (X86.C_EQ,lbl) -> 
+	fun v -> B.bccT v lbl
+    | X86.I_JCC (X86.C_EQ,lbl) ->
 	read_reg X86.ZF ii >>=
-	fun v -> B.bccT v lbl 
-    | X86.I_JCC (X86.C_NE,lbl) -> 
+	fun v -> B.bccT v lbl
+    | X86.I_JCC (X86.C_NE,lbl) ->
 	read_reg X86.ZF ii >>= flip_flag >>=
-	fun v -> B.bccT v lbl 
-    | X86.I_JCC (X86.C_S,lbl) -> 
+	fun v -> B.bccT v lbl
+    | X86.I_JCC (X86.C_S,lbl) ->
 	read_reg X86.SF ii >>=
-	fun v -> B.bccT v lbl 
-    | X86.I_JCC (X86.C_NS,lbl) -> 
+	fun v -> B.bccT v lbl
+    | X86.I_JCC (X86.C_NS,lbl) ->
 	read_reg X86.SF ii >>= flip_flag >>=
-	fun v -> B.bccT v lbl 
+	fun v -> B.bccT v lbl
 
     | X86.I_LOCK inst ->
 	M.lockT (build_semantics procs inst ii)

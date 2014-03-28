@@ -302,8 +302,9 @@ end = struct
 
           type arch_global = string
           let maybev_to_global = function
-            | Constant.Concrete i -> "addr_" ^ string_of_int i
-            | Constant.Symbolic s -> s
+            | MiscParser.Maybev.Concrete x -> "addr_" ^ x
+            | MiscParser.Maybev.Symbolic s -> s
+          let string_to_global = Misc.identity
           let pp_global x = x
           let global_compare = String.compare
 
@@ -320,12 +321,12 @@ end = struct
 
         type state = (location * V.v) list
 
-        module Out = Template.Make(O)(Internal)(V)
+        module Out = Template.Make(O)(Internal)
 
         let arch = Internal.arch
 
         let rec find_in_state loc = function
-          | [] -> V.intToV 0
+          | [] -> MiscParser.Maybev.Concrete "0"
           | (loc2,v)::rem ->
               if location_compare loc loc2 = 0 then v
               else find_in_state loc rem

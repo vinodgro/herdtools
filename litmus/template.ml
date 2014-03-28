@@ -44,7 +44,7 @@ module type S = sig
   val empty_ins : ins
 
   type t = {
-      init : (arch_reg * Constant.v) list ;
+      init : (arch_reg * MiscParser.Maybev.t) list ;
       addrs : (int * string) list ;
       final : arch_reg list ;
       code : ins list;
@@ -53,7 +53,7 @@ module type S = sig
   val fmt_reg : arch_reg -> string
   val dump_label : string -> string
   val dump_out_reg : int -> arch_reg -> string
-  val dump_v : Constant.v -> string
+  val dump_v : MiscParser.Maybev.t -> string
   val addr_cpy_name : string -> int -> string
 
   val clean_reg : string -> string
@@ -68,11 +68,10 @@ module type S = sig
   val dump_type : ('a * RunType.t) list -> 'a -> string
 end
 
-module Make(O:Config) (A:I) (V:Constant.S): S
+module Make(O:Config) (A:I): S
   with type arch_reg = A.arch_reg =
 struct
   open Printf
-  open Constant
   open Memory
 
   type arch_reg = A.arch_reg
@@ -90,7 +89,7 @@ struct
       label=None; branch=[Next]; cond=false; comment=false;}
 
   type t = {
-      init : (arch_reg * Constant.v) list ;
+      init : (arch_reg * MiscParser.Maybev.t) list ;
       addrs : (int * string) list ;
       final : arch_reg list ;
       code : ins list;
@@ -103,9 +102,9 @@ struct
         (StringSet.of_list (List.map (fun (_,a) -> a) addrs))
         (StringSet.of_list
            (List.fold_left
-              (fun k (_,v) ->
-                match v with Symbolic s -> s::k
-                | Concrete _ -> k)
+              (fun k (_,v) -> match v with
+                 | MiscParser.Maybev.Symbolic s -> s::k
+                 | MiscParser.Maybev.Concrete _ -> k)
               [] init)) in
     StringSet.elements set
 
@@ -224,8 +223,8 @@ struct
   | Indirect -> sprintf "_a->%s[_i]" a
 
   let dump_v v = match v with
-  | Concrete i -> sprintf "%i" i
-  | Symbolic a -> dump_addr a
+  | MiscParser.Maybev.Concrete x -> x
+  | MiscParser.Maybev.Symbolic a -> dump_addr a
 
   let addr_cpy_name s p = sprintf "_addr_%s_%i" s p
 

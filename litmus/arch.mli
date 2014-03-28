@@ -15,12 +15,6 @@ module type Config = sig
 end
 
 module type Base = sig
-  module V : sig
-    type v = Constant.v
-    include Constant.S
-    val maybevToV  : v -> v
-  end
-
   type reg
 
   include Location.S
@@ -30,14 +24,14 @@ module type Base = sig
   val parse_reg : string -> reg option
   val reg_compare : reg -> reg -> int
 
-  type state = (location * V.v) list
+  type state = (location * MiscParser.Maybev.t) list
 
   module Out : Template.S
     with type arch_reg = reg
 
   val arch : Archs.t
 
-  val find_in_state : location -> state -> V.v
+  val find_in_state : location -> state -> MiscParser.Maybev.t
   val pp_reg : reg -> string
 end
 
@@ -46,9 +40,8 @@ module type S =
     include ArchBase.S
     module V :
         sig
-          type v = Constant.v
-          include Constant.S
-          val maybevToV  : v -> v
+          type v = MiscParser.Maybev.t
+          val maybevToV : v -> v
         end
 
     val reg_to_string : reg -> string

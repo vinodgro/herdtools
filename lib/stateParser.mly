@@ -11,7 +11,7 @@
 /*********************************************************************/
 
 %{
-open Constant
+open MiscParser.Maybev
 open MiscParser
 open ConstrGen
 %}
@@ -20,15 +20,15 @@ open ConstrGen
 %token <int> PROC
 %token <string> SYMB_REG
 %token <string> NAME
-%token <int> NUM
+%token <string> NUM
 
 %token TRUE FALSE
 %token EQUAL PLUS_DISJ
 %token FINAL FORALL EXISTS OBSERVED TOKAND NOT AND OR IMPLIES CASES WITH
 %token LOCATIONS STAR
-%token LBRK RBRK LPAR RPAR SEMI COLON 
+%token LBRK RBRK LPAR RPAR SEMI COLON
 
-%token PTX_REG_DEC 
+%token PTX_REG_DEC
 %token <string> PTX_REG_TYPE
 
 
@@ -67,27 +67,27 @@ maybev:
 
 location_reg:
 | PROC COLON reg  {Location_reg ($1,$3)}
-| NUM COLON reg   {Location_reg ($1,$3)}
+| NUM COLON reg   {Location_reg (int_of_string $1,$3)}
 | SYMB_REG        {Location_sreg $1 }
 /* PTX registers */
-| NUM COLON PTX_REG_DEC PTX_REG_TYPE reg 
-                  {Location_reg($1,$5)}
-| PROC COLON PTX_REG_DEC PTX_REG_TYPE reg 
+| NUM COLON PTX_REG_DEC PTX_REG_TYPE reg
+                  {Location_reg(int_of_string $1,$5)}
+| PROC COLON PTX_REG_DEC PTX_REG_TYPE reg
                   {Location_reg($1,$5)}
 
 location_deref:
 | location_reg { $1 }
 | STAR location_reg { $2 }
-| STAR NAME { Location_global (Symbolic $2) }
+| STAR NAME { Location_global $2 }
 
 location:
 | location_reg { $1 }
-| LBRK maybev RBRK {Location_global $2}
+| LBRK NAME RBRK {Location_global $2}
 /* Hum, for backward compatibility, and compatibility with printer */
-| maybev { Location_global $1 }
+| NAME { Location_global $1 }
 
 atom:
-| location {($1,Concrete 0)}
+| location {($1,Concrete "0")}
 | location EQUAL maybev {($1,$3)}
 
 atom_semi_list:

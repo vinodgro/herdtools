@@ -25,14 +25,14 @@ module Make(V:Constant.S)(O:Config) =
 (* Not so nice..., the price of code sharing of
    symbConst.ml with memevents *)
 
-    let abs_to_string abs =  A.vToName abs
+    let abs_to_string abs = A.vToName abs
 
 
 (***************************************************)
 (* Extract explicit [symbolic] addresses from code *)
 (***************************************************)
     let internal_addr name = name = sig_cell
-      
+
     let extract_rm32 r = match r with
     |  Rm32_reg _
     |  Rm32_deref _ -> StringSet.empty
@@ -134,7 +134,7 @@ module Make(V:Constant.S)(O:Config) =
         inputs = ins1@ins2;
         outputs = [] ; }
 
-      
+
     let move memo ea op =
        let op,(i,ins1) = compile_op 0 op in
        let ea,(_,ins2),(_,outs2) = compile_ea_move i 0 ea in
@@ -166,7 +166,7 @@ module Make(V:Constant.S)(O:Config) =
         memo = sprintf "%s %s,%s" memo ea2 ea1;
         inputs = ins1@ins2@[EAX] ;
         outputs = outs1@[EAX] ; }
-      
+
     let op_ea memo ea =
       let ea,(_,ins),(_,outs) = compile_ea_output 0 0 ea in
       { empty_ins with
@@ -195,7 +195,7 @@ module Make(V:Constant.S)(O:Config) =
       op_ea_input_op "cmpl"
         (Effaddr_rm32 (Rm32_reg r)) (Operand_immediate i)
 
-    let jcc tr_lab cond lbl = 
+    let jcc tr_lab cond lbl =
       {empty_ins with
        memo =
        sprintf "j%s %s"
@@ -208,7 +208,7 @@ module Make(V:Constant.S)(O:Config) =
        memo = sprintf "jmp %s" (A.Out.dump_label (tr_lab lbl)) ;
        label=None ; branch=[Branch lbl]; }
 
-    let no_tr lbl = lbl 
+    let no_tr lbl = lbl
 
     let emit_loop code =
       let lbl1 = next_label () in
@@ -216,7 +216,7 @@ module Make(V:Constant.S)(O:Config) =
       cmp loop_idx 0::
       jmp no_tr lbl2::
       emit_lbl lbl1::
-      code@   
+      code@
       [dec loop_idx;
        emit_lbl lbl2;
        jcc no_tr C_GT lbl1;]
@@ -266,8 +266,10 @@ module Make(V:Constant.S)(O:Config) =
 (*      debug stderr r ; *)
       r::k
 
-    let branch_neq r i lab k = cmp r i::jcc no_tr C_NE lab::k
-    let branch_eq r i lab k = cmp r i::jcc no_tr C_EQ lab::k
+    (* TODO: Use real string instead ? *)
+    let branch_neq r i lab k = cmp r (int_of_string i)::jcc no_tr C_NE lab::k
+    (* TODO: Use real string instead ? *)
+    let branch_eq r i lab k = cmp r (int_of_string i)::jcc no_tr C_EQ lab::k
 
     let signaling_write i k = move_addr sig_cell i::k
 

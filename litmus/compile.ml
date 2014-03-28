@@ -22,8 +22,8 @@ module Generic (A : Arch.Base) = struct
   and pointer = RunType.Pointer "int"
 
   let typeof = function
-    | Constant.Concrete _ -> base
-    | Constant.Symbolic _ -> pointer
+    | MiscParser.Maybev.Concrete _ -> base
+    | MiscParser.Maybev.Symbolic _ -> pointer
 
   let type_in_final p reg final flocs =
     Misc.proj_opt
@@ -77,8 +77,8 @@ module Generic (A : Arch.Base) = struct
         Not_found -> StringMap.add a ty env
 
     let add_value v env = match v with
-    | Constant.Concrete _ -> env
-    | Constant.Symbolic a -> add_addr_type a (RunType.Ty "int") env
+    | MiscParser.Maybev.Concrete _ -> env
+    | MiscParser.Maybev.Symbolic a -> add_addr_type a (RunType.Ty "int") env
 end
 
 module Make
@@ -93,10 +93,8 @@ module Make
     (C:XXXCompile.S with module A = A_complete) =
   struct
     open Printf
-    open Constant
 
     module A = A_complete
-    module V = A.V
     module Constr = T.C
     module Generic = Generic(A)
     open A.Out
@@ -160,8 +158,8 @@ let lblmap_code =
         label = Some lbl ; branch=[Next] ; }
 
     let as_int = function
-      | Concrete i -> i
-      | Symbolic _ -> raise CannotIntern
+      | MiscParser.Maybev.Concrete i -> i
+      | MiscParser.Maybev.Symbolic _ -> raise CannotIntern
 
     let rec tr_cond p = function
       | Atom (LV (A.Location_reg (q,r),v)) when p = q ->
@@ -402,7 +400,7 @@ let lblmap_code =
          List.fold_right
           (fun (_,v) env ->
             match v with
-            | Constant.Symbolic a ->
+            | MiscParser.Maybev.Symbolic a ->
                 begin try
                   let _ = StringMap.find a env in
                   env

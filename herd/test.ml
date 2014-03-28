@@ -12,7 +12,7 @@
 
 type ('prog,'nice_prog,'start,'state,'constr,'loc,'locset) t =
     {
-     arch : Archs.t ; 
+     arch : Archs.t ;
      name : Name.t ;
      info : MiscParser.info ;
      program : 'prog ;
@@ -49,7 +49,7 @@ module Make(A:Arch.S) =
 (* Symb register allocation is external, since litmus needs it *)
    module Alloc = SymbReg.Make(A)
 (* Code loader is external, since litmus tests need it too *)
-    module Load = Loader.Make(A) 
+    module Load = Loader.Make(A)
 
     let build name t =
       let t = Alloc.allocate_regs t in
@@ -57,7 +57,7 @@ module Make(A:Arch.S) =
           {MiscParser.init = init ;
            info = info ;
            prog = nice_prog ;
-           condition = final ; 
+           condition = final ;
            locations = locs ;
            gpu_data = gpu_data ;
 	 } = t in
@@ -87,13 +87,13 @@ module Make(A:Arch.S) =
        init_state = A.build_state init ;
        cond = final ;
        flocs = flocs ;
-       observed = observed ;       
+       observed = observed ;
        scope_tree = scope_tree ;
        mem_space_map = mem_space_map ;
        lk_map = lk_map ;
      }
 
 
-    let find_our_constraint test = test.cond 
+    let find_our_constraint test = test.cond
 
 end

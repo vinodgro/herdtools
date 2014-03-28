@@ -97,7 +97,7 @@ module Make
     let transpose procs prog =
       try
 	let prog = Misc.transpose prog in
-	List.combine procs prog 
+	List.combine procs prog
       with
       |  Misc.TransposeFailure | Invalid_argument "List.combine" ->
 	  Warn.fatal "mismatch in instruction lines"
@@ -132,7 +132,7 @@ let check_regs procs init locs final =
   ConstrGen.fold_constr (fun a () -> check_atom procs a) final ()
 
 (*******************)
-(* Macro expansion *)  
+(* Macro expansion *)
 (*******************)
 
     let rec expn  = function
@@ -174,7 +174,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       call_parser "init" lexbuf SL.token StateParser.init
 
     let parse_prog lexbuf =
-      let procs,prog,_ = 
+      let procs,prog,_ =
         call_parser "prog" lexbuf L.lexer L.parser in
       check_procs procs ;
       let prog = transpose procs prog in
@@ -217,7 +217,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let parsed =
         {
          MiscParser.info; init; prog = prog;
-         condition = final; 
+         condition = final;
          locations = locs;
          gpu_data;
        } in
@@ -243,4 +243,3 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
             ("Hash",D.digest init prog all_locs)::info ; } in
       parsed
   end
-          

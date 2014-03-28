@@ -21,9 +21,9 @@ module type S = sig
 
 (* For signaling final condition *)
   val branch_neq :
-      A.reg -> int ->  Label.t -> A.Out.ins list ->  A.Out.ins list
+      A.reg -> string -> Label.t -> A.Out.ins list ->  A.Out.ins list
   val branch_eq :
-      A.reg -> int ->  Label.t -> A.Out.ins list ->  A.Out.ins list
+      A.reg -> string -> Label.t -> A.Out.ins list ->  A.Out.ins list
   val signaling_write : int -> A.Out.ins list -> A.Out.ins list
 
 (* For time base barrier *)

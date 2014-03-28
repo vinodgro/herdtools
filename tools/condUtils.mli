@@ -11,6 +11,6 @@
 (*********************************************************************)
 
 val fold_outcomes :
-    (MiscParser.location, SymbConstant.v) ConstrGen.prop ConstrGen.constr
-  -> ((MiscParser.location *  SymbConstant.v) list
+    (MiscParser.location, MiscParser.Maybev.t) ConstrGen.prop ConstrGen.constr
+  -> ((MiscParser.location *  MiscParser.Maybev.t) list
       -> 'a -> 'a) -> 'a -> 'a

@@ -19,12 +19,12 @@ module type S = sig
   type pseudo
 
   type ('loc,'v) t = ('loc,'v, pseudo) MiscParser.r3
-      
+
   val allocate_regs :
-      (MiscParser.location, MiscParser.maybev) t -> (location,v) t
+      (MiscParser.location, MiscParser.Maybev.t) t -> (location,v) t
 end
 
-module Make (A:Arch.S) : S 
+module Make (A:Arch.S) : S
 with type v = A.V.v and type location = A.location
 and type pseudo = A.pseudo
  = struct
@@ -33,7 +33,7 @@ and type pseudo = A.pseudo
    type location = A.location
    type pseudo = A.pseudo
    type ('loc,'v) t = ('loc,'v, pseudo) MiscParser.r3
-      
+
 (******************************************************)
 (* All those to substitute symbolic regs by real ones *)
 (******************************************************)
@@ -45,7 +45,7 @@ and type pseudo = A.pseudo
   let finish_reg = get_reg
 
   let finish_location f_reg loc = match loc with
-  | Location_global m -> A.maybev_to_location m
+  | Location_global m -> A.string_to_location m
   | Location_reg (i,r) -> A.Location_reg (i,finish_reg r)
   | Location_sreg reg  ->
       let p,r = f_reg reg in A.Location_reg (p,r)
@@ -72,11 +72,11 @@ and type pseudo = A.pseudo
   let finish_code f_reg = List.map (finish_pseudo f_reg)
 
 
-(**********************************)	
+(**********************************)
 (* All those to collect registers *)
-(**********************************)	
+(**********************************)
 
-  module ProcRegSet = 
+  module ProcRegSet =
     MySet.Make
       (struct
 	type t = int * A.reg
@@ -102,7 +102,7 @@ and type pseudo = A.pseudo
       (List.fold_left
 	 (collect_pseudo  (RegSet.add,StringSet.add))
 	 (RegSet.empty,StringSet.empty))
-      
+
 
   let collect_location loc (regs,symbs as c) = match loc with
   | Location_reg (p,r) ->
@@ -111,7 +111,7 @@ and type pseudo = A.pseudo
       regs,StringSet.add reg symbs
   | Location_global _ -> c
 
-  let collect_state_atom (loc,(_:maybev)) = collect_location loc
+  let collect_state_atom (loc,(_:MiscParser.Maybev.t)) = collect_location loc
 
   let collect_state = List.fold_right collect_state_atom
 
@@ -203,7 +203,7 @@ and type pseudo = A.pseudo
 	    with Not_found -> assert false in
 	  proc,finish_code replace code)
 	prog envs in
-    
+
     let env =
       List.fold_left
 	(fun k (p,env_p) ->

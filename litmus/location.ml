@@ -16,7 +16,8 @@ module type I = sig
   val reg_compare : arch_reg -> arch_reg -> int
 
   type arch_global
-  val maybev_to_global : MiscParser.maybev -> arch_global
+  val string_to_global : string -> arch_global
+  val maybev_to_global : MiscParser.Maybev.t -> arch_global
   val pp_global : arch_global -> string
   val global_compare : arch_global -> arch_global -> int
 end
@@ -30,7 +31,8 @@ module type S = sig
     | Location_reg of int*loc_reg
     | Location_global of loc_global
 
-  val maybev_to_location : MiscParser.maybev -> location
+  val string_to_location : string -> location
+  val maybev_to_location : MiscParser.Maybev.t -> location
 
   val pp_location : location -> string
   val pp_rval : location -> string
@@ -49,6 +51,7 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
       | Location_reg of int*loc_reg
       | Location_global of loc_global
 
+    let string_to_location m = Location_global (A.string_to_global m)
     let maybev_to_location m = Location_global (A.maybev_to_global m)
 
     let pp_location l = match l with
@@ -72,8 +75,8 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
         end
     | Location_reg _, Location_global _ -> -1
     | Location_global _, Location_reg _ -> 1
-    | Location_global a1, Location_global a2 -> A.global_compare a1 a2 
+    | Location_global a1, Location_global a2 -> A.global_compare a1 a2
 
-          
+
 
   end

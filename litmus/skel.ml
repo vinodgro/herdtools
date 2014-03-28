@@ -65,7 +65,6 @@ module Make
 end = struct
   module A = T.A
   module C = T.C
-  open Constant
 
 (* Final Conditions *)
 
@@ -264,13 +263,13 @@ end = struct
   | Indirect -> sprintf "_a->%s[_i]"
 
   let dump_a_v = function
-    | Concrete i ->  sprintf "%i" i
-    | Symbolic s -> dump_a_addr s
+    | MiscParser.Maybev.Concrete x -> x
+    | MiscParser.Maybev.Symbolic s -> dump_a_addr s
 
 (* Right value, casted if pointer *)
   let dump_a_v_casted = function
-    | Concrete i ->  sprintf "%i" i
-    | Symbolic s -> sprintf "((int *)%s)" (dump_a_addr s)
+    | MiscParser.Maybev.Concrete x -> x
+    | MiscParser.Maybev.Symbolic s -> sprintf "((int *)%s)" (dump_a_addr s)
 
 (* Dump left & right values when context is available *)
 
@@ -720,7 +719,7 @@ let dump_read_timebase () =
               if Cfg.cautious then
                 List.fold_right
                   (fun (loc,v) k -> match loc,v with
-                  | A.Location_reg(p,r),Symbolic s when s = a ->
+                  | A.Location_reg(p,r),MiscParser.Maybev.Symbolic s when s = a ->
                       let cpy = A.Out.addr_cpy_name a p in
                       O.fi "%s* *%s ;" (RunType.dump t) cpy ;
                       (cpy,a)::k
@@ -787,11 +786,11 @@ let dump_read_timebase () =
       (struct
         module C = C
         module V = struct
-          type t = Constant.v
-          let compare = A.V.compare
+          type t = MiscParser.Maybev.t
+          let compare = MiscParser.Maybev.compare
           let dump = function
-            | Concrete i -> sprintf "%i" i
-            | Symbolic s -> dump_val_param s
+            | MiscParser.Maybev.Concrete x -> x
+            | MiscParser.Maybev.Symbolic s -> dump_val_param s
         end
         module Loc = struct
           type t = A.location
@@ -971,7 +970,7 @@ let dump_read_timebase () =
       let open ConstrGen in
       match a with
       | LV (loc,v) ->
-          sprintf "%s=%s" (A.pp_location loc) (A.V.pp_v v)
+          sprintf "%s=%s" (A.pp_location loc) (MiscParser.Maybev.pp v)
       | LL (loc1,loc2) ->
           sprintf "%s=%s" (A.pp_location loc1) (A.pp_rval loc2) in
     let pp_cond =

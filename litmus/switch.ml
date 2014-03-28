@@ -20,7 +20,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
     type switch
     val compile :  (I.Loc.t,I.V.t) ConstrGen.prop -> switch
     val dump : Indent.t -> switch -> unit
-  end = 
+  end =
   struct
 
 (*******************************)
@@ -31,7 +31,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
 
     type switch = switch_node hash_consed
     and switch_node =
-      | Switch of I.Loc.t * (int * int) list * int * switch list
+      | Switch of I.Loc.t * (string * int) list * int * switch list
       | Return of bool
 
     module S = struct
@@ -41,7 +41,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
       | ([],_::_)|(_::_,[]) -> false
       | [],[] -> true
       | (i1,j1)::cs1,(i2,j2)::cs2 ->
-          Misc.int_eq i1 i2 &&
+          Misc.string_eq i1 i2 &&
           Misc.int_eq j1 j2 &&
           equal_cases cs1 cs2
 
@@ -68,7 +68,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
         | Return true -> 1
         | Switch (loc,cs,d,rhs) ->
             let h = Hashtbl.hash loc in
-            let h = hash_list (fun (i,j) -> 17 * i + j) h cs in
+            let h = hash_list (fun (i,j) -> 17 * Hashtbl.hash i + j) h cs in
             let h = 19 * d + h in
             let h = hash_list (fun s -> s.hkey) h rhs in
             h
@@ -84,7 +84,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
               let equal s1 s2 = s1 == s2
               let hash s = s.hkey
             end)
-                  
+
 
     let ht = H.create 101
 
@@ -108,12 +108,12 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
         xs in
     let rhs = List.map snd xs in
     cs,d,rhs
-        
-      
+
+
     let switch loc cs d =
       let cs =
         List.sort
-          (fun (i1,_) (i2,_) -> Misc.int_compare i1 i2)
+          (fun (i1,_) (i2,_) -> String.compare i1 i2)
           cs in
       let cs,d,rhs = number cs d in
       H.hashcons ht (Switch (loc,cs,d,rhs))
@@ -123,21 +123,14 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
 (* Compilation *)
 (***************)
     open ConstrGen
-    open Constant
 
     module M = MyMap.Make(I.Loc)
-    module Ints =
-      MySet.Make
-        (struct
-          type t = int
-          let compare i1 i2 = Misc.int_compare i1 i2
-        end)
 
     let add loc v m = match v with
-    | Concrete v ->
-        let vs = try M.find loc m with Not_found -> Ints.empty in
-        M.add loc (Ints.add v vs) m
-    | Symbolic _ -> raise Cannot
+    | MiscParser.Maybev.Concrete v ->
+        let vs = try M.find loc m with Not_found -> StringSet.empty in
+        M.add loc (StringSet.add v vs) m
+    | MiscParser.Maybev.Symbolic _ -> raise Cannot
 
     let rec collect m = function
       | Atom (LV (loc,v)) -> add loc v m
@@ -149,7 +142,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
 
     let choose_loc m =
       let locs =
-        M.fold (fun loc vs k -> ((loc,vs),Ints.cardinal vs)::k) m [] in
+        M.fold (fun loc vs k -> ((loc,vs),StringSet.cardinal vs)::k) m [] in
       match locs with
       | [] -> assert false
       | p0::rem ->
@@ -187,18 +180,18 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
 
         let atom_pos loc v loc0 v0 =
           if  I.Loc.compare loc loc0 = 0 then
-            Some (Misc.int_compare v v0 = 0)
+            Some (String.compare v v0 = 0)
           else None
 
         let atom_neg loc vs loc0 v0 =
           if  I.Loc.compare loc loc0 = 0 then
-            Some (not (Ints.mem v0 vs))
+            Some (not (StringSet.mem v0 vs))
           else None
 
 
         let eval atom  =
           let rec eval_rec p = match p with
-          | Atom (LV (loc0,Concrete v0)) ->
+          | Atom (LV (loc0,MiscParser.Maybev.Concrete v0)) ->
               begin match atom loc0 v0 with
               | None -> p
               | Some b -> if b then And [] else Or []
@@ -231,7 +224,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
           else
             let loc,vs = choose_loc m in
             let cls =
-              Ints.fold
+              StringSet.fold
                 (fun v k -> (v,comp (eval_pos loc v p))::k)
                 vs [] in
             let d = comp (eval_neg loc vs p) in
@@ -272,7 +265,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
           match s.node with
           | Return _ -> k
           | Switch (_,_,_,rhs)  ->
-              let k = 
+              let k =
                 let c = try HH.find cs s with Not_found -> assert false in
                 if c > 1 then s::k else k in
               List.fold_left extract_rec k rhs  in
@@ -303,11 +296,12 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
       let pre = ref (Indent.as_string i) in
       List.iter
         (fun i ->
-          O.fprintf "%scase %i:" !pre i ;
+           let i = Int64.of_string i in
+          O.fprintf "%scase %Li:" !pre i ;
           pre := " ")
         is ;
       O.output "\n"
-        
+
     and dump_goto env i s =
       try
         let name = HH.find env s in

@@ -12,14 +12,22 @@
 
 (** The basic types of architectures and semantics, just parsed *)
 
-type maybev = SymbConstant.v
+module Maybev : sig
+  type t =
+    | Concrete of string
+    | Symbolic of string
+
+  val pp : t -> string
+  val compare : t -> t -> int
+  val to_constant : t -> Constant.v
+end
 
 type reg = string (* Registers not yet parsed *)
 
 type location =
   | Location_reg of int * reg
   | Location_sreg of string (** symbolic register *)
-  | Location_global of maybev
+  | Location_global of string
 
 val location_compare : location -> location -> int
 val dump_location : location -> string
@@ -30,11 +38,11 @@ val as_local_proc : int -> location -> reg option
 module LocSet : MySet.S with type elt = location
 
 
-type prop = (location, maybev) ConstrGen.prop
+type prop = (location, Maybev.t) ConstrGen.prop
 type constr = prop ConstrGen.constr
 type quantifier = ConstrGen.kind
 
-type atom = location * maybev
+type atom = location * Maybev.t
 type state = atom list
 type outcome = atom list
 

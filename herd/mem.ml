@@ -53,7 +53,7 @@ module type S = sig
 
    - kont : S.concrete -> 'a  -> 'a
      will be called on all generated concrete event structures, resulting
-     in  computation: 
+     in  computation:
      kont (esN (... (kont es1 res)))
      where esK is the
         + abstract es with variables replaced by constants
@@ -68,7 +68,7 @@ module type S = sig
 
 
   val calculate_rf_with_cnstrnts :
-      S.test -> S.event_structure -> S.M.VC.cnstrnts -> 
+      S.test -> S.event_structure -> S.M.VC.cnstrnts ->
 	(S.concrete -> 'a -> 'a ) -> (* kont *)
         ('a -> 'a) ->                (* kont_loop *)
             'a -> 'a
@@ -161,7 +161,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
             locs)
           [] (A.state_to_list init) in
       A.LocSet.of_list locs
-            
+
     let get_all_mem_locs test =
       let locs_final =
         A.LocSet.filter
@@ -178,7 +178,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
               (fun locs (_,ins) ->
                 A.fold_addrs
                   (fun x ->
-                    let loc = A.maybev_to_location x in
+                    let loc = A.symbConstant_to_location x in
                     A.LocSet.add loc)
                   locs ins)
               locs code)
@@ -203,14 +203,14 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
       let see seen lbl =
 	let x = try Imap.find lbl seen with Not_found -> 0 in
 	let seen = Imap.add lbl (x+1) seen in
-	x+1,seen in      
-      
-      let fetch_code seen addr_jmp lbl = 
+	x+1,seen in
+
+      let fetch_code seen addr_jmp lbl =
         let tgt =
           try A.LabelMap.find lbl p
 	  with Not_found ->
 	    Warn.user_error
-	      "Segmentation fault (kidding, label %s not found)" lbl in        
+	      "Segmentation fault (kidding, label %s not found)" lbl in
         if is_back_jump addr_jmp tgt then
           let x,seen = see seen lbl in
 	  if x > C.unroll then begin
@@ -223,7 +223,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 
 
       let rec add_next_instr proc prog_order seen addr inst nexts =
-	let ii = 
+	let ii =
 	  {A.program_order_index=prog_order;
 	   proc=proc; inst=inst; } in
 	let evts = S.build_semantics procs inst ii in
@@ -231,7 +231,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 
       and add_code proc prog_order seen nexts = match nexts with
       | [] -> EM.unitT ()
-      | (addr,inst)::nexts -> 
+      | (addr,inst)::nexts ->
 	  add_next_instr proc prog_order seen addr inst nexts
 
       and add_lbl proc prog_order seen addr_jmp lbl =
@@ -276,9 +276,9 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
       { event_structures=index r 0; too_far = !tooFar }
 
 
-(*******************)	      
+(*******************)
 (* Rfmap generator *)
-(*******************)	      
+(*******************)
 
 
 (* Step 1. make rfmap for registers and reservations *)
@@ -343,7 +343,7 @@ let match_reg_events es =
                           S.Store ew
                         else begin
                           (* store order is total *)
-                          assert (U.is_before_strict es ew ew0) ; 
+                          assert (U.is_before_strict es ew ew0) ;
                           rf
                         end
                   else rf)
@@ -362,7 +362,7 @@ let get_rf_value test read rf = match rf with
     begin try A.look_in_state test.Test.init_state loc
     with A.LocUndetermined -> assert false end
 | S.Store e -> get_value e
- 
+
 (* Add a constraint for two values *)
 
 (* More like an optimization, adding constraint v1 := v2 should work *)
@@ -370,8 +370,8 @@ let get_rf_value test read rf = match rf with
 exception Contradiction
 
 let add_eq v1 v2 eqs =
-  if V.is_var_determined v1 then 
-    if V.is_var_determined v2 then 
+  if V.is_var_determined v1 then
+    if V.is_var_determined v2 then
       if V.compare v1 v2 = 0 then
 	eqs
       else
@@ -391,13 +391,13 @@ let solve_regs test es csn =
 	  let v_loaded = get_value load in
 	  let v_stored = get_rf_value test load rf in
 	  try add_eq v_loaded v_stored csn
-	  with Contradiction -> assert false)              
+	  with Contradiction -> assert false)
       rfm csn in
   match VC.solve csn with
-  | VC.NoSolns ->       
+  | VC.NoSolns ->
       if C.debug.Debug.solver then begin
 	  let module PP = Pretty.Make(S) in
-	  prerr_endline "No solution at register level"; 
+	  prerr_endline "No solution at register level";
 	  PP.show_es_rfm test es rfm ;
       end ;
     None
@@ -434,7 +434,7 @@ let compatible_locs_mem e1 e2 =
       let v_loaded = get_value load in
       match rf with
       | S.Init -> (* Tricky, if location (of load) is
-                     not know yet, emit a specific constraint *)    
+                     not know yet, emit a specific constraint *)
           let state = test.Test.init_state
           and loc_load = get_loc load in
           begin try
@@ -454,18 +454,18 @@ let compatible_locs_mem e1 e2 =
    causality. Check this. *)
     let rfmap_is_cyclic es rfm =
       let both =
-        E.EventRel.union 
+        E.EventRel.union
           es.E.intra_causality_data
           es.E.intra_causality_control in
-      let causality = 
+      let causality =
         S.RFMap.fold
           (fun load store k -> match load,store with
           | S.Load er,S.Store ew -> E.EventRel.add (ew,er) k
           | _,_ -> k)
           rfm both in
       match (E.EventRel.get_cycle causality) with
-      | None -> prerr_endline "no cycle"; false 
-      | Some cy -> 
+      | None -> prerr_endline "no cycle"; false
+      | Some cy ->
           if C.debug.Debug.rfm then begin
             let debug_event chan e = Printf.fprintf chan "%i" e.E.eiid in
             eprintf "cycle = %a\n" debug_event
@@ -483,9 +483,9 @@ let compatible_locs_mem e1 e2 =
    as events *)
     let init = if C.initwrites then [] else [S.Init]
     let map_load_init loads =
-      E.EventSet.fold 
+      E.EventSet.fold
         (fun load k -> (load,init)::k)
-        loads [] 
+        loads []
 
 (* Consider all stores that may feed a load
    - Compatible location.
@@ -514,9 +514,9 @@ let compatible_locs_mem e1 e2 =
         loads stores rfm
 
 
-        
+
     let solve_mem_or_res test es rfm cns kont res loads stores compat_locs add_eqs =
-      let loads,possible_stores = 
+      let loads,possible_stores =
         List.split (map_load_possible_stores es loads stores compat_locs) in
       (* Cross product fold. Probably an overkill here *)
       Misc.fold_cross possible_stores
@@ -543,18 +543,18 @@ let compatible_locs_mem e1 e2 =
         res
 
 
-    let when_unsolved test es rfm cs kont_loop res = 
+    let when_unsolved test es rfm cs kont_loop res =
       (* This system in fact has no solution.
 	 In other words, it is not possible to make
 	 such event structures concrete.
-         This occurs with cyclic rfmaps, 
+         This occurs with cyclic rfmaps,
          or not enough unrolled loops -- hack *)
-      let unroll_only = 
+      let unroll_only =
         List.for_all
 	  (fun cn -> match cn with
 	  | VC.Unroll lbl ->
 	      Warn.warn_always
-		"unrolling too deep at label: %s" lbl; 
+		"unrolling too deep at label: %s" lbl;
               true
 	  | VC.Assign _ -> false)
 	  cs in
@@ -566,11 +566,11 @@ let compatible_locs_mem e1 e2 =
 	  prerr_endline "Unsolvable system" ;
 	  PP.show_es_rfm test es rfm ;
         end ;
-        assert (rfmap_is_cyclic es rfm); 
+        assert (rfmap_is_cyclic es rfm);
         res
       end
 
-          
+
     let solve_mem test es rfm cns kont res =
       let loads =  E.EventSet.filter E.is_mem_load es.E.events
       and stores = E.EventSet.filter E.is_mem_store es.E.events in
@@ -622,7 +622,7 @@ let compatible_locs_mem e1 e2 =
 
 
 (* View before relations easily available, from po_iico and rfmap *)
-	
+
 
 (* Preserved Program Order, per memory location - same processor *)
     let make_ppoloc po_iico_data es =
@@ -635,7 +635,7 @@ let compatible_locs_mem e1 e2 =
 (* Store is before rfm load successor *)
     let store_load rfm =
       S.RFMap.fold
-        (fun wt rf k -> match wt,rf with 
+        (fun wt rf k -> match wt,rf with
         | S.Load er,S.Store ew -> E.EventRel.add (ew,er) k
         | _,_ -> k)
         rfm E.EventRel.empty
@@ -654,7 +654,7 @@ let compatible_locs_mem e1 e2 =
         rfm E.EventRel.empty
 
 (* Reconstruct load/store atomic pairs *)
-        
+
 let make_atomic_load_store es =
   let all = E.atomics_of es.E.events in
   let atms = U.collect_atomics es in
@@ -697,7 +697,7 @@ let make_atomic_load_store es =
       let loc_stores = U.collect_stores es
       and loc_loads = U.collect_loads es in
       U.LocEnv.fold
-        (fun loc ws k -> 
+        (fun loc ws k ->
           match get_max_store test es rfm loc with
           | None -> k
           | Some max ->
@@ -730,7 +730,7 @@ let make_atomic_load_store es =
       let loc_stores = U.collect_mem_stores es in
       let loc_stores =
         if C.observed_finals_only then
-          let observed_locs = S.outcome_locations test in        
+          let observed_locs = S.outcome_locations test in
 (*          eprintf "Observed locs: {%s}\n"
             (S.LocSet.pp_str "," A.pp_location   observed_locs) ; *)
           U.LocEnv.fold
@@ -751,7 +751,7 @@ let make_atomic_load_store es =
                        (fun w' -> U.is_before_strict es w w') ws))
                 ws::k)
             loc_stores []
-        else 
+        else
           U.LocEnv.fold (fun _loc ws k -> ws::k) loc_stores [] in
 (* Add final loads from init for all locations, cleaner *)
       let loc_stores = U.collect_stores es
@@ -763,8 +763,8 @@ let make_atomic_load_store es =
               ignore (U.LocEnv.find loc loc_stores) ;
               k
             with Not_found -> S.RFMap.add (S.Final loc) S.Init k)
-          loc_loads rfm in      
-      try 
+          loc_loads rfm in
+      try
         let pco0 =
           if C.initwrites then U.compute_pco_init es
           else E.EventRel.empty in
@@ -776,7 +776,7 @@ let make_atomic_load_store es =
             | None -> raise Exit
             | Some pco -> E.EventRel.union pco0 pco in
 (* Cross product *)
-   
+
         Misc.fold_cross
           possible_finals
           (fun ws res ->
@@ -795,9 +795,9 @@ let make_atomic_load_store es =
               let last_store_vbf = last_store test es rfm in
               let pco =
                 E.EventRel.union pco
-                  (U.restrict_to_mem_stores last_store_vbf) in            
+                  (U.restrict_to_mem_stores last_store_vbf) in
               if E.EventRel.is_acyclic pco then
-                let conc = 
+                let conc =
                   {
                    S.str = es ;
                    rfmap = rfm ;
@@ -805,7 +805,7 @@ let make_atomic_load_store es =
                    po = po_iico ;
 	           pos = ppoloc ;
                    pco = pco ;
-                 
+
                    store_load_vbf = store_load_vbf ;
                    init_load_vbf = init_load_vbf ;
                    last_store_vbf = last_store_vbf ;
@@ -817,11 +817,11 @@ let make_atomic_load_store es =
           res
       with Exit -> res
 
-        
+
 (* Initial check of rfmap validity: no intervening writes.
    Limited to memory, since  generated rfmaps are correct for registers *)
 (* NOTE: this is more like an optimization,
-   models should rule out those anyway *)  
+   models should rule out those anyway *)
     let check_rfmap es rfm =
       let po_iico = U.is_before_strict es in
 
@@ -840,7 +840,7 @@ let make_atomic_load_store es =
 		       po_iico e er)
 		     es.E.events)
             | S.Init ->
-	        not 
+	        not
 	          (E.EventSet.exists
 		     (fun e ->
 		       E.is_store e && E.same_location e er &&
@@ -860,7 +860,7 @@ let make_atomic_load_store es =
 	    PP.show_es_rfm test es rfm ;
           end ;
           solve_mem test es rfm cs
-            (fun es rfm cs res -> 
+            (fun es rfm cs res ->
               match cs with
               | [] ->
 	          if C.debug.Debug.solver && C.verbose > 0 then begin
@@ -875,7 +875,7 @@ let make_atomic_load_store es =
                   else begin
                     res
                   end
-              | _ -> when_unsolved test es rfm cs kont_loop res) 
+              | _ -> when_unsolved test es rfm cs kont_loop res)
             res
 
   end

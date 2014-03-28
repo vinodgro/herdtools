@@ -19,10 +19,7 @@ module M =
       let compare = MiscParser.location_compare
     end)
 
-module V = struct
-  type t = SymbConstant.v
-  let compare = SymbConstant.compare
-end
+module V = MiscParser.Maybev
 
 module VS = MySet.Make(V)
 
@@ -68,4 +65,3 @@ let fold_outcomes c kont k =
         end else k)
       k
   with NotInside -> k
-

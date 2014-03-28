@@ -12,14 +12,32 @@
 
 (* The basic types of architectures and semantics, just parsed *)
 
-type maybev = SymbConstant.v
+module Maybev = struct
+  type t =
+    | Concrete of string
+    | Symbolic of string
+
+  let pp = function
+    | Concrete x
+    | Symbolic x -> x
+
+  let compare x y = match x, y with
+    | Concrete x, Concrete y
+    | Symbolic x, Symbolic y -> String.compare x y
+    | Concrete _, Symbolic _ -> 1
+    | Symbolic _, Concrete _ -> -1
+
+  let to_constant = function
+    | Concrete x -> Constant.Concrete (int_of_string x)
+    | Symbolic x -> Constant.Symbolic x
+end
 
 type reg = string (* Registers not yet parsed *)
 
 type location =
   | Location_reg of int * reg
   | Location_sreg of string
-  | Location_global of maybev
+  | Location_global of string
 
 let location_compare loc1 loc2 = match loc1,loc2 with
 | Location_reg (i1,r1), Location_reg (i2,r2) ->
@@ -30,7 +48,7 @@ let location_compare loc1 loc2 = match loc1,loc2 with
 | Location_sreg r1,Location_sreg r2 ->
     String.compare r1 r2
 | Location_global v1,Location_global v2 ->
-    SymbConstant.compare v1 v2
+    String.compare v1 v2
 | Location_reg _,(Location_sreg _|Location_global _) -> -1
 | (Location_sreg _|Location_global _),Location_reg _ -> 1
 | Location_sreg _, Location_global _ -> -1
@@ -39,12 +57,12 @@ let location_compare loc1 loc2 = match loc1,loc2 with
 let dump_location = function
   | Location_reg (i,r) -> Printf.sprintf "%i:%s" i r
   | Location_sreg s -> s
-  | Location_global v -> SymbConstant.pp_v v
+  | Location_global v -> v
 
 let dump_rval loc = match loc with
   | Location_reg (i,r) -> Printf.sprintf "%i:%s" i r
   | Location_sreg s -> s
-  | Location_global v -> Printf.sprintf "*%s" (SymbConstant.pp_v v)
+  | Location_global v -> Printf.sprintf "*%s" v
 
 let is_global = function
   | Location_global _ -> true
@@ -61,18 +79,18 @@ module LocSet =
   MySet.Make
     (struct type t = location let compare = location_compare end)
 
-type prop = (location, maybev) ConstrGen.prop
+type prop = (location, Maybev.t) ConstrGen.prop
 type constr = prop ConstrGen.constr
 type quantifier = ConstrGen.kind
 
-type atom = location * maybev
+type atom = location * Maybev.t
 type state = atom list
 type outcome = atom list
 
 open Printf
 
 let pp_atom (loc,v) =
-  sprintf "%s=%s" (dump_location loc) (SymbConstant.pp_v v)
+  sprintf "%s=%s" (dump_location loc) (Maybev.pp v)
 
 let pp_outcome o =
   String.concat " "

@@ -16,9 +16,8 @@ module Make(O:Arch.Config)(V:Constant.S) = struct
   include ARMBase
   module V =
     struct
-      type v = Constant.v
-      include V
-      let maybevToV c = c
+      type v = MiscParser.Maybev.t
+      let maybevToV = Misc.identity
     end
 
   let tab = Hashtbl.create 17

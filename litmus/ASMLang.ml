@@ -68,8 +68,8 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
         if Tmpl.cautious then match Tmpl.memory with
         | Memory.Indirect ->
             (fun v -> match v with
-            | Constant.Symbolic _ -> copy_name (Tmpl.tag_reg reg)
-            | Constant.Concrete _ -> Tmpl.dump_v v)
+            | MiscParser.Maybev.Symbolic _ -> copy_name (Tmpl.tag_reg reg)
+            | MiscParser.Maybev.Concrete _ -> Tmpl.dump_v v)
         | Memory.Direct -> Tmpl.dump_v
         else Tmpl.dump_v in
       if RegSet.mem reg in_outputs then begin
@@ -97,7 +97,7 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
     let rem =
       RegSet.fold
         (fun reg k ->
-          let v = Constant.Concrete 0 in
+          let v = MiscParser.Maybev.Concrete "0" in
           dump_pair reg v::k)
         rem [] in
 
@@ -163,14 +163,14 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
     | Memory.Indirect ->
         List.iter
           (fun (reg,v) -> match v with
-          | Constant.Symbolic a ->
+          | MiscParser.Maybev.Symbolic a ->
               fprintf chan "%svoid *%s = %s;\n" indent
                 (copy_name (Tmpl.tag_reg reg))
                 (Tmpl.dump_v v) ;
               fprintf chan "%s_a->%s[_i] = %s;\n" indent
                 (Tmpl.addr_cpy_name a proc)  (copy_name (Tmpl.tag_reg reg)) ;
               fprintf chan "%smcautious();\n" indent
-          | Constant.Concrete _ -> ())
+          | MiscParser.Maybev.Concrete _ -> ())
           t.Tmpl.init
     | Memory.Direct -> ()
     end ;

@@ -38,7 +38,7 @@ module Make(A:ArchBase.S)
 
       open Printf
 
-      type init = (MiscParser.location * SymbConstant.v) list
+      type init = MiscParser.state
       type prog = (int * A.pseudo list) list
       type locations =  MiscParser.LocSet.t
 
@@ -51,13 +51,13 @@ module Make(A:ArchBase.S)
         if verbose > 0 then eprintf "%s:\n%s\n" tag s
         else ()
 
-(* Digest of initial state *)     
+(* Digest of initial state *)
       let digest_init init =
         let init =
           List.sort
             (fun (loc1,v1) (loc2,v2) -> match location_compare loc1 loc2 with
             | 0 ->
-                if SymbConstant.compare v1 v2 <> 0 then begin
+                if MiscParser.Maybev.compare v1 v2 <> 0 then begin
                   Warn.fatal
                     "Location %s non-unique in init state"
                     (dump_location loc1)
@@ -73,7 +73,7 @@ module Make(A:ArchBase.S)
           (String.concat "; "
              (List.map
                 (fun (loc,v) -> sprintf "%s=%s"
-                    (dump_location loc) (SymbConstant.pp_v v))
+                    (dump_location loc) (MiscParser.Maybev.pp v))
                 init)) in
         debug "INIT" pp ;
         Digest.string pp
@@ -82,13 +82,13 @@ module Make(A:ArchBase.S)
 (* Code digest *)
 
       let all_labels =
-        List.fold_left 
+        List.fold_left
           (fun k (_,code) ->
-            List.fold_left 
+            List.fold_left
               (A.fold_labels (fun k lbl -> StringSet.add lbl k))
               k code)
           StringSet.empty
-          
+
       let change_labels f =
         List.map
           (fun (p,code) ->
@@ -111,7 +111,7 @@ module Make(A:ArchBase.S)
             with Not_found -> assert false)
           prog
 
-      let norm_labels = refresh_labels "" 
+      let norm_labels = refresh_labels ""
 
       let norm_instructions =
         List.map
@@ -151,7 +151,7 @@ module Make(A:ArchBase.S)
         debug "LOCS" pp ;
         Digest.string pp
 
-        
+
       let digest init code observed =
         Digest.to_hex
           (Digest.string

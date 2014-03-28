@@ -14,7 +14,7 @@
 module type S = sig
   module A : Arch.Base
 
-  type prop = (A.location,Constant.v) ConstrGen.prop
+  type prop = (A.location, MiscParser.Maybev.t) ConstrGen.prop
   type constr = prop ConstrGen.constr
 
 (* List of read locations *)
@@ -27,10 +27,9 @@ open ConstrGen
 
 module Make(A : Arch.Base) : S with module A = A  =
   struct
-    open Constant
     module A = A
 
-    type prop = (A.location,Constant.v) ConstrGen.prop
+    type prop = (A.location, MiscParser.Maybev.t) ConstrGen.prop
     type constr = prop ConstrGen.constr
 
     module LocSet =
@@ -61,8 +60,8 @@ module Make(A : Arch.Base) : S with module A = A  =
             | LV (_,v) ->
                 begin
                   match v with
-                  | Symbolic s -> Strings.add s k
-                  | Concrete _ -> k
+                  | MiscParser.Maybev.Symbolic s -> Strings.add s k
+                  | MiscParser.Maybev.Concrete _ -> k
                 end
             | LL _ -> k)
           c Strings.empty in

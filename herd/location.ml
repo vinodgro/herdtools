@@ -22,7 +22,9 @@ module type I = sig
   val reg_compare : arch_reg -> arch_reg -> int
 
   type arch_global
-  val maybev_to_global : MiscParser.maybev -> arch_global
+  val string_to_global : string -> arch_global
+  val symbConstant_to_global : SymbConstant.v -> arch_global
+  val maybev_to_global : MiscParser.Maybev.t -> arch_global
   val pp_global : arch_global -> string
   val global_compare : arch_global -> arch_global -> int
 end
@@ -36,7 +38,9 @@ module type S = sig
     | Location_reg of int*loc_reg
     | Location_global of loc_global
 
-  val maybev_to_location : MiscParser.maybev -> location
+  val string_to_location : string -> location
+  val symbConstant_to_location : SymbConstant.v -> location
+  val maybev_to_location : MiscParser.Maybev.t -> location
   val dump_location : location -> string (* Just dump *)
   val pp_location : location -> string
   val location_compare : location -> location -> int
@@ -56,6 +60,8 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
       | Location_reg of int*loc_reg
       | Location_global of loc_global
 
+    let string_to_location m = Location_global (A.string_to_global m)
+    let symbConstant_to_location m = Location_global (A.symbConstant_to_global m)
     let maybev_to_location m = Location_global (A.maybev_to_global m)
 
     let dump_location = function
@@ -64,9 +70,9 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
       | Location_global a -> A.pp_global a
 
     let pp_location l = match l with
-    | Location_reg (proc,r) -> 
+    | Location_reg (proc,r) ->
 	let bodytext = string_of_int proc ^ ":" ^ A.pp_reg r in
-	if C.texmacros 
+	if C.texmacros
 	then "\\asm{Proc " ^ bodytext ^ "}" else bodytext
     | Location_global a -> A.pp_global a
 
@@ -79,11 +85,11 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
     let pair_compare cmpx x1 x2 cmpy y1 y2 = match cmpx x1 x2 with
     | 0 -> cmpy y1 y2
     | r -> r
-      
+
     let location_compare l1 l2 = match l1,l2 with
     | Location_reg (p1,r1), Location_reg (p2,r2) ->
         pair_compare Misc.int_compare p1 p2 A.reg_compare r1 r2
-    | Location_global a1, Location_global a2 -> A.global_compare a1 a2 
+    | Location_global a1, Location_global a2 -> A.global_compare a1 a2
     | Location_reg _, Location_global _ -> -1
     |  Location_global _, Location_reg _ -> 1
 

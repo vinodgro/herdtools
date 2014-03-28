@@ -19,6 +19,6 @@ end
 
 module type I = sig
   module C : Constr.S
-  module V : X with type t = Constant.v
+  module V : X with type t = MiscParser.Maybev.t
   module Loc : X with type  t = C.A.location
 end

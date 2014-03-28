@@ -13,8 +13,7 @@
 module type I = sig
   module V :
       sig
-        type v = Constant.v
-        include Constant.S
+        type v = MiscParser.Maybev.t
         val maybevToV : v -> v
       end
 
@@ -32,18 +31,18 @@ end
 module type S = sig
   module I : I
 
-  val vToName : Constant.v -> string
+  val vToName : SymbConstant.v -> string
 
   include Location.S
   with type loc_reg = I.arch_reg and type loc_global = string
   module Out : Template.S
   with type arch_reg = I.arch_reg
-  module MapValue : MyMap.S with type key = Constant.v
+  module MapValue : MyMap.S with type key = MiscParser.Maybev.t
 
 (* A bit of state handling *)
-  type state = (location * Constant.v) list
+  type state = (location * MiscParser.Maybev.t) list
 
-  val find_in_state : location -> state -> Constant.v
+  val find_in_state : location -> state -> MiscParser.Maybev.t
 
 end
 
@@ -54,36 +53,38 @@ end
 module Make(O:Config)(I:I) : S with module I = I
 = struct
   module I = I
-  open Constant
 
-  let vToName v = match v with
-  | Concrete i -> "addr_" ^ string_of_int i
-  | Symbolic s -> s
+  let vToName = function
+    | Constant.Concrete x -> "addr_" ^ string_of_int x
+    | Constant.Symbolic s -> s
 
   include Location.Make
       (struct
         include I
 
         type arch_global = string
-        let maybev_to_global m = vToName m
+        let maybev_to_global = function
+          | MiscParser.Maybev.Concrete x -> "addr_" ^ x
+          | MiscParser.Maybev.Symbolic s -> s
+        let string_to_global = Misc.identity
         let pp_global s = s
         let global_compare = String.compare
       end)
 
-  module Out = Template.Make(O)(I) (I.V)
+  module Out = Template.Make(O)(I)
 
   module MapValue =
     MyMap.Make
       (struct
-        type t = Constant.v
-        let compare = I.V.compare
+        type t = MiscParser.Maybev.t
+        let compare = MiscParser.Maybev.compare
       end)
 
 (* A bit of state handling *)
-  type state = (location * Constant.v) list
+  type state = (location * MiscParser.Maybev.t) list
 
   let rec find_in_state loc = function
-    | [] -> I.V.intToV 0
+    | [] -> MiscParser.Maybev.Concrete "0"
     | (loc2,v)::rem ->
         if location_compare loc loc2 = 0 then v
         else find_in_state loc rem

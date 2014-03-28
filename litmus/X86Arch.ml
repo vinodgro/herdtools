@@ -16,9 +16,8 @@ module Make(O:Arch.Config)(V:Constant.S) = struct
   include X86Base
   module V =
     struct
-      type v = Constant.v
-      include V
-      let maybevToV c = c
+      type v = MiscParser.Maybev.t
+      let maybevToV = Misc.identity
     end
 
   let reg_to_string r = match r with

@@ -12,20 +12,20 @@
 
 (** Semantics of OpenCL instructions *)
 
-module Make (C:Sem.Config)(V:Value.S)  
-    = 
+module Make (C:Sem.Config)(V:Value.S)
+    =
   struct
 
     module OpenCL = OpenCLArch.Make(C.PC)(V)
     module Act = OpenCLAction.Make(OpenCL)
     include SemExtra.Make(C)(OpenCL)(Act)
     let barriers = []
-    let isync = None      
+    let isync = None
 
 
-(****************************)	  
+(****************************)
 (* Build semantics function *)
-(****************************)	  
+(****************************)
 
     let (>>=) = M.(>>=)
     let (>>*=) = M.(>>*=)
@@ -39,21 +39,21 @@ module Make (C:Sem.Config)(V:Value.S)
 
     let write_loc s mo loc v ii = M.mk_singleton_es (Act.Access (Dir.W, loc, v, mo, s)) ii
     let write_reg r v ii = write_loc OpenCL.S_workitem OpenCL.NA (A.Location_reg (ii.A.proc,r)) v ii
-    let write_mem s mo a  = write_loc s mo (A.Location_global a) 	     
-		 
+    let write_mem s mo a  = write_loc s mo (A.Location_global a)
+
     let constant_to_int v = match v with
       | Constant.Concrete vv -> vv
       | _ -> Warn.fatal "Couldn't convert constant to int"
 
     let build_semantics _st i ii = match i with
       | OpenCL.Pload(loc,reg,mo,scope) ->
-	M.unitT (OpenCL.maybev_to_location loc) >>=
-	(fun loc -> read_loc scope mo loc ii) >>= 
-	  (fun v -> write_reg reg v ii) >>! 
+	M.unitT (OpenCL.symbConstant_to_location loc) >>=
+	(fun loc -> read_loc scope mo loc ii) >>=
+	  (fun v -> write_reg reg v ii) >>!
 	  B.Next
 
       | OpenCL.Pstore(l,v,mo,scope) ->
-	(M.unitT (OpenCL.maybev_to_location l)) >>|
+	(M.unitT (OpenCL.symbConstant_to_location l)) >>|
 	    (M.unitT (V.intToV (constant_to_int v))) >>=
 	(fun (loc, vv) -> write_loc scope mo loc vv ii) >>! B.Next
 

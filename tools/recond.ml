@@ -79,7 +79,7 @@ module Make(Config:Config)(Out:Out) =
             (fun (loc,v) ->
               Out.fprintf chan "%s=%s;"
                 (MiscParser.dump_location loc)
-                (SymbConstant.pp_v v))
+                (MiscParser.Maybev.pp v))
             bds ;
           Out.fprintf chan "\n") ()
 
@@ -94,7 +94,7 @@ module Make(Config:Config)(Out:Out) =
                 (fun (loc,v) ->
                   sprintf "%s=%s;"
                     (MiscParser.dump_location loc)
-                    (SymbConstant.pp_v v)) bds in
+                    (MiscParser.Maybev.pp v)) bds in
             Out.fprintf chan "%s\n" (String.concat " " pp) ;
             "and ")
           "    " in
@@ -107,14 +107,14 @@ module Make(Config:Config)(Out:Out) =
         fun _ _ -> None
 
 
-    let from_chan idx_out fname in_chan =    
+    let from_chan idx_out fname in_chan =
       try
         let { Splitter.locs = locs; start = start; name=name; _} =
           S.split fname in_chan in
         if Config.check_name name.Name.name then begin
           let base = Filename.basename fname in
           let out = Out.open_file base in
-          Misc.output_protect_close Out.close        
+          Misc.output_protect_close Out.close
             (fun out ->
               let _,_,(constr_start,constr_end),(last_start,loc_eof) = locs in
               let echo sec =
@@ -152,7 +152,7 @@ module Make(Config:Config)(Out:Out) =
         Printf.eprintf
 	  "%a: Lex error %s (in %s)\n" Pos.pp_pos pos msg fname ;
         raise Misc.Exit
-          
+
     let from_file idx_chan name =
       try
         Misc.input_protect
@@ -187,7 +187,7 @@ let set_conds c = conds := !conds @ [c]
 let set_tar x = tar := Some x
 let args = ref []
 
-let opts = 
+let opts =
   [ "-v",
     Arg.Unit (fun () -> incr verbose),
     " be verbose";
@@ -228,7 +228,7 @@ module LR = LexRename.Make(struct let verbose = !verbose end)
 let conds = LR.read_from_files !conds (fun s -> Some s)
 
 
-let from_args = 
+let from_args =
   let module X =
     Make
       (struct
@@ -255,4 +255,3 @@ let from_args =
        Y.from_args
 
 let () = from_args !args
-

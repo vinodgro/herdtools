@@ -23,6 +23,6 @@ module type S =
     val pp_v  : v -> string
     val compare : v -> v -> int
 
-    val intToV  : int -> v 
+    val intToV  : int -> v
     val nameToV  : string -> v
   end

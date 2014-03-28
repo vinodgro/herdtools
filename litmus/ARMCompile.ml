@@ -238,8 +238,10 @@ module Make(V:Constant.S)(C:Config) =
         check_armv6k ins ;
         { empty_ins with memo = "isb"; }::k
 
-    let branch_neq r i lab k = cmpi r i::bcc no_tr NE lab::k
-    let branch_eq r i lab k = cmpi r i::bcc no_tr EQ lab::k
+    (* TODO: Use real string instead ? *)
+    let branch_neq r i lab k = cmpi r (int_of_string i)::bcc no_tr NE lab::k
+    (* TODO: Use real string instead ? *)
+    let branch_eq r i lab k = cmpi r (int_of_string i)::bcc no_tr EQ lab::k
 
     let signaling_write _i _k = Warn.fatal "no signaling write for ARM"
 

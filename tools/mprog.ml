@@ -44,7 +44,7 @@ module Top
             let dump_reg r = r
 
             let dump_state_atom dump_loc (loc,v) =
-              sprintf "%s=%s" (dump_loc loc) (SymbConstant.pp_v v)
+              sprintf "%s=%s" (dump_loc loc) (MiscParser.Maybev.pp v)
 
             type state = MiscParser.state
 
@@ -73,7 +73,7 @@ module Top
                   (fun k (_,v) -> match v with
                   | Constant.Symbolic _ as loc -> add_loc loc k
                   | _ -> k) gs st in
-                      
+
               let zeros =
                 MiscParser.LocSet.fold
                   (fun loc k ->
@@ -103,7 +103,7 @@ module Top
                 (List.map
                    (fun a -> sprintf "%s;" (dump_state_atom dump_reg a))
                    st)
-                
+
             type constr = MiscParser.constr
             let dump_atom a =
               let open ConstrGen in
@@ -151,7 +151,7 @@ module Top
                    (fun a -> sprintf "%s;" (dump_state_atom a))
                    st)
 
-                
+
             type constr = MiscParser.constr
             let dump_atom a =
               let open ConstrGen in
@@ -186,7 +186,7 @@ module Top
           include SymbConstant
           let maybevToV c = c
         end
-        type location = 
+        type location =
           | Location_global of Constant.v
           | Location_reg of int * A.reg
 
@@ -221,7 +221,7 @@ module Top
       | LaTeX|HeVeA|HeVeANew ->
           let module Z =  ToolParse.Top(T)(Latex) in
           Z.from_file
-          
+
   end
 
 (***********************)
@@ -280,4 +280,3 @@ let () =
           Printf.eprintf "\nFatal: %a Adios\n" Pos.pp_pos0 fname ;
           raise e)
     !args
-

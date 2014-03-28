@@ -38,9 +38,9 @@ module Make(P:PseudoAbstract.S)(A:Arch.Base)
 
       open Printf
 
-      type init = (MiscParser.location * SymbConstant.v) list
+      type init = MiscParser.state
       type prog = (int * P.code) list
-      type locations =  MiscParser.LocSet.t
+      type locations = MiscParser.LocSet.t
 
 
       open MiscParser
@@ -57,7 +57,7 @@ module Make(P:PseudoAbstract.S)(A:Arch.Base)
           List.sort
             (fun (loc1,v1) (loc2,v2) -> match location_compare loc1 loc2 with
             | 0 ->
-                if SymbConstant.compare v1 v2 <> 0 then begin
+                if MiscParser.Maybev.compare v1 v2 <> 0 then begin
                   Warn.fatal
                     "Location %s non-unique in init state"
                     (dump_location loc1)
@@ -73,7 +73,7 @@ module Make(P:PseudoAbstract.S)(A:Arch.Base)
           (String.concat "; "
              (List.map
                 (fun (loc,v) -> sprintf "%s=%s"
-                    (dump_location loc) (SymbConstant.pp_v v))
+                    (dump_location loc) (MiscParser.Maybev.pp v))
                 init)) in
         debug "INIT" pp ;
         Digest.string pp
