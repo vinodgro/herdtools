@@ -12,7 +12,27 @@
 module type S = sig
   type arch_reg
   type t
+(* Function dump *)
+  val dump_fun :
+    out_channel ->
+    (arch_reg * RunType.t) list ->
+    (string * RunType.t) list ->
+    string list ->
+    int ->
+    t ->
+    unit
 
+  val dump_call :
+    out_channel ->
+    string ->
+    (arch_reg * RunType.t) list ->
+    (string * RunType.t) list ->
+    string list ->
+    int ->
+    t ->
+    unit
+
+(* Inline dump *)
   val dump :
     out_channel ->
     string ->

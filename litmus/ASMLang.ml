@@ -204,6 +204,9 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
       dump_copies chan indent env proc t
     end
 
+  let dump_fun chan env _ _ proc t = assert false
+  let dump_call chan indent env _ _ proc t = assert false
+
   let dump chan indent env _ _ proc t =
     let rec dump_ins k ts = match ts with
     | [] -> ()

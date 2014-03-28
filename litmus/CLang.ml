@@ -10,28 +10,99 @@
 (*********************************************************************)
 
 module Make(Tmpl:Template.S) = struct
+  open Printf
 
   type arch_reg = Tmpl.arch_reg
   type t = Tmpl.t
 
+  let dump_start chan indent proc =
+    fprintf chan
+      "%sasm __volatile__ (\"%cSTART _litmus_P%i\\n\" ::: \"memory\");\n"
+      indent Tmpl.comment proc
+
+  let dump_end chan indent proc =
+    fprintf chan
+      "%sasm __volatile__ (\"%cEND _litmus_P%i\\n\" ::: \"memory\");\n"
+      indent Tmpl.comment proc
+
+  let dump_global_def globEnv envVolatile x =
+    let x = Tmpl.fmt_reg x in
+    let volatile = List.exists (Misc.string_eq x) envVolatile in
+    let ty =
+      let f t = function
+        | true -> "volatile " ^ RunType.dump t ^ "*"
+        | false -> RunType.dump t ^ "*"
+      in
+      try
+        f (List.assoc x globEnv) volatile
+      with
+      | Not_found -> assert false
+    in
+    ty,x
+
+  let dump_output_def env proc x =
+    let outname = Tmpl.dump_out_reg proc x
+    and ty =
+      try List.assoc x env with Not_found -> assert false in
+    sprintf "%s*" (RunType.dump ty),outname
+    
+  let dump_fun chan env globEnv envVolatile proc t =
+    let out x = fprintf chan x in
+    match t.Tmpl.code with
+    | [t] ->
+        let input_defs =
+          List.map (dump_global_def globEnv envVolatile) t.Tmpl.inputs
+        and output_defs =
+          List.map (dump_output_def env proc) t.Tmpl.outputs in
+        let defs = input_defs@output_defs in
+        let params =
+          String.concat ","
+            (List.map
+               (fun (ty,v) -> sprintf "%s %s" ty v)
+               defs) in
+        (* Function prototype  *)
+        out
+          "__attribute__ ((noinline)) static void code_%i(%s) {\n"
+          proc params ;
+        (* body *)
+        dump_start chan "  " proc ;
+        out "%s\n" (Tmpl.to_string t) ;
+        dump_end chan "  " proc ;
+        (* output parameters *)
+        List.iter
+          (fun reg ->
+            out "  *%s = %s;\n"
+              (Tmpl.dump_out_reg proc reg)
+              (Tmpl.fmt_reg reg))
+          t.Tmpl.outputs ;
+        out "}\n"
+    | _ -> assert false
+    
+  let dump_call chan indent env globEnv envVolatile proc t =
+    match t.Tmpl.code with
+    | [t] ->
+        let global_args =
+          List.map
+            (fun x ->
+              let _ty,x = dump_global_def globEnv envVolatile x in
+              sprintf "&_a->%s[_i]" x)
+            t.Tmpl.inputs
+        and out_args =
+          List.map
+            (fun x -> sprintf "&%s" (Tmpl.compile_out_reg proc x))
+            t.Tmpl.outputs in
+        let args = String.concat "," (global_args@out_args) in
+        fprintf chan
+          "%scode_%i(%s);\n" indent proc args
+    | _ -> assert false
+
   let dump chan indent env globEnv envVolatile proc t =
-    let out x = Printf.fprintf chan x in
+    let out x = fprintf chan x in
     out "%sdo {\n" indent;
     begin
       let indent = "  " ^ indent in
       let dump_input x =
-        let x = Tmpl.fmt_reg x in
-        let volatile = List.exists (Misc.string_eq x) envVolatile in
-        let ty =
-          let f t = function
-            | true -> "volatile " ^ RunType.dump t ^ "*"
-            | false -> RunType.dump t ^ "*"
-          in
-          try
-            f (List.assoc x globEnv) volatile
-          with
-          | Not_found -> assert false
-        in
+        let ty,x = dump_global_def globEnv envVolatile x in
         match Tmpl.memory with
         | Memory.Direct ->
             out "%s%s %s = (%s)&_a->%s[_i];\n" indent ty x ty x
@@ -42,13 +113,13 @@ module Make(Tmpl:Template.S) = struct
         let outname = Tmpl.compile_out_reg proc x in
         out "%s%s = %s;\n" indent outname (Tmpl.fmt_reg x)
       in
-      let print_start = out "%sasm __volatile__ (\"%cSTART _litmus_P%i\\n\" ::: \"memory\");\n" in
-      let print_end = out "%sasm __volatile__ (\"%cEND _litmus_P%i\\n\" ::: \"memory\");\n" in
+      let print_start = dump_start chan in
+      let print_end = dump_end chan in
       let dump_ins x =
         List.iter dump_input x.Tmpl.inputs;
-        print_start indent Tmpl.comment proc;
+        print_start indent proc;
         out "%s\n" (Tmpl.to_string x);
-        print_end indent Tmpl.comment proc;
+        print_end indent proc;
         List.iter dump_output x.Tmpl.outputs
       in
       List.iter dump_ins t.Tmpl.code;

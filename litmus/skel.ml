@@ -51,6 +51,7 @@ module type Config = sig
   val pldw : bool
   val c11 : bool
   val c11_fence : bool
+  val ascall : bool
   include DumpParams.Config
 end
 
@@ -1403,6 +1404,19 @@ let dump_read_timebase () =
     O.f "\n\n%s\n\n" (String.concat "\n" test.T.global_code);
     List.iter
       (fun (proc,(out,(outregs,envVolatile))) ->
+        let myenv =
+          List.fold_right
+            (fun (loc,t) k -> match loc with
+            | A.Location_reg (p,reg) -> if p = proc then (reg,t)::k else k
+            | A.Location_global _ -> k) env [] in
+        let global_env =
+          List.fold_right
+            (fun (loc,t) k -> match loc with
+            | A.Location_reg _ -> k
+            | A.Location_global reg -> (reg,t)::k) env [] in
+        if Cfg.ascall then
+          Lang.dump_fun
+            O.out myenv global_env envVolatile proc out ;
         let  do_collect =  do_collect_local && (do_safer || proc=0) in
         O.f "static void *P%i(void *_vb) {" proc ;
         O.fi "mbar();" ;
@@ -1599,18 +1613,9 @@ let dump_read_timebase () =
             aux Cfg.sysarch
         | Pthread|NoBarrier -> ()
         end ;
-        let myenv =
-          List.fold_right
-            (fun (loc,t) k -> match loc with
-            | A.Location_reg (p,reg) -> if p = proc then (reg,t)::k else k
-            | A.Location_global _ -> k) env [] in
-        let global_env =
-          List.fold_right
-            (fun (loc,t) k -> match loc with
-            | A.Location_reg _ -> k
-            | A.Location_global reg -> (reg,t)::k) env [] in
 (* Dump real code now *)
-        Lang.dump O.out (Indent.as_string iloop) myenv global_env envVolatile proc out ;
+        (if Cfg.ascall then Lang.dump_call else Lang.dump)
+          O.out (Indent.as_string iloop) myenv global_env envVolatile proc out ;
         if do_verbose_barrier && have_timebase  then begin
           if do_timebase then begin
             O.fx iloop "_a->tb_delta[%i][_i] = _delta;" proc ;

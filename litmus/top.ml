@@ -45,6 +45,7 @@ module type CommonConfig = sig
   val gcc : string
   val c11 : bool
   val c11_fence : bool
+  val ascall : bool
   val xy : bool
   val pldw : bool
   val morearch : MoreArch.t
