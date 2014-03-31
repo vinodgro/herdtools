@@ -55,7 +55,7 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
 
   let tag_reg_def reg = sprintf "[%s]" (Tmpl.tag_reg reg)
 
-  let dump_inputs chan t trashed =
+  let dump_inputs compile_val chan t trashed =
     let all = all_regs t in
     let in_outputs = RegSet.union trashed  (RegSet.of_list t.Tmpl.final) in
 (*
@@ -66,12 +66,12 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
     let dump_pair reg v =
       let dump_v = (* catch those addresses that are saved in a variable *)
         if Tmpl.cautious then match Tmpl.memory with
-        | Memory.Indirect ->
+         | Memory.Indirect ->
             (fun v -> match v with
             | Constant.Symbolic _ -> copy_name (Tmpl.tag_reg reg)
             | Constant.Concrete _ -> Tmpl.dump_v v)
         | Memory.Direct -> Tmpl.dump_v
-        else Tmpl.dump_v in
+        else compile_val  in
       if RegSet.mem reg in_outputs then begin
         match A.internal_init reg with
         | None -> sprintf "\"%s\" (%s)" (tag_reg_def reg) (dump_v v)
@@ -107,15 +107,18 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
     sprintf "trashed_%s"
       (Tmpl.clean_reg (A.reg_to_string reg))
 
-  let dump_outputs chan proc t trashed =
+  let compile_addr_inline x = sprintf "_a->%s[_i]" x
+  and compile_addr_fun x = sprintf "*%s" x 
+
+  let dump_outputs compile_addr compile_out_reg chan proc t trashed =
     let outs =
       String.concat ","
         (List.map
            (match Tmpl.memory with
            | Memory.Direct ->
-               (fun (_,a) -> sprintf "[%s] \"=m\" (_a->%s[_i])" a a)
+               (fun (_,a) -> sprintf "[%s] \"=m\" (%s)" a (compile_addr a))
            | Memory.Indirect ->
-               (fun (_,a) -> sprintf "[%s] \"=m\" (*_a->%s[_i])" a a)
+               (fun (_,a) -> sprintf "[%s] \"=m\" (*%s)" a (compile_addr a))
            )
            t.Tmpl.addrs
          @List.map
@@ -129,7 +132,7 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
                  sprintf "%s \"%s\" (%s)"
                  (tag_reg_def reg)
                  (A.reg_class reg)
-                 (Tmpl.compile_out_reg proc reg))
+                 (compile_out_reg proc reg))
              t.Tmpl.final
          @RegSet.fold
              (fun reg k ->
@@ -204,10 +207,7 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
       dump_copies chan indent env proc t
     end
 
-  let dump_fun chan env _ _ proc t =
-    Warn.warn_always "test as function not available for ASM"
-
-  let dump chan indent env _ _ proc t =
+  let do_dump compile_val compile_addr compile_out_reg chan indent env proc t =
     let rec dump_ins k ts = match ts with
     | [] -> ()
     | t::ts ->
@@ -235,13 +235,68 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
     | code -> dump_ins 0 code
     end ;
     fprintf chan "\"%cEND_litmus\\n\\t\"\n" Tmpl.comment ;
-    dump_outputs chan proc t trashed ;
-    dump_inputs chan t trashed ;
+    dump_outputs compile_addr compile_out_reg chan proc t trashed ;
+    dump_inputs compile_val chan t trashed ;
     dump_clobbers chan t  ;
     fprintf chan ");\n" ;
     after_dump chan indent proc t;
     ()
 
-  let dump_call = dump
+  let dump chan indent env globEnv volatileEnv proc t =
+    do_dump 
+      Tmpl.dump_v compile_addr_inline Tmpl.compile_out_reg
+      chan indent env proc t
+
+  let compile_val_fun = match Tmpl.memory with
+  | Memory.Direct ->
+      (fun v -> match v with
+      | Constant.Symbolic s -> sprintf "%s" s
+      | Constant.Concrete _ -> Tmpl.dump_v v)
+  | Memory.Indirect ->
+      (fun v -> match v with
+      | Constant.Symbolic s -> sprintf "*%s" s
+      | Constant.Concrete _ -> Tmpl.dump_v v)
+
+  let dump_fun chan env globEnv volatileEnv proc t =
+    let addrs = Tmpl.get_addrs t in
+    let addrs =
+      List.map
+        (fun x ->
+          let ty =
+            try List.assoc x globEnv
+            with Not_found -> assert false in
+          match Tmpl.memory with
+          | Memory.Direct ->  
+              sprintf "%s *%s" (RunType.dump ty) x
+          | Memory.Indirect -> 
+              sprintf "%s **%s" (RunType.dump ty) x)
+        addrs in
+    let outs =
+      List.map
+        (fun x ->
+          let ty =
+            try List.assoc x env
+            with Not_found -> assert false in
+          let x = Tmpl.dump_out_reg proc x in
+          sprintf "%s *%s" (RunType.dump ty) x) t.Tmpl.final in          
+    let params =  String.concat "," (addrs@outs) in
+    LangUtils.dump_code_def chan proc params ;
+    do_dump
+      compile_val_fun
+      compile_addr_fun
+      (fun p r  -> sprintf "*%s" (Tmpl.dump_out_reg p r))
+      chan "  " env proc t ;
+    fprintf chan "}\n" ;
+    ()
+
+  let compile_addr_call x = sprintf "&_a->%s[_i]" x
+  let compile_out_reg_call proc reg = 
+    sprintf "&%s" (Tmpl.compile_out_reg proc reg)
+
+  let dump_call chan indent env globEnv volatileEnv proc t =
+    let addrs = List.map compile_addr_call (Tmpl.get_addrs t)
+    and outs = List.map (compile_out_reg_call proc) t.Tmpl.final in
+    let args = String.concat "," (addrs@outs) in
+    LangUtils.dump_code_call chan indent proc args
 
 end

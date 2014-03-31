@@ -61,9 +61,7 @@ module Make(Tmpl:Template.S) = struct
                (fun (ty,v) -> sprintf "%s %s" ty v)
                defs) in
         (* Function prototype  *)
-        out
-          "__attribute__ ((noinline)) static void code_%i(%s) {\n"
-          proc params ;
+        LangUtils.dump_code_def chan proc params ;
         (* body *)
         dump_start chan "  " proc ;
         out "%s\n" (Tmpl.to_string t) ;
@@ -92,8 +90,7 @@ module Make(Tmpl:Template.S) = struct
             (fun x -> sprintf "&%s" (Tmpl.compile_out_reg proc x))
             t.Tmpl.outputs in
         let args = String.concat "," (global_args@out_args) in
-        fprintf chan
-          "%scode_%i(%s);\n" indent proc args
+        LangUtils.dump_code_call chan indent proc args
     | _ -> assert false
 
   let dump chan indent env globEnv envVolatile proc t =
