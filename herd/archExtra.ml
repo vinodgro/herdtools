@@ -126,6 +126,7 @@ end
 module type Config = sig
   val texmacros : bool
   val hexa : bool
+  val brackets : bool
 end
 
 module Make(C:Config) (I:I) : S with module I = I

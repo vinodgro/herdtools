@@ -15,6 +15,7 @@
 module type Config = sig
   val texmacros : bool
   val hexa : bool
+  val brackets : bool
 end
 
 module type S =

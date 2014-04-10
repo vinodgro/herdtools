@@ -14,6 +14,7 @@
 
 module type Config  = sig
   val texmacros : bool
+  val brackets : bool
 end
 
 module type I = sig
@@ -58,17 +59,21 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
 
     let maybev_to_location m = Location_global (A.maybev_to_global m)
 
+    let do_brackets =
+      if C.brackets then Printf.sprintf "[%s]"
+      else fun s -> s
+
     let dump_location = function
       | Location_reg (proc,r) ->
           string_of_int proc ^ ":" ^ A.pp_reg r
-      | Location_global a -> A.pp_global a
+      | Location_global a -> do_brackets (A.pp_global a)
 
     let pp_location l = match l with
     | Location_reg (proc,r) -> 
 	let bodytext = string_of_int proc ^ ":" ^ A.pp_reg r in
 	if C.texmacros 
 	then "\\asm{Proc " ^ bodytext ^ "}" else bodytext
-    | Location_global a -> A.pp_global a
+    | Location_global a -> do_brackets (A.pp_global a)
 
 
 (*
