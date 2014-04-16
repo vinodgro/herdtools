@@ -55,5 +55,13 @@ extract ()
   TOB=$(basename $TO)
   ( cd $DIR/../$FROMD && git archive --format=tar HEAD $FROMB ) | \
   ( cd $EXPORT && mkdir -p $TOD && cd $TOD && tar xmf - && \
-  ( mv $FROMB $TOB 2> /dev/null || true ))
+  ( mv $FROMB $TOB 2> /dev/null || true ) &&
+  if test -f $TOB/.unreleased
+  then
+    for f in $(cat $TOB/.unreleased)
+    do
+      /bin/rm -rf $TOB/$f
+    done
+    /bin/rm -f  $TOB/.unreleased
+  fi )
 }
