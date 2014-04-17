@@ -13,7 +13,6 @@
 module type I = sig
   type arch_reg
   val arch : Archs.t
-  val forbidden_regs : arch_reg list
   val reg_compare : arch_reg -> arch_reg -> int
   val reg_to_string : arch_reg -> string
 (* gas line comment char *)
@@ -68,8 +67,8 @@ module type S = sig
   val dump_type : ('a * RunType.t) list -> 'a -> string
 end
 
-module Make(O:Config) (A:I) (V:Constant.S): S
-  with type arch_reg = A.arch_reg =
+module Make(O:Config) (A:I) (V:Constant.S) (* : S
+  with type arch_reg = A.arch_reg *) =
 struct
   open Printf
   open Constant

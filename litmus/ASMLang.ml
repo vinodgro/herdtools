@@ -11,7 +11,8 @@
 
 module type I = sig
   include Template.I
-
+(* Forbidden registers *)
+  val forbidden_regs :  arch_reg list
 (* Initial value of internal registers *)
   val internal_init : arch_reg -> (string * string) option
 (* gcc assembly template register class *)

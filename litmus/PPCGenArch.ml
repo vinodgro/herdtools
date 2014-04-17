@@ -12,6 +12,8 @@
 
 open Printf
 
+let comment = PPCArch.comment
+
 module Make(O:Arch.Config)(V:Constant.S) = struct
   include PPCGenBase
   module V =
@@ -82,7 +84,7 @@ module Make(O:Arch.Config)(V:Constant.S) = struct
           else if reg_compare r tb_addr1 = 0 then Some ("&_tb1","tb_t *")
           else None
         let reg_class _ = "=&r"
-        let comment = '#'
+        let comment = comment
       end)
 
 end

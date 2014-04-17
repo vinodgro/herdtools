@@ -12,6 +12,8 @@
 
 open Printf
 
+let comment = '@'
+
 module Make(O:Arch.Config)(V:Constant.S) = struct
   include ARMBase
   module V =
@@ -49,7 +51,7 @@ module Make(O:Arch.Config)(V:Constant.S) = struct
           else if reg_compare r loop_idx = 0 then some "max_loop"
           else None
         let reg_class _ = "=&r"
-        let comment = '@'
+        let comment = comment
       end)
 
 end

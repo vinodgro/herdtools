@@ -288,12 +288,15 @@ end = struct
 
   module Make'
       (O:Config)
-      (A:Arch.S)
+      (A:sig val comment : char end)
       (L:CGenParser.LexParse) =
     struct
       module A' = struct
-        module V = A.V
-
+        module V =
+          struct
+            include SymbConstant
+            let maybevToV c = c
+          end
         type reg = string
 
         module Internal = struct
@@ -308,9 +311,8 @@ end = struct
           let pp_global x = x
           let global_compare = String.compare
 
-          let comment = A.I.comment
+          let comment = A.comment
           let reg_to_string x = x
-          let forbidden_regs = []
           let arch = `C
         end
 
@@ -477,13 +479,13 @@ end = struct
             X.compile cycles hash_env
               name in_chan out_chan splitted
         | `C ->
-            let module Arch' = (val (match OX.sysarch with
-            | `PPC -> (module PPCArch.Make(OC)(V) : Arch.S)
-            | `PPCGen -> (module PPCGenArch.Make(OC)(V) : Arch.S)
-            | `X86 -> (module X86Arch.Make(OC)(V) : Arch.S)
-            | `ARM -> (module ARMArch.Make(OC)(V) : Arch.S)
-                                    ) : Arch.S)
-            in
+            let module Arch' = struct
+              let comment = match OX.sysarch with
+              | `PPC -> PPCArch.comment
+              | `PPCGen -> PPCGenArch.comment
+              | `X86 -> X86Arch.comment
+              | `ARM -> ARMArch.comment
+            end in
             let module LexParse = struct
               type token = CParser.token
               let lexer = CLexer.main

@@ -12,6 +12,8 @@
 
 open Printf
 
+let comment = '#'
+
 module Make(O:Arch.Config)(V:Constant.S) = struct
   include X86Base
   module V =
@@ -56,7 +58,7 @@ module Make(O:Arch.Config)(V:Constant.S) = struct
           | EDI -> "=&D"
           | _ -> "=&r"
 
-        let comment = '#'
+        let comment = comment
       end)
 
 end

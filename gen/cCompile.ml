@@ -437,7 +437,7 @@ module Make(O:Config) : Builder.S
               let mo =
                 try match StringMap.find x env with
                 | A.Plain _ -> None
-                | A.Atomic _ -> Some A.Rlx                  
+                | A.Atomic _ -> Some MemOrder.Rlx
                 with
                 | Not_found -> assert false in
               let c,f = match O.cond with
@@ -491,7 +491,7 @@ module Make(O:Config) : Builder.S
 
       let do_observe_local st p code f mo x prev_v v =
         let mo = match mo with
-        | Some _ -> Some A.Rlx
+        | Some _ -> Some MemOrder.Rlx
         | None -> None in
         let open Config in
         match O.obs_type with
@@ -519,7 +519,7 @@ module Make(O:Config) : Builder.S
             code,(A.Loc x,Ints.singleton v)::f,st
           else
             let mo = match elst.C.atom with
-            | Some _ -> Some A.Rlx
+            | Some _ -> Some MemOrder.Rlx
             | None   -> None in
             do_observe_local st p code f mo (A.Loc x) prev_v v
         else
@@ -594,7 +594,7 @@ module Make(O:Config) : Builder.S
 
       let do_observe_local st p (m,f) mo x pv v =
         let mo = match mo with
-        | Some _ -> Some A.Rlx
+        | Some _ -> Some MemOrder.Rlx
         | None -> None in
         let open Config in
         match O.obs_type with
@@ -775,7 +775,7 @@ module Make(O:Config) : Builder.S
         String.concat "," pp
 
 
-      let dump_mem_order = A.pp_mem_order
+      let dump_mem_order = MemOrder.pp_mem_order
 
       let dump_loc_exp = function
         | A.Loc loc -> loc
@@ -787,7 +787,7 @@ module Make(O:Config) : Builder.S
         let open A in
         match e with
         | Load loc -> dump_loc_exp loc
-        | AtomicLoad (SC,loc) ->
+        | AtomicLoad (MemOrder.SC,loc) ->
             sprintf "atomic_load(%s)" (dump_loc_exp loc)
         | AtomicLoad (mo,loc) ->
             sprintf "atomic_load_explicit(%s,%s)"
@@ -823,7 +823,7 @@ module Make(O:Config) : Builder.S
               (A.dump_typ t) (A.dump_reg r) (dump_exp e)
         | Store (loc,e) ->
             fx chan i "*%s = %s;" loc (dump_exp e)
-        | AtomicStore (SC,loc,e) ->
+        | AtomicStore (MemOrder.SC,loc,e) ->
             fx chan i "atomic_store(%s,%s);"
               loc (dump_exp e)
         | SetReg (r,e) ->
@@ -908,11 +908,13 @@ module Make(O:Config) : Builder.S
         F.dump_final chan t.final ;
         ()
 
+(*
       let dump_c_test ({ name = name; _ } as t) =
         let fname = name ^ ".litmus" in
         Misc.output_protect
           (fun chan -> dump_c_test_channel chan t)
           fname
+*)
 
 (************************)
 (* C++ a la cppmem dump *)
@@ -1000,20 +1002,22 @@ module Make(O:Config) : Builder.S
         fprintf chan "}\n" ;
         ()
           
-
+(*
       let dump_cpp_test  ({ name = name; _ } as t) =
         let fname = name ^ ".c" in
         Misc.output_protect
           (fun chan -> dump_cpp_test_channel chan t)
           fname
-
+*)
       let dump_test_channel =
         if O.cpp then dump_cpp_test_channel
         else dump_c_test_channel
 
+(*
       let dump_test =
         if O.cpp then dump_cpp_test
         else dump_c_test
+*)
 
       let test_of_cycle name ?com ?(info=[]) ?(check=(fun _ -> true)) es c =
         let com = match com with None -> E.pp_edges es | Some com -> com in
