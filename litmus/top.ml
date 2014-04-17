@@ -275,7 +275,7 @@ end = struct
       module Lang = ASMLang.Make(A.I)(A.Out)
       module Utils = Utils(O)(A)(Lang)(Pseudo)
       module P = GenParser.Make(O)(A) (L)
-      module Comp = Compile.Make (O)(A)(A)(Utils.T) (XXXComp)
+      module Comp = Compile.Make (O)(A)(Utils.T) (XXXComp)
 
       let compile =
         let allocate parsed =

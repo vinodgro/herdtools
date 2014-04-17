@@ -83,19 +83,18 @@ end
 
 module Make
     (O:Config)
-    (A_complete : Arch.S)
-    (A : Arch.Base
-     with type reg = A_complete.reg
-      and type location = A_complete.location
-      and module Out = A_complete.Out
-    )
-    (T:Test.S with module A = A and type P.code = int * A_complete.pseudo list)
-    (C:XXXCompile.S with module A = A_complete) =
+    (A:Arch.S)
+    (T:Test.S with
+     type A.reg = A.reg and
+     type A.location = A.location and
+     module A.Out = A.Out and
+     type P.code = int * A.pseudo list)
+    (C:XXXCompile.S with module A = A) =
   struct
     open Printf
     open Constant
 
-    module A = A_complete
+    module A = A
     module V = A.V
     module Constr = T.C
     module Generic = Generic(A)
