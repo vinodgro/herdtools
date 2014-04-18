@@ -129,7 +129,7 @@ and type pseudo = A.pseudo
 (*********************************************)
 (* Here we go: collect, allocate, substitute *)
 (*********************************************)
-  open! MiscParser
+  open MiscParser
 
 (*
   let pp_reg_set chan rs =
