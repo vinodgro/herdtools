@@ -292,7 +292,7 @@ module Make
       compile_addr_fun
       (fun p r  -> sprintf "*%s" (Tmpl.dump_out_reg p r))
       chan "  " env proc t ;
-    fprintf chan "}\n" ;
+    fprintf chan "}\n\n" ;
     ()
 
   let compile_addr_call x = sprintf "&_a->%s[_i]" x

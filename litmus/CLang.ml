@@ -22,12 +22,12 @@ module Make(C:Config) = struct
 
   let dump_start chan indent proc =
     fprintf chan
-      "%sasm __volatile__ (\"%s\" ::: \"memory\");\n"
+      "%sasm __volatile__ (\"\\n%s\" ::: \"memory\");\n"
       indent (LangUtils.start_comment C.comment proc)
 
   let dump_end chan indent proc =
     fprintf chan
-      "%sasm __volatile__ (\"%s\" ::: \"memory\");\n"
+      "%sasm __volatile__ (\"\\n%s\" ::: \"memory\");\n"
       indent (LangUtils.end_comment C.comment proc)
 
   let dump_global_def globEnv envVolatile x =
@@ -76,7 +76,7 @@ module Make(C:Config) = struct
           (CTarget.dump_out_reg proc reg)
           (CTarget.fmt_reg reg))
       t.CTarget.finals ;
-    out "}\n"
+    out "}\n\n"
 
       
   let dump_call chan indent env globEnv envVolatile proc t =
