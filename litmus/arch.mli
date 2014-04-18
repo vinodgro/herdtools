@@ -14,6 +14,8 @@ module type Config = sig
   include ArchExtra.Config
 end
 
+(* Abstract signature of architectures *)
+
 module type Base = sig
   module V : sig
     type v = Constant.v
@@ -24,16 +26,15 @@ module type Base = sig
   type reg
 
   include Location.S
-    with type loc_reg = reg
-     and type loc_global = string
+  with type loc_reg = reg and
+  type loc_global = string
 
   val parse_reg : string -> reg option
   val reg_compare : reg -> reg -> int
 
   type state = (location * V.v) list
 
-  module Out : Template.S
-    with type arch_reg = reg
+  module Out : Target.S with type arch_reg = reg (* Out abstracted *)
 
   val arch : Archs.t
 

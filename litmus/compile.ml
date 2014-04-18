@@ -87,7 +87,7 @@ module Make
     (T:Test.S with
      type A.reg = A.reg and
      type A.location = A.location and
-     module A.Out = A.Out and
+     type A.Out.t = A.Out.t and
      type P.code = int * A.pseudo list)
     (C:XXXCompile.S with module A = A) =
   struct
@@ -178,7 +178,7 @@ let lblmap_code =
           compile_cond c labf (compile_cond (And cs) labf kt)
       | _ -> raise CannotIntern
 
-    let compile_pseudo_code _env code k =
+    let compile_pseudo_code code k =
       let m =
         if O.numeric_labels then lblmap_code code
         else StringMap.empty in
@@ -219,13 +219,13 @@ let lblmap_code =
       with
       CannotIntern -> [],false
 
-    let compile_code proc env code final =
+    let compile_code proc code final =
       let k,cond =
         if O.signaling then
           compile_cond proc final
         else [],false in
 
-      let code = compile_pseudo_code env code k in
+      let code = compile_pseudo_code code k in
 
       let code =
         if O.timeloop > 0 then C.emit_loop code
@@ -355,12 +355,8 @@ let lblmap_code =
         List.map
           (fun (proc,code) ->
             let addrs = extract_addrs code in
-            let _,env =
-              StringSet.fold
-                (fun a (n,env) -> n+1,StringMap.add a n env)
-                addrs (0,StringMap.empty) in
-            let code,cond = compile_code proc env code final in
-            proc,env,code,cond)
+            let code,cond = compile_code proc code final in
+            proc,addrs,code,cond)
           code in
       let flocs = List.map fst flocs in
       let pecs = List.map (fun (p,e,c,_) -> p,e,c) outs
@@ -370,10 +366,10 @@ let lblmap_code =
       if O.signaling && not conds then
         Warn.fatal "could not signal write" ;
       List.map
-        (fun (proc,env,code) ->
+        (fun (proc,addrs,code) ->
           proc,
           { init = compile_init proc init code flocs final ;
-            addrs = load_addrs env;
+            addrs = StringSet.elements addrs ;
             final = compile_final proc final flocs;
             code = code; })
         pecs
@@ -392,7 +388,7 @@ let lblmap_code =
         List.fold_right
           (fun (_,t) ->
             List.fold_right
-              (fun (_,a) -> Generic.add_addr_type a (RunType.Ty "int"))
+              (fun a -> Generic.add_addr_type a (RunType.Ty "int"))
               t.addrs)
           code env in
 (* Add uninitialised globals referenced as values in init,

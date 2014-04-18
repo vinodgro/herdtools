@@ -1,8 +1,7 @@
 (*********************************************************************)
 (*                          Litmus                                   *)
 (*                                                                   *)
-(*     Jacques-Pascal Deplaix, INRIA Paris-Rocquencourt, France.     *)
-(*     Luc Maranget, INRIA Paris-Rocquencourt, France.               *)
+(*        Luc Maranget, INRIA Paris-Rocquencourt, France.            *)
 (*                                                                   *)
 (*  Copyright 2014 Institut National de Recherche en Informatique et *)
 (*  en Automatique and the authors. All rights reserved.             *)
@@ -10,17 +9,19 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-open Printf
+(* C target, a simplified template *)
+type arch_reg = string
 
-let start_comment com proc = sprintf "%cSTART _litmus_P%i" com proc
+type t =
+  { inputs : string list ;
+    finals : arch_reg list ;
+    code : string ; }
 
-let end_comment com proc = sprintf "%cEND _litmus_P%i" com proc
+   
+let fmt_reg x = x
 
-let code_fun proc = sprintf "code%i" proc
+let dump_out_reg p x =  OutUtils.fmt_out_reg p x
 
-let dump_code_def chan proc params =
-  fprintf chan "__attribute__ ((noinline)) static void %s(%s) {\n"
-    (code_fun proc) params
+let compile_out_reg proc reg = OutUtils.fmt_index (dump_out_reg proc reg)
 
-let dump_code_call chan indent proc args =
-  fprintf chan "%s%s(%s);\n" indent (code_fun proc) args
+let get_addrs t = t.inputs

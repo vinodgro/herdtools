@@ -18,7 +18,11 @@ end
 
 module Make
     (O:Config)
-    (T:Test.S with type P.code = CAst.t and type A.reg = string and type A.loc_reg = string) =
+    (T:Test.S with
+     type P.code = CAst.t and
+     type A.reg = string and
+     type A.loc_reg = string and
+     type A.Out.t = CTarget.t) =
   struct
 
     module A = T.A
@@ -66,36 +70,16 @@ module Make
       let f acc (x, ty) = get_local proc (fun x -> Misc.cons (x, ty)) acc x in
       List.fold_left f []
 
-     let ins_of_string inputs outputs x =
-       { A.Out.memo = x
-       ; inputs
-       ; outputs
-       ; label = None
-       ; branch = []
-       ; cond = false
-       ; comment = false
-       }
-
      let string_of_params =
        let f {CAst.param_name; _} = param_name in
        List.map f
 
-    let get_addrs code =
-      let _,addrs =
-        List.fold_right
-          (fun x (n,k) -> n+1,(n,x)::k)
-          (string_of_params code.CAst.params)
-          (0,[]) in
-      addrs
-
     let comp_template proc init final code =
-      let addrs = get_addrs code in
       let inputs = string_of_params code.CAst.params in
-      { A.Out.init = []
-      ; addrs
-      ; final
-      ; code = [ins_of_string inputs final code.CAst.body]
-      }
+      {
+        CTarget.inputs ;
+        finals=final ;
+        code = code.CAst.body; }
 
     let get_reg_from_loc = function
       | A.Location_reg (_, reg) -> reg

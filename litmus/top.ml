@@ -272,10 +272,10 @@ end = struct
           Misc.pp_prog chan pp
       end
 
-      module Lang = ASMLang.Make(A.I)(A.Out)
+      module Lang = ASMLang.Make(O)(A.I)(A.Out)
       module Utils = Utils(O)(A)(Lang)(Pseudo)
       module P = GenParser.Make(O)(A) (L)
-      module Comp = Compile.Make (O)(A)(Utils.T) (XXXComp)
+      module Comp = Compile.Make (O)(A)(Utils.T)(XXXComp)
 
       let compile =
         let allocate parsed =
@@ -311,8 +311,6 @@ end = struct
           let pp_global x = x
           let global_compare = String.compare
 
-          let comment = A.comment
-          let reg_to_string x = x
           let arch = `C
         end
 
@@ -323,7 +321,10 @@ end = struct
 
         type state = (location * V.v) list
 
-        module Out = Template.Make(O)(Internal)(V)
+        module Out = struct
+          include CTarget
+          include OutUtils.Make(O)
+        end
 
         let arch = Internal.arch
 
@@ -359,7 +360,12 @@ end = struct
           List.iter (Printf.fprintf chan "%s") pp
       end
 
-      module Lang = CLang.Make(A'.Out)
+      module Lang =
+        CLang.Make
+          (struct
+            let comment = A.comment
+            let memory = O.memory
+          end)
       module Utils = Utils(O)(A')(Lang)(Pseudo)
       module P = CGenParser.Make(O)(Pseudo)(A')(L)
       module Comp = CCompile.Make(O)(Utils.T)

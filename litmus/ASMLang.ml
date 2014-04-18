@@ -9,6 +9,11 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+module type Config = sig
+  val memory : Memory.t
+  val cautious : bool
+end
+
 module type I = sig
   include Template.I
 (* Forbidden registers *)
@@ -19,7 +24,8 @@ module type I = sig
   val reg_class : arch_reg -> string
 end
 
-module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
+module Make
+    (O:Config)(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
 
   type arch_reg = Tmpl.arch_reg
   type t = Tmpl.t
@@ -66,7 +72,7 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
 *)
     let dump_pair reg v =
       let dump_v = (* catch those addresses that are saved in a variable *)
-        if Tmpl.cautious then match Tmpl.memory with
+        if O.cautious then match O.memory with
          | Memory.Indirect ->
             (fun v -> match v with
             | Constant.Symbolic _ -> copy_name (Tmpl.tag_reg reg)
@@ -115,16 +121,15 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
     let outs =
       String.concat ","
         (List.map
-           (match Tmpl.memory with
+           (match O.memory with
            | Memory.Direct ->
-               (fun (_,a) -> sprintf "[%s] \"=m\" (%s)" a (compile_addr a))
+               (fun a -> sprintf "[%s] \"=m\" (%s)" a (compile_addr a))
            | Memory.Indirect ->
-               (fun (_,a) -> sprintf "[%s] \"=m\" (*%s)" a (compile_addr a))
-           )
+               (fun a -> sprintf "[%s] \"=m\" (*%s)" a (compile_addr a)))
            t.Tmpl.addrs
          @List.map
              (fun reg ->
-               if Tmpl.cautious then
+               if O.cautious then
                  sprintf "%s \"%s\" (%s)"
                  (tag_reg_def reg)
                  (A.reg_class reg)
@@ -163,7 +168,7 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
           (Tmpl.compile_out_reg proc reg) ;
         fprintf chan "%smcautious();\n" indent)
       t.Tmpl.final ;
-    begin match Tmpl.memory with
+    begin match O.memory with
     | Memory.Indirect ->
         List.iter
           (fun (reg,v) -> match v with
@@ -191,7 +196,7 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
     ()
 
   let after_dump chan indent proc t =
-    if Tmpl.cautious then begin
+    if O.cautious then begin
       dump_save_copies chan indent proc t
     end
 
@@ -204,7 +209,7 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
         fprintf chan "%s%s %s;\n"
           indent ty (dump_trashed_reg reg))
       trashed ;
-    if Tmpl.cautious then begin
+    if O.cautious then begin
       dump_copies chan indent env proc t
     end
 
@@ -214,10 +219,10 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
     | t::ts ->
         begin match t.Tmpl.label with
         | Some _ ->
-            fprintf chan "\"%c_litmus_P%i_%i\\n\"\n" Tmpl.comment proc k
+            fprintf chan "\"%c_litmus_P%i_%i\\n\"\n" A.comment proc k
         | None ->
             fprintf chan "\"%c_litmus_P%i_%i\\n%s\"\n"
-              Tmpl.comment proc k
+              A.comment proc k
               (if t.Tmpl.comment then "" else "\\t")
         end ;
         fprintf chan "\"%s\\n\"\n" (Tmpl.to_string t) ;
@@ -230,12 +235,12 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
     before_dump chan indent env proc t trashed;
     fprintf chan "asm __volatile__ (\n" ;
     fprintf chan "\"\\n\"\n" ;
-    fprintf chan "\"%cSTART _litmus_P%i\\n\"\n" Tmpl.comment proc ;
+    fprintf chan "\"%s\\n\"\n" (LangUtils.start_comment A.comment proc) ;
     begin match t.Tmpl.code with
     | [] -> fprintf chan "\"\"\n"
     | code -> dump_ins 0 code
     end ;
-    fprintf chan "\"%cEND_litmus\\n\\t\"\n" Tmpl.comment ;
+    fprintf chan "\"%s\\n\\t\"\n" (LangUtils.end_comment A.comment proc) ;
     dump_outputs compile_addr compile_out_reg chan proc t trashed ;
     dump_inputs compile_val chan t trashed ;
     dump_clobbers chan t  ;
@@ -248,7 +253,7 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
       Tmpl.dump_v compile_addr_inline Tmpl.compile_out_reg
       chan indent env proc t
 
-  let compile_val_fun = match Tmpl.memory with
+  let compile_val_fun = match O.memory with
   | Memory.Direct ->
       (fun v -> match v with
       | Constant.Symbolic s -> sprintf "%s" s
@@ -266,7 +271,7 @@ module Make(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
           let ty =
             try List.assoc x globEnv
             with Not_found -> assert false in
-          match Tmpl.memory with
+          match O.memory with
           | Memory.Direct ->  
               sprintf "%s *%s" (RunType.dump ty) x
           | Memory.Indirect -> 

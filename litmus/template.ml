@@ -44,7 +44,7 @@ module type S = sig
 
   type t = {
       init : (arch_reg * Constant.v) list ;
-      addrs : (int * string) list ;
+      addrs : string list ; (* addesses in code (eg X86) *)
       final : arch_reg list ;
       code : ins list;
     }
@@ -58,21 +58,16 @@ module type S = sig
   val clean_reg : string -> string
   val tag_reg : arch_reg -> string
 
-  val comment : char
-  val memory : Memory.t
-  val cautious : bool
 
   val to_string : ins -> string
   val compile_out_reg : int -> arch_reg -> string
   val dump_type : ('a * RunType.t) list -> 'a -> string
 end
 
-module Make(O:Config) (A:I) (V:Constant.S) (* : S
-  with type arch_reg = A.arch_reg *) =
+module Make(O:Config) (A:I) (V:Constant.S) =
 struct
   open Printf
   open Constant
-  open Memory
 
   type arch_reg = A.arch_reg
 
@@ -90,7 +85,7 @@ struct
 
   type t = {
       init : (arch_reg * Constant.v) list ;
-      addrs : (int * string) list ;
+      addrs : string list ;
       final : arch_reg list ;
       code : ins list;
     }
@@ -99,7 +94,7 @@ struct
   let get_addrs { init=init; addrs=addrs; _ } =
     let set =
       StringSet.union
-        (StringSet.of_list (List.map (fun (_,a) -> a) addrs))
+        (StringSet.of_list addrs)
         (StringSet.of_list
            (List.fold_left
               (fun k (_,v) ->
@@ -140,12 +135,12 @@ struct
   let tag_reg_ref reg = sprintf "%%[%s]" (tag_reg reg)
 
   let dump_out_reg proc reg =
-    sprintf "out_%i_%s"
+    OutUtils.fmt_out_reg
       proc
       (clean_reg (A.reg_to_string reg))
 
   let compile_out_reg proc reg =
-    sprintf "%s[_i]" (dump_out_reg proc reg)
+    OutUtils.fmt_index (dump_out_reg proc reg)
 
 
   let get_reg k rs =
@@ -218,17 +213,6 @@ struct
       | Not_found -> "int"
 
 
-  let dump_addr a = match O.memory with
-  | Direct -> sprintf "&_a->%s[_i]" a
-  | Indirect -> sprintf "_a->%s[_i]" a
+  include OutUtils.Make(O)
 
-  let dump_v v = match v with
-  | Concrete i -> sprintf "%i" i
-  | Symbolic a -> dump_addr a
-
-  let addr_cpy_name s p = sprintf "_addr_%s_%i" s p
-
-  let comment = A.comment
-  let memory = O.memory
-  let cautious = O.cautious
 end
