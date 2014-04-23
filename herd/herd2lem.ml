@@ -55,7 +55,9 @@ and lem_of_exp chan = function
       | "po" | "addr" | "data" | "co" -> 
         fprintf chan "X.%s" x
       | "_" -> fprintf chan "(unis X)"
-      | _ -> fprintf chan "(%s X)" x
+      | _ -> 
+        let x = Str.global_replace (Str.regexp_string "-") "_" x in
+        fprintf chan "(%s X)" x
     end 
   | Op1 (op1, e) -> lem_of_op1 chan e op1
   | Op (op2, es) -> lem_of_op2 chan es op2
