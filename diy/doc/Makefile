@@ -436,7 +436,7 @@ DetourWW.png: DetourWW.dot
 	neato -Tpng  $< > $@
 
 %.png: %.dot
-	dot -Tpng -o $@ $<
+	dot -Tpng $< > $@
 
 clean::
 	/bin/rm -f $(PNG)
