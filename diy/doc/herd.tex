@@ -1359,7 +1359,7 @@ In C++ and OpenCL models, the following sets are pre-defined.
 
 \begin{idtable}
 {\tt rmw} & read-modify-writes & the set of all read-modify-write events \\
-{\tt rmw} & blocked read-modify-writes & the set of all events representing a blocked read-modify-write \\
+{\tt brmw} & blocked read-modify-writes & events representing an attempted read-modify-write operation that has become stuck \\
 {\tt F} & fences & the set of all fences \\
 {\tt acq} & acquire & atomic events with ``acquire'' memory-order \\
 {\tt rel} & release & atomic events with ``release'' memory-order \\
