@@ -118,7 +118,7 @@ clean::
 	herd -model minimal -conf doc.cfg -showinitrf true -showlegend true -shortlegend true  -show prop -o . $< > /dev/null
 
 DOTS=classic.dot classic-sc.dot ws-sc.dot iriw-small-caps.dot iriw-internal.dot \
- IRIW.dot 2+2WLocal.dot LB.dot LB-kinds.dot \
+ IRIW.dot 2+2WLocal+DOT.dot LB.dot LB-kinds.dot \
  DetourR.dot DetourW.dot DetourRW.dot DetourWW.dot \
  $(GENDOTS)
 
@@ -441,67 +441,69 @@ DetourWW.png: DetourWW.dot
 clean::
 	/bin/rm -f $(PNG)
 
+SZ=12
+
 IRIW.pstex_t: IRIW.dot
-	sh mkpstex.sh IRIW 22 neato
+	sh mkpstex.sh IRIW $(SZ) neato
 
 LB.pstex_t: LB.dot
-	sh mkpstex.sh LB 22 neato
+	sh mkpstex.sh LB $(SZ) neato
 
 LB+lwsync+addr.pstex_t: LB+lwsync+addr.dot
-	sh mkpstex.sh LB+lwsync+addr 22 neato
+	sh mkpstex.sh LB+lwsync+addr $(SZ) neato
 
 MP+lwsync+addr.pstex_t: MP+lwsync+addr.dot
-	sh mkpstex.sh MP+lwsync+addr 22 neato
+	sh mkpstex.sh MP+lwsync+addr $(SZ) neato
 
 MP+lwsync+addr-po.pstex_t: MP+lwsync+addr-po.dot
-	sh mkpstex.sh MP+lwsync+addr-po 22 neato
+	sh mkpstex.sh MP+lwsync+addr-po $(SZ) neato
 
 MP+lwsync+addr-po001.pstex_t: MP+lwsync+addr-po001.dot
-	sh mkpstex.sh MP+lwsync+addr-po001 22 neato
+	sh mkpstex.sh MP+lwsync+addr-po001 $(SZ) neato
 
 MP+X000.pstex_t: MP+X000.dot
-	sh mkpstex.sh MP+X000 22 neato
+	sh mkpstex.sh MP+X000 $(SZ) neato
 
 MP+X001.pstex_t: MP+X001.dot
-	sh mkpstex.sh MP+X001 22 neato
+	sh mkpstex.sh MP+X001 $(SZ) neato
 
 WRC.pstex_t: WRC.dot
-	sh mkpstex.sh WRC 22 neato
+	sh mkpstex.sh WRC $(SZ) neato
 
 CoRWR.pstex_t: CoRWR.dot
-	sh mkpstex.sh CoRWR 22 neato
+	sh mkpstex.sh CoRWR $(SZ) neato
 
 SB-00.pstex_t: SB-00.dot
-	sh mkpstex.sh SB-00 22 neato
+	sh mkpstex.sh SB-00 $(SZ) neato
 
 SB-01.pstex_t: SB-01.dot
-	sh mkpstex.sh SB-01 22 neato
+	sh mkpstex.sh SB-01 $(SZ) neato
 
 SB-02.pstex_t: SB-02.dot
-	sh mkpstex.sh SB-02 22 neato
+	sh mkpstex.sh SB-02 $(SZ) neato
 
 SB-03.pstex_t: SB-03.dot
-	sh mkpstex.sh SB-03 22 neato
+	sh mkpstex.sh SB-03 $(SZ) neato
 
 6.SB.pstex_t: 6.SB.dot
-	sh mkpstex.sh 6.SB 22 neato
+	sh mkpstex.sh 6.SB $(SZ) neato
 
 DetourR.pstex_t: DetourR.dot
-	sh mkpstex.sh DetourR 22 neato
+	sh mkpstex.sh DetourR $(SZ) neato
 
 DetourW.pstex_t: DetourW.dot
-	sh mkpstex.sh DetourW 22 neato
+	sh mkpstex.sh DetourW $(SZ) neato
 
 
 DetourRW.pstex_t: DetourRW.dot
-	sh mkpstex.sh DetourRW 22 neato
+	sh mkpstex.sh DetourRW $(SZ) neato
 
 DetourWW.pstex_t: DetourWW.dot
-	sh mkpstex.sh DetourWW 22 neato
+	sh mkpstex.sh DetourWW $(SZ) neato
 
 
 %.pstex_t: %.dot
-	sh mkpstex.sh $* 22 dot
+	sh mkpstex.sh $* $(SZ) dot
 
 
 clean::
