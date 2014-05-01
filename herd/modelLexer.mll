@@ -55,10 +55,12 @@ rule token = parse
 | ']'   { RBRAC }
 | '_'   { UNDERSCORE }
 | '0'   { EMPTY }
+| "{}"  { EMPTY_SET }
 | '|'   { UNION }
 | '&'   { INTER }
 | '*'   { STAR }
 | '~'   { COMP }
+| '!'   { NOT }
 | '+'   { PLUS }
 | "^-1" { INV }
 | "-1"  { INV }

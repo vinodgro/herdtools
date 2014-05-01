@@ -37,14 +37,14 @@ let pp () =
 %token <string> VAR
 %token <string> STRING
 %token LPAR RPAR LBRAC RBRAC
-%token EMPTY UNDERSCORE
+%token EMPTY EMPTY_SET UNDERSCORE
 %token WITHCO WITHOUTCO
 /* Access direction */
 %token MM  MR  MW WM WW WR RM RW RR INT EXT NOID
 /* Plain/Atomic */
 %token AA AP PA PP
 %token SEMI UNION INTER COMMA DIFF
-%token STAR PLUS OPT INV COMP
+%token STAR PLUS OPT INV COMP NOT
 %token LET REC SET RLN AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN
 %token REQUIRES PROVIDES
 %token ARROW
@@ -56,7 +56,7 @@ let pp () =
 %right SEMI
 %left DIFF
 %right INTER
-%nonassoc STAR PLUS OPT INV COMP
+%nonassoc STAR PLUS OPT INV COMP NOT
 %%
 
 main:
@@ -100,12 +100,7 @@ commaopt:
 |       { () }
     
 bind:
-| rlnopt VAR EQUAL exp    { ($2,$4) }
-| SET    VAR EQUAL setexp { ($2,$4) }
-
-rlnopt:
-| RLN { () }
-|     { () }
+| VAR EQUAL exp { ($1,$3) }
 
 bind_list:
 | bind { [$1] }
@@ -113,7 +108,7 @@ bind_list:
 
 pat_bind:
 | bind { $1 }
-| rlnopt VAR LPAR formals RPAR EQUAL exp { ($2,Fun ($4,$7)) }
+| VAR LPAR formals RPAR EQUAL exp { ($1,Fun ($3,$6)) }
 
 pat_bind_list:
 | pat_bind { [$1] }
@@ -128,16 +123,6 @@ formalsN:
 | VAR                { [$1] }
 | VAR COMMA formalsN { $1 :: $3 }
 
-setexp:
-| VAR { Var $1 }
-| EMPTY { Konst (Empty SET) }
-| UNDERSCORE { Var "_" }
-| setexp UNION setexp { do_op (Union SET) $1 $3 }
-| setexp DIFF setexp { do_op (Diff SET) $1 $3 }
-| setexp INTER setexp { do_op (Inter SET) $1 $3 }
-| COMP setexp { Op1 (Comp SET, $2) }
-| LPAR setexp RPAR { $2 }
-
 exp:
 | LET pat_bind_list IN exp { Bind ($2,$4) }
 | LET REC bind_list IN exp { BindRec ($3,$5) }
@@ -146,19 +131,22 @@ exp:
 
 base:
 | EMPTY { Konst (Empty RLN) }
+| EMPTY_SET { Konst (Empty SET) }
+| UNDERSCORE { Var "_" }
 | select LPAR exp RPAR { Op1 ($1,$3) }
 |  exp0 { $1 }
-| LBRAC setexp STAR setexp RBRAC {Op (Cartesian, [$2; $4])}
-| LBRAC setexp RBRAC {Op1(Set_to_rln,$2)}
+| base STAR base {Op (Cartesian, [$1; $3])}
+| LBRAC exp RBRAC {Op1(Set_to_rln,$2)}
 | base STAR { Op1(Star,$1) }
 | base PLUS { Op1(Plus,$1) }
 | base OPT { Op1(Opt,$1) }
 | base INV { Op1(Inv,$1) }
 | base SEMI base { do_op Seq $1 $3 }
-| base UNION base { do_op (Union RLN) $1 $3 }
-| base DIFF base { do_op (Diff RLN) $1 $3 }
+| base UNION base { do_op (Union) $1 $3 }
+| base DIFF base { do_op (Diff) $1 $3 }
 | COMP base { Op1 (Comp RLN, $2) }
-| base INTER base { do_op (Inter RLN) $1 $3 }
+| NOT base { Op1 (Comp SET, $2) }
+| base INTER base { do_op (Inter) $1 $3 }
 | LPAR exp RPAR { $2 }
 
 exp0:

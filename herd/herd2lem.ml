@@ -13,24 +13,14 @@ let rec fprintf_list_infix s f chan = function
     fprintf chan "(%a %s %a)" 
       f x s (fprintf_list_infix s f) xs
 
-let rec fprintf_list_infix' s s' f chan = function
-  | [] -> ()
-  | [x] -> fprintf chan "%a" f x
-  | x::xs -> 
-    fprintf chan "(%a %s (%s %a))" 
-      f x s s' (fprintf_list_infix' s s' f) xs
-
-
 let lem_of_konst chan = function
   | Empty SET -> fprintf chan "emps"
   | Empty RLN -> fprintf chan "empr"
 
 let rec lem_of_op2 chan es = function
-  | Union _ -> fprintf_list_infix "union" lem_of_exp chan es
-  | Inter SET -> fprintf_list_infix "inter" lem_of_exp chan es 
-  | Inter RLN -> fprintf_list_infix "inter" lem_of_exp chan es 
-  | Diff SET -> fprintf_list_infix' "inter" "comps X" lem_of_exp chan es
-  | Diff RLN -> fprintf_list_infix' "inter" "compr X" lem_of_exp chan es
+  | Union -> fprintf_list_infix "union" lem_of_exp chan es
+  | Inter -> fprintf_list_infix "inter" lem_of_exp chan es
+  | Diff -> fprintf_list_infix "\\" lem_of_exp chan es
   | Seq -> fprintf_list "seq" lem_of_exp chan es
   | Cartesian -> fprintf_list "cross" lem_of_exp chan es
 

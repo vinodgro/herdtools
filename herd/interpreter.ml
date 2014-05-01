@@ -164,8 +164,9 @@ module Make
                 "Expected a set or a relation, found a closure"
             | Set v -> begin match op with
                 | Set_to_rln -> Rel (E.EventRel.set_to_rln v)
-                | Comp _ -> 
+                | Comp SET -> 
                   Set (E.EventSet.diff (eval_set env (Var "_")) v)
+                | Comp RLN -> assert false
                 | _ -> 
                   Warn.user_error "Expected a relation, found a set"
               end
@@ -182,8 +183,9 @@ module Make
                  | Plus -> S.tr v
                  | Star -> S.union (S.tr v) id
                  | Opt -> S.union v id
-                 | Comp _ -> 
+                 | Comp RLN -> 
                    E.EventRel.diff (eval_rel env (Var "unv")) v
+                 | Comp SET -> assert false
                  | Select (s1,s2) ->
                    let f1 = is_dir s1 and f2 = is_dir s2 in
                    S.restrict f1 f2 v
@@ -196,15 +198,15 @@ module Make
 	      if List.for_all is_rel vs then begin
 		let vs = List.map as_rel vs in
 		let v = match op with
-		  | Union _ -> S.unions vs
+		  | Union -> S.unions vs
 		  | Seq -> S.seqs vs
-		  | Diff _ ->
+		  | Diff ->
                      begin match vs with
 		     | [] -> assert false
 		     | v::vs ->
 			List.fold_left E.EventRel.diff v vs
                      end
-		  | Inter _ ->
+		  | Inter ->
                      begin match vs with
 		     | [] -> assert false
                      | v::vs ->
@@ -215,15 +217,15 @@ module Make
 	      end else if List.for_all is_set vs then begin
 		let vs = List.map as_set vs in
 		match op with
-		  | Union _ -> Set (E.EventSet.unions vs)
+		  | Union -> Set (E.EventSet.unions vs)
 		  | Seq -> assert false
-		  | Diff _ ->
+		  | Diff ->
                      begin match vs with
 		     | [] -> assert false
 		     | v::vs ->
 			Set (List.fold_left E.EventSet.diff v vs)
                      end
-		  | Inter _ ->
+		  | Inter ->
                      begin match vs with
 		     | [] -> assert false
                      | v::vs ->

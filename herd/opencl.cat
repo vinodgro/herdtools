@@ -1,7 +1,7 @@
 "OpenCL"
 
-let set cacq = acq | sc
-let set crel = rel | sc
+let cacq = acq | sc
+let crel = rel | sc
 
 let dd = data | addr
 
@@ -9,19 +9,19 @@ let pp_asw = asw \ (asw;po)
 let pol = po & loc
 let com = rf | fr | co
 
-let set gtewi  = wi | wg | dev | all_dev
-let set gtewg  = wg | dev | all_dev
-let set gtedev = dev | all_dev
-let dwi_scope  = [gtewi * gtewi]
-let dwg_scope  = [gtewg * gtewg]
-let ddev_scope = [gtedev * gtedev]
-let dall_scope = [all_dev * all_dev]
+let gtewi  = wi | wg | dev | all_dev
+let gtewg  = wg | dev | all_dev
+let gtedev = dev | all_dev
+let dwi_scope  = gtewi * gtewi
+let dwg_scope  = gtewg * gtewg
+let ddev_scope = gtedev * gtedev
+let dall_scope = all_dev * all_dev
 let inclusive_scopes = int (dwi_scope)     | (int-wg & dwg_scope) |
                        (int-dev & ddev_scope) | dall_scope
 
 let gidf = (po; [gF])?
 let gfid = ([gF]; po)?
-let grs = [crel]; gfid; [A & W & global_loc]; (((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co))?
+let grs = [crel]; gfid; [A & W & global_loc]; (((co ; [rmw]) | coi) & ~(coe ; [!rmw] ; co))?
 let gswra = inclusive_scopes & ext (grs; rf; [A]; gidf; [cacq])
 let gsw = pp_asw | gswra
 let ghb = (po | gsw)+
@@ -32,7 +32,7 @@ provides acyclic (ghbl | com) as ghbuniproc
 
 let lidf = (po; [lF])?
 let lfid = ([lF]; po)?
-let lrs = [crel]; lfid; [A & W & local_loc]; (((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co))?
+let lrs = [crel]; lfid; [A & W & local_loc]; (((co ; [rmw]) | coi) & ~(coe ; [!rmw] ; co))?
 let lswra = inclusive_scopes & ext (lrs; rf; [A]; lidf; [cacq])
 let lsw = pp_asw | lswra
 let lhb = (po | lsw)+
@@ -67,13 +67,13 @@ provides acyclic sc as scConsistent
 show sc
 
 let glhb = ghb | lhb
-let dr = ext ([W * _] | [_ * W]) &
+let dr = ext ((W * _) | (_ * W)) &
          loc & 
-         (~[A * A]) &
+         (~(A * A)) &
          ~glhb & ~(glhb^-1) &
          ~inclusive_scopes
 
-let ur = int ([W * M] | [M * W]) &
+let ur = int ((W * M) | (M * W)) &
          loc &
          ~[_] &
          ~po & ~(po^-1)

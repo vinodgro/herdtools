@@ -46,8 +46,8 @@
 *)
 
 (* SC atomics have acquire and release semantics. *)
-let set cacq = acq | sc
-let set crel = rel | sc
+let cacq = acq | sc
+let crel = rel | sc
 
 
 (* MB: What exactly are these reations? *)
@@ -95,19 +95,19 @@ let fid = ([F]; po)?
 
 (*C: release_acquire_fenced_synchronizes_with, hypothetical_release_sequence_set, release_sequence_set *)
 
-(* jade: in the second bit, maybe we also want to say: co ; [~rmw] ;
+(* jade: in the second bit, maybe we also want to say: co ; [!rmw] ;
    coe? to not impose that the first one only is a coe. in any case i
    think we need an external def for non intervening writes
 
    MB: I'm not sure follow you. Is this what you are suggesting:
 
-let rsco = ((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co & ~(co ; [~rmw] ; coe)
+let rsco = ((co ; [rmw]) | coi) & ~(coe ; [!rmw] ; co & ~(co ; [!rmw] ; coe)
 
 jade: almost. morally i want to write:
 
 let niw s = ~(coe; s ;co | co; s ;coe) (*no intervening write belonging to the
 set s*)
-let rsco = (co ; [rmw] | coi) & (niw [~rmw]) 
+let rsco = (co ; [rmw] | coi) & (niw [!rmw]) 
 
    MB: The "co; s ;coe" case is intentionally absent. This definition
    looks strange because it's the extension of "co successors" to rmws on
@@ -116,7 +116,7 @@ let rsco = (co ; [rmw] | coi) & (niw [~rmw])
 *)
 
 
-let rs = [crel]; fid; [A & W]; (((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co))?
+let rs = [crel]; fid; [A & W]; (((co ; [rmw]) | coi) & ~(coe ; [!rmw] ; co))?
 let swra = ext (rs; rf; [A]; idf; [cacq])
 let swul = ext ([ul]; lo; [lk])
 let pp_asw = asw \ (asw;po)
@@ -439,9 +439,9 @@ provides irreflexive mv as consistentLo
 
 
 (* C: data_races *)
-let dr = ext([W * _] | [_ * W]) &
+let dr = ext((W * _) | (_ * W)) &
          loc & 
-         (~[A * A]) &
+         (~(A * A)) &
          ~hb & ~(hb^-1)
 
 (* C: unsequenced_races
@@ -450,7 +450,7 @@ let dr = ext([W * _] | [_ * W]) &
    avoid that in Herd, so in the proofs of equivalence, we will need
    to assume the existance of a good location-kind map.
 *)
-let ur = int([W * M] | [M * W]) &
+let ur = int((W * M) | (M * W)) &
          loc &
          ~[_] &
          ~(po+) & ~((po+)^-1)

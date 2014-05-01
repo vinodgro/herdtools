@@ -21,10 +21,10 @@ type direction =
   | Unv_Set (** universal set *)
   | Bar_Set (** set of barriers *)
 type op2 = 
-  | Union of set_or_rln (** applies to sets or relations *)
-  | Inter of set_or_rln (** applies to sets or relations *) 
-  | Diff of set_or_rln (** applies to sets or relations *)
-  | Seq (** sequential composition of relations *) 
+  | Union (** applies to sets or relations *)
+  | Inter (** applies to sets or relations *) 
+  | Diff  (** applies to sets or relations *)
+  | Seq   (** sequential composition of relations *) 
   | Cartesian (** build a relation from two sets *)
 type op1 =
   | Plus | Star | Opt  | Select of direction * direction
