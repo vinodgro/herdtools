@@ -288,9 +288,13 @@ end = struct
 
   module Make'
       (O:Config)
-      (A:sig val comment : char end)
-      (L:CGenParser.LexParse) =
+      (A:sig val comment : char end) =
     struct
+      module L = struct
+        type token = CParser.token
+        let lexer = CLexer.main
+        let parser = CParser.main
+      end
       module A' = struct
         module V =
           struct
@@ -492,12 +496,7 @@ end = struct
               | `X86 -> X86Arch.comment
               | `ARM -> ARMArch.comment
             end in
-            let module LexParse = struct
-              type token = CParser.token
-              let lexer = CLexer.main
-              let parser = CParser.main
-            end in
-            let module X = Make'(Cfg)(Arch')(LexParse) in
+            let module X = Make'(Cfg)(Arch') in
             X.compile cycles hash_env
               name in_chan out_chan splitted
       in
