@@ -46,7 +46,7 @@ let pp () =
 %token SEMI UNION INTER COMMA DIFF
 %token STAR PLUS OPT INV COMP NOT
 %token LET REC SET RLN AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN
-%token REQUIRES PROVIDES
+%token REQUIRES
 %token ARROW
 %type <AST.t> main
 %start main
@@ -75,16 +75,18 @@ ins_list:
 ins:
 | LET pat_bind_list { Let $2 }
 | LET REC bind_list { Rec $3 }
-| test_type test exp AS VAR { Test(pp (),$2,$3,Some $5,$1) }
-| test_type test exp  { Test(pp (),$2,$3,None,$1) }
+| test_type test exp optional_name { Test(pp (),$2,$3,$4,$1) }
 | SHOW exp AS VAR { ShowAs ($2, $4) }
 | SHOW var_list { Show $2 }
 | UNSHOW var_list { UnShow $2 }
 
 test_type:
 |          { Provides }
-| PROVIDES { Provides }
 | REQUIRES { Requires }
+
+optional_name:
+|        { None }
+| AS VAR { Some $2 }
 
 test:
 | ACYCLIC { Acyclic }

@@ -52,8 +52,7 @@ copy the following into your ~/.emacs file.
 (font-lock-add-keywords 'cat-mode '(
   ("unshow"   . tuareg-font-lock-governing-face)
   ("show"   . tuareg-font-lock-governing-face)
-  ("provides" . tuareg-font-lock-governing-face)
-  ("requires" . tuareg-font-lock-governing-face)
+  ("undefined_unless" . tuareg-font-lock-governing-face)
   ("rln" . font-lock-keyword-face)
   ("set" . font-lock-keyword-face)
   ("acyclic" . font-lock-builtin-face)

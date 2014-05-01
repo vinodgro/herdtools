@@ -1273,21 +1273,21 @@ Models can now define expressions over sets, and also bind identifiers to sets. 
 
 The last five constructions are new. We write \synt{\T{\{\}}} for the empty set (in contrast to \synt{\T{0}} for the empty relation), \synt{\T{\_}} for the universal set of all events in the event structure, \synt{\T{\textasciitilde}} for the complement of a relation, and \synt{\T{!}} for the complement of a set. If $s$ and $t$ represent sets, then \synt{\text{$s$} \T{*} \text{$t$}} builds their cross product. We also provide \synt{\T{[} \text{$s$} \T{]}}, which denotes the relation that links each element of $s$ to itself.
 
-\subsection{Provided conditions and required conditions}
+\subsection{Provided conditions and undefined-unless conditions}
 
 \begin{quote}\it
 This is an appendix to Section~\ref{language:instruction}.
 \end{quote}
 
-A test-instruction is used to enforce a contract between the programming language and the programmer. There are two types: \emph{provided conditions} and \emph{required conditions}. The \synt{\T{provides}} keyword can be omitted, since provided conditions are the default. A provided condition is an obligation on the programming language; that is, the programmer can assume that every execution of their program will satisfy every provided condition. A required condition is an obligation on the programmer; that is, the compiler-writer can assume that every execution of the program will satisfy every required condition. In other words, if a program has an execution that violates a required condition, then its behaviour is completely undefined.
+A test-instruction is used to enforce a contract between the programming language and the programmer. There are two types: \emph{provided conditions} and \emph{undefined-unless conditions}. The latter are indicated with the \synt{\T{undefined\_unless}} keyword. A provided condition is an obligation on the programming language; that is, the programmer can assume that every execution of their program will satisfy every provided condition. An undefined-unless condition is an obligation on the programmer; that is, the compiler-writer can assume that every execution of the program will satisfy every undefined-unless condition. In other words, if a program has an execution that violates an undefined-unless condition, then its behaviour is completely undefined.
 
 The syntax for instructions thus becomes:
 
 \begin{syntax}
 \NT{instruction} \is{} \T{let} \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{}
 \alt \T{let} \T{rec} \NT{valbinding} \brepet{} \T{and} \NT{valbinding} \erepet{}
-\alt \boption \T{provides} \eoption \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption
-\alt \T{requires} \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption
+\alt \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption
+\alt \T{undefined\_unless} \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption
 \alt \T{show} \NT{expr} \T{as} \NT{id}
 \alt \T{show} \NT{id} \brepet \boption \T{,} \eoption \NT{id} \erepet
 \alt \T{unshow} \NT{id} \brepet \boption \T{,} \eoption \NT{id} \erepet

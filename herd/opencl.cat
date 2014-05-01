@@ -27,8 +27,8 @@ let gsw = pp_asw | gswra
 let ghb = (po | gsw)+
 let ghbl = ghb & loc
 let gvse = [W];ghbl;[R] & ~(ghbl; [W]; ghbl)
-provides acyclic ghb as ghbAcyclic
-provides acyclic (ghbl | com) as ghbuniproc
+acyclic ghb as ghbAcyclic
+acyclic (ghbl | com) as ghbuniproc
 
 let lidf = (po; [lF])?
 let lfid = ([lF]; po)?
@@ -38,16 +38,16 @@ let lsw = pp_asw | lswra
 let lhb = (po | lsw)+
 let lhbl = lhb & loc
 let lvse = [W];lhbl;[R] & ~(lhbl; [W]; lhbl)
-provides acyclic lhb as lhbAcyclic
-provides acyclic (lhbl | com) as lhbuniproc
+acyclic lhb as lhbAcyclic
+acyclic (lhbl | com) as lhbuniproc
 
 let narf = rf; [na]
 let narfvse = narf;~((gvse | lvse)^-1)
-provides irreflexive narfvse as nonAtomicRfConsistent
+irreflexive narfvse as nonAtomicRfConsistent
 
 let arf = rf; [A]
 let hbarf = (ghb | lhb);arf
-provides irreflexive hbarf as atomicRfConsistent
+irreflexive hbarf as atomicRfConsistent
 
 (* There's no restriction to local or global here. Is that right? *)
 let idf = (po; [F])?
@@ -63,7 +63,7 @@ let scfr = ~[_] &
 let scghb = [sc]; ghb; [sc]
 let sclhb = [sc]; lhb; [sc]
 let sc = scghb | sclhb | scco | scfr
-provides acyclic sc as scConsistent
+acyclic sc as scConsistent
 show sc
 
 let glhb = ghb | lhb
@@ -80,6 +80,6 @@ let ur = int ((W * M) | (M * W)) &
 
 show dr
 show ur
-requires empty dr as dataRace 
-requires empty ur as unsequencedRace 
+undefined_unless empty dr as dataRace 
+undefined_unless empty ur as unsequencedRace 
 

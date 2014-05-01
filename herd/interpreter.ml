@@ -349,7 +349,7 @@ module Make
 	   begin
 	     let pp = String.sub pp pos.pos pos.len in
 	     Warn.user_error 
-	       "A provides-clause must not come after a requires-clause. Culprit: '%s'." pp
+	       "A provided condition must not come after an `undefined_unless' condition. Culprit: '%s'." pp
 	   end;
          (* If this is a requires-clause, record the fact that
             we have now seen at least one requires-clause. *)

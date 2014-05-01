@@ -143,7 +143,7 @@ let ithb = (ithbr | po;ithbr)+
 let hb = po | ithb
 show sw
 show dob
-provides acyclic hb as hbAcyclic
+acyclic hb as hbAcyclic
 
 
 
@@ -161,11 +161,11 @@ let cowr = fr;hbl
 let coww = co;hbl
 
 
-provides irreflexive (corr | cowr | corw | coww) as coherence
+irreflexive (corr | cowr | corw | coww) as coherence
 
 let rmwv = rf;[rmw] | (co;fr) | (co;rf)
 
-provides irreflexive rmwv as rmwAtomicity
+irreflexive rmwv as rmwAtomicity
 
 
 
@@ -176,18 +176,18 @@ let com = rf | (~[_] & fr) | co
 
 (* START *)
 (*
-provides irreflexive rfe;hb as thinAirLike
+irreflexive rfe;hb as thinAirLike
 
 let prop = rf*;hb
-provides acyclic co|prop as propagation
+acyclic co|prop as propagation
 
-provides irreflexive fre;prop as causality
+irreflexive fre;prop as causality
 
-provides acyclic (pol | com) as uniproc
+acyclic (pol | com) as uniproc
 *)
 (* Question: Is the model with the restrictions from START above the
    same as the model with the following hbuniproc? *)
-(*provides acyclic (hbl | com) as hbuniproc*)
+(*acyclic (hbl | com) as hbuniproc*)
 
 
 
@@ -299,7 +299,7 @@ let vse = [W];hbl;[R] & ~(hbl; [W]; hbl)
 (* C: consistent_non_atomic_rf -- must read from vse: *)
 let narf = rf; [nonatomicloc]
 let narfvse = narf;~(vse^-1)
-provides irreflexive narfvse as nonAtomicRfConsistent
+irreflexive narfvse as nonAtomicRfConsistent
 
 
 (* The following might be the same as consistent reads from mapping:
@@ -323,7 +323,7 @@ acyclic GHB
 (* C: consistent_atomic_rf -- acyclicity of hb union rf for atomic reads: *)
 let arf = rf; [atomicloc]
 let hbarf = hb;arf
-provides irreflexive hbarf as atomicRfConsistent
+irreflexive hbarf as atomicRfConsistent
 (*jade: arf and hbarf are funky names =)*)
 
 
@@ -425,17 +425,17 @@ let schb = [sc]; hb; [sc]
    should think about simplifications of this...
 *)
 let scp = schb | scco | scfr
-provides acyclic scp as scConsistent
+acyclic scp as scConsistent
 show scp
 
 
 
 (* C: locks_only_consistent_lo *)
-provides irreflexive lo;hb as hbAgreesLo
+irreflexive lo;hb as hbAgreesLo
 
 (* C: locks_only_consistent_locks *)
 let mv = [ls]; lo^-1; [ls]; ~(lo; [ul]; lo)
-provides irreflexive mv as consistentLo
+irreflexive mv as consistentLo
 
 
 (* C: data_races *)
@@ -471,7 +471,7 @@ show dr
 show ur
 show bl
 
-requires empty dr as dataRace 
-requires empty ur as unsequencedRace 
-requires empty bl as badLock
-requires empty lu as badUnlock
+undefined_unless empty dr as dataRace 
+undefined_unless empty ur as unsequencedRace 
+undefined_unless empty bl as badLock
+undefined_unless empty lu as badUnlock
