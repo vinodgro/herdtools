@@ -82,9 +82,11 @@ module Make(C:Config) = struct
   let dump_call chan indent env globEnv envVolatile proc t =
     let global_args =
       List.map
-        (fun x ->
-          let _ty,x = dump_global_def globEnv envVolatile x in
-          sprintf "&_a->%s[_i]" x)
+        (fun x -> match C.memory with
+        | Memory.Direct ->
+          sprintf "&_a->%s[_i]" x
+        | Memory.Indirect ->
+          sprintf "_a->%s[_i]" x)
         t.CTarget.inputs
     and out_args =
       List.map
