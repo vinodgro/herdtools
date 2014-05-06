@@ -72,11 +72,11 @@ instr_option :
 | instr      { Instruction $1}
 
 instr:
-  | ST prefix ins_type cop LBRAC reg RBRAC COMMA reg
-    { Pst ($6, $9, $2, $4, $3) }
+  | ST prefix cop ins_type LBRAC reg RBRAC COMMA reg
+    { Pst ($6, $9, $2, $3, $4) }
 
-  | LD prefix ins_type cop reg COMMA LBRAC reg RBRAC
-    { Pld ($5, $8, $2, $4, $3) }
+  | LD prefix cop ins_type reg COMMA LBRAC reg RBRAC
+    { Pld ($5, $8, $2, $3, $4) }
 
   | ST VOL prefix ins_type LBRAC reg RBRAC COMMA reg
     { Pstvol ($6, $9, $3, $4) }

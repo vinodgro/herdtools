@@ -13,7 +13,7 @@ GPU_PTX MP
 
  P0                     | P1                      ;
  mov.s32 r1,1           | ld.shared.s32 r1,[r2]   ;
- st.s32.wt [r2],r1      |                         ;
+ st.wt.s32 [r2],r1      |                         ;
                         | ld.volatile.s32 r3,[r4] ;
  mov.s32 r3,1           |                         ;
  st.shared.s32 [r4],r3  |                         ; 
