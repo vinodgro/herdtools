@@ -154,8 +154,8 @@ module Top (C:Config) = struct
         let module CPP11 = CPP11Arch.Make(C.PC)(SymbValue) in
         let module CPP11LexParse = struct
     	  type instruction = CPP11.pseudo
-	  type token = CPP11Parser.token
           module Lexer = CPP11Lexer.Make(LexConfig)
+          type token = CPP11Parser.token
 	  let lexer = Lexer.token
 	  let parser = CPP11Parser.main
         end in
@@ -166,8 +166,41 @@ module Top (C:Config) = struct
           let a_to_b _ = ()
         end in
         let module CPP11M = CPP11Mem.Make(ModelConfig)(CPP11S) (CPP11Barrier) in
-        let module X = Make (CPP11S) (CPP11LexParse) (CPP11M) in 
-        X.run name chan env splitted
+        let module A = CPP11S.A in
+        let module Pseudo = struct
+          type code = CAst.t
+          let dump_prog cfun =
+            let f = function
+              | CAst.Test { CAst.params; body; proc = i } ->
+                let params = "Blah" in
+                Printf.sprintf "static void P%i(%s) {%s}\n" i params body
+              | CAst.Global x -> Printf.sprintf "{%s}\n\n" x
+            in
+            [f cfun]
+            
+          let dump_prog_lines prog =
+            let pp = List.map dump_prog prog in
+            let pp = List.concat pp in
+            List.map (Printf.sprintf "%s\n") pp
+              
+          let print_prog chan prog =
+            let pp = dump_prog_lines prog in
+            List.iter (Printf.fprintf chan "%s") pp
+        end in
+        let module P = CGenParser.Make(C)(Pseudo)(A)(CPP11LexParse) in
+        let module T = CTest.Make(A) in
+        let filename = name in
+        try
+          let parsed = P.parse chan splitted in
+          let name = splitted.Splitter.name in
+          let hash = MiscParser.get_hash parsed in
+          let env =
+            TestHash.check_env env name.Name.name filename hash in
+          let test = T.build name parsed in
+          let module T = Top.Make(C)(M) in
+          T.run test ;
+          env
+        with TestHash.Seen -> env
 
       | Archs.OpenCL ->
         let module OpenCL = OpenCLArch.Make(C.PC)(SymbValue) in

@@ -18,7 +18,7 @@ module Make (C:Sem.Config)(V:Value.S)
 
     module CPP11 = CPP11Arch.Make(C.PC)(V)
     module Act = CPP11Action.Make(CPP11)
-    include SemExtra.Make(C)(CPP11)(Act)
+    include CSemExtra.Make(C)(CPP11)(Act)
     let barriers = []
     let isync = None
 

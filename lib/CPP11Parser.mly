@@ -21,7 +21,8 @@ open CPP11
 %token LD ST FENCE LOCK UNLOCK SCAS WCAS
 
 %type <LocationKindMap.lk_map> lk_map
-%type <int list * (CPP11Base.pseudo) list list * MiscParser.gpu_data option> main 
+/* %type <int list * (CPP11Base.pseudo) list list * MiscParser.gpu_data option> main */
+%type <CAst.t list * MiscParser.gpu_data option> main
 %start  main
 
 %nonassoc SEMI
@@ -29,11 +30,17 @@ open CPP11
 
 main:
 | semi_opt proc_list iol_list lk_map EOF
+    {[], None}
+
+/*
+main:
+| semi_opt proc_list iol_list lk_map EOF
     {let gpu = { MiscParser.empty_gpu with MiscParser.lk_map=$4 } in
      $2,$3,Some gpu }
 | semi_opt proc_list lk_map EOF
     { let gpu = { MiscParser.empty_gpu with MiscParser.lk_map=$3 } in     
       $2,[],Some gpu }
+*/
 
 semi_opt:
 |      { () }
