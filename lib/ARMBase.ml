@@ -392,7 +392,7 @@ let get_next = function
   | I_B lbl -> [Label.To lbl]
   | I_BEQ lbl|I_BNE lbl|I_CB (_,_,lbl) -> [Label.Next; Label.To lbl]
 
-include Pseudo.Make
+include MachPseudo.Make
     (struct
       type ins = instruction
       type reg_arg = reg

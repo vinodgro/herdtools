@@ -76,9 +76,10 @@ type ('loc,'v,'code) r4 =
        'loc) result
 
 (* Result of generic parsing *)
-type 'pseudo t =
-    (state, (int * 'pseudo list) list, constr, location) result
-
+(* type 'pseudo t =
+    (state, (int * 'pseudo list) list, constr, location) result *)
+type 'code t =
+    (state, 'code list, constr, location) result
 
 (* Extract hash *)
 val get_hash :  ('i, 'p, 'c, 'loc) result -> string

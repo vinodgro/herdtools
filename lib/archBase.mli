@@ -79,9 +79,12 @@ module type S = sig
 
   include Pseudo.S with type ins = instruction and type reg_arg = reg
 
+  module SymbReg : (SymbReg.S)
+
+  module Loader : (Loader.S with type nice_prog = SymbReg.code list)
+
   val get_macro :
       string ->
         (reg list -> pseudo list -> pseudo list)  
-  
-end
 
+end

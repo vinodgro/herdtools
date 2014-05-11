@@ -20,7 +20,6 @@ end
 
 module type S =
   sig
-
     include ArchBase.S
 
     module V : Value.S
@@ -28,5 +27,5 @@ module type S =
     include ArchExtra.S with module I.V = V
     and type I.arch_reg = reg
     and type I.arch_instruction = instruction
-   end
+ end
       

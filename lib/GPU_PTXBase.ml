@@ -167,7 +167,7 @@ type instruction =
 | Pcvt of reg*reg*op_type*op_type
 | Pmembar of bar_scope
 
-include Pseudo.Make
+include MachPseudo.Make
     (struct
       type ins = instruction
       type reg_arg = reg

@@ -114,7 +114,7 @@ type instruction =
 | Punlock of loc
 | Pfence  of mem_order
 
-include Pseudo.Make
+include MachPseudo.Make
     (struct
       type ins = instruction
       type reg_arg = reg

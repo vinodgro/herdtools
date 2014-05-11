@@ -54,16 +54,17 @@ end
 (* input signature, a lexer and a parser for a given architecture *)
 module type LexParse = sig
   type token
-  type instruction
 
   val lexer : Lexing.lexbuf -> token
   val parser :
         (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
-	  int list * instruction list list * MiscParser.gpu_data option
+	  CAst.t list * MiscParser.gpu_data option
 end
+
 
 (* Output signature *)
 module type S = sig
+(*
   type pseudo
   type init = MiscParser.state
   type prog = (int * pseudo list) list
@@ -73,15 +74,20 @@ module type S = sig
   val parse_prog : Lexing.lexbuf -> prog
   val parse_cond : Lexing.lexbuf -> MiscParser.constr
 
-  val parse : in_channel -> Splitter.result ->  (int * pseudo list) MiscParser.t
+  val parse : in_channel -> Splitter.result ->  pseudo MiscParser.t
+*)
+  val parse : in_channel -> Splitter.result ->
+    (MiscParser.state, CAst.t list,
+     MiscParser.constr, MiscParser.location) MiscParser.result
+
 end
 
 
 module Make
     (O:Config)
+    (P:PseudoAbstract.S with type code = CAst.t)
     (A:ArchBase.S)
-    (L: LexParse
-    with type instruction = A.pseudo) : S with type pseudo = A.pseudo =
+    (L:LexParse) : S =
   struct
     type pseudo = A.pseudo
     type init = MiscParser.state
@@ -107,12 +113,19 @@ module Make
 (* Various basic checks *)
 (************************)
 
-let check_procs procs =
+let check_procs prog =
+  let procs =
+    List.fold_left
+      (fun acc -> function CAst.Test cfun -> acc @ [cfun.CAst.proc] | CAst.Global _ -> acc)
+      []
+      prog
+  in
   Misc.iteri
     (fun k p ->
-      if k <> p then
+      if not (Misc.int_eq k p) then
         Warn.fatal "Processes must be P0, P1, ...")
-    procs
+    procs ;
+  procs
 
 let check_loc procs loc = match loc with
 | MiscParser.Location_reg (p,_) ->
@@ -135,14 +148,14 @@ let check_regs procs init locs final =
 (* Macro expansion *)  
 (*******************)
 
-    let rec expn (* = function
+    let rec expn  = function
       | [] -> []
       | A.Macro (name,regs)::k ->
           let f =
             try A.get_macro name
             with Not_found -> Warn.fatal "macro not found: %s" name in
           f regs (expn k)
-      | i::k -> i::expn k *) k = k
+      | i::k -> i::expn k
 
     let expn_prog =
       Label.reset () ;
@@ -170,6 +183,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
     module SL = StateLexer.Make (LexConfig)
 (*  module STL = ScopeTreeLexer.Make (LexConfig) *)
 
+(*
     let parse_init lexbuf =
       call_parser "init" lexbuf SL.token StateParser.init
 
@@ -177,9 +191,10 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let procs,prog,_ = 
         call_parser "prog" lexbuf L.lexer L.parser in
       check_procs procs ;
-      let prog = transpose procs prog in
-      let prog = expn_prog prog in
+      (* let prog = transpose procs prog in
+      let prog = expn_prog prog in *)
       prog
+*)
 
     let parse_cond lexbuf =
       let cond =  call_parser "cond" lexbuf
@@ -190,7 +205,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let lexbuf = LU.from_section loc chan in
       call_parser name lexbuf
 
-    module D = TestHash.Make(A)
+    module D = CTestHash.Make(P)(A)
 
     let parse chan
         {
@@ -201,11 +216,9 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let init =
 	call_parser_loc "init"
 	  chan init_loc SL.token StateParser.init in
-      let procs,prog,gpu_data =
+      let prog,gpu_data =
 	call_parser_loc "prog" chan prog_loc L.lexer L.parser in
-      check_procs procs ;
-      let prog = transpose procs prog in
-      let prog = expn_prog prog in
+      let procs = check_procs prog in
       let (locs,final,_quantifiers) =
 	call_parser_loc "final"
 	  chan constr_loc SL.token StateParser.constraints in
@@ -214,7 +227,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
         MiscParser.LocSet.union
           (MiscParser.LocSet.of_list (List.map fst locs))
           (get_locs final) in
-      let parsed : (int * pseudo list) MiscParser.t =
+      let parsed =
         {
          MiscParser.info; init; prog = prog;
          condition = final; 
@@ -222,21 +235,21 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
          gpu_data;
        } in
       let name  = name.Name.name in
-      let parsed : (int * pseudo list) MiscParser.t =
+      let parsed =
         match O.check_cond name  with
         | None -> parsed
         | Some k ->
             let cond = parse_cond (Lexing.from_string k) in
             { parsed with
               MiscParser.condition = cond ;} in
-      let parsed : (int * pseudo list) MiscParser.t =
+      let parsed =
         match O.check_kind name  with
         | None -> parsed
         | Some k ->
             { parsed with
               MiscParser.condition =
               ConstrGen.set_kind k parsed.MiscParser.condition; } in
-      let parsed : (int * pseudo list) MiscParser.t =
+      let parsed =
         let info = parsed.MiscParser.info in
         { parsed with
           MiscParser.info =

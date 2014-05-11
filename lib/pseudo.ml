@@ -16,11 +16,11 @@ module type S = sig
   type ins
   type reg_arg
 
-  type pseudo =
+  type pseudo (* =
     | Nop
     | Label of string * pseudo
     | Instruction of ins
-    | Macro of string * reg_arg list
+    | Macro of string * reg_arg list *)
 
 (* Lifting of fold/map *)
   val pseudo_map : (ins -> ins) -> pseudo -> pseudo
@@ -50,6 +50,7 @@ module type I = sig
   val map_labels : (string -> string) -> ins -> ins
 end
 
+(*
 (* Common to all arch, memevents and  litmus *)
 
 module Make
@@ -103,3 +104,4 @@ struct
          (fun k ins -> k + I.get_naccesses ins))
       0 code
 end
+*)

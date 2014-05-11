@@ -21,6 +21,7 @@ module type S = sig
   val load : nice_prog -> program * start_points
 end
 
+(*
 module Make(A:Arch.S) : S
 with type nice_prog = A.nice_prog
 and type program = A.program
@@ -49,7 +50,7 @@ and type start_points = A.start_points =
 	  Warn.user_error
 	    "Label %s occurs more that once" lbl ;
 	A.LabelMap.add lbl start mem,start
-    | A.Macro (_,_) -> assert false
+    | A.Macro (_,_) -> assert false 
 
     let rec load = function
     | [] -> A.LabelMap.empty,[]
@@ -57,6 +58,7 @@ and type start_points = A.start_points =
 	let addr = 1000 * (proc+1) in
 	let mem,starts = load prog in
 	let mem,start = load_code addr mem code in
-	mem,(proc,start)::starts
+	mem,(proc,start)::starts 
 
 end
+*)

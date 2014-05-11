@@ -591,7 +591,7 @@ let get_next = function
 (* Macros *)
         
 
-include Pseudo.Make
+include MachPseudo.Make
     (struct
       type ins = instruction
       type reg_arg = reg

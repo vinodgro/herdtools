@@ -16,29 +16,29 @@ open Printf
 module type S = sig
   type v
   type location
-  type pseudo
+  type code
 
-  type ('loc,'v) t = ('loc,'v, pseudo) MiscParser.r3
+  type ('loc,'v) t = ('loc,'v, code) MiscParser.r4
       
   val allocate_regs :
       (MiscParser.location, MiscParser.maybev) t -> (location,v) t
 end
-
+(*
 module Make (A:Arch.S) : S 
 with type v = A.V.v and type location = A.location
 and type pseudo = A.pseudo
- = struct
-
-   type v = A.V.v
-   type location = A.location
-   type pseudo = A.pseudo
+= 
+struct
+   type v = V.v
+   type location = location
+   type pseudo = pseudo
    type ('loc,'v) t = ('loc,'v, pseudo) MiscParser.r3
       
 (******************************************************)
 (* All those to substitute symbolic regs by real ones *)
 (******************************************************)
 
-  let get_reg name = match A.parse_reg name with
+  let get_reg name = match parse_reg name with
   | Some r -> r
   | None -> Warn.user_error "%s is not a register" name
 
@@ -224,3 +224,4 @@ and type pseudo = A.pseudo
     }
 
 end
+*)

@@ -120,7 +120,6 @@ module type S = sig
   type prop =  (location,I.V.v) ConstrGen.prop
   type constr = prop ConstrGen.constr
 
-
 end
 
 module type Config = sig
@@ -129,8 +128,9 @@ module type Config = sig
   val brackets : bool
 end
 
-module Make(C:Config) (I:I) : S with module I = I
-= struct
+module Make(C:Config) (I : I) : 
+  (S with module I = I) = 
+struct
 
   module I = I
 
