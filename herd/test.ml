@@ -47,9 +47,9 @@ module Make(A:Arch.S) =
          A.state, A.constr, A.location, A.LocSet.t) t
 
 (* Symb register allocation is external, since litmus needs it *)
-   module Alloc = A.SymbReg
+   module Alloc = SymbReg.Make(A)
 (* Code loader is external, since litmus tests need it too *)
-    module Load = A.Loader
+    module Load = Loader.Make(A)
 
     let build name t =
       let t = Alloc.allocate_regs t in
