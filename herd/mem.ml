@@ -175,16 +175,12 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
       and locs_init = get_all_locs_init test.Test.init_state in
       let locs = A.LocSet.union locs_final locs_init in
       let locs =
-        List.fold_left
-          (fun locs (_,code) ->
-            List.fold_left
-              (fun locs -> function 
-                 | A.Code_ins (_,ins) ->
-                   A.fold_addrs
-                     (fun x ->
-                        let loc = A.maybev_to_location x in
-                        A.LocSet.add loc)
-                  locs ins)
+        List.fold_left (fun locs (_,code) ->
+            List.fold_left (A.code_fold (fun locs ins ->
+                A.fold_addrs (fun x ->
+                    let loc = A.maybev_to_location x in
+                    A.LocSet.add loc)
+                  locs ins))
               locs code)
           locs
         test.Test.start_points in
@@ -226,34 +222,61 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           Some (tgt,seen) in
 
 
-      let rec add_next_instr proc prog_order seen addr inst nexts =
-	let ii = 
-	  {A.program_order_index=prog_order;
-	   proc=proc; inst=inst; } in
-	let evts = S.build_semantics procs inst ii in
-	evts  >>> (next_instr proc (A.next_po_index prog_order) seen addr nexts)
+      let rec add_code_list proc prog_order seen = function
+        | [] -> EM.unitT ()
+        | code :: nexts ->
+          add_code proc prog_order seen nexts code 
 
-      and add_code proc prog_order seen nexts = match nexts with
-      | [] -> EM.unitT ()
-      | A.Code_ins (addr,inst) :: nexts -> 
-	  add_next_instr proc prog_order seen addr inst nexts
+      and add_code proc prog_order seen nexts = function
+      | A.Code_ins (addr,inst) -> 
+	let ii = {
+          A.program_order_index = prog_order;
+          proc = proc;
+          inst = inst; 
+        } in
+	let evts = S.build_semantics procs inst ii in
+	evts >>> (next_instr proc (A.next_po_index prog_order) seen addr nexts)
+
+      | A.Code_choice (addr,inst,p1,p2) ->
+	let ii = { 
+          A.program_order_index = prog_order;
+          proc = proc;
+          inst = inst; 
+        } in
+        let evts = S.build_semantics procs inst ii in 
+        evts >>> (fun _branch -> 
+        EM.altT (* TODO: then/else branch picked randomly *)
+          (add_code_list proc prog_order seen p1)
+          (add_code_list proc prog_order seen p2)) >>> (fun () -> 
+        next_instr proc (A.next_po_index prog_order) seen addr nexts S.B.Next)
+
+      | A.Code_loop (addr,inst,p) ->
+	let ii = { 
+          A.program_order_index = prog_order;
+          proc = proc;
+          inst = inst; 
+        } in
+        let evts = S.build_semantics procs inst ii in 
+        evts >>> (fun _branch -> (* TODO: doesn't actually loop *)
+          add_code_list proc prog_order seen p) >>> (fun () -> 
+        next_instr proc (A.next_po_index prog_order) seen addr nexts S.B.Next)
 
       and add_lbl proc prog_order seen addr_jmp lbl =
         match fetch_code seen addr_jmp lbl with
       | None -> tooFar := true ; EM.tooFar lbl
-      | Some (code,seen) -> add_code proc prog_order seen code
+      | Some (code,seen) -> add_code_list proc prog_order seen code
 
-      and next_instr proc prog_order seen addr nexts b = match b with
-      | S.B.Next -> add_code proc prog_order seen nexts
+      and next_instr proc prog_order seen addr nexts = function
+      | S.B.Next -> add_code_list proc prog_order seen nexts
       | S.B.Jump lbl ->
 	  add_lbl proc prog_order seen addr lbl
       | S.B.CondJump (v,lbl) ->
 	  EM.choiceT v
 	    (add_lbl proc prog_order seen addr lbl)
-	    (add_code proc prog_order seen nexts) in
+	    (add_code_list proc prog_order seen nexts) in
 
       let jump_start proc code =
-        add_code proc  A.zero_po_index Imap.empty code in
+        add_code_list proc  A.zero_po_index Imap.empty code in
 
       let add_events_for_a_processor (proc,code) evts =
 	let evts_proc = jump_start proc code in

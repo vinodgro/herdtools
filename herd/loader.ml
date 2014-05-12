@@ -58,15 +58,16 @@ and type start_points = A.start_points =
       let mem,start2,last_addr2 = load_code start_addr2 mem p2 in
       let start_addr3 = last_addr2 + 4 in
       let mem,start,last_addr = load_code start_addr3 mem code in
-      let start' = [A.Code_ins (SymbConstant.intToV addr, ins (* not right yet *) )] @ 
-                   start1 @ start2 @ start in
+      let addr = SymbConstant.intToV addr in
+      let start' = A.Code_choice (addr, ins, start1, start2) :: start in
       mem, start', last_addr
     | A.Loop (ins, p) ->
       let start_addr1 = addr+4 in
       let mem,start1,last_addr = load_code start_addr1 mem p in
       let start_addr2 = last_addr + 4 in
       let mem,start,last_addr = load_code start_addr2 mem code in
-      let start' = [A.Code_ins (SymbConstant.intToV addr, ins (* not right yet *) )] @ start1 @ start in
+      let addr = SymbConstant.intToV addr in
+      let start' = A.Code_loop (addr, ins, start1) :: start in
       mem, start', last_addr
 
     let rec load = function
