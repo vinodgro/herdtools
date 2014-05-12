@@ -27,6 +27,9 @@ rule token = parse
 | ':' { COLON }
 | '(' { LPAR }
 | ')' { RPAR }
+| '{' { LBRACE }
+| '}' { RBRACE }
+| "while" { WHILE }
 | '=' {EQ}
 | '.' {DOT}
 | "mo_acquire" {MEMORDER (CPP11Base.Acq)}

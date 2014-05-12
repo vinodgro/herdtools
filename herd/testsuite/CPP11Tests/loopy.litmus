@@ -1,0 +1,12 @@
+CPP11 MP
+"Fre PodWR Fre PodWR"
+{ x=0; y=0; }
+ P0                                                         | P1                      ; 
+ while (y.store(1,mo_relaxed)) { r0 = x.load(mo_acquire) }  | r1 = x.load(mo_acquire) ;
+ while (y.store(1,mo_relaxed)) { r0 = x.load(mo_acquire) }  | r2 = x.load(mo_relaxed) ;
+
+LK 
+  x:atomic, y:atomic
+
+exists 
+  (1:r1=0)

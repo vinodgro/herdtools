@@ -129,6 +129,8 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 
     let (|*|) = EM.(|*|)
     let (>>>) = EM.(>>>)
+    let (>>=) = EM.(>>=)
+    let (>>!) = EM.(>>!)
 
 
 
@@ -244,8 +246,8 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           inst = inst; 
         } in
         let evts = S.build_semantics procs inst ii in 
-        evts >>> (fun _branch -> 
-        EM.altT (* TODO: then/else branch picked randomly *)
+        evts >>> (fun _branch -> let todo = "non-deterministic choice" in
+        EM.altT 
           (add_code_list proc prog_order seen p1)
           (add_code_list proc prog_order seen p2)) >>> (fun () -> 
         next_instr proc (A.next_po_index prog_order) seen addr nexts S.B.Next)
@@ -257,9 +259,10 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           inst = inst; 
         } in
         let evts = S.build_semantics procs inst ii in 
-        evts >>> (fun _branch -> (* TODO: doesn't actually loop *)
-          add_code_list proc prog_order seen p) >>> (fun () -> 
-        next_instr proc (A.next_po_index prog_order) seen addr nexts S.B.Next)
+        evts >>= (fun _branch -> 
+          ((let todo = "doesn't actually loop" in
+           add_code_list proc (A.next_po_index prog_order) seen p >>! S.B.Next) >>> 
+        (next_instr proc (A.next_po_index prog_order) seen addr nexts)))
 
       and add_lbl proc prog_order seen addr_jmp lbl =
         match fetch_code seen addr_jmp lbl with

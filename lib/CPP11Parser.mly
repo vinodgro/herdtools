@@ -12,7 +12,7 @@ open CPP11
 %token <int> NUM
 %token <string> NAME
 %token <int> PROC
-%token SEMI COMMA PIPE COLON LPAR RPAR EQ DOT 
+%token SEMI COMMA PIPE COLON LPAR RPAR EQ DOT LBRACE RBRACE WHILE
 %token <CPP11Base.mem_order> MEMORDER
 %token <CPP11Base.location_kind> LOCATIONKIND
 
@@ -54,6 +54,8 @@ instr_option_list :
 instr_option :
 |            { Nop }
 | instr      { Instruction $1}
+| WHILE LPAR instr RPAR LBRACE instr_option RBRACE 
+             { Loop ($3,[$6]) }
 
 instr:
   | reg EQ loc DOT LD LPAR MEMORDER RPAR
