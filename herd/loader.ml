@@ -34,29 +34,47 @@ and type start_points = A.start_points =
     module V = A.V
 
     let rec load_code addr mem code = match code with
-    | [] -> mem,[]
+    | [] -> mem,[],addr
     | ins::code ->
 	load_ins addr mem ins code
 
     and load_ins addr mem ins code = match ins with
     | A.Nop -> load_code addr mem code 
     | A.Instruction ins ->
-	let mem,start = load_code (addr+4) mem code in
-	mem,(SymbConstant.intToV addr,ins)::start
+      let mem,start,lastaddr = load_code (addr+4) mem code in
+      let start' = A.Code_ins (SymbConstant.intToV addr,ins) :: start in
+      mem, start', lastaddr
     | A.Label (lbl,ins) ->
-	let mem,start = load_ins addr mem ins code in
+	let mem,start,lastaddr = load_ins addr mem ins code in
 	if A.LabelMap.mem lbl mem then
 	  Warn.user_error
 	    "Label %s occurs more that once" lbl ;
-	A.LabelMap.add lbl start mem,start
+	A.LabelMap.add lbl start mem,start,lastaddr
     | A.Macro (_,_) -> assert false
+    | A.Choice (ins,p1,p2) -> 
+      let start_addr1 = addr+4 in
+      let mem,start1,last_addr1 = load_code start_addr1 mem p1 in
+      let start_addr2 = last_addr1+4 in
+      let mem,start2,last_addr2 = load_code start_addr2 mem p2 in
+      let start_addr3 = last_addr2 + 4 in
+      let mem,start,last_addr = load_code start_addr3 mem code in
+      let start' = [A.Code_ins (SymbConstant.intToV addr, ins (* not right yet *) )] @ 
+                   start1 @ start2 @ start in
+      mem, start', last_addr
+    | A.Loop (ins, p) ->
+      let start_addr1 = addr+4 in
+      let mem,start1,last_addr = load_code start_addr1 mem p in
+      let start_addr2 = last_addr + 4 in
+      let mem,start,last_addr = load_code start_addr2 mem code in
+      let start' = [A.Code_ins (SymbConstant.intToV addr, ins (* not right yet *) )] @ start1 @ start in
+      mem, start', last_addr
 
     let rec load = function
-    | [] -> A.LabelMap.empty,[]
+    | [] -> (A.LabelMap.empty, [])
     | (proc,code)::prog ->
 	let addr = 1000 * (proc+1) in
 	let mem,starts = load prog in
-	let mem,start = load_code addr mem code in
-	mem,(proc,start)::starts
+	let mem,start,_ = load_code addr mem code in
+	(mem, (proc,start) :: starts)
 
 end

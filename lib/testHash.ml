@@ -124,7 +124,10 @@ module Make(A:ArchBase.S)
         | A.Nop -> k
         | A.Instruction i -> A.dump_instruction i::k
         | A.Label (lbl,p) -> sprintf "%s:" lbl::dump_rec p k
-        | A.Macro _ -> assert false (* applied after macro expansion *) in
+        | A.Macro _ -> assert false (* applied after macro expansion *)
+        | A.Choice(_,_,_) -> "Choice dump not implemented" :: k
+        | A.Loop(_,_) -> "Loop dump not implemented" :: k
+        in
         fun (_,ps) ->
           List.fold_right dump_rec ps []
 

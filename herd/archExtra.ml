@@ -104,16 +104,19 @@ module type S = sig
 
   (* Code memory is a mapping from labels to sequences of instructions,
      Too far from actual machine, maybe *)
-  type code = (I.V.cst * I.arch_instruction) list
+  type code = 
+    | Code_ins of I.V.cst * I.arch_instruction
+    | Code_choice of I.V.cst * I.arch_instruction * code list * code list
+    | Code_loop of I.V.cst * I.arch_instruction * code list
 
   module LabelMap : Map.S with type key = string
 
 
   (* Program loaded in memory *)
-  type program = code LabelMap.t
+  type program = (code list) LabelMap.t
 
   (* A starting address per proc *)
-  type start_points = (proc * code) list
+  type start_points = (proc * code list) list
 
 
   (* Constraints *)
@@ -282,7 +285,10 @@ module Make(C:Config) (I:I) : S with module I = I
   (*********************************)
 
   (* Code memory is a mapping from globals locs, to instructions *)
-  type code = (I.V.cst * I.arch_instruction) list
+  type code = 
+    | Code_ins of I.V.cst * I.arch_instruction
+    | Code_choice of I.V.cst * I.arch_instruction * code list * code list
+    | Code_loop of I.V.cst * I.arch_instruction * code list
 
   module LabelMap =
     Map.Make
@@ -293,10 +299,10 @@ module Make(C:Config) (I:I) : S with module I = I
 
 
   (* Programm loaded in memory *)
-  type program = code LabelMap.t
+  type program = (code list) LabelMap.t
 
   (* A starting address per proc *)
-  type start_points = (proc * code) list
+  type start_points = (proc * code list) list
 
 
   (* Constraints *)

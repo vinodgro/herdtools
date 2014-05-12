@@ -138,7 +138,10 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 
     let is_back_jump addr_jmp tgt = match tgt with
     | [] -> false
-    | (addr_tgt,_)::_ -> SymbConstant.compare addr_jmp addr_tgt >= 0
+    | A.Code_ins (addr_tgt,_) :: _
+    | A.Code_choice (addr_tgt,_,_,_) :: _
+    | A.Code_loop (addr_tgt,_,_) :: _ -> 
+      SymbConstant.compare addr_jmp addr_tgt >= 0
 
   type result =
      {
@@ -175,11 +178,12 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
         List.fold_left
           (fun locs (_,code) ->
             List.fold_left
-              (fun locs (_,ins) ->
-                A.fold_addrs
-                  (fun x ->
-                    let loc = A.maybev_to_location x in
-                    A.LocSet.add loc)
+              (fun locs -> function 
+                 | A.Code_ins (_,ins) ->
+                   A.fold_addrs
+                     (fun x ->
+                        let loc = A.maybev_to_location x in
+                        A.LocSet.add loc)
                   locs ins)
               locs code)
           locs
@@ -231,7 +235,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 
       and add_code proc prog_order seen nexts = match nexts with
       | [] -> EM.unitT ()
-      | (addr,inst)::nexts -> 
+      | A.Code_ins (addr,inst) :: nexts -> 
 	  add_next_instr proc prog_order seen addr inst nexts
 
       and add_lbl proc prog_order seen addr_jmp lbl =
