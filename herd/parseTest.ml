@@ -166,8 +166,23 @@ module Top (C:Config) = struct
           let a_to_b _ = ()
         end in
         let module CPP11M = CPP11Mem.Make(ModelConfig)(CPP11S) (CPP11Barrier) in
-        let module X = Make (CPP11S) (CPP11LexParse) (CPP11M) in 
-        X.run name chan env splitted
+        (* let module X = Make (CPP11S) (CPP11LexParse) (CPP11M) in 
+        X.run name chan env splitted *)
+        let module P = CGenParser.Make(C)(A)(CPP11LexParse) in
+        let module T = CTest.Make(A) in
+        let filename = name in
+        try
+          let parsed = P.parse chan splitted in
+          let name = splitted.Splitter.name in
+          let hash = MiscParser.get_hash parsed in
+          let env =
+            TestHash.check_env env name.Name.name filename hash in
+          let test = T.build name parsed in
+          let module T = Top.Make(C)(M) in
+          T.run test ;
+          env
+        with TestHash.Seen -> env
+
 
       | Archs.OpenCL ->
         let module OpenCL = OpenCLArch.Make(C.PC)(SymbValue) in

@@ -113,19 +113,7 @@ module Make
 (* Various basic checks *)
 (************************)
 
-let check_procs prog =
-  let procs =
-    List.fold_left
-      (fun acc -> function CAst.Test cfun -> acc @ [cfun.CAst.proc] | CAst.Global _ -> acc)
-      []
-      prog
-  in
-  Misc.iteri
-    (fun k p ->
-      if not (Misc.int_eq k p) then
-        Warn.fatal "Processes must be P0, P1, ...")
-    procs ;
-  procs
+let check_procs prog = []
 
 let check_loc procs loc = match loc with
 | MiscParser.Location_reg (p,_) ->
@@ -148,18 +136,7 @@ let check_regs procs init locs final =
 (* Macro expansion *)  
 (*******************)
 
-    let rec expn  = function
-      | [] -> []
-      | A.Macro (name,regs)::k ->
-          let f =
-            try A.get_macro name
-            with Not_found -> Warn.fatal "macro not found: %s" name in
-          f regs (expn k)
-      | i::k -> i::expn k
-
-    let expn_prog =
-      Label.reset () ;
-      List.map (fun (p,code) -> p,expn code)
+    let expn_prog x = x
 
 
 (***********)

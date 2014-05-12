@@ -22,7 +22,7 @@ module type S = sig
 end
 
 
-module Make(A:Arch.S) : S
+module Make(A:MachArch.S) : S
 with type nice_prog = A.nice_prog
 and type program = A.program
 and type start_points = A.start_points =

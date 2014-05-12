@@ -39,7 +39,7 @@ let very_readable_name test =  test.name.Name.name
 (* Name from filename *)
 let basename test = Filename.chop_extension (Filename.basename test.name.Name.file)
 
-module Make(A:Arch.S) =
+module Make(A:MachArch.S) =
   struct
 
     type result =
@@ -47,9 +47,9 @@ module Make(A:Arch.S) =
          A.state, A.constr, A.location, A.LocSet.t) t
 
 (* Symb register allocation is external, since litmus needs it *)
-   module Alloc = SymbReg.Make(A)
+   module Alloc = MachSymbReg.Make(A)
 (* Code loader is external, since litmus tests need it too *)
-    module Load = Loader.Make(A)
+    module Load = MachLoader.Make(A)
 
     let build name t =
       let t = Alloc.allocate_regs t in
