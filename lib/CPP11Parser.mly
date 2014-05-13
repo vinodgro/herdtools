@@ -1,9 +1,6 @@
-/*Much copied from the PPC parser*/
-
 %{
-module CPP11 = CPP11Base
 open Constant
-open CPP11
+open CPP11Base
 %}
 
 %token EOF
@@ -11,8 +8,11 @@ open CPP11
 %token <CPP11Base.reg> ARCH_REG
 %token <int> NUM
 %token <string> NAME
+%token <string> ATOMIC_NAME
 %token <int> PROC
-%token SEMI COMMA PIPE COLON LPAR RPAR EQ DOT LBRACE RBRACE WHILE
+%token SEMI COMMA PIPE COLON LPAR RPAR EQ DOT LBRACE RBRACE STAR
+%token WHILE IF ELSE 
+%token VOLATILE UNSIGNED SIGNED ATOMIC LONG DOUBLE BOOL
 %token <CPP11Base.mem_order> MEMORDER
 %token <CPP11Base.location_kind> LOCATIONKIND
 
@@ -21,43 +21,36 @@ open CPP11
 %token LD ST FENCE LOCK UNLOCK SCAS WCAS
 
 %type <LocationKindMap.lk_map> lk_map
-%type <int list * (CPP11Base.pseudo) list list * MiscParser.gpu_data option> main 
+%type <(int * CPP11Base.pseudo list) list * MiscParser.gpu_data option> main 
 %start  main
 
-%nonassoc SEMI
 %%
 
-main:
-| semi_opt proc_list iol_list lk_map EOF
-    {let gpu = { MiscParser.empty_gpu with MiscParser.lk_map=$4 } in
-     $2,$3,Some gpu }
-| semi_opt proc_list lk_map EOF
-    { let gpu = { MiscParser.empty_gpu with MiscParser.lk_map=$3 } in     
-      $2,[],Some gpu }
+main: 
+| procs lk_map EOF 
+  { Printf.printf "Hello";
+      let gpu = { MiscParser.empty_gpu with MiscParser.lk_map=$2 } in
+     ($1,Some gpu) }
 
-semi_opt:
-|      { () }
-| SEMI { () }
+procs:
+|   { [] }
+| PROC LPAR params RPAR LBRACE instr_list RBRACE procs
+    { ($1, $6) :: $8 } /* TODO: Ignores params */
 
-proc_list:
-| PROC SEMI           { [$1] }
-| PROC PIPE proc_list { $1::$3 }
-
-iol_list :
-|  instr_option_list SEMI          { [$1] }
-|  instr_option_list SEMI iol_list { $1::$3 }
-
-instr_option_list :
-| instr_option                        { [$1] }
-| instr_option PIPE instr_option_list { $1::$3 }
-
-instr_option :
-|            { Nop }
-| instr      { Instruction $1}
-| WHILE LPAR instr RPAR LBRACE instr_option RBRACE 
-             { Loop ($3,[$6]) }
+instr_list:
+|            { [] }
+| instr instr_list 
+             { $1 :: $2 }
 
 instr:
+| basic_instr SEMI     
+             { Instruction $1} 
+| WHILE LPAR basic_instr RPAR LBRACE instr_list RBRACE 
+             { Loop ($3,$6) }
+| IF LPAR basic_instr RPAR LBRACE instr_list RBRACE ELSE LBRACE instr_list RBRACE
+             { Choice ($3,$6,$10) }
+
+basic_instr:
   | reg EQ loc DOT LD LPAR MEMORDER RPAR
     {Pload ($3,$1,$7)}
   | loc DOT ST LPAR store_op COMMA MEMORDER RPAR
@@ -86,6 +79,42 @@ reg:
 loc:
 | NAME { Symbolic $1 }
 
+
+params:
+| { [] }
+/*
+| ty NAME
+    { [{CAst.param_ty = $1; volatile = false; param_name = $2}] }
+| VOLATILE ty NAME
+    { [{CAst.param_ty = $2; volatile = true; param_name = $3}] }
+| ty NAME COMMA params
+    { {CAst.param_ty = $1; volatile = false; param_name = $2} :: $4 }
+| VOLATILE ty NAME COMMA params
+    { {CAst.param_ty = $2; volatile = true; param_name = $3} :: $5 }
+
+ty:
+| atyp STAR { RunType.Ty $1 }
+| atyp STAR STAR { RunType.Pointer $1 }
+
+atyp:
+| typ { $1 }
+| ATOMIC typ { "_Atomic " ^ $2 }
+
+typ:
+| ATOMIC_NAME { $1 }
+| ty_attr NAME { $1 ^ $2 }
+| ty_attr LONG { $1 ^ "long" }
+| ty_attr DOUBLE { $1 ^ "double" }
+| ty_attr LONG LONG { $1 ^ "long long" }
+| ty_attr LONG DOUBLE { $1 ^ "long double" }
+| BOOL { "_Bool" }
+
+ty_attr:
+| { "" }
+| UNSIGNED { "unsigned " }
+| SIGNED { "signed " }
+*/
+
 lk_map:
 | LK lk_list { $2 }
 |         { [] }
@@ -95,6 +124,5 @@ lk_list:
 | lk COMMA lk_list { $1 :: $3 }
 
 lk:
-| NAME COLON LOCATIONKIND { ($1,$3) }
 | NAME COLON LOCATIONKIND { ($1,$3) }
 

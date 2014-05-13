@@ -1,12 +1,22 @@
 CPP11 MP
 "Fre PodWR Fre PodWR"
 { x=0; y=0; }
- P0                                                         | P1                      ; 
- while (y.store(1,mo_relaxed)) { r0 = x.load(mo_acquire) }  | r1 = x.load(mo_acquire) ;
- while (y.store(1,mo_relaxed)) { r0 = x.load(mo_acquire) }  | r2 = x.load(mo_relaxed) ;
+P0 () {
+  r0 = x; 
+  y = 1;
+} 
+
+P1 () {
+  while (r1 = y) { x = 1; }
+  if (r1 = y) { 
+    x = 0; y = 0; 
+  } else {
+    x = 1; y = 1; 
+  }
+}
 
 LK 
   x:atomic, y:atomic
 
 exists 
-  (1:r1=0)
+  (0:r0 = 0 /\ 1:r1 = 0)

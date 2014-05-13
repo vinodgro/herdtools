@@ -129,10 +129,6 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 
     let (|*|) = EM.(|*|)
     let (>>>) = EM.(>>>)
-    let (>>=) = EM.(>>=)
-    let (>>!) = EM.(>>!)
-
-
 
     module Imap =
       Map.Make
@@ -224,12 +220,12 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           Some (tgt,seen) in
 
 
-      let rec add_code_list proc prog_order seen : A.code list -> A.program_order_index EM.t = function
+      let rec add_code_list proc prog_order seen = function
         | [] -> EM.unitT prog_order
         | code :: nexts ->
           add_code proc prog_order seen nexts code
 
-      and add_code proc prog_order seen nexts : A.code -> A.program_order_index EM.t = function
+      and add_code proc prog_order seen nexts = function
       | A.Code_ins (addr,inst) -> 
 	let ii = {
           A.program_order_index = prog_order;
@@ -237,7 +233,8 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           inst = inst; 
         } in
 	let evts = S.build_semantics procs inst ii in
-	evts >>> (next_instr proc (A.next_po_index prog_order) seen addr nexts)
+        let prog_order = A.next_po_index prog_order in
+	evts >>> (next_instr proc prog_order seen addr nexts)
 
       | A.Code_choice (addr,inst,p1,p2) ->
 	let ii = { 
@@ -246,11 +243,13 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           inst = inst; 
         } in
         let evts = S.build_semantics procs inst ii in 
-        evts >>> (fun _branch -> let todo = "non-deterministic choice" in
+        evts >>> fun _branch -> 
+        let todo = "non-deterministic choice" in
+        let prog_order = A.next_po_index prog_order in
         EM.altT 
           (add_code_list proc prog_order seen p1)
-          (add_code_list proc prog_order seen p2)) >>> (fun prog_order -> 
-        next_instr proc (A.next_po_index prog_order) seen addr nexts S.B.Next)
+          (add_code_list proc prog_order seen p2) >>> fun prog_order ->
+        next_instr proc prog_order seen addr nexts S.B.Next
 
       | A.Code_loop (addr,inst,p) ->
 	let ii = { 
@@ -259,11 +258,12 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           inst = inst; 
         } in
         let evts = S.build_semantics procs inst ii in 
-        evts >>> (fun _branch -> 
-          ((add_code_list proc (A.next_po_index prog_order) seen p)) >>> (fun prog_order ->
-         next_instr proc (A.next_po_index prog_order) seen addr nexts S.B.Next))
+        evts >>> fun _branch -> 
+        let prog_order = A.next_po_index prog_order in
+        add_code_list proc prog_order seen p >>> fun prog_order ->
+        next_instr proc prog_order seen addr nexts S.B.Next
 
-      and add_lbl proc prog_order seen addr_jmp lbl : A.program_order_index EM.t =
+      and add_lbl proc prog_order seen addr_jmp lbl =
         match fetch_code seen addr_jmp lbl with
       | None -> tooFar := true ; EM.tooFar lbl
       | Some (code,seen) -> add_code_list proc prog_order seen code

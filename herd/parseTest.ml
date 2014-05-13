@@ -153,7 +153,7 @@ module Top (C:Config) = struct
       | Archs.CPP11 ->
         let module CPP11 = CPP11Arch.Make(C.PC)(SymbValue) in
         let module CPP11LexParse = struct
-    	  type instruction = CPP11.pseudo
+    	  type pseudo = CPP11.pseudo
 	  type token = CPP11Parser.token
           module Lexer = CPP11Lexer.Make(LexConfig)
 	  let lexer = Lexer.token
@@ -166,8 +166,20 @@ module Top (C:Config) = struct
           let a_to_b _ = ()
         end in
         let module CPP11M = CPP11Mem.Make(ModelConfig)(CPP11S) (CPP11Barrier) in
-        let module X = Make (CPP11S) (CPP11LexParse) (CPP11M) in 
-        X.run name chan env splitted
+        let module P = CGenParser.Make (C) (CPP11) (CPP11LexParse) in
+        let module T = Test.Make(CPP11) in
+        let filename = name in
+        begin try
+          let parsed = P.parse chan splitted in
+          let name = splitted.Splitter.name in
+          let hash = MiscParser.get_hash parsed in
+          let env =
+            TestHash.check_env env name.Name.name filename hash in
+            let test = T.build name parsed in
+            let module T = Top.Make(C)(CPP11M) in
+          T.run test ;
+          env
+        with TestHash.Seen -> env end
 
       | Archs.OpenCL ->
         let module OpenCL = OpenCLArch.Make(C.PC)(SymbValue) in
