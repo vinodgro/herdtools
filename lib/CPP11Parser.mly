@@ -28,8 +28,7 @@ open CPP11Base
 
 main: 
 | procs lk_map EOF 
-  { Printf.printf "Hello";
-      let gpu = { MiscParser.empty_gpu with MiscParser.lk_map=$2 } in
+  { let gpu = { MiscParser.empty_gpu with MiscParser.lk_map=$2 } in
      ($1,Some gpu) }
 
 procs:
