@@ -50,6 +50,12 @@ instr:
              { Choice ($3,$6,$10) }
 
 basic_instr:
+  | store_op
+    {Pexpr_const $1}
+  | loc
+    {Pexpr_const $1}
+  | reg
+    {Pexpr_reg $1}
   | reg EQ loc DOT LD LPAR MEMORDER RPAR
     {Pload ($3,$1,$7)}
   | loc DOT ST LPAR store_op COMMA MEMORDER RPAR

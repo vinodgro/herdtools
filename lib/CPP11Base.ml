@@ -113,6 +113,8 @@ type instruction =
 | Plock   of loc
 | Punlock of loc
 | Pfence  of mem_order
+| Pexpr_const of store_op
+| Pexpr_reg of reg
 
 include Pseudo.Make
     (struct
@@ -165,6 +167,8 @@ let dump_instruction i = match i with
   | Punlock(loc) ->
     sprintf("Unlock(%s)") (pp_addr loc)
   | Pfence mo ->  sprintf("fence(%s)") (pp_mem_order mo)
+  | Pexpr_const sop -> pp_sop sop
+  | Pexpr_reg reg -> pp_reg reg
    
 (* We don't have symbolic registers. This should be enough *)
 let fold_regs (f_reg,_f_sreg) = 

@@ -44,32 +44,40 @@ module Make (C:Sem.Config)(V:Value.S)
       | Constant.Concrete vv -> vv
       | _ -> Warn.fatal "Couldn't convert constant to int"
 
-    let build_semantics _st i ii = M.unitT None >>| match i with
+    let build_semantics _st i ii = match i with
       | CPP11.Pload(loc,reg,mo) ->
-	M.unitT (CPP11.maybev_to_location loc) >>=
-	(fun loc -> read_loc mo loc ii) >>= 
-	(fun v -> write_reg reg v ii) >>! 
-	B.Next
+	M.unitT (CPP11.maybev_to_location loc) >>= fun loc -> 
+        read_loc mo loc ii >>= fun v -> 
+        write_reg reg v ii >>! 
+	(Some v, B.Next)
 
       | CPP11.Pstore(l,v,mo) ->
-	(M.unitT (CPP11.maybev_to_location l)) >>|
-	(M.unitT (V.intToV (constant_to_int v))) >>=
-	(fun (loc, vv) -> write_loc mo loc vv ii) >>! 
-        B.Next
+	M.unitT (CPP11.maybev_to_location l) >>|
+	M.unitT (V.intToV (constant_to_int v)) >>= fun (loc, vv) -> 
+        write_loc mo loc vv ii >>! 
+        (Some vv, B.Next)
+
+      | CPP11.Pexpr_const(sop) ->
+        let v = V.cstToV sop in
+        M.unitT (Some v, B.Next)
+
+      | CPP11.Pexpr_reg(reg) ->
+        read_reg reg ii >>= fun v ->
+        M.unitT (Some v, B.Next)
 
       | CPP11.Plock l ->
-	(M.unitT (CPP11.maybev_to_location l)) >>=
-	  fun loc -> 
-          M.altT
-            (* successful attempt to obtain mutex *)
-	    (M.mk_singleton_es (Act.Lock (loc, true)) ii >>! B.Next)
-            (* unsuccessful attempt to obtain mutex *)
-	    (M.mk_singleton_es (Act.Lock (loc, false)) ii >>! B.Next)
+	M.unitT (CPP11.maybev_to_location l) >>= fun loc -> 
+        (M.altT
+          (* successful attempt to obtain mutex *)
+	  (M.mk_singleton_es (Act.Lock (loc, true)) ii)
+          (* unsuccessful attempt to obtain mutex *)
+          (M.mk_singleton_es (Act.Lock (loc, false)) ii)) >>! 
+        (None, B.Next)
 
       | CPP11.Punlock l ->
-	(M.unitT (CPP11.maybev_to_location l)) >>=
-	  fun loc -> 
-	  M.mk_singleton_es (Act.Unlock loc) ii >>! B.Next
+	M.unitT (CPP11.maybev_to_location l) >>= fun loc -> 
+        M.mk_singleton_es (Act.Unlock loc) ii >>! 
+        (None, B.Next)
 
       | CPP11.Pcas(obj,exp,des,success,failure,strong) ->
         (* Obtain location of "expected" value *)
@@ -79,22 +87,22 @@ module Make (C:Sem.Config)(V:Value.S)
         (* Non-atomically read the value at "expected" location *)
         read_loc CPP11.NA loc_exp ii >>*= fun v_exp -> 
         (* Non-deterministic choice *)
-        M.altT
+        (M.altT
           (* Read memory at location "object", using memory order "failure" *)
           (read_loc failure loc_obj ii >>*= fun v_obj ->
-           (* For "strong" cas: fail only when v_obj != v_exp *)
-           (if strong then M.addNeqConstraintT v_obj v_exp else (fun x -> x)) (
-           (* Non-atomically write that value into the "expected" location *)
-           write_loc CPP11.NA loc_exp v_obj ii) >>!
-           B.Next)
+          (* For "strong" cas: fail only when v_obj != v_exp *)
+          (if strong then M.addNeqConstraintT v_obj v_exp else (fun x -> x)) (
+            (* Non-atomically write that value into the "expected" location *)
+            write_loc CPP11.NA loc_exp v_obj ii))
           (* Obtain "desired" value *)
           (M.unitT (V.intToV (constant_to_int des)) >>= fun v_des -> 
            (* Do RMW action on "object", to change its value from "expected"
               to "desired", using memory order "success" *)
-           M.mk_singleton_es (Act.RMW (loc_obj,v_exp,v_des,success)) ii >>!
-           B.Next)
+           M.mk_singleton_es (Act.RMW (loc_obj,v_exp,v_des,success)) ii)) >>!
+        (None, B.Next)
 						    
       | CPP11.Pfence(mo) ->
-	M.mk_singleton_es (Act.Fence mo) ii >>! B.Next
+	M.mk_singleton_es (Act.Fence mo) ii >>! 
+        (None, B.Next)
 
   end
