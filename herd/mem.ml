@@ -253,6 +253,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
             (add_code_list proc prog_order seen p2) >>> fun prog_order ->
           next_instr proc prog_order seen addr nexts (None, S.B.Next)
         end
+
       | A.Code_loop (addr,inst,p) ->
 	let ii = { 
           A.program_order_index = prog_order;
@@ -260,10 +261,16 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           inst = inst; 
         } in
         let evts = S.build_semantics procs inst ii in 
-        evts >>> fun (_ret, _branch) -> 
+        evts >>> fun (ret, _branch) -> 
         let prog_order = A.next_po_index prog_order in
-        add_code_list proc prog_order seen p >>> fun prog_order ->
-        next_instr proc prog_order seen addr nexts (None, S.B.Next)
+        begin match ret with 
+        | None -> Warn.user_error "Test condition must return a value"
+        | Some ret ->
+          EM.choiceT ret
+            (add_code_list proc prog_order seen p)
+            (EM.unitT prog_order) >>> fun prog_order ->
+          next_instr proc prog_order seen addr nexts (None, S.B.Next)
+        end
 
       and add_lbl proc prog_order seen addr_jmp lbl =
         match fetch_code seen addr_jmp lbl with
