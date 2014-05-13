@@ -224,12 +224,12 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           Some (tgt,seen) in
 
 
-      let rec add_code_list proc prog_order seen = function
-        | [] -> EM.unitT ()
+      let rec add_code_list proc prog_order seen : A.code list -> A.program_order_index EM.t = function
+        | [] -> EM.unitT prog_order
         | code :: nexts ->
-          add_code proc prog_order seen nexts code 
+          add_code proc prog_order seen nexts code
 
-      and add_code proc prog_order seen nexts = function
+      and add_code proc prog_order seen nexts : A.code -> A.program_order_index EM.t = function
       | A.Code_ins (addr,inst) -> 
 	let ii = {
           A.program_order_index = prog_order;
@@ -249,7 +249,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
         evts >>> (fun _branch -> let todo = "non-deterministic choice" in
         EM.altT 
           (add_code_list proc prog_order seen p1)
-          (add_code_list proc prog_order seen p2)) >>> (fun () -> 
+          (add_code_list proc prog_order seen p2)) >>> (fun prog_order -> 
         next_instr proc (A.next_po_index prog_order) seen addr nexts S.B.Next)
 
       | A.Code_loop (addr,inst,p) ->
@@ -259,12 +259,11 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           inst = inst; 
         } in
         let evts = S.build_semantics procs inst ii in 
-        evts >>= (fun _branch -> 
-          ((let todo = "doesn't actually loop" in
-           add_code_list proc (A.next_po_index prog_order) seen p >>! S.B.Next) >>> 
-        (next_instr proc (A.next_po_index prog_order) seen addr nexts)))
+        evts >>> (fun _branch -> 
+          ((add_code_list proc (A.next_po_index prog_order) seen p)) >>> (fun prog_order ->
+         next_instr proc (A.next_po_index prog_order) seen addr nexts S.B.Next))
 
-      and add_lbl proc prog_order seen addr_jmp lbl =
+      and add_lbl proc prog_order seen addr_jmp lbl : A.program_order_index EM.t =
         match fetch_code seen addr_jmp lbl with
       | None -> tooFar := true ; EM.tooFar lbl
       | Some (code,seen) -> add_code_list proc prog_order seen code
@@ -279,7 +278,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 	    (add_code_list proc prog_order seen nexts) in
 
       let jump_start proc code =
-        add_code_list proc  A.zero_po_index Imap.empty code in
+        EM.discardT (add_code_list proc  A.zero_po_index Imap.empty code) in
 
       let add_events_for_a_processor (proc,code) evts =
 	let evts_proc = jump_start proc code in

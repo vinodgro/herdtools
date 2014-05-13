@@ -73,10 +73,10 @@ struct
 
       type 'a t = int -> int * ('a Evt.t) (* Threading through eiid *)
 	  
-      let zeroT : unit t
+      let zeroT : 'a t
 	  = (fun eiid_next -> (eiid_next, Evt.empty))
 	  
-      let unitT v =
+      let unitT (v : 'a) : 'a t =
 	fun eiid_next ->
 	  eiid_next,Evt.singleton (v, [], E.empty_event_structure)
 	      

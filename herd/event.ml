@@ -717,11 +717,9 @@ let (=|=) = check_disjoint para_comp
 	es1.events
 
     let check_both do_it es1 es2 =
-      if not (EventSet.disjoint es1.events es2.events) 
+      if not (EventSet.disjoint es1.events es2.events && disjoint_iiis es1 es2) 
       then assert false 
-      else (*if not (disjoint_iiis es1 es2)
-      then assert false (* this is failing *)
-      else *) Some (do_it es1 es2)
+      else Some (do_it es1 es2)
 
 (* Parallel composition *)
     let (+|+) = check_both para_comp
