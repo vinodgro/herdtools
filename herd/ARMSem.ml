@@ -134,8 +134,7 @@ module Make (C:Sem.Config)(V:Value.S)
     | ARM.SetFlags -> write_flag ARM.Z Op.Eq v1 v2 ii
     | ARM.DontSetFlags -> M.unitT ()
 
-    let build_semantics : int list -> ARM.instruction -> ARM.inst_instance_id -> B.t M.t
-	= fun _procs i ii ->
+    let build_semantics _procs i ii = M.unitT None >>| 
 	  match i with
 	  | ARM.I_ADD (set,rd,rs,v) ->
 	      ((read_reg rs ii) 

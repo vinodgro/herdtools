@@ -44,7 +44,7 @@ module Make (C:Sem.Config)(V:Value.S)
       | Constant.Concrete vv -> vv
       | _ -> Warn.fatal "Couldn't convert constant to int"
 
-    let build_semantics _st i ii = match i with
+    let build_semantics _st i ii = M.unitT None >>| match i with
       | CPP11.Pload(loc,reg,mo) ->
 	M.unitT (CPP11.maybev_to_location loc) >>=
 	(fun loc -> read_loc mo loc ii) >>= 
