@@ -42,7 +42,7 @@ and type start_points = A.start_points =
     | A.Nop -> load_code addr mem code 
     | A.Instruction ins ->
       let mem,start,lastaddr = load_code (addr+4) mem code in
-      let start' = A.Code_ins (SymbConstant.intToV addr,ins) :: start in
+      let start' = (SymbConstant.intToV addr, A.Code_ins ins) :: start in
       mem, start', lastaddr
     | A.Label (lbl,ins) ->
 	let mem,start,lastaddr = load_ins addr mem ins code in
@@ -59,7 +59,7 @@ and type start_points = A.start_points =
       let start_addr3 = last_addr2 + 4 in
       let mem,start,last_addr = load_code start_addr3 mem code in
       let addr = SymbConstant.intToV addr in
-      let start' = A.Code_choice (addr, ins, start1, start2) :: start in
+      let start' = (addr, A.Code_choice (ins, start1, start2)) :: start in
       mem, start', last_addr
     | A.Loop (ins, p) ->
       let start_addr1 = addr+4 in
@@ -67,7 +67,7 @@ and type start_points = A.start_points =
       let start_addr2 = last_addr + 4 in
       let mem,start,last_addr = load_code start_addr2 mem code in
       let addr = SymbConstant.intToV addr in
-      let start' = A.Code_loop (addr, ins, start1) :: start in
+      let start' = (addr, A.Code_loop (ins, start1)) :: start in
       mem, start', last_addr
 
     let rec load = function

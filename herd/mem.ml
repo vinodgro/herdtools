@@ -136,9 +136,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 
     let is_back_jump addr_jmp tgt = match tgt with
     | [] -> false
-    | A.Code_ins (addr_tgt,_) :: _
-    | A.Code_choice (addr_tgt,_,_,_) :: _
-    | A.Code_loop (addr_tgt,_,_) :: _ -> 
+    | (addr_tgt,_) :: _ -> 
       SymbConstant.compare addr_jmp addr_tgt >= 0
 
   type result =
@@ -220,23 +218,30 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           Some (tgt,seen) in
 
 
-      let rec add_code_list proc prog_order seen = function
+      let rec add_code_list proc prog_order seen code_list
+      : (A.program_order_index) S.M.t = match code_list with
         | [] -> EM.unitT prog_order
-        | code :: nexts ->
-          add_code proc prog_order seen nexts code
+        | (addr, code) :: nexts ->
+          add_code proc prog_order seen 0 code >>> 
+          next_instr proc seen addr nexts
 
-      and add_code proc prog_order seen nexts = function
-      | A.Code_ins (addr,inst) -> 
-	let ii = {
+      and add_code proc prog_order seen loop_count code 
+      : (A.program_order_index * S.A.V.v option * S.branch) S.M.t = 
+        if loop_count > C.unroll then 
+          (tooFar := true ; EM.unitT (prog_order, None, S.B.Next) ) 
+        else 
+      match code with
+      | A.Code_ins inst -> 
+	let ii = { 
           A.program_order_index = prog_order;
           proc = proc;
           inst = inst; 
         } in
-	let evts = S.build_semantics procs inst ii in
+        S.build_semantics procs inst ii >>> fun (ret, branch) ->
         let prog_order = A.next_po_index prog_order in
-	evts >>> (next_instr proc prog_order seen addr nexts)
+        EM.unitT (prog_order, ret, branch)
 
-      | A.Code_choice (addr,inst,p1,p2) ->
+      | A.Code_choice (inst,p1,p2) ->
 	let ii = { 
           A.program_order_index = prog_order;
           proc = proc;
@@ -247,14 +252,14 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
         let prog_order = A.next_po_index prog_order in
         begin match ret with 
         | None -> Warn.user_error "Test condition must return a value"
-        | Some ret ->
-          EM.choiceT ret 
+        | Some ret -> 
+          (EM.choiceT ret 
             (add_code_list proc prog_order seen p1)
-            (add_code_list proc prog_order seen p2) >>> fun prog_order ->
-          next_instr proc prog_order seen addr nexts (None, S.B.Next)
+            (add_code_list proc prog_order seen p2)) >>> fun prog_order ->
+          EM.unitT (prog_order, None, S.B.Next)
         end
 
-      | A.Code_loop (addr,inst,p) ->
+      | A.Code_loop (inst,p) ->
 	let ii = { 
           A.program_order_index = prog_order;
           proc = proc;
@@ -266,10 +271,12 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
         begin match ret with 
         | None -> Warn.user_error "Test condition must return a value"
         | Some ret ->
-          EM.choiceT ret
-            (add_code_list proc prog_order seen p)
-            (EM.unitT prog_order) >>> fun prog_order ->
-          next_instr proc prog_order seen addr nexts (None, S.B.Next)
+          (EM.choiceT ret
+            (add_code_list proc prog_order seen p >>> fun prog_order ->
+             add_code proc prog_order seen (loop_count + 1) code >>> fun (prog_order,_,_) -> 
+          let prog_order = A.next_po_index prog_order in
+            EM.unitT (prog_order, None, S.B.Next))
+            (EM.unitT (prog_order, None, S.B.Next))) 
         end
 
       and add_lbl proc prog_order seen addr_jmp lbl =
@@ -277,17 +284,19 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
       | None -> tooFar := true ; EM.tooFar lbl
       | Some (code,seen) -> add_code_list proc prog_order seen code
 
-      and next_instr proc prog_order seen addr nexts = function
-      | _, S.B.Next -> add_code_list proc prog_order seen nexts
-      | _, S.B.Jump lbl ->
+      and next_instr proc seen addr nexts (prog_order, _, branch) = 
+        match branch with
+        | S.B.Next ->
+          add_code_list proc prog_order seen nexts
+        | S.B.Jump lbl ->
 	  add_lbl proc prog_order seen addr lbl
-      | _, S.B.CondJump (v,lbl) ->
+        | S.B.CondJump (v,lbl) ->
 	  EM.choiceT v
-	    (add_lbl proc prog_order seen addr lbl)
+            (add_lbl proc prog_order seen addr lbl)
 	    (add_code_list proc prog_order seen nexts) in
 
       let jump_start proc code =
-        EM.discardT (add_code_list proc  A.zero_po_index Imap.empty code) in
+        EM.discardT (add_code_list proc A.zero_po_index Imap.empty code) in
 
       let add_events_for_a_processor (proc,code) evts =
 	let evts_proc = jump_start proc code in

@@ -104,10 +104,11 @@ module type S = sig
 
   (* Code memory is a mapping from labels to sequences of instructions,
      Too far from actual machine, maybe *)
-  type code = 
-    | Code_ins of I.V.cst * I.arch_instruction
-    | Code_choice of I.V.cst * I.arch_instruction * code list * code list
-    | Code_loop of I.V.cst * I.arch_instruction * code list
+  type code = I.V.cst * code_block
+  and code_block = 
+    | Code_ins of I.arch_instruction
+    | Code_choice of I.arch_instruction * code list * code list
+    | Code_loop of I.arch_instruction * code list
 
   val code_fold : ('a -> I.arch_instruction -> 'a) -> 'a -> code -> 'a
 
@@ -287,20 +288,21 @@ module Make(C:Config) (I:I) : S with module I = I
   (*********************************)
 
   (* Code memory is a mapping from globals locs, to instructions *)
-  type code = 
-    | Code_ins of I.V.cst * I.arch_instruction
-    | Code_choice of I.V.cst * I.arch_instruction * code list * code list
-    | Code_loop of I.V.cst * I.arch_instruction * code list
+  type code = I.V.cst * code_block
+  and code_block = 
+    | Code_ins of I.arch_instruction
+    | Code_choice of I.arch_instruction * code list * code list
+    | Code_loop of I.arch_instruction * code list
 
 (* Fold over code *)
   let rec code_fold f k = function
-    | Code_ins (_,ins) -> f k ins
-    | Code_choice (_,ins,p1,p2) ->
+    | _, Code_ins ins -> f k ins
+    | _, Code_choice (ins,p1,p2) ->
       let k = f k ins in
       let k = List.fold_left (code_fold f) k p1 in
       let k = List.fold_left (code_fold f) k p2 in
       k
-    | Code_loop (_,ins,p) ->
+    | _, Code_loop (ins,p) ->
       let k = f k ins in
       let k = List.fold_left (code_fold f) k p in
       k
