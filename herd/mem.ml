@@ -218,15 +218,13 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           Some (tgt,seen) in
 
 
-      let rec add_code_list proc prog_order seen code_list
-      : (A.program_order_index) S.M.t = match code_list with
+      let rec add_code_list proc prog_order seen = function
         | [] -> EM.unitT prog_order
         | (addr, code) :: nexts ->
           add_code proc prog_order seen 0 code >>> 
           next_instr proc seen addr nexts
 
-      and add_code proc prog_order seen loop_count code 
-      : (A.program_order_index * S.A.V.v option * S.branch) S.M.t = 
+      and add_code proc prog_order seen loop_count code = 
         if loop_count > C.unroll then 
           (tooFar := true ; EM.unitT (prog_order, None, S.B.Next) ) 
         else 
@@ -247,8 +245,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           proc = proc;
           inst = inst; 
         } in
-        let evts = S.build_semantics procs inst ii in 
-        evts >>> fun (ret, _branch) -> 
+        S.build_semantics procs inst ii >>> fun (ret, _branch) -> 
         let prog_order = A.next_po_index prog_order in
         begin match ret with 
         | None -> Warn.user_error "Test condition must return a value"
@@ -265,8 +262,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
           proc = proc;
           inst = inst; 
         } in
-        let evts = S.build_semantics procs inst ii in 
-        evts >>> fun (ret, _branch) -> 
+        S.build_semantics procs inst ii >>> fun (ret, _branch) -> 
         let prog_order = A.next_po_index prog_order in
         begin match ret with 
         | None -> Warn.user_error "Test condition must return a value"

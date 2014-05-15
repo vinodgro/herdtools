@@ -28,13 +28,15 @@ end
 module Top (C:Config) = struct
   module Make
       (S:Sem.Semantics)
-      (L:GenParser.LexParse with type instruction = S.A.pseudo)
+      (* (L:GenParser.LexParse with type instruction = S.A.pseudo) *)
+      (P:sig 
+         type pseudo
+         val parse : in_channel -> Splitter.result ->  pseudo MiscParser.t
+       end with type pseudo = S.A.pseudo)
       (M:XXXMem.S with module S = S) =
     struct
-      module S = S
-      module A = S.A
-      module P = GenParser.Make (C) (A) (L)
-      module T = Test.Make(A) 
+      (* module P = GenParser.Make (C) (A) (L) *)
+      module T = Test.Make(S.A) 
 
       let run filename chan env splitted =
         try
@@ -100,7 +102,8 @@ module Top (C:Config) = struct
             | PPC.Eieio ->  EIEIO
           end in
           let module PPCM = PPCMem.Make(ModelConfig)(PPCS) (PPCBarrier) in
-          let module X = Make (PPCS) (PPCLexParse) (PPCM) in 
+          let module P = GenParser.Make (C) (PPC) (PPCLexParse) in
+          let module X = Make (PPCS) (P) (PPCM) in 
           X.run name chan env splitted
 
       | Archs.ARM ->
@@ -125,7 +128,8 @@ module Top (C:Config) = struct
             | ARM.ISB -> ISB
           end in
           let module ARMM = ARMMem.Make(ModelConfig)(ARMS) (ARMBarrier) in
-          let module X = Make (ARMS) (ARMLexParse) (ARMM) in 
+          let module P = GenParser.Make (C) (ARM) (ARMLexParse) in
+          let module X = Make (ARMS) (P) (ARMM) in 
           X.run name chan env splitted
 
       | Archs.X86 ->
@@ -147,7 +151,8 @@ module Top (C:Config) = struct
             | X86.Lfence -> LFENCE
           end in
           let module X86M = X86Mem.Make(ModelConfig)(X86S) (X86Barrier) in
-          let module X = Make (X86S) (X86LexParse) (X86M) in 
+          let module P = GenParser.Make (C) (X86) (X86LexParse) in
+          let module X = Make (X86S) (P) (X86M) in 
           X.run name chan env splitted
 
       | Archs.CPP11 ->
@@ -167,19 +172,8 @@ module Top (C:Config) = struct
         end in
         let module CPP11M = CPP11Mem.Make(ModelConfig)(CPP11S) (CPP11Barrier) in
         let module P = CGenParser.Make (C) (CPP11) (CPP11LexParse) in
-        let module T = Test.Make(CPP11) in
-        let filename = name in
-        begin try
-          let parsed = P.parse chan splitted in
-          let name = splitted.Splitter.name in
-          let hash = MiscParser.get_hash parsed in
-          let env =
-            TestHash.check_env env name.Name.name filename hash in
-            let test = T.build name parsed in
-            let module T = Top.Make(C)(CPP11M) in
-          T.run test ;
-          env
-        with TestHash.Seen -> env end
+        let module X = Make (CPP11S) (P) (CPP11M) in
+        X.run name chan env splitted
 
       | Archs.OpenCL ->
         let module OpenCL = OpenCLArch.Make(C.PC)(SymbValue) in
@@ -197,7 +191,8 @@ module Top (C:Config) = struct
           let a_to_b _ = ()	    
         end in
         let module OpenCLM = OpenCLMem.Make(ModelConfig)(OpenCLS) (OpenCLBarrier) in
-        let module X = Make (OpenCLS) (OpenCLLexParse) (OpenCLM) in 
+        let module P = GenParser.Make (C) (OpenCL) (OpenCLLexParse) in
+        let module X = Make (OpenCLS) (P) (OpenCLM) in 
         X.run name chan env splitted
 
       | Archs.GPU_PTX ->
@@ -218,7 +213,8 @@ module Top (C:Config) = struct
 	    
         end in
         let module GPU_PTXM = GPU_PTXMem.Make(ModelConfig)(GPU_PTXS) (GPU_PTXBarrier) in
-        let module X = Make (GPU_PTXS) (GPU_PTXLexParse) (GPU_PTXM) in 
+        let module P = GenParser.Make (C) (GPU_PTX) (GPU_PTXLexParse) in
+        let module X = Make (GPU_PTXS) (P) (GPU_PTXM) in 
         X.run name chan env splitted
 
     end else env
