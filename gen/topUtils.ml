@@ -129,8 +129,51 @@ let io_of_node n = {ploc=n.C.C.evt.C.C.loc; pdir=n.C.C.evt.C.C.dir;}
 
 (*  Most of placement computation is now by litmus *)
 
+    let write_before m =
+      let rec do_rec n =
+        if m == n then false
+        else
+          let e = n.C.C.edge in
+          match C.E.loc_sd e with
+          | Same ->
+              begin match  n.C.C.evt.C.C.dir with
+              | W -> true
+              | R -> do_rec n.C.C.prev 
+              end
+          | Diff -> false in
+      do_rec m.C.C.prev
+ 
+    let write_after m =
+      let rec do_rec n =
+        let e = n.C.C.edge in
+(*        eprintf "After %s\n" (C.E.pp_edge e) ; *)
+        begin match  n.C.C.evt.C.C.dir with
+        | W -> true
+        | R ->
+            let nxt = n.C.C.next in
+            if nxt == m then false else
+            begin match C.E.loc_sd e with
+            | Same -> do_rec nxt
+            | Diff -> false                  
+            end
+        end in
+      do_rec m.C.C.next
+
     let last_edge ns =
-      let n = Misc.last ns in n.C.C.edge.C.E.edge
+      let n = Misc.last ns in
+      let open C.E in
+      match n.C.C.edge.C.E.edge with
+      | Hat ->
+          let wb = write_before n
+          and wa = write_after n in
+          begin match wb,wa with
+          | true,true -> Ws Ext
+          | true,false -> Rf Ext
+          | false,true -> Fr Ext
+          | false,false ->
+              Warn.fatal "Incorrect Hat: read chains are not allowed"
+          end
+      | e -> e
 
     let compile_coms nss =
       List.map

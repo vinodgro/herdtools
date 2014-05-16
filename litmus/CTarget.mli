@@ -10,7 +10,6 @@
 (*********************************************************************)
 
 (* C target, a simplified template *)
-open Printf
 
 type arch_reg = string
 

@@ -85,6 +85,8 @@ module Make(C:Builder.S)
 (* Dp + fenced d R _ *)
     | Dp (_,_,Dir R),Fenced (_,Same,Dir R,_) ->
         not (fence_safe (dir_src e1) (dir_tgt e2))
+(* Allow Rmw *)
+    | (Rmw,_)|(_,Rmw) -> true
 (* Added *) 
     | _,_ ->
         match get_ie e1, get_ie e2 with
@@ -98,6 +100,8 @@ module Make(C:Builder.S)
 (* Two cases of allowed com composition *)
         | (Ws _|Leave CWs|Back CWs|Fr _|Leave CFr|Back CFr),
           (Rf _|Leave CRf|Back CRf) -> true
+(* Rmw allowed to compose arbitrarily *)
+        | (Rmw,_)|(_,Rmw) -> true
 (* Otherwise require alternance *)
         | _,_ ->  C.E.get_ie e1 <> C.E.get_ie e2 in
 (*      eprintf "Choice: %s %s -> %b\n" (C.E.pp_edge e1) (C.E.pp_edge e2) r ; *)
@@ -107,6 +111,8 @@ module Make(C:Builder.S)
     | (Ws _,Ws _)
     | (Fr _,Ws _)
     | (Rf _,Fr _)
+    | (Rf _,Hat)
+    | (Hat,Fr _)
       -> C.E.get_ie e1 <> C.E.get_ie e2 (* Allow alternance *)
     | Po _,Po _ -> false
     | _,_ -> true

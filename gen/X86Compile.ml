@@ -122,6 +122,12 @@ struct
       else
         None,init,pseudo [emit_store e.C.loc e.C.v],st
 
+
+  let emit_exch st _p init er ew =
+    let rA,st = next_reg st in
+    rA,init,
+    pseudo  (emit_sta er.C.loc rA ew.C.v),
+    st
 (*
   let emit_access_dep st p init e r1 =
     let r2,st = next_reg st in

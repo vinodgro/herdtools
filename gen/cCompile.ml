@@ -26,6 +26,16 @@ end
 
 module Make(O:Config) : Builder.S
     = struct
+
+      let () =
+       if O.optcond then
+          Warn.warn_always "optimised conditions are not supported by C arch"
+
+      module O = struct
+        include O
+        let optcond = false
+      end
+
       module A = struct
         include CArch
         let deftype = O.typ
@@ -110,6 +120,10 @@ module Make(O:Config) : Builder.S
           else A.Deref (A.Load loc)
       | Some mo -> A.AtomicLoad (mo,loc)
 
+      let excl_from mo loc v = match mo with
+      | None -> Warn.fatal "Non atomic RMW"
+      | Some mo -> A.AtomicExcl (mo,loc,v)
+
       let _load_from_event e = load_from e.C.atom (A.Loc e.C.loc)
 
       let compile_load st p mo loc =
@@ -117,10 +131,21 @@ module Make(O:Config) : Builder.S
         let i =  A.Decl (A.Plain A.deftype,r,Some (load_from mo loc)) in
         r,i,st
 
+      let compile_excl st p mo loc v =
+        let r,st = alloc_reg p st in
+        let i =  A.Decl (A.Plain A.deftype,r,Some (excl_from mo loc v)) in
+        r,i,st
+
       let assertval mo loc v =
         if O.cpp then
           A.AssertVal(load_from mo loc,v)
         else load_from mo loc
+
+      let assert_excl v1 mo loc v2 =
+         if O.cpp then
+          A.AssertVal(excl_from mo loc v2 ,v1)
+        else excl_from mo loc v2
+
 
       let compile_load_assertvalue v st p mo loc =
         let r,st = alloc_reg p st in
@@ -130,8 +155,18 @@ module Make(O:Config) : Builder.S
              Some (assertval mo loc v)) in
         r,i,st
 
+      let compile_excl_assertvalue v1 st p mo loc v2 =
+        let r,st = alloc_reg p st in
+        let i =
+          A.Decl
+            (A.Plain A.deftype,r,
+             Some (assert_excl v1 mo loc v2)) in
+        r,i,st
+
+
       let do_breakcond cond p r v =
         A.If ((v,cond,A.Load (A.Reg (p,r))),A.Break,None)
+
       let breakcond cond p r v =
         do_breakcond cond p r (A.Const v)
 
@@ -152,7 +187,7 @@ module Make(O:Config) : Builder.S
              breakcond A.Eq p r 1) in
         r,A.Seq (decls,A.Loop body),st
 
-          
+
       let do_compile_load_not st p mo x e =
         let idx,st = alloc_reg p st in
         let r,st = alloc_reg p st in
@@ -174,9 +209,19 @@ module Make(O:Config) : Builder.S
       let compile_load_not_eq st p mo x r =
         do_compile_load_not st p mo x (A.Load (A.Reg (p,r)))
 
+
       let compile_access st p n =
         let e = n.C.evt in
-        match e.C.dir with
+        if e.C.rmw then match  e.C.dir with
+        | R ->
+            let v = n.C.next.C.evt.C.v in
+            let loc = A.Loc e.C.loc in
+            let mo = e.C.atom in
+            let r,i,st =
+              compile_excl_assertvalue e.C.v st p mo loc v in
+            Some r,i,st
+        | W -> None,A.Nop,st
+        else match e.C.dir with
         | R ->
             let loc = A.Loc e.C.loc in
             let mo = e.C.atom in
@@ -633,7 +678,7 @@ module Make(O:Config) : Builder.S
           let is,fs,st = compile_proc_std loc_writes st p ns in
           let obs,fs,st = observe_local st p fs n in
           A.seqs [i;obs;add_fence n is],
-          (if StringSet.mem n.C.evt.C.loc loc_writes && not (U.do_poll n) then
+          (if not (U.do_poll n) then
             F.add_final p o n fs
           else fs),
           st
@@ -644,7 +689,27 @@ module Make(O:Config) : Builder.S
       | n::ns ->
           let e = n.C.evt in
           let o,fi,st =
-            begin match e.C.dir with
+            if e.C.rmw then match  e.C.dir with
+            | R ->
+                let vw = n.C.next.C.evt.C.v
+                and mo = e.C.atom
+                and loc = A.Loc e.C.loc
+                and v = e.C.v in
+                if O.cpp then
+                  let ce = A.Const v,A.Eq,assert_excl vw mo loc v in
+                  None,
+                  (fun ins -> A.If (ce,add_fence n ins,load_checked_not)),
+                  st
+                else
+                  let r,i,st = compile_excl st p mo loc vw in
+                  let ce = A.Const v,A.Eq,A.Load (A.Reg (p,r)) in
+                  Some r,
+                  (fun ins ->
+                    A.Seq
+                      (i,A.If (ce,add_fence n ins,load_checked_not))),
+                  st
+            | W -> None,add_fence n,st
+            else begin match e.C.dir with
             | R ->
                 let v = e.C.v
                 and mo = e.C.atom
@@ -670,7 +735,7 @@ module Make(O:Config) : Builder.S
           let is,fs,st = do_compile_proc_check loc_writes st p ns in
           let obs,fs,st = observe_local_check st p fs n in
           fi (obs is),
-          (if StringSet.mem n.C.evt.C.loc loc_writes then F.add_final p o n fs
+          (if true then F.add_final p o n fs
           else fs),
           st
 
@@ -792,6 +857,11 @@ module Make(O:Config) : Builder.S
         | AtomicLoad (mo,loc) ->
             sprintf "atomic_load_explicit(%s,%s)"
               (dump_loc_exp loc) (dump_mem_order mo)
+        | AtomicExcl (MemOrder.SC,loc,v) ->
+            sprintf "atomic_exchange(%s,%i)" (dump_loc_exp loc) v
+        | AtomicExcl (mo,loc,v) ->
+            sprintf "atomic_exchange_explicit(%s,%i,%s)"
+              (dump_loc_exp loc) v (dump_mem_order mo)
         | Deref (Load _ as e) -> sprintf "*%s" (dump_exp e)
         | Deref e -> sprintf "*(%s)" (dump_exp e)
         | Const v -> sprintf "%i" v
@@ -926,6 +996,9 @@ module Make(O:Config) : Builder.S
         | AtomicLoad (mo,loc) ->
             sprintf "%s.load(%s)"
               (dump_loc_exp loc) (dump_mem_order mo)
+        | AtomicExcl (mo,loc,v) ->
+            sprintf "%s.exchange(%i,%s)"
+              (dump_loc_exp loc) v (dump_mem_order mo)
         | Deref (Load _ as e) -> sprintf "*%s" (dump_exp e)
         | Deref e -> sprintf "*(%s)" (dump_exp e)
         | Const v -> sprintf "%i" v
