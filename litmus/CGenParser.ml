@@ -95,7 +95,7 @@ module Make
 let check_procs prog =
   let procs =
     List.fold_left
-      (fun acc -> function CAst.Test cfun -> acc @ [cfun.CAst.proc] | CAst.Global _ -> acc)
+      (fun acc -> function CAst.Test cfun -> acc @ [cfun.MiscParser.proc] | CAst.Global _ -> acc)
       []
       prog
   in

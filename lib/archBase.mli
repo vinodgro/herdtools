@@ -39,6 +39,8 @@ module type S = sig
   val barrier_compare : barrier -> barrier -> int
 
 
+  type param
+
   type instruction
   val pp_instruction : PPMode.t -> instruction -> string
   (* Shorthand for parsable dump *)

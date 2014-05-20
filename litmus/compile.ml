@@ -88,7 +88,7 @@ module Make
      type A.reg = A.reg and
      type A.location = A.location and
      type A.Out.t = A.Out.t and
-     type P.code = int * A.pseudo list)
+     type P.code = (A.param, A.pseudo) MiscParser.process)
     (C:XXXCompile.S with module A = A) =
   struct
     open Printf

@@ -38,8 +38,9 @@ end
 
 module type S = sig
   type pseudo
+  type param
   type init = MiscParser.state
-  type prog = (int * pseudo list) list
+  type prog = (param, pseudo list) MiscParser.process list
   type locations = MiscParser.LocSet.t
 
 (* Partial access for external digest computation *)
@@ -47,7 +48,7 @@ module type S = sig
   val parse_prog : Lexing.lexbuf -> prog
   val parse_cond : Lexing.lexbuf -> MiscParser.constr
 (* Main parser for memevents and litmus *)
-  val parse : in_channel -> Splitter.result ->  pseudo MiscParser.t
+  val parse : in_channel -> Splitter.result -> (param,pseudo) MiscParser.t
 end
 
 (* Build a generic parser *)
@@ -55,4 +56,4 @@ module Make
     (C:Config)
     (A:ArchBase.S)
     (L: LexParse with type instruction = A.pseudo) :
-    S with type pseudo = A.pseudo
+    S with type pseudo = A.pseudo and type param = A.param

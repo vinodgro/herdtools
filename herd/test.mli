@@ -43,7 +43,7 @@ module Make(A:Arch.S) : sig
 
   type result =
       (A.program,
-       A.nice_prog,
+       A.param A.nice_prog,
        A.start_points,
        A.state,
        A.constr, 
@@ -51,7 +51,7 @@ module Make(A:Arch.S) : sig
        A.LocSet.t
       ) t
        
-  val build : Name.t -> A.pseudo MiscParser.t -> result
+  val build : Name.t -> (A.param, A.pseudo) MiscParser.t -> result
 
   val find_our_constraint : result -> A.constr
 

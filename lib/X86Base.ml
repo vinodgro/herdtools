@@ -485,6 +485,8 @@ let rec get_next = function
   | I_JMP lbl-> [Label.To lbl]
   | I_JCC (_,lbl) -> [Label.Next; Label.To lbl]
 
+type param = unit
+
 include Pseudo.Make
     (struct
       type ins = instruction

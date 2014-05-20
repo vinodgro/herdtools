@@ -16,23 +16,27 @@ open Printf
 module type S = sig
   type v
   type location
+  type param
   type pseudo
 
-  type ('loc,'v) t = ('loc,'v, pseudo) MiscParser.r3
+  type ('loc,'v) t = 
+    ('loc,'v, (param, pseudo list) MiscParser.process) MiscParser.r4
       
   val allocate_regs :
       (MiscParser.location, MiscParser.maybev) t -> (location,v) t
 end
 
-module Make (A:Arch.S) : S 
-with type v = A.V.v and type location = A.location
-and type pseudo = A.pseudo
+module Make (A:Arch.S) : 
+(S with type v = A.V.v and type location = A.location
+and type pseudo = A.pseudo and type param = A.param)
  = struct
 
    type v = A.V.v
    type location = A.location
    type pseudo = A.pseudo
-   type ('loc,'v) t = ('loc,'v, pseudo) MiscParser.r3
+   type param = A.param
+   type ('loc,'v) t = 
+     ('loc,'v, (param, pseudo list) MiscParser.process) MiscParser.r4
       
 (******************************************************)
 (* All those to substitute symbolic regs by real ones *)
@@ -137,9 +141,12 @@ and type pseudo = A.pseudo
   and pp_string_set chan s =
       StringSet.pp chan "," (fun chan r -> fprintf chan "%s" r) s
 *)
-  let allocate_regs test =
+  let allocate_regs (test :     
+    (MiscParser.location, MiscParser.maybev, (param, pseudo list) MiscParser.process) MiscParser.r4 ) : 
+    (A.location, A.V.v, (param, pseudo list) MiscParser.process) MiscParser.r4 
+    =
     let initial = test.init
-    and prog = test.prog
+    and prog : (param, pseudo list) MiscParser.process list = test.prog
     and final = test.condition
     and locs = test.locations in
     (* Collect all registers, either real or symbolic *)
@@ -150,7 +157,7 @@ and type pseudo = A.pseudo
 	      (ProcRegSet.empty,StringSet.empty)))
     in
 
-    let in_code = collect_prog (List.map snd prog) in
+    let in_code = collect_prog (List.map (fun p -> p.body) prog) in
     (* Control register usage, ambiguity is possible,
        for unconstrained symbolic regs *)
     let (_,bad) =
@@ -174,11 +181,11 @@ and type pseudo = A.pseudo
     (* Perform allocation of symbolic registers to real ones *)
     let envs =
       List.map2
-	(fun (p,_) (regs_p,symbs_p) ->
+	(fun p (regs_p,symbs_p) ->
 	  let regs_cstr =
 	    ProcRegSet.fold
 	      (fun (q,reg) k ->
-		if p=q then RegSet.add reg k else k)
+		if p.proc = q then RegSet.add reg k else k)
 	      regs RegSet.empty in
 	  let free_regs =
 	    RegSet.diff (RegSet.of_list A.allowed_for_symb)
@@ -192,16 +199,16 @@ and type pseudo = A.pseudo
 	      | next::free_regs ->
 		  (name,next)::env,free_regs)
 	      symbs_p ([],RegSet.elements free_regs) in
-	  p,env)
+	  p.proc, env)
 	prog in_code in
     (* Replace symbolic registers *)
     let prog =
       List.map2
-	(fun (proc,code) (_,env) ->
+	(fun p (_,env) ->
 	  let replace name =
 	    try List.assoc name env
 	    with Not_found -> assert false in
-	  proc,finish_code replace code)
+          {p with body = finish_code replace p.body})
 	prog envs in
     
     let env =

@@ -167,6 +167,8 @@ type instruction =
 | Pcvt of reg*reg*op_type*op_type
 | Pmembar of bar_scope
 
+type param = unit
+
 include Pseudo.Make
     (struct
       type ins = instruction

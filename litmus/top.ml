@@ -249,7 +249,7 @@ end = struct
       (XXXComp : XXXCompile.S with module A = A) =
     struct
       module Pseudo = struct
-        type code = int * A.pseudo list
+        type code = (A.param, A.pseudo list) MiscParser.process
         let rec fmt_io io = match io with
         | A.Nop -> ""
         | A.Instruction ins -> A.dump_instruction ins
@@ -271,7 +271,9 @@ end = struct
             (A.dump_instruction ins)
             (String.concat ";" (List.map fmt_io io))
 
-        let dump_prog (p,is) = Printf.sprintf "P%i" p::List.map fmt_io is
+        let dump_prog p = 
+          Printf.sprintf "P%i" p.MiscParser.proc :: 
+          List.map fmt_io p.MiscParser.body
 
         let dump_prog_lines prog =
           let pp = List.map dump_prog prog in
@@ -354,7 +356,7 @@ end = struct
         type code = string CAst.t
         let dump_prog cfun =
           let f = function
-            | CAst.Test { CAst.params; body; proc = i } ->
+            | CAst.Test { MiscParser.params; body; proc = i } ->
                 let string_of_ty ty = RunType.dump ty ^ "*" in
                 let f {CAst.param_ty; param_name} =
                   Printf.sprintf "%s %s" (string_of_ty param_ty) param_name

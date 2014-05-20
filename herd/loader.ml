@@ -22,13 +22,13 @@ module type S = sig
 end
 
 module Make(A:Arch.S) : S
-with type nice_prog = A.nice_prog
+with type nice_prog = A.param A.nice_prog
 and type program = A.program
 and type start_points = A.start_points =
 
   struct
 
-    type nice_prog = A.nice_prog
+    type nice_prog = A.param A.nice_prog
     type program = A.program
     type start_points = A.start_points
     module V = A.V
@@ -72,10 +72,10 @@ and type start_points = A.start_points =
 
     let rec load = function
     | [] -> (A.LabelMap.empty, [])
-    | (proc,code)::prog ->
-	let addr = 1000 * (proc+1) in
+    | p::prog ->
+	let addr = 1000 * (p.MiscParser.proc + 1) in
 	let mem,starts = load prog in
-	let mem,start,_ = load_code addr mem code in
-	(mem, (proc,start) :: starts)
+	let mem,start,_ = load_code addr mem p.MiscParser.body in
+	(mem, (p.MiscParser.proc,start) :: starts)
 
 end

@@ -43,7 +43,7 @@ module Make(A:Arch.S) =
   struct
 
     type result =
-        (A.program, A.nice_prog, A.start_points,
+        (A.program, A.param A.nice_prog, A.start_points,
          A.state, A.constr, A.location, A.LocSet.t) t
 
 (* Symb register allocation is external, since litmus needs it *)

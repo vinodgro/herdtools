@@ -25,7 +25,7 @@ main:
 | EOF { [] }
 | BODY main { CAst.Global $1 :: $2 }
 | PROC LPAREN params RPAREN BODY main
-    { CAst.Test {CAst.proc = $1; params = $3; body = $5} :: $6 }
+    { CAst.Test {MiscParser.proc = $1; params = $3; body = $5} :: $6 }
 
 params:
 | { [] }

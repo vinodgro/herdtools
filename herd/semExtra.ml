@@ -42,7 +42,7 @@ module type S = sig
 
   type constr = A.constr
 
-  type nice_prog = A.nice_prog
+  type nice_prog = A.param A.nice_prog
   type start_points = A.start_points
 
   type test =
@@ -184,7 +184,7 @@ module Make(C:Config) (A:Arch.S) (Act:Action.S with module A = A)
     type constr = A.constr
 
     type program = A.program
-    type nice_prog = A.nice_prog
+    type nice_prog = A.param A.nice_prog
     type start_points = A.start_points
 
     type test =

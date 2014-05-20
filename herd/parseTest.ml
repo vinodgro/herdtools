@@ -27,13 +27,14 @@ end
 
 module type Parser = sig 
   type pseudo
-  val parse : in_channel -> Splitter.result ->  pseudo MiscParser.t
+  type param
+  val parse : in_channel -> Splitter.result -> (param,pseudo) MiscParser.t
 end
 
 module Top (C:Config) = struct
   module Make
       (S:Sem.Semantics)
-      (P:Parser with type pseudo = S.A.pseudo)
+      (P:Parser with type pseudo = S.A.pseudo and type param = S.A.param)
       (M:XXXMem.S with module S = S) =
     struct
       module T = Test.Make(S.A) 
@@ -159,6 +160,7 @@ module Top (C:Config) = struct
         let module CA = CArch.Make(C.PC)(SymbValue) in
         let module CLexParse = struct
     	  type pseudo = CA.pseudo
+          type param = CA.param
 	  type token = CParser.token
           module Lexer = CLexer.Make(LexConfig)
 	  let lexer = Lexer.token

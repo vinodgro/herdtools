@@ -55,25 +55,19 @@ end
 module type LexParse = sig
   type token
   type pseudo
+  type param
 
   val lexer : Lexing.lexbuf -> token
   val parser :
         (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
-	  (int * pseudo list) list * MiscParser.gpu_data option
+	  (param, pseudo list) MiscParser.process list * MiscParser.gpu_data option
 end
 
 (* Output signature *)
 module type S = sig
   type pseudo
-  type init = MiscParser.state
-  type prog = (int * pseudo list) list
-  type locations = MiscParser.LocSet.t
-
-  val parse_init : Lexing.lexbuf -> init
-(*  val parse_prog : Lexing.lexbuf -> prog *)
-  val parse_cond : Lexing.lexbuf -> MiscParser.constr
-
-  val parse : in_channel -> Splitter.result ->  pseudo MiscParser.t
+  type param
+  val parse : in_channel -> Splitter.result -> (param, pseudo) MiscParser.t
 end
 
 
@@ -81,11 +75,13 @@ module Make
     (O:Config)
     (A:ArchBase.S)
     (L: LexParse
-    with type pseudo = A.pseudo) : S with type pseudo = A.pseudo =
+    with type pseudo = A.pseudo and type param = A.param) : 
+  (S with type pseudo = A.pseudo and type param = A.param) =
   struct
     type pseudo = A.pseudo
+    type param = A.param
     type init = MiscParser.state
-    type prog = (int * pseudo list) list
+    type prog = (param, pseudo list) MiscParser.process list
     type locations = MiscParser.LocSet.t
 
 
@@ -172,7 +168,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
 	  chan init_loc SL.token StateParser.init in
       let prog,gpu_data =
 	call_parser_loc "prog" chan prog_loc L.lexer L.parser in
-      let procs = List.map fst prog in 
+      let procs = List.map (fun process -> process.MiscParser.proc) prog in 
       check_procs procs ;
       let (locs,final,_quantifiers) =
 	call_parser_loc "final"

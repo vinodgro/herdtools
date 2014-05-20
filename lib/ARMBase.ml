@@ -140,6 +140,8 @@ let barrier_compare = Pervasives.compare
 (* Instructions *)
 (****************)
 
+type param = unit
+
 type k = int 
 
 type lbl = Label.t

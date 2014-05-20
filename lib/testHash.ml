@@ -39,7 +39,7 @@ module Make(A:ArchBase.S)
       open Printf
 
       type init = (MiscParser.location * SymbConstant.v) list
-      type prog = (int * A.pseudo list) list
+      type prog = (A.param, A.pseudo list) MiscParser.process list
       type locations =  MiscParser.LocSet.t
 
 
@@ -83,17 +83,17 @@ module Make(A:ArchBase.S)
 
       let all_labels =
         List.fold_left 
-          (fun k (_,code) ->
+          (fun k p ->
             List.fold_left 
               (A.fold_labels (fun k lbl -> StringSet.add lbl k))
-              k code)
+              k p.body)
           StringSet.empty
           
       let change_labels f =
         List.map
-          (fun (p,code) ->
-            let code = List.map (A.map_labels f) code in
-            p,code)
+          (fun p ->
+            let code = List.map (A.map_labels f) p.body in
+            {p with body = code})
 
       let refresh_labels pref prog =
         let lbls = all_labels prog in
@@ -115,9 +115,9 @@ module Make(A:ArchBase.S)
 
       let norm_instructions =
         List.map
-          (fun (p,code) ->
-            let code = List.map (A.pseudo_map A.norm_ins) code in
-            p,code)
+          (fun p ->
+            let code = List.map (A.pseudo_map A.norm_ins) p.body in
+            {p with body = code})
 
       let dump_pseudo =
         let rec dump_rec p k = match p with
@@ -128,8 +128,8 @@ module Make(A:ArchBase.S)
         | A.Choice(_,_,_) -> "Choice dump not implemented" :: k
         | A.Loop(_,_) -> "Loop dump not implemented" :: k
         in
-        fun (_,ps) ->
-          List.fold_right dump_rec ps []
+        fun p ->
+          List.fold_right dump_rec p.body []
 
 
 

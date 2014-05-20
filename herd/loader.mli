@@ -21,6 +21,6 @@ module type S = sig
 end
 
 module Make : functor (A:Arch.S) -> S
-with type nice_prog = A.nice_prog
+with type nice_prog = A.param A.nice_prog
 and type program = A.program
 and type start_points = A.start_points

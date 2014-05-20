@@ -590,6 +590,7 @@ let get_next = function
 
 (* Macros *)
         
+type param = unit
 
 include Pseudo.Make
     (struct

@@ -102,11 +102,15 @@ type ('i, 'p, 'c, 'loc) result =
 }
 
 (* Easier to handle *)
+
+(*
 type ('loc,'v,'ins) r3 =
       (('loc * 'v) list,
        (int * 'ins list) list,
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
        'loc) result
+
+*)
 
 type ('loc,'v,'code) r4 =
       (('loc * 'v) list,
@@ -114,10 +118,18 @@ type ('loc,'v,'code) r4 =
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
        'loc) result
 
+type ('param,'body) process =
+  { proc : int
+  ; params : 'param list
+  ; body : 'body
+  }
+
 (* Result of generic parsing *)
-type 'pseudo t =
-    (state, (int * 'pseudo list) list, constr, location) result
+type ('param, 'pseudo) t =
+    (state, ('param, 'pseudo list) process list, constr, location) result
 
 let get_hash p =
   try List.assoc "Hash" p.info
   with Not_found -> assert false
+
+

@@ -29,30 +29,23 @@ module DefaultConfig : Config
 module type LexParse = sig
   type token
   type pseudo
+  type param
 
   val lexer : Lexing.lexbuf -> token
   val parser :
        (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
-	 (int * pseudo list) list * MiscParser.gpu_data option
+	 (param, pseudo list) MiscParser.process list * MiscParser.gpu_data option
 end
 
 module type S = sig
   type pseudo
-  type init = MiscParser.state
-  type prog = (int * pseudo list) list
-  type locations = MiscParser.LocSet.t
-
-(* Partial access for external digest computation *)
-  val parse_init : Lexing.lexbuf -> init
-(* val parse_prog : Lexing.lexbuf -> prog *)
-  val parse_cond : Lexing.lexbuf -> MiscParser.constr
-(* Main parser for memevents and litmus *)
-  val parse : in_channel -> Splitter.result ->  pseudo MiscParser.t
+  type param
+  val parse : in_channel -> Splitter.result -> (param, pseudo) MiscParser.t
 end
 
 (* Build a generic parser *)
 module Make
     (C:Config)
     (A:ArchBase.S)
-    (L: LexParse with type pseudo = A.pseudo) :
-    S with type pseudo = A.pseudo
+    (L: LexParse with type pseudo = A.pseudo and type param = A.param) :
+    S with type pseudo = A.pseudo and type param = A.param

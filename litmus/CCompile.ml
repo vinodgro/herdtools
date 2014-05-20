@@ -51,7 +51,7 @@ module Make
       let env =
         List.fold_right
           (function
-            | CAst.Test {CAst.params; _} -> add_params params
+            | CAst.Test {MiscParser.params; _} -> add_params params
             | _ -> Misc.identity
           )
           code
@@ -75,11 +75,11 @@ module Make
        List.map f
 
     let comp_template proc init final code =
-      let inputs = string_of_params code.CAst.params in
+      let inputs = string_of_params code.MiscParser.params in
       {
         CTarget.inputs ;
         finals=final ;
-        code = code.CAst.body; }
+        code = code.MiscParser.body; }
 
     let get_reg_from_loc = function
       | A.Location_reg (_, reg) -> reg
@@ -117,7 +117,7 @@ module Make
       List.fold_left
         (fun acc -> function
            | CAst.Test code ->
-               let proc = code.CAst.proc in
+               let proc = code.MiscParser.proc in
                let regs = get_locals proc (locations proc final flocs) in
                let final = List.map fst regs in
                let volatile =
@@ -125,7 +125,7 @@ module Make
                    | {CAst.volatile = true; param_name; _} -> param_name :: acc
                    | {CAst.volatile = false; _} -> acc
                  in
-                 List.fold_left f [] code.CAst.params
+                 List.fold_left f [] code.MiscParser.params
                in
                acc @ [(proc, (comp_template proc init final code, (regs, volatile)))]
            | CAst.Global _ -> acc

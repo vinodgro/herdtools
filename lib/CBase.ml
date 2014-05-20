@@ -116,6 +116,8 @@ type instruction =
 | Pexpr_const of store_op
 | Pexpr_reg of reg
 
+type param = CAst.param
+
 include Pseudo.Make
     (struct
       type ins = instruction

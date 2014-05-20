@@ -130,6 +130,8 @@ type instruction =
 | Pload  of loc * reg * mem_order * mem_scope
 | Pfence of gpu_memory_space * mem_order * mem_scope
 
+type param = unit
+
 include Pseudo.Make
     (struct
       type ins = instruction
