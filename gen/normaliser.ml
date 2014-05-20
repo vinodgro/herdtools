@@ -148,7 +148,7 @@ module Make : functor (C:Config) -> functor (E:Edge.S) ->
       let _diff_proc e = try E.get_ie e = Ext with E.IsStore _ -> assert false
 
       let ext_com e = match e.E.edge with
-      | E.Rf Ext|E.Fr Ext|E.Ws Ext -> true
+      | E.Rf Ext|E.Fr Ext|E.Ws Ext|E.Hat -> true
       | _ -> false
 
       exception NotFound

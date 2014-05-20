@@ -37,6 +37,7 @@ rule coms = parse
 | "Fr"   { Fr :: coms lexbuf }
 | "Rf"   { Rf :: coms lexbuf }
 | "Ws"   { Ws :: coms lexbuf }
+| "Hat"  { Hat :: coms lexbuf }
 | eof    { [] }
 | non_space* as lxm   { error (sprintf "'%s'" lxm) }
    

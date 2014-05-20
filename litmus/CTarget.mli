@@ -10,6 +10,7 @@
 (*********************************************************************)
 
 (* C target, a simplified template *)
+
 type arch_reg = string
 
 type t =

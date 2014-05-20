@@ -85,6 +85,17 @@ module U = TopUtils.Make(O)(Comp)
     | No       (* Non-existent or irrelevant *)
     | Yes of E.dp * A.arch_reg
 
+(* Catch exchanges at the very last moment... *)
+
+  let call_emit_access st p init n =
+    let e = n.C.evt in
+    if e.C.rmw then match e.C.dir with
+    | R ->
+        let r,init,cs,st = Comp.emit_exch  st p init e n.C.next.C.evt in
+        Some r,init,cs,st
+    | W -> None,init,[],st
+
+    else Comp.emit_access st p init e
 
 (* Encodes load of first non-initial value in chain,
    can poll on value in place of checking it *)
@@ -114,7 +125,7 @@ module U = TopUtils.Make(O)(Comp)
                 Comp.emit_load_one st p init n.C.evt.C.loc in
               Some r,init,i,st
             else
-              Comp.emit_access st p init n.C.evt
+              call_emit_access st p init n
         end
     | Yes (dp,r1) -> Comp.emit_access_dep st p init n.C.evt dp r1 in    
     o,init,ip@i,st
@@ -626,7 +637,8 @@ let fmt_cols =
     F.dump_final chan t.final ;
     ()
 
-let dump_test ({ name = name; _ } as t) =
+
+let _dump_test ({ name = name; _ } as t) =
   let fname = name ^ ".litmus" in
   Misc.output_protect
     (fun chan -> dump_test_channel chan t)

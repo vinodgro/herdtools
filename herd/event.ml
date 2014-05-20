@@ -302,12 +302,17 @@ struct
 (* Used for detecting data dependencies,
    e1 is a reg load and e2 is a mem store, from the same instruction.
    As a consequence : values exists and are determined.
-   Physical equality ofvalues implies that e1 is teh data port.
+   Physical equality of values implies that e1 is the data port.
    Converse should hold in the current implementation... *)
 
-    let same_subst_value e1 e2 = match value_of e1, value_of e2 with
-    | Some (V.Val v1),Some (V.Val v2) -> v1 == v2
-    | _,_ -> assert false
+    let same_subst_value e1 e2 =
+(*      eprintf "SUBST: %a vs. %a:%!" debug_event e1 debug_event e2 ; *)
+      let r = match value_of e1, value_of e2 with
+      | Some (v1),Some (v2) -> v1 == v2
+      | _,_ -> assert false in
+(*      eprintf "%b\n" r  ; *)
+      r
+
 
     let proc_of e = match e.iiid with
     | Some i -> Some i.A.proc
