@@ -155,7 +155,7 @@ module Top (C:Config) = struct
           let module X = Make (X86S) (P) (X86M) in 
           X.run name chan env splitted
 
-      | Archs.CPP11 ->
+      | Archs.C ->
         let module CA = CArch.Make(C.PC)(SymbValue) in
         let module CLexParse = struct
     	  type pseudo = CA.pseudo

@@ -14,6 +14,7 @@ let tr_name = function
 | "signed" -> SIGNED
 | "_Atomic" -> ATOMIC
 | "long" -> LONG
+| "int" -> INT
 | "double" -> DOUBLE
 | "_Bool" -> BOOL
 | "atomic_bool" -> ATOMIC_NAME "_Atomic _Bool"
@@ -99,9 +100,6 @@ rule token = parse
 | "SCAS"  { SCAS }
 | "unlock"    { UNLOCK }
 | "LK" { LK }
-| '&' (name as x) {
-  AMP_NAME x
-  }
 | name as x { 
   match CBase.parse_reg x with
   | Some r -> ARCH_REG r

@@ -7,12 +7,12 @@ open CBase
 %token LK
 %token <CBase.reg> ARCH_REG
 %token <int> NUM
-%token <string> NAME AMP_NAME
+%token <string> NAME
 %token <string> ATOMIC_NAME
 %token <int> PROC
 %token SEMI COMMA PIPE COLON LPAR RPAR EQ DOT LBRACE RBRACE STAR
 %token WHILE IF ELSE 
-%token VOLATILE UNSIGNED SIGNED ATOMIC LONG DOUBLE BOOL
+%token VOLATILE UNSIGNED SIGNED ATOMIC LONG DOUBLE BOOL INT
 %token <CBase.mem_order> MEMORDER
 %token <CBase.location_kind> LOCATIONKIND
 
@@ -29,8 +29,11 @@ open CBase
 
 main: 
 | procs lk_map EOF 
-  { let proc_list, param_map = List.fold_left (fun (proc_list, param_map) p -> 
-       ((p.CAst.proc,p.CAst.body) :: proc_list, (p.CAst.proc,p.CAst.params) :: param_map)) ([],[]) $1 in
+  { let proc_list, param_map = 
+    List.fold_right (fun p (proc_list, param_map) -> 
+        let proc_list = (p.CAst.proc,p.CAst.body) :: proc_list in
+        let param_map = (p.CAst.proc,p.CAst.params) :: param_map in
+        (proc_list, param_map)) $1 ([],[]) in
     let additional = { 
       MiscParser.empty_gpu with 
       MiscParser.lk_map = $2; 
@@ -40,7 +43,7 @@ main:
 procs:
 |   { [] }
 | PROC LPAR params RPAR LBRACE instr_list RBRACE procs
-    { {CAst.proc = $1; CAst.params = []; CAst.body = $6} :: $8 } 
+    { {CAst.proc = $1; CAst.params = $3; CAst.body = $6} :: $8 } 
 
 instr_list:
 |            { [] }
@@ -62,14 +65,14 @@ basic_instr:
     {Pexpr_const $1}
   | reg
     {Pexpr_reg $1}
-  | reg EQ LD LPAR loc COMMA MEMORDER RPAR
-    {Pload ($5,$1,$7)}
+  | optional_type reg EQ LD LPAR loc COMMA MEMORDER RPAR
+    {Pload ($6,$2,$8)}
   | ST LPAR loc COMMA store_op COMMA MEMORDER RPAR
     {Pstore ($3,$5,$7)}
   | STAR loc EQ store_op
     {Pstore ($2,$4,NA)}
-  | reg EQ STAR loc
-    {Pload ($4,$1,NA)}
+  | optional_type reg EQ STAR loc
+    {Pload ($5,$2,NA)}
   | FENCE LPAR MEMORDER RPAR
     {Pfence ($3)}
   | LOCK LPAR loc RPAR
@@ -81,28 +84,32 @@ basic_instr:
   | SCAS LPAR loc COMMA loc COMMA store_op COMMA MEMORDER COMMA MEMORDER RPAR
     {Pcas ($3,$5,$7,$9,$11,true)}
 
+optional_type:
+|      { () }
+| atyp { () }
+
 store_op :
 | NUM { Concrete $1 }
 
 reg:
 | ARCH_REG { $1 }
 
-amploc:
-| AMP_NAME { Symbolic $1 }
-
 loc:
 | NAME { Symbolic $1 }
 
+one_or_more_params:
+| param { [$1] }
+| param COMMA one_or_more_params { $1 :: $3 }
 
 params:
+|                    { [] }
+| one_or_more_params { $1 }
+
+param:
 | ty NAME
-    { [{CAst.param_ty = $1; volatile = false; param_name = $2}] }
+    { {CAst.param_ty = $1; volatile = false; param_name = $2} }
 | VOLATILE ty NAME
-    { [{CAst.param_ty = $2; volatile = true; param_name = $3}] }
-| ty NAME COMMA params
-    { {CAst.param_ty = $1; volatile = false; param_name = $2} :: $4 }
-| VOLATILE ty NAME COMMA params
-    { {CAst.param_ty = $2; volatile = true; param_name = $3} :: $5 }
+    { {CAst.param_ty = $2; volatile = true; param_name = $3} }
 
 ty:
 | atyp STAR { RunType.Ty $1 }
@@ -114,7 +121,7 @@ atyp:
 
 typ:
 | ATOMIC_NAME { $1 }
-| ty_attr NAME { $1 ^ $2 }
+| ty_attr INT { $1 ^ "int" }
 | ty_attr LONG { $1 ^ "long" }
 | ty_attr DOUBLE { $1 ^ "double" }
 | ty_attr LONG LONG { $1 ^ "long long" }

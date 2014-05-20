@@ -26,9 +26,9 @@ module type S =
   end
 
 
-module FromPPC   : functor(B:PPCBarrier.S)   -> S with type a = B.a
-module FromARM   : functor(B:ARMBarrier.S)   -> S with type a = B.a
-module FromX86   : functor(B:X86Barrier.S)   -> S with type a = B.a
-module FromCPP11 : functor(B:CBarrier.S) -> S with type a = B.a
-module FromOpenCL : functor(B:OpenCLBarrier.S) -> S with type a = B.a
+module FromPPC     : functor(B:PPCBarrier.S)     -> S with type a = B.a
+module FromARM     : functor(B:ARMBarrier.S)     -> S with type a = B.a
+module FromX86     : functor(B:X86Barrier.S)     -> S with type a = B.a
+module FromC       : functor(B:CBarrier.S)       -> S with type a = B.a
+module FromOpenCL  : functor(B:OpenCLBarrier.S)  -> S with type a = B.a
 module FromGPU_PTX : functor(B:GPU_PTXBarrier.S) -> S with type a = B.a

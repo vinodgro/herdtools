@@ -1,4 +1,4 @@
-"C++11"
+"C"
 
 (* JW: The set A can now be used to refer to all atomic events. It
    currently contains:

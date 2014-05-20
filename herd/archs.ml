@@ -18,17 +18,17 @@ type t =
   | X86
   | PPC
   | ARM
-  | CPP11
+  | C
   | OpenCL
   | GPU_PTX
 
-let tags = ["X86";"PPC";"ARM";"CPP11";"OpenCL";"GPU_PTX"]
+let tags = ["X86";"PPC";"ARM";"C";"OpenCL";"GPU_PTX"]
 
 let parse s = match s with
 | "X86" -> Some X86
 | "PPC" -> Some PPC
 | "ARM" -> Some ARM
-| "CPP11" -> Some CPP11
+| "C" -> Some C
 | "OpenCL" -> Some OpenCL
 | "GPU_PTX" -> Some GPU_PTX
 | _ -> None
@@ -42,13 +42,13 @@ let pp a = match a with
 | X86 -> "X86"
 | PPC -> "PPC"
 | ARM -> "ARM"
-| CPP11 -> "CPP11"
+| C -> "C"
 | OpenCL -> "OpenCL"
 | GPU_PTX -> "GPU_PTX"
 
 let arm = ARM
 let ppc = PPC
 let x86 = X86
-let cpp11 = CPP11
+let c = C
 let opencl = OpenCL
 let gpu_ptx = GPU_PTX

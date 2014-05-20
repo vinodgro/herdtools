@@ -16,7 +16,7 @@ type t =
   | X86
   | PPC
   | ARM
-  | CPP11
+  | C
   | OpenCL
   | GPU_PTX
 
@@ -29,7 +29,7 @@ val pp : t -> string
 val arm : t
 val ppc : t
 val x86 : t
-val cpp11 : t
+val c : t
 val opencl : t
 val gpu_ptx : t
 
