@@ -1,27 +1,27 @@
 %{
 open Constant
-open CPP11Base
+open CBase
 %}
 
 %token EOF
 %token LK
-%token <CPP11Base.reg> ARCH_REG
+%token <CBase.reg> ARCH_REG
 %token <int> NUM
-%token <string> NAME
+%token <string> NAME AMP_NAME
 %token <string> ATOMIC_NAME
 %token <int> PROC
 %token SEMI COMMA PIPE COLON LPAR RPAR EQ DOT LBRACE RBRACE STAR
 %token WHILE IF ELSE 
 %token VOLATILE UNSIGNED SIGNED ATOMIC LONG DOUBLE BOOL
-%token <CPP11Base.mem_order> MEMORDER
-%token <CPP11Base.location_kind> LOCATIONKIND
+%token <CBase.mem_order> MEMORDER
+%token <CBase.location_kind> LOCATIONKIND
 
 /* Instruction tokens */
 
 %token LD ST FENCE LOCK UNLOCK SCAS WCAS
 
 %type <LocationKindMap.lk_map> lk_map
-%type <(int * CPP11Base.pseudo list) list * MiscParser.gpu_data option> main 
+%type <((CBase.pseudo list) CAst.test) list * MiscParser.gpu_data option> main 
 %start  main
 
 %%
@@ -34,7 +34,7 @@ main:
 procs:
 |   { [] }
 | PROC LPAR params RPAR LBRACE instr_list RBRACE procs
-    { ($1, $6) :: $8 } /* TODO: Ignores params */
+    { {CAst.proc = $1; CAst.params = []; CAst.body = $6} :: $8 }
 
 instr_list:
 |            { [] }
@@ -56,14 +56,14 @@ basic_instr:
     {Pexpr_const $1}
   | reg
     {Pexpr_reg $1}
-  | reg EQ loc DOT LD LPAR MEMORDER RPAR
-    {Pload ($3,$1,$7)}
-  | loc DOT ST LPAR store_op COMMA MEMORDER RPAR
-    {Pstore ($1,$5,$7)}
-  | loc EQ store_op
-    {Pstore ($1,$3,NA)}
-  | reg EQ loc
-    {Pload ($3,$1,NA)}
+  | reg EQ LD LPAR loc COMMA MEMORDER RPAR
+    {Pload ($5,$1,$7)}
+  | ST LPAR loc COMMA store_op COMMA MEMORDER RPAR
+    {Pstore ($3,$5,$7)}
+  | STAR loc EQ store_op
+    {Pstore ($2,$4,NA)}
+  | reg EQ STAR loc
+    {Pload ($4,$1,NA)}
   | FENCE LPAR MEMORDER RPAR
     {Pfence ($3)}
   | LOCK LPAR loc RPAR
@@ -81,13 +81,14 @@ store_op :
 reg:
 | ARCH_REG { $1 }
 
+amploc:
+| AMP_NAME { Symbolic $1 }
+
 loc:
 | NAME { Symbolic $1 }
 
 
 params:
-| { [] }
-/*
 | ty NAME
     { [{CAst.param_ty = $1; volatile = false; param_name = $2}] }
 | VOLATILE ty NAME
@@ -99,7 +100,7 @@ params:
 
 ty:
 | atyp STAR { RunType.Ty $1 }
-| atyp STAR STAR { RunType.Pointer $1 }
+/*| atyp STAR STAR { RunType.Pointer $1 }*/
 
 atyp:
 | typ { $1 }
@@ -118,7 +119,6 @@ ty_attr:
 | { "" }
 | UNSIGNED { "unsigned " }
 | SIGNED { "signed " }
-*/
 
 lk_map:
 | LK lk_list { $2 }

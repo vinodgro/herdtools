@@ -2,17 +2,17 @@ CPP11 MP
 "Fre PodWR Fre PodWR"
 { x=1; y=0; }
 P0 () {
-  x=1;
-  y.store(1,mo_seq_cst);
+  r0 = atomic_load(y, memory_order_acquire);
+  atomic_store(x, 0, memory_order_release);
 } 
 
 P1 () {
-  r1 = y.load(mo_seq_cst);
-  r2 = x;
+  r1 = atomic_load(x, memory_order_acquire);
+  atomic_store(y, 1, memory_order_release);
 }
 
 LK 
   x:atomic, y:atomic
 
 exists 
-  (1:r1 = 1 /\ 1:r2 = 0)
+  (0:r0 = 42 /\ 1:r1 = 42)

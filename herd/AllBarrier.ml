@@ -84,7 +84,7 @@ module FromX86(XB:X86Barrier.S) = struct
   let pp_isync = "???"
 end
 
-module FromCPP11(CB:CPP11Barrier.S) = struct
+module FromCPP11(CB:CBarrier.S) = struct
 
   type a = CB.a
 

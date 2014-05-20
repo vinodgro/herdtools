@@ -1,9 +1,8 @@
 {
 module Make(O:LexUtils.Config) = struct
-open CPP11Parser
+open CParser
 open Lexing
 open LexMisc
-module CPP11 = CPP11Base
 
 module LU = LexUtils.Make(O)
 
@@ -83,30 +82,33 @@ rule token = parse
 | "else"  { ELSE }
 | '=' {EQ}
 | '.' {DOT}
-| "mo_acquire" {MEMORDER (CPP11Base.Acq)}
-| "mo_release" {MEMORDER (CPP11Base.Rel)}
-| "mo_acq_rel" {MEMORDER (CPP11Base.Acq_Rel)}
-| "mo_seq_cst" {MEMORDER (CPP11Base.SC)}
-| "mo_relaxed" {MEMORDER (CPP11Base.Rlx)}
-| "mo_consume" {MEMORDER (CPP11Base.Con)}
-| "mutex"      {LOCATIONKIND (CPP11Base.LK_mutex)}
-| "atomic"     {LOCATIONKIND (CPP11Base.LK_atomic)}
-| "nonatomic"  {LOCATIONKIND (CPP11Base.LK_nonatomic)}
+| "memory_order_acquire" {MEMORDER (CBase.Acq)}
+| "memory_order_release" {MEMORDER (CBase.Rel)}
+| "memory_order_acq_rel" {MEMORDER (CBase.Acq_Rel)}
+| "memory_order_seq_cst" {MEMORDER (CBase.SC)}
+| "memory_order_relaxed" {MEMORDER (CBase.Rlx)}
+| "memory_order_consume" {MEMORDER (CBase.Con)}
+| "mutex"      {LOCATIONKIND (CBase.LK_mutex)}
+| "atomic"     {LOCATIONKIND (CBase.LK_atomic)}
+| "nonatomic"  {LOCATIONKIND (CBase.LK_nonatomic)}
 | "fence" { FENCE }
-| "load"  { LD }
-| "store"    { ST }
+| "atomic_load"  { LD }
+| "atomic_store" { ST }
 | "lock"  { LOCK }
 | "WCAS"  { WCAS }
 | "SCAS"  { SCAS }
 | "unlock"    { UNLOCK }
 | "LK" { LK }
+| '&' (name as x) {
+  AMP_NAME x
+  }
 | name as x { 
-  match CPP11.parse_reg x with
+  match CBase.parse_reg x with
   | Some r -> ARCH_REG r
   | None -> tr_name x 
   }
 | eof { EOF }
-| "" { LexMisc.error "CPP11 lexer" lexbuf }
+| "" { LexMisc.error "C lexer" lexbuf }
 
 {
 let token lexbuf =

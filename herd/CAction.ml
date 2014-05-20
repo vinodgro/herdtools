@@ -21,9 +21,9 @@ module type S = sig
      "action" and "action_" *)
   module A_ : Arch.S
   type action_ =    
-    | Access of Dir.dirn * A_.location * A_.V.v * CPP11Base.mem_order
-    | Fence of CPP11Base.mem_order
-    | RMW of A_.location * A_.V.v * A_.V.v * CPP11Base.mem_order
+    | Access of Dir.dirn * A_.location * A_.V.v * CBase.mem_order
+    | Fence of CBase.mem_order
+    | RMW of A_.location * A_.V.v * A_.V.v * CBase.mem_order
     | Blocked_RMW of A_.location
     | Lock of A_.location * bool (* true = success, false = blocked *)
     | Unlock of A_.location
@@ -39,15 +39,15 @@ struct
   open Dir
 
   type action_ = 
-    | Access of dirn * A.location * V.v * CPP11Base.mem_order
-    | Fence of CPP11Base.mem_order
-    | RMW of A.location * V.v * V.v * CPP11Base.mem_order
+    | Access of dirn * A.location * V.v * CBase.mem_order
+    | Fence of CBase.mem_order
+    | RMW of A.location * V.v * V.v * CBase.mem_order
     | Blocked_RMW of A.location
     | Lock of A.location * bool (* true = success, false = blocked *)
     | Unlock of A.location
   type action = action_
  
-  let mk_init_write l v = Access (W,l,v,CPP11Base.NA)
+  let mk_init_write l v = Access (W,l,v,CBase.NA)
 
 (* Local pp_location that adds [..] around global locations *)        
     let pp_location withparen loc =
@@ -58,15 +58,15 @@ struct
     | Access (d,l,v,mo) ->
 	sprintf "%s(%s)%s=%s"
           (pp_dirn d)
-          (CPP11Base.pp_mem_order mo)
+          (CBase.pp_mem_order mo)
           (pp_location withparen l)
 	  (V.pp_v v)
     | Fence mo -> 
        sprintf "F(%s)"
-	  (CPP11Base.pp_mem_order mo)
+	  (CBase.pp_mem_order mo)
     | RMW (l,v1,v2,mo) ->
        	sprintf "RMW(%s)%s(%s>%s)"
-          (CPP11Base.pp_mem_order mo)
+          (CBase.pp_mem_order mo)
           (pp_location withparen l)
 	  (V.pp_v v1) (V.pp_v v2)
     | Blocked_RMW l ->
@@ -122,7 +122,7 @@ struct
     (* The following definition of is_atomic
        is quite arbitrary. *)
     let is_atomic a = match a with
-    | Access (_,A.Location_global _,_,mo) -> mo != CPP11Base.NA
+    | Access (_,A.Location_global _,_,mo) -> mo != CBase.NA
     | RMW _ -> true
     | _ -> false
 
@@ -215,13 +215,13 @@ struct
      "rmw", is_rmw; "brmw", is_blocked_rmw;
      "lk", is_lock; "ls", is_successful_lock;
      "ul", is_unlock; "F", is_fence;
-     "acq", mo_matches CPP11Base.Acq;
-     "sc", mo_matches CPP11Base.SC;
-     "rel", mo_matches CPP11Base.Rel; 
-     "acq_rel", mo_matches CPP11Base.Acq_Rel;
-     "rlx", mo_matches CPP11Base.Rlx;
-     "con", mo_matches CPP11Base.Con;
-     "na", mo_matches CPP11Base.NA;
+     "acq", mo_matches CBase.Acq;
+     "sc", mo_matches CBase.SC;
+     "rel", mo_matches CBase.Rel; 
+     "acq_rel", mo_matches CBase.Acq_Rel;
+     "rlx", mo_matches CBase.Rlx;
+     "con", mo_matches CBase.Con;
+     "na", mo_matches CBase.NA;
    ]
 
 (* Equations *)

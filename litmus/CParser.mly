@@ -17,7 +17,7 @@
 %token <string> NAME
 
 %start main
-%type <CAst.t list> main
+%type <(string CAst.t) list> main
 
 %%
 

@@ -230,50 +230,43 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
         else 
       match code with
       | A.Code_ins inst -> 
-	let ii = { 
-          A.program_order_index = prog_order;
-          proc = proc;
-          inst = inst; 
-        } in
-        S.build_semantics procs inst ii >>> fun (ret, branch) ->
+        add_inst proc prog_order inst >>> fun (ret, branch) ->
         let prog_order = A.next_po_index prog_order in
         EM.unitT (prog_order, ret, branch)
 
       | A.Code_choice (inst,p1,p2) ->
-	let ii = { 
-          A.program_order_index = prog_order;
-          proc = proc;
-          inst = inst; 
-        } in
-        S.build_semantics procs inst ii >>> fun (ret, _branch) -> 
+        add_inst proc prog_order inst >>> fun (ret, _branch) -> 
         let prog_order = A.next_po_index prog_order in
         begin match ret with 
         | None -> Warn.user_error "Test condition must return a value"
         | Some ret -> 
-          (EM.choiceT ret 
+          EM.choiceT ret 
             (add_code_list proc prog_order seen p1)
-            (add_code_list proc prog_order seen p2)) >>> fun prog_order ->
+            (add_code_list proc prog_order seen p2) >>> fun prog_order ->
           EM.unitT (prog_order, None, S.B.Next)
         end
 
       | A.Code_loop (inst,p) ->
-	let ii = { 
-          A.program_order_index = prog_order;
-          proc = proc;
-          inst = inst; 
-        } in
-        S.build_semantics procs inst ii >>> fun (ret, _branch) -> 
+	add_inst proc prog_order inst >>> fun (ret, _branch) -> 
         let prog_order = A.next_po_index prog_order in
         begin match ret with 
         | None -> Warn.user_error "Test condition must return a value"
         | Some ret ->
-          (EM.choiceT ret
+          EM.choiceT ret
             (add_code_list proc prog_order seen p >>> fun prog_order ->
              add_code proc prog_order seen (loop_count + 1) code >>> fun (prog_order,_,_) -> 
-          let prog_order = A.next_po_index prog_order in
-            EM.unitT (prog_order, None, S.B.Next))
-            (EM.unitT (prog_order, None, S.B.Next))) 
+             let prog_order = A.next_po_index prog_order in
+             EM.unitT (prog_order, None, S.B.Next))
+            (EM.unitT (prog_order, None, S.B.Next)) 
         end
+
+      and add_inst proc prog_order inst =
+        let ii = { 
+          A.program_order_index = prog_order;
+          proc = proc;
+          inst = inst; 
+        } in
+        S.build_semantics procs inst ii
 
       and add_lbl proc prog_order seen addr_jmp lbl =
         match fetch_code seen addr_jmp lbl with

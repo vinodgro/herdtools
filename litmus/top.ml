@@ -259,6 +259,17 @@ end = struct
               "%s(%s)"
               f
               (String.concat "," (List.map A.pp_reg regs))
+        | A.Choice (ins, io1, io2) -> 
+          Printf.sprintf
+            "if(%s){%s}{%s}"
+            (A.dump_instruction ins)
+            (String.concat ";" (List.map fmt_io io1))
+            (String.concat ";" (List.map fmt_io io2))
+        | A.Loop (ins, io) -> 
+          Printf.sprintf
+            "while(%s){%s}"
+            (A.dump_instruction ins)
+            (String.concat ";" (List.map fmt_io io))
 
         let dump_prog (p,is) = Printf.sprintf "P%i" p::List.map fmt_io is
 
@@ -340,7 +351,7 @@ end = struct
         let pp_reg x = x
       end
       module Pseudo = struct
-        type code = CAst.t
+        type code = string CAst.t
         let dump_prog cfun =
           let f = function
             | CAst.Test { CAst.params; body; proc = i } ->

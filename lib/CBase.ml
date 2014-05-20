@@ -77,13 +77,13 @@ type mem_order =
 
 let pp_mem_order o = 
   match o with 
-  | Acq -> "mo_acquire"
-  | Rel -> "mo_release"
-  | Acq_Rel -> "mo_acq_rel"
-  | SC -> "mo_seq_cst"
-  | Rlx -> "mo_relaxed"
+  | Acq -> "memory_order_acquire"
+  | Rel -> "memory_order_release"
+  | Acq_Rel -> "memory_order_acq_rel"
+  | SC -> "memory_order_seq_cst"
+  | Rlx -> "memory_order_relaxed"
   | NA -> "non_atomic"
-  | Con -> "mo_consume"
+  | Con -> "memory_order_consume"
 
 (****************)
 (* Barriers     *)
@@ -149,13 +149,13 @@ let dump_instruction i = match i with
     (match mo with 
     | NA -> sprintf("%s = %s") 
 		   (pp_addr loc) (pp_sop sop)
-    | _ -> sprintf("%s.store(%s,%s)") 
+    | _ -> sprintf("atomic_store_explicit(%s,%s,%s)") 
 		  (pp_addr loc) (pp_sop sop) (pp_mem_order mo))
   | Pload(loc,reg,mo) ->
     (match mo with 
     | NA -> sprintf("%s = %s") 
 		   (pp_reg reg) (pp_addr loc)
-    | _ -> sprintf("%s = %s.load(%s)") 
+    | _ -> sprintf("%s = atomic_load_explicit(%s,%s)") 
 		  (pp_reg reg) (pp_addr loc) (pp_mem_order mo))
   | Pcas(obj,exp,des,mo_success,mo_failure,strong) ->
     sprintf("%sCAS(%s,%s,%s,%s,%s)") 

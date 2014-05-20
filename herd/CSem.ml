@@ -16,9 +16,9 @@ module Make (C:Sem.Config)(V:Value.S)
     = 
   struct
 
-    module CPP11 = CPP11Arch.Make(C.PC)(V)
-    module Act = CPP11Action.Make(CPP11)
-    include SemExtra.Make(C)(CPP11)(Act)
+    module CA = CArch.Make(C.PC)(V)
+    module Act = CAction.Make(CA)
+    include SemExtra.Make(C)(CA)(Act)
     let barriers = []
     let isync = None
 
@@ -33,11 +33,11 @@ module Make (C:Sem.Config)(V:Value.S)
     let (>>!) = M.(>>!)
 		       
     let read_loc mo = M.read_loc (fun loc v -> Act.Access (Dir.R, loc, v, mo))
-    let read_reg r ii = read_loc CPP11.NA (A.Location_reg (ii.A.proc,r)) ii
+    let read_reg r ii = read_loc CA.NA (A.Location_reg (ii.A.proc,r)) ii
     let read_mem mo a = read_loc mo (A.Location_global a)
 
     let write_loc mo loc v ii = M.mk_singleton_es (Act.Access (Dir.W, loc, v, mo)) ii
-    let write_reg r v ii = write_loc CPP11.NA (A.Location_reg (ii.A.proc,r)) v ii
+    let write_reg r v ii = write_loc CA.NA (A.Location_reg (ii.A.proc,r)) v ii
     let write_mem mo a  = write_loc mo (A.Location_global a) 	     
 		 
     let constant_to_int v = match v with
@@ -45,28 +45,28 @@ module Make (C:Sem.Config)(V:Value.S)
       | _ -> Warn.fatal "Couldn't convert constant to int"
 
     let build_semantics _st i ii = match i with
-      | CPP11.Pload(loc,reg,mo) ->
-	M.unitT (CPP11.maybev_to_location loc) >>= fun loc -> 
+      | CA.Pload(loc,reg,mo) ->
+	M.unitT (CA.maybev_to_location loc) >>= fun loc -> 
         read_loc mo loc ii >>= fun v -> 
         write_reg reg v ii >>! 
 	(Some v, B.Next)
 
-      | CPP11.Pstore(l,v,mo) ->
-	M.unitT (CPP11.maybev_to_location l) >>|
+      | CA.Pstore(l,v,mo) ->
+	M.unitT (CA.maybev_to_location l) >>|
 	M.unitT (V.intToV (constant_to_int v)) >>= fun (loc, vv) -> 
         write_loc mo loc vv ii >>! 
         (Some vv, B.Next)
 
-      | CPP11.Pexpr_const(sop) ->
+      | CA.Pexpr_const(sop) ->
         let v = V.cstToV sop in
         M.unitT (Some v, B.Next)
 
-      | CPP11.Pexpr_reg(reg) ->
+      | CA.Pexpr_reg(reg) ->
         read_reg reg ii >>= fun v ->
         M.unitT (Some v, B.Next)
 
-      | CPP11.Plock l ->
-	M.unitT (CPP11.maybev_to_location l) >>= fun loc -> 
+      | CA.Plock l ->
+	M.unitT (CA.maybev_to_location l) >>= fun loc -> 
         (M.altT
           (* successful attempt to obtain mutex *)
 	  (M.mk_singleton_es (Act.Lock (loc, true)) ii)
@@ -74,18 +74,18 @@ module Make (C:Sem.Config)(V:Value.S)
           (M.mk_singleton_es (Act.Lock (loc, false)) ii)) >>! 
         (None, B.Next)
 
-      | CPP11.Punlock l ->
-	M.unitT (CPP11.maybev_to_location l) >>= fun loc -> 
+      | CA.Punlock l ->
+	M.unitT (CA.maybev_to_location l) >>= fun loc -> 
         M.mk_singleton_es (Act.Unlock loc) ii >>! 
         (None, B.Next)
 
-      | CPP11.Pcas(obj,exp,des,success,failure,strong) ->
+      | CA.Pcas(obj,exp,des,success,failure,strong) ->
         (* Obtain location of "expected" value *)
-        M.unitT (CPP11.maybev_to_location exp) >>= fun loc_exp ->
+        M.unitT (CA.maybev_to_location exp) >>= fun loc_exp ->
         (* Obtain location of object *) 
-        M.unitT (CPP11.maybev_to_location obj) >>= fun loc_obj -> 
+        M.unitT (CA.maybev_to_location obj) >>= fun loc_obj -> 
         (* Non-atomically read the value at "expected" location *)
-        read_loc CPP11.NA loc_exp ii >>*= fun v_exp -> 
+        read_loc CA.NA loc_exp ii >>*= fun v_exp -> 
         (* Non-deterministic choice *)
         (M.altT
           (* Read memory at location "object", using memory order "failure" *)
@@ -93,7 +93,7 @@ module Make (C:Sem.Config)(V:Value.S)
           (* For "strong" cas: fail only when v_obj != v_exp *)
           (if strong then M.addNeqConstraintT v_obj v_exp else (fun x -> x)) (
             (* Non-atomically write that value into the "expected" location *)
-            write_loc CPP11.NA loc_exp v_obj ii))
+            write_loc CA.NA loc_exp v_obj ii))
           (* Obtain "desired" value *)
           (M.unitT (V.intToV (constant_to_int des)) >>= fun v_des -> 
            (* Do RMW action on "object", to change its value from "expected"
@@ -101,7 +101,7 @@ module Make (C:Sem.Config)(V:Value.S)
            M.mk_singleton_es (Act.RMW (loc_obj,v_exp,v_des,success)) ii)) >>!
         (None, B.Next)
 						    
-      | CPP11.Pfence(mo) ->
+      | CA.Pfence(mo) ->
 	M.mk_singleton_es (Act.Fence mo) ii >>! 
         (None, B.Next)
 

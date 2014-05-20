@@ -105,7 +105,17 @@ module Make
     | A.Label (_,ins) -> extract_pseudo ins
     | A.Instruction ins -> C.extract_addrs ins
     | A.Macro (_,_) -> assert false
-
+    | A.Choice (ins,io1,io2) ->
+      List.fold_right StringSet.union
+        ([C.extract_addrs ins] @
+         List.map extract_pseudo io1 @
+         List.map extract_pseudo io2)
+        StringSet.empty
+    | A.Loop (ins,io) ->
+      List.fold_right StringSet.union
+        ([C.extract_addrs ins] @
+         List.map extract_pseudo io)
+        StringSet.empty
 
     let extract_addrs code =
       List.fold_right
@@ -122,11 +132,12 @@ module Make
 
 
 let rec lblmap_pseudo c m i = match i with
-| A.Nop|A.Instruction _ -> c,m
+| A.Nop | A.Instruction _ -> c,m
 | A.Label(lbl,i) ->
     let m = StringMap.add lbl c m in
     lblmap_pseudo (c+1) m i
 | A.Macro _ -> assert false
+| A.Choice _ | A.Loop _ -> assert false (* not implemented *)
 
 let lblmap_code =
   let rec do_rec c m = function
@@ -198,7 +209,8 @@ let lblmap_code =
           seen,ilab::k
       | A.Instruction ins ->
           seen,C.compile_ins (tr_lab seen) ins []
-      | A.Macro (_,_) -> assert false in
+      | A.Macro (_,_) -> assert false 
+      | A.Choice _ | A.Loop _ -> assert false (* not implemented *) in
 
       let rec do_rec seen = function
         | [] -> k

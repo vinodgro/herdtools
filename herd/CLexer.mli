@@ -13,6 +13,6 @@
 (** Lexing CPP11 source *)
 
 module Make : functor(O:LexUtils.Config) -> sig
-  val token : Lexing.lexbuf -> CPP11Parser.token
+  val token : Lexing.lexbuf -> CParser.token
 end
 

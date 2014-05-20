@@ -57,20 +57,20 @@ module type LexParse = sig
 
   val lexer : Lexing.lexbuf -> token
   val parser :
-    (Lexing.lexbuf -> token) -> Lexing.lexbuf -> CAst.t list
+    (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (string CAst.t) list
 end
 
 (* Output signature *)
 module type S = sig
   val parse : in_channel -> Splitter.result ->
-    (MiscParser.state, CAst.t list,
+    (MiscParser.state, (string CAst.t) list,
      MiscParser.constr, MiscParser.location) MiscParser.result
 end
 
 
 module Make
     (O:Config)
-    (P:PseudoAbstract.S with type code = CAst.t)
+    (P:PseudoAbstract.S with type code = string CAst.t)
     (A:Arch.Base)
     (L: LexParse) : S =
   struct

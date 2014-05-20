@@ -11,14 +11,12 @@
 
 type param = { param_ty : RunType.t; volatile : bool; param_name : string }
 
-type body = string
-
-type test =
+type 'body test =
   { proc : int
   ; params : param list
-  ; body : body
+  ; body : 'body
   }
 
-type t =
+type 'body t =
   | Global of string
-  | Test of test
+  | Test of 'body test

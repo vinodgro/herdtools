@@ -25,17 +25,17 @@ module type Config = sig
   include Sem.Config
 end
 
+module type Parser = sig 
+  type pseudo
+  val parse : in_channel -> Splitter.result ->  pseudo MiscParser.t
+end
+
 module Top (C:Config) = struct
   module Make
       (S:Sem.Semantics)
-      (* (L:GenParser.LexParse with type instruction = S.A.pseudo) *)
-      (P:sig 
-         type pseudo
-         val parse : in_channel -> Splitter.result ->  pseudo MiscParser.t
-       end with type pseudo = S.A.pseudo)
+      (P:Parser with type pseudo = S.A.pseudo)
       (M:XXXMem.S with module S = S) =
     struct
-      (* module P = GenParser.Make (C) (A) (L) *)
       module T = Test.Make(S.A) 
 
       let run filename chan env splitted =
@@ -156,23 +156,23 @@ module Top (C:Config) = struct
           X.run name chan env splitted
 
       | Archs.CPP11 ->
-        let module CPP11 = CPP11Arch.Make(C.PC)(SymbValue) in
-        let module CPP11LexParse = struct
-    	  type pseudo = CPP11.pseudo
-	  type token = CPP11Parser.token
-          module Lexer = CPP11Lexer.Make(LexConfig)
+        let module CA = CArch.Make(C.PC)(SymbValue) in
+        let module CLexParse = struct
+    	  type pseudo = CA.pseudo
+	  type token = CParser.token
+          module Lexer = CLexer.Make(LexConfig)
 	  let lexer = Lexer.token
-	  let parser = CPP11Parser.main
+	  let parser = CParser.main
         end in
-        let module CPP11S = CPP11Sem.Make(C)(SymbValue) in
-        let module  CPP11Barrier = struct
-          type a = CPP11.barrier
+        let module CS = CSem.Make(C)(SymbValue) in
+        let module  CBarrier = struct
+          type a = CA.barrier
           type b = unit
           let a_to_b _ = ()
         end in
-        let module CPP11M = CPP11Mem.Make(ModelConfig)(CPP11S) (CPP11Barrier) in
-        let module P = CGenParser.Make (C) (CPP11) (CPP11LexParse) in
-        let module X = Make (CPP11S) (P) (CPP11M) in
+        let module CM = CMem.Make(ModelConfig)(CS) (CBarrier) in
+        let module P = CGenParser.Make (C) (CA) (CLexParse) in
+        let module X = Make (CS) (P) (CM) in
         X.run name chan env splitted
 
       | Archs.OpenCL ->
