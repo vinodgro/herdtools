@@ -21,20 +21,26 @@ open CBase
 %token LD ST FENCE LOCK UNLOCK SCAS WCAS
 
 %type <LocationKindMap.lk_map> lk_map
-%type <((CBase.pseudo list) CAst.test) list * MiscParser.gpu_data option> main 
+%type <(int * CBase.pseudo list) list * MiscParser.gpu_data option> main 
+%type <(CBase.pseudo list) CAst.test list> procs
 %start  main
 
 %%
 
 main: 
 | procs lk_map EOF 
-  { let gpu = { MiscParser.empty_gpu with MiscParser.lk_map=$2 } in
-     ($1,Some gpu) }
+  { let proc_list, param_map = List.fold_left (fun (proc_list, param_map) p -> 
+       ((p.CAst.proc,p.CAst.body) :: proc_list, (p.CAst.proc,p.CAst.params) :: param_map)) ([],[]) $1 in
+    let additional = { 
+      MiscParser.empty_gpu with 
+      MiscParser.lk_map = $2; 
+      MiscParser.param_map = param_map} in
+     (proc_list, Some additional) }
 
 procs:
 |   { [] }
 | PROC LPAR params RPAR LBRACE instr_list RBRACE procs
-    { {CAst.proc = $1; CAst.params = []; CAst.body = $6} :: $8 }
+    { {CAst.proc = $1; CAst.params = []; CAst.body = $6} :: $8 } 
 
 instr_list:
 |            { [] }
