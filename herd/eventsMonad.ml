@@ -223,15 +223,8 @@ struct
       let choiceT : V.v -> 'a t -> 'a t -> 'a t =
 	fun v l r eiid -> 
 	  if V.is_var_determined v then
-	    if V.is_zero v  then r eiid else begin
-              (* JPW: I removed the following assertion because I
-                 want to use choiceT to model test conditions in C.
-                 Test conditions in C are allowed to be any value,
-                 not just 0 or 1. *)
-              (* assert (V.is_one v) ; *)
-	      l eiid
-	    end
-	  else 
+	    if V.is_zero v  then r eiid else l eiid
+          else 
 	    let (eiid, lact) = l eiid in
 	    let (eiid, ract) = r eiid in
 	    let un = 

@@ -73,8 +73,8 @@ module Make (C:Sem.Config)(V:Value.S)
       | CA.Pexpr_eqeq(reg,sop) ->
         read_reg reg ii >>= fun v1 ->
         let v2 = V.cstToV sop in
-        let res = if v1 = v2 then 1 else 0 in
-        M.unitT (Some (V.intToV res), B.Next)
+        M.op Op.Eq v1 v2 >>= fun res ->
+        M.unitT (Some res, B.Next)
 
       | CA.Plock l ->
 	M.unitT (CA.maybev_to_location l) >>= fun loc -> 
