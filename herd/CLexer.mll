@@ -82,6 +82,7 @@ rule token = parse
 | "if"    { IF }
 | "else"  { ELSE }
 | '=' {EQ}
+| "==" {EQEQ}
 | '.' {DOT}
 | "memory_order_acquire" {MEMORDER (CBase.Acq)}
 | "memory_order_release" {MEMORDER (CBase.Rel)}
@@ -95,6 +96,8 @@ rule token = parse
 | "fence" { FENCE }
 | "atomic_load"  { LD }
 | "atomic_store" { ST }
+| "atomic_load_explicit"  { LD_EXPLICIT }
+| "atomic_store_explicit" { ST_EXPLICIT }
 | "lock"  { LOCK }
 | "WCAS"  { WCAS }
 | "SCAS"  { SCAS }

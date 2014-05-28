@@ -51,6 +51,11 @@ module Make (C:Sem.Config)(V:Value.S)
         write_reg reg v ii >>! 
 	(Some v, B.Next)
 
+      | CA.Passign(sop,reg) ->
+	let v = V.cstToV sop in
+        write_reg reg v ii >>! 
+	(Some v, B.Next)
+
       | CA.Pstore(l,v,mo) ->
 	M.unitT (CA.maybev_to_location l) >>|
 	M.unitT (V.intToV (constant_to_int v)) >>= fun (loc, vv) -> 
@@ -64,6 +69,12 @@ module Make (C:Sem.Config)(V:Value.S)
       | CA.Pexpr_reg(reg) ->
         read_reg reg ii >>= fun v ->
         M.unitT (Some v, B.Next)
+
+      | CA.Pexpr_eqeq(reg,sop) ->
+        read_reg reg ii >>= fun v1 ->
+        let v2 = V.cstToV sop in
+        let res = if v1 = v2 then 1 else 0 in
+        M.unitT (Some (V.intToV res), B.Next)
 
       | CA.Plock l ->
 	M.unitT (CA.maybev_to_location l) >>= fun loc -> 

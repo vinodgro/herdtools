@@ -115,6 +115,8 @@ type instruction =
 | Pfence  of mem_order
 | Pexpr_const of store_op
 | Pexpr_reg of reg
+| Pexpr_eqeq of reg * store_op
+| Passign of store_op * reg
 
 include Pseudo.Make
     (struct
@@ -169,7 +171,9 @@ let dump_instruction i = match i with
   | Pfence mo ->  sprintf("fence(%s)") (pp_mem_order mo)
   | Pexpr_const sop -> pp_sop sop
   | Pexpr_reg reg -> pp_reg reg
-   
+  | Pexpr_eqeq (reg,sop) -> sprintf("%s==%s") (pp_reg reg) (pp_sop sop)
+  | Passign (sop,reg) -> sprintf("%s = %s") (pp_reg reg) (pp_sop sop)
+
 (* We don't have symbolic registers. This should be enough *)
 let fold_regs (f_reg,_f_sreg) = 
   let fold_reg reg (y_reg, y_sreg) = match reg with

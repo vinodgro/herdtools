@@ -1,4 +1,3 @@
-% diyone -arch C PodWW RfeAA PodRR FreAA
 C A
 "PodWWScSc RfeScSc PodRRScSc FreScSc"
 Prefetch=0:x=F,0:y=W,1:y=F,1:x=T
@@ -16,5 +15,8 @@ P1 (atomic_int* y,atomic_int* x) {
  int r0 = atomic_load(y);
  int r1 = atomic_load(x);
 }
+
+LK 
+  x:atomic, y:atomic
 
 exists (1:r0=1 /\ 1:r1=0)

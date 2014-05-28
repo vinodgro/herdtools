@@ -17,6 +17,6 @@ P1 (volatile int* y,volatile int* x) {
 }
 
 LK 
-  x:atomic, y:atomic
+  x:nonatomic, y:nonatomic
 
 exists (1:r0=1 /\ 1:r1=0)

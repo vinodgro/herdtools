@@ -10,15 +10,19 @@ open CBase
 %token <string> NAME
 %token <string> ATOMIC_NAME
 %token <int> PROC
-%token SEMI COMMA PIPE COLON LPAR RPAR EQ DOT LBRACE RBRACE STAR
-%token WHILE IF ELSE 
+%token SEMI COMMA PIPE COLON LPAR RPAR EQ EQEQ DOT LBRACE RBRACE STAR
+%token WHILE IF ELSE
+
+%nonassoc LOWER_THAN_ELSE /* This fixes the dangling-else problem */
+%nonassoc ELSE
+ 
 %token VOLATILE UNSIGNED SIGNED ATOMIC LONG DOUBLE BOOL INT
 %token <CBase.mem_order> MEMORDER
 %token <CBase.location_kind> LOCATIONKIND
 
 /* Instruction tokens */
 
-%token LD ST FENCE LOCK UNLOCK SCAS WCAS
+%token LD LD_EXPLICIT ST ST_EXPLICIT FENCE LOCK UNLOCK SCAS WCAS
 
 %type <LocationKindMap.lk_map> lk_map
 %type <(int * CBase.pseudo list) list * MiscParser.gpu_data option> main 
@@ -55,24 +59,43 @@ instr:
              { Instruction $1} 
 | WHILE LPAR basic_instr RPAR LBRACE instr_list RBRACE 
              { Loop ($3,$6) }
+| IF LPAR basic_instr RPAR LBRACE instr_list RBRACE %prec LOWER_THAN_ELSE
+             { Choice ($3,$6,[]) }
 | IF LPAR basic_instr RPAR LBRACE instr_list RBRACE ELSE LBRACE instr_list RBRACE
              { Choice ($3,$6,$10) }
 
+
 basic_instr:
+  | atyp reg EQ LD LPAR loc RPAR
+    {Pload ($6,$2,CBase.SC)}
+  | reg EQ LD LPAR loc RPAR
+    {Pload ($5,$1,CBase.SC)}
+  | atyp reg EQ LD_EXPLICIT LPAR loc COMMA MEMORDER RPAR
+    {Pload ($6,$2,$8)}
+  | reg EQ LD_EXPLICIT LPAR loc COMMA MEMORDER RPAR
+    {Pload ($5,$1,$7)}
+  | atyp reg EQ STAR loc
+    {Pload ($5,$2,NA)}
+  | reg EQ STAR loc
+    {Pload ($4,$1,NA)}
+  | atyp reg EQ store_op
+    {Passign ($4,$2)}
+  | reg EQ store_op
+    {Passign ($3,$1)}
   | store_op
     {Pexpr_const $1}
+| store_op EQEQ reg
+    {Pexpr_eqeq ($3,$1)}
   | loc
     {Pexpr_const $1}
   | reg
     {Pexpr_reg $1}
-  | optional_type reg EQ LD LPAR loc COMMA MEMORDER RPAR
-    {Pload ($6,$2,$8)}
-  | ST LPAR loc COMMA store_op COMMA MEMORDER RPAR
+  | ST LPAR loc COMMA store_op RPAR
+    {Pstore ($3,$5,CBase.SC)}
+  | ST_EXPLICIT LPAR loc COMMA store_op COMMA MEMORDER RPAR
     {Pstore ($3,$5,$7)}
   | STAR loc EQ store_op
     {Pstore ($2,$4,NA)}
-  | optional_type reg EQ STAR loc
-    {Pload ($5,$2,NA)}
   | FENCE LPAR MEMORDER RPAR
     {Pfence ($3)}
   | LOCK LPAR loc RPAR
@@ -83,10 +106,6 @@ basic_instr:
     {Pcas ($3,$5,$7,$9,$11,false)}
   | SCAS LPAR loc COMMA loc COMMA store_op COMMA MEMORDER COMMA MEMORDER RPAR
     {Pcas ($3,$5,$7,$9,$11,true)}
-
-optional_type:
-|      { () }
-| atyp { () }
 
 store_op :
 | NUM { Concrete $1 }
