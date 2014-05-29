@@ -56,7 +56,7 @@ baseline:
 	@echo "Regenerating baseline..."
 	@./herd -model power.cat testsuite/PPCTests/*  > testsuite/PPC_results_baseline.txt
 	@./herd -model arm.cat testsuite/ARMTests/* > testsuite/ARM_results_baseline.txt
-	@./herd -model cpp11.cat testsuite/CPP11Tests/* > testsuite/CPP11_results_baseline.txt
+	@./herd -model cpp11.cat testsuite/CTests/* > testsuite/C_results_baseline.txt
 	@./herd -model ptx.cat testsuite/GPU_PTXTests/* > testsuite/PTX_results_baseline.txt
 	@./herd -model opencl.cat testsuite/OpenCLTests/* > testsuite/OpenCL_results_baseline.txt
 
@@ -64,7 +64,7 @@ test:
 	@echo "Running tests..."
 	@./herd -model power.cat testsuite/PPCTests/*  > testsuite/PPC_results_new.txt
 	@./herd -model arm.cat testsuite/ARMTests/* > testsuite/ARM_results_new.txt
-	@./herd -model cpp11.cat testsuite/CPP11Tests/* > testsuite/CPP11_results_new.txt
+	@./herd -model cpp11.cat testsuite/CTests/* > testsuite/C_results_new.txt
 	@./herd -model ptx.cat testsuite/GPU_PTXTests/* > testsuite/PTX_results_new.txt
 	@./herd -model opencl.cat testsuite/OpenCLTests/* > testsuite/OpenCL_results_new.txt
 	@test -s ../tools/mcompare || { echo "../tools/mcompare doesn't exist. Run the \`make -C ../tools\` command."; exit 1; }
@@ -78,8 +78,8 @@ test:
           testsuite/ARM_results_baseline.txt \
           -neg testsuite/N2 -pos testsuite/P2 >/dev/null
 	@../tools/mcompare \
-          testsuite/CPP11_results_new.txt \
-          testsuite/CPP11_results_baseline.txt \
+          testsuite/C_results_new.txt \
+          testsuite/C_results_baseline.txt \
           -neg testsuite/N3 -pos testsuite/P3 >/dev/null
 	@../tools/mcompare \
           testsuite/PTX_results_new.txt \
@@ -93,7 +93,7 @@ test:
 	  cat testsuite/P1 && cat testsuite/N1
 	@echo "There are differences in the following ARM tests:" && \
 	  cat testsuite/P2 && cat testsuite/N2 
-	@echo "There are differences in the following CPP11 tests:" && \
+	@echo "There are differences in the following C tests:" && \
 	  cat testsuite/P3 && cat testsuite/N3 
 	@echo "There are differences in the following PTX tests:" && \
 	  cat testsuite/P4 && cat testsuite/N4
@@ -109,7 +109,7 @@ clean::
 	/bin/rm -f version.ml
 	/bin/rm -f testsuite/PPC_results_new.txt
 	/bin/rm -f testsuite/ARM_results_new.txt
-	/bin/rm -f testsuite/CPP11_results_new.txt
+	/bin/rm -f testsuite/C_results_new.txt
 	/bin/rm -f testsuite/PTX_results_new.txt
 	/bin/rm -f testsuite/OpenCL_results_new.txt
 
