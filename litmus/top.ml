@@ -340,7 +340,7 @@ end = struct
         let pp_reg x = x
       end
       module Pseudo = struct
-        type code = CAst.t
+        type code = string CAst.t
         let dump_prog cfun =
           let f = function
             | CAst.Test { CAst.params; body; proc = i } ->

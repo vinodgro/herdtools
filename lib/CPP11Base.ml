@@ -113,6 +113,9 @@ type instruction =
 | Plock   of loc
 | Punlock of loc
 | Pfence  of mem_order
+| Pif     of instruction * instruction * instruction
+| Pwhile  of instruction * instruction
+| Pblock  of instruction list
 
 include Pseudo.Make
     (struct

@@ -47,22 +47,26 @@ main:
 procs:
 |   { [] }
 | PROC LPAR params RPAR LBRACE instr_list RBRACE procs
-    { {CAst.proc = $1; CAst.params = $3; CAst.body = $6} :: $8 } 
+    { { CAst.proc = $1; 
+        CAst.params = $3; 
+        CAst.body = List.map (fun ins -> Instruction ins) $6 } :: $8 } 
 
 instr_list:
 |            { [] }
 | instr instr_list 
-             { Instruction $1 :: $2 }
+             { $1 :: $2 }
 
 instr:
 | basic_instr SEMI     
              { $1} 
-| WHILE LPAR basic_instr RPAR LBRACE instr_list RBRACE 
+| LBRACE instr_list RBRACE
+             { Pblock $2 }
+| WHILE LPAR basic_instr RPAR LBRACE instr RBRACE 
              { Pwhile ($3,$6) }
-| IF LPAR basic_instr RPAR LBRACE instr_list RBRACE %prec LOWER_THAN_ELSE
-             { Pif ($3,$6,[]) }
-| IF LPAR basic_instr RPAR LBRACE instr_list RBRACE ELSE LBRACE instr_list RBRACE
-             { Pif ($3,$6,$10) }
+| IF LPAR basic_instr RPAR LBRACE instr RBRACE %prec LOWER_THAN_ELSE
+             { Pif ($3, $6, Pblock []) }
+| IF LPAR basic_instr RPAR LBRACE instr RBRACE ELSE LBRACE instr RBRACE
+             { Pif ($3, $6, $10) }
 
 
 basic_instr:
@@ -78,6 +82,7 @@ basic_instr:
     {Pload ($5,$2,NA)}
   | reg EQ STAR loc
     {Pload ($4,$1,NA)}
+/*
   | atyp reg EQ store_op
     {Passign ($4,$2)}
   | reg EQ store_op
@@ -90,6 +95,7 @@ basic_instr:
     {Pexpr_const $1}
   | reg
     {Pexpr_reg $1}
+*/
   | ST LPAR loc COMMA store_op RPAR
     {Pstore ($3,$5,CPP11Base.SC)}
   | ST_EXPLICIT LPAR loc COMMA store_op COMMA MEMORDER RPAR

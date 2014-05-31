@@ -31,7 +31,7 @@ module type S =
 
     type 'a t
 	  
-    val zeroT        : unit t
+    val zeroT        : 'a t
     val unitT        : 'a -> 'a t
     val (>>=) : 'a t -> ('a -> 'b t) -> ('b) t
     val (>>*=) : 'a t -> ('a -> 'b t) -> ('b) t
@@ -51,7 +51,7 @@ module type S =
     val altT : 'a t -> 'a t -> 'a t 
     val addNeqConstraintT : A.V.v -> A.V.v -> 'a t -> 'a t 
 
-    val tooFar : string -> unit t
+    val tooFar : string -> 'a t
 
     (* read_loc mk_action loc ii:  
        for each value v that could be read,

@@ -31,6 +31,7 @@ module Make (C:Sem.Config)(V:Value.S)
     let (>>|) = M.(>>|)
     let (>>::) = M.(>>::)
     let (>>!) = M.(>>!)
+    let (>>>) = M.(>>>)
 		       
     let read_loc mo = M.read_loc (fun loc v -> Act.Access (Dir.R, loc, v, mo))
     let read_reg r ii = read_loc CPP11.NA (A.Location_reg (ii.A.proc,r)) ii
@@ -44,7 +45,9 @@ module Make (C:Sem.Config)(V:Value.S)
       | Constant.Concrete vv -> vv
       | _ -> Warn.fatal "Couldn't convert constant to int"
 
-    let build_semantics _st i ii = match i with
+
+
+    let rec build_semantics st i ii = match i with
       | CPP11.Pload(loc,reg,mo) ->
 	M.unitT (CPP11.maybev_to_location loc) >>=
 	(fun loc -> read_loc mo loc ii) >>= 
@@ -96,5 +99,23 @@ module Make (C:Sem.Config)(V:Value.S)
 						    
       | CPP11.Pfence(mo) ->
 	M.mk_singleton_es (Act.Fence mo) ii >>! B.Next
+
+      | CPP11.Pblock insts -> 
+        build_semantics_list st insts ii 
+
+    and build_semantics_list st insts ii = match insts with
+      | [] -> M.unitT (B.Next)
+      | inst :: insts ->
+	let ii = {ii with A.inst=inst; } in
+	let evts = build_semantics st inst ii in
+        let prog_order = ii.A.program_order_index in
+        let ii' = {ii with A.program_order_index = A.next_po_index prog_order;} in
+	evts  >>> fun _branch -> build_semantics_list st insts ii'
+     
+
+
+
+
+
 
   end

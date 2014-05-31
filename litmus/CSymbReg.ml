@@ -17,7 +17,7 @@ module type S = sig
   type v
   type location
 
-  type ('loc,'v) t = ('loc,'v, CAst.t) MiscParser.r4
+  type ('loc,'v) t = ('loc,'v, string CAst.t) MiscParser.r4
 
   val allocate_regs :
       (MiscParser.location, MiscParser.maybev) t -> (location,v) t
@@ -29,7 +29,7 @@ with type v = A.V.v and type location = A.location
 
    type v = A.V.v
    type location = A.location
-   type ('loc,'v) t = ('loc,'v, CAst.t) MiscParser.r4
+   type ('loc,'v) t = ('loc,'v, string CAst.t) MiscParser.r4
 
 (******************************************************)
 (* All those to substitute symbolic regs by real ones *)

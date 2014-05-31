@@ -54,57 +54,51 @@ end
 (* input signature, a lexer and a parser for a given architecture *)
 module type LexParse = sig
   type token
+  type pseudo
 
   val lexer : Lexing.lexbuf -> token
   val parser :
-    (Lexing.lexbuf -> token) -> Lexing.lexbuf -> string CAst.t list
+        (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
+	  (int * pseudo list) list * MiscParser.gpu_data option
 end
 
 (* Output signature *)
 module type S = sig
-  val parse : in_channel -> Splitter.result ->
-    (MiscParser.state, string CAst.t list,
-     MiscParser.constr, MiscParser.location) MiscParser.result
+  type pseudo
+  type init = MiscParser.state
+  type prog = (int * pseudo list) list
+  type locations = MiscParser.LocSet.t
+
+  val parse_init : Lexing.lexbuf -> init
+(*  val parse_prog : Lexing.lexbuf -> prog *)
+  val parse_cond : Lexing.lexbuf -> MiscParser.constr
+
+  val parse : in_channel -> Splitter.result ->  pseudo MiscParser.t
 end
 
 
 module Make
     (O:Config)
-    (P:PseudoAbstract.S with type code = string CAst.t)
-    (A:Arch.Base)
-    (L: LexParse) : S =
+    (A:ArchBase.S)
+    (L: LexParse
+    with type pseudo = A.pseudo) : S with type pseudo = A.pseudo =
   struct
+    type pseudo = A.pseudo
+    type init = MiscParser.state
+    type prog = (int * pseudo list) list
+    type locations = MiscParser.LocSet.t
 
-(*
-  Transpose the instructions:
-  a list of rows -> a list of columns (each being the program
-  for a given processor
-    let transpose procs prog =
-      try
-	let prog = Misc.transpose prog in
-	List.combine procs prog
-      with
-      |  Misc.TransposeFailure | Invalid_argument "List.combine" ->
-	  Warn.fatal "mismatch in instruction lines"
-*)
 
 (************************)
 (* Various basic checks *)
 (************************)
 
-let check_procs prog =
-  let procs =
-    List.fold_left
-      (fun acc -> function CAst.Test cfun -> acc @ [cfun.CAst.proc] | CAst.Global _ -> acc)
-      []
-      prog
-  in
+let check_procs procs =
   Misc.iteri
     (fun k p ->
-      if not (Misc.int_eq k p) then
+      if k <> p then
         Warn.fatal "Processes must be P0, P1, ...")
-    procs ;
-  procs
+    procs
 
 let check_loc procs loc = match loc with
 | MiscParser.Location_reg (p,_) ->
@@ -143,7 +137,19 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
     module LexConfig = struct let debug = O.debuglexer end
     module LU = LexUtils.Make (LexConfig)
     module SL = StateLexer.Make (LexConfig)
+(*  module STL = ScopeTreeLexer.Make (LexConfig) *)
 
+    let parse_init lexbuf =
+      call_parser "init" lexbuf SL.token StateParser.init
+
+    (* let parse_prog lexbuf =
+      let procs,prog,_ = 
+        call_parser "prog" lexbuf L.lexer L.parser in
+      check_procs procs ;
+      let prog = transpose procs prog in
+      let prog = expn_prog prog in
+      prog
+    *)
     let parse_cond lexbuf =
       let cond =  call_parser "cond" lexbuf
           SL.token StateParser.constr in
@@ -153,7 +159,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let lexbuf = LU.from_section loc chan in
       call_parser name lexbuf
 
-    module D = CTestHash.Make(P)(A)
+    module D = TestHash.Make(A)
 
     let parse chan
         {
@@ -164,9 +170,10 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let init =
 	call_parser_loc "init"
 	  chan init_loc SL.token StateParser.init in
-      let prog =
+      let prog,gpu_data =
 	call_parser_loc "prog" chan prog_loc L.lexer L.parser in
-      let procs = check_procs prog in
+      let procs = List.map fst prog in 
+      check_procs procs ;
       let (locs,final,_quantifiers) =
 	call_parser_loc "final"
 	  chan constr_loc SL.token StateParser.constraints in
@@ -178,9 +185,9 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let parsed =
         {
          MiscParser.info; init; prog = prog;
-         condition = final;
+         condition = final; 
          locations = locs;
-         gpu_data = None ;
+         gpu_data;
        } in
       let name  = name.Name.name in
       let parsed =
@@ -204,3 +211,4 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
             ("Hash",D.digest init prog all_locs)::info ; } in
       parsed
   end
+         

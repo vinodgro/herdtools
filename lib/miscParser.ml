@@ -87,10 +87,15 @@ type gpu_data = {
       scope_tree : ScopeTree.scope_tree option ;
       mem_space_map : MemSpaceMap.mem_space_map ;
       lk_map : LocationKindMap.lk_map ;
+      param_map : (int * CAst.param list) list ;
   }
 
-let empty_gpu =
-  { scope_tree = None; mem_space_map = []; lk_map = []; }
+let empty_gpu = { 
+  scope_tree = None; 
+  mem_space_map = []; 
+  lk_map = []; 
+  param_map = []; 
+}
 
 type ('i, 'p, 'c, 'loc) result =
     { info : info ;
