@@ -45,18 +45,32 @@ module Make (C:Sem.Config)(V:Value.S)
       | Constant.Concrete vv -> vv
       | _ -> Warn.fatal "Couldn't convert constant to int"
 
-
-
-    let rec build_semantics st i ii = match i with
+    let rec build_semantics_expr e ii : V.v M.t = match e with
+      | CPP11.Econstant v -> 	
+        M.unitT (V.intToV (constant_to_int v))
+      | CPP11.Eregister reg ->
+        read_reg reg ii >>= fun v -> 
+        M.unitT v
+      | CPP11.Eassign (reg,e) ->
+        build_semantics_expr e ii >>= fun v ->
+        write_reg reg v ii >>! 
+        v
+      | CPP11.Eeq (e1, e2) ->
+        build_semantics_expr e1 ii >>= fun v1 ->
+        build_semantics_expr e2 ii >>= fun v2 ->
+        (* TODO: remove sequencing between the above *)
+        M.op Op.Eq v1 v2
+        
+    let rec build_semantics st i ii : branch M.t = match i with
       | CPP11.Pload(loc,reg,mo) ->
 	M.unitT (CPP11.maybev_to_location loc) >>=
 	(fun loc -> read_loc mo loc ii) >>= 
 	(fun v -> write_reg reg v ii) >>! 
 	B.Next
 
-      | CPP11.Pstore(l,v,mo) ->
+      | CPP11.Pstore(l,e,mo) ->
 	(M.unitT (CPP11.maybev_to_location l)) >>|
-	(M.unitT (V.intToV (constant_to_int v))) >>=
+	build_semantics_expr e ii >>=
 	(fun (loc, vv) -> write_loc mo loc vv ii) >>! 
         B.Next
 
@@ -91,7 +105,7 @@ module Make (C:Sem.Config)(V:Value.S)
            write_loc CPP11.NA loc_exp v_obj ii) >>!
            B.Next)
           (* Obtain "desired" value *)
-          (M.unitT (V.intToV (constant_to_int des)) >>= fun v_des -> 
+          (build_semantics_expr des ii >>= fun v_des -> 
            (* Do RMW action on "object", to change its value from "expected"
               to "desired", using memory order "success" *)
            M.mk_singleton_es (Act.RMW (loc_obj,v_exp,v_des,success)) ii >>!
@@ -102,6 +116,21 @@ module Make (C:Sem.Config)(V:Value.S)
 
       | CPP11.Pblock insts -> 
         build_semantics_list st insts ii 
+      
+      | CPP11.Pexpr e ->
+        build_semantics_expr e ii >>!
+        B.Next
+      
+      | CPP11.Pif (e,i1,i2) ->
+        let evts = build_semantics_expr e ii in
+        let prog_order = ii.A.program_order_index in
+        let ii' = {ii with A.program_order_index = A.next_po_index prog_order;} in
+        (* TODO: Advance program_order_index by the right amount for each instruction *)
+        evts >>> fun ret ->
+        let prog_order = A.next_po_index prog_order in
+        M.choiceT ret
+          (build_semantics st i1 ii')
+          (build_semantics st i2 ii') >>! B.Next
 
     and build_semantics_list st insts ii = match insts with
       | [] -> M.unitT (B.Next)

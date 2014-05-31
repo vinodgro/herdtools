@@ -58,16 +58,29 @@ instr_list:
 
 instr:
 | basic_instr SEMI     
-             { $1} 
+             { $1 } 
+| expression SEMI
+             { Pexpr $1 }
 | LBRACE instr_list RBRACE
              { Pblock $2 }
-| WHILE LPAR basic_instr RPAR LBRACE instr RBRACE 
+| WHILE LPAR expression RPAR LBRACE instr RBRACE 
              { Pwhile ($3,$6) }
-| IF LPAR basic_instr RPAR LBRACE instr RBRACE %prec LOWER_THAN_ELSE
+| IF LPAR expression RPAR LBRACE instr RBRACE %prec LOWER_THAN_ELSE
              { Pif ($3, $6, Pblock []) }
-| IF LPAR basic_instr RPAR LBRACE instr RBRACE ELSE LBRACE instr RBRACE
+| IF LPAR expression RPAR LBRACE instr RBRACE ELSE LBRACE instr RBRACE
              { Pif ($3, $6, $10) }
 
+expression:
+  | NUM 
+    { Econstant (Concrete $1) }
+  | reg 
+    { Eregister $1 }
+  | reg EQ expression 
+    { Eassign ($1,$3) }
+  | atyp reg EQ expression 
+    { Eassign ($2,$4) }
+  | expression EQEQ expression
+    { Eeq ($1, $3) }
 
 basic_instr:
   | atyp reg EQ LD LPAR loc RPAR
@@ -96,11 +109,11 @@ basic_instr:
   | reg
     {Pexpr_reg $1}
 */
-  | ST LPAR loc COMMA store_op RPAR
+  | ST LPAR loc COMMA expression RPAR
     {Pstore ($3,$5,CPP11Base.SC)}
-  | ST_EXPLICIT LPAR loc COMMA store_op COMMA MEMORDER RPAR
+  | ST_EXPLICIT LPAR loc COMMA expression COMMA MEMORDER RPAR
     {Pstore ($3,$5,$7)}
-  | STAR loc EQ store_op
+  | STAR loc EQ expression
     {Pstore ($2,$4,NA)}
   | FENCE LPAR MEMORDER RPAR
     {Pfence ($3)}
@@ -108,9 +121,9 @@ basic_instr:
     {Plock ($3)}
   | UNLOCK LPAR loc RPAR
     {Punlock ($3)}
-  | WCAS LPAR loc COMMA loc COMMA store_op COMMA MEMORDER COMMA MEMORDER RPAR
+  | WCAS LPAR loc COMMA loc COMMA expression COMMA MEMORDER COMMA MEMORDER RPAR
     {Pcas ($3,$5,$7,$9,$11,false)}
-  | SCAS LPAR loc COMMA loc COMMA store_op COMMA MEMORDER COMMA MEMORDER RPAR
+  | SCAS LPAR loc COMMA loc COMMA expression COMMA MEMORDER COMMA MEMORDER RPAR
     {Pcas ($3,$5,$7,$9,$11,true)}
 
 store_op :

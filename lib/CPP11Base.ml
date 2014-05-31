@@ -103,19 +103,23 @@ let barrier_compare = Pervasives.compare
 
 type loc = SymbConstant.v
 
-type store_op = SymbConstant.v
-
+type expression =
+  | Econstant of SymbConstant.v
+  | Eregister of reg
+  | Eassign of reg * expression
+  | Eeq of expression * expression
 
 type instruction = 
-| Pstore  of loc * store_op * mem_order 
+| Pstore  of loc * expression * mem_order 
 | Pload   of loc * reg * mem_order
-| Pcas    of loc * loc * store_op * mem_order * mem_order * bool
+| Pcas    of loc * loc * expression * mem_order * mem_order * bool
 | Plock   of loc
 | Punlock of loc
 | Pfence  of mem_order
-| Pif     of instruction * instruction * instruction
-| Pwhile  of instruction * instruction
+| Pif     of expression * instruction * instruction
+| Pwhile  of expression * instruction
 | Pblock  of instruction list
+| Pexpr   of expression
 
 include Pseudo.Make
     (struct
@@ -145,13 +149,15 @@ let pp_sop = function
   | Concrete i -> (sprintf "%d" i)
   | _ -> "only concrete store ops supported at this time in C++11"
 
-let dump_instruction i = match i with
-  | Pstore(loc,sop,mo) ->
+let dump_expression _e = "not implemented"
+
+let rec dump_instruction i = match i with
+  | Pstore(loc,e,mo) ->
     (match mo with 
     | NA -> sprintf("%s = %s") 
-		   (pp_addr loc) (pp_sop sop)
+		   (pp_addr loc) (dump_expression e)
     | _ -> sprintf("%s.store(%s,%s)") 
-		  (pp_addr loc) (pp_sop sop) (pp_mem_order mo))
+		  (pp_addr loc) (dump_expression e) (pp_mem_order mo))
   | Pload(loc,reg,mo) ->
     (match mo with 
     | NA -> sprintf("%s = %s") 
@@ -161,13 +167,22 @@ let dump_instruction i = match i with
   | Pcas(obj,exp,des,mo_success,mo_failure,strong) ->
     sprintf("%sCAS(%s,%s,%s,%s,%s)") 
       (if strong then "S" else "W")
-      (pp_addr obj) (pp_addr exp) (pp_sop des) 
+      (pp_addr obj) (pp_addr exp) (dump_expression des) 
       (pp_mem_order mo_success) (pp_mem_order mo_failure)     
   | Plock(loc) ->
     sprintf("Lock(%s)") (pp_addr loc)
   | Punlock(loc) ->
     sprintf("Unlock(%s)") (pp_addr loc)
   | Pfence mo ->  sprintf("fence(%s)") (pp_mem_order mo)
+  | Pif(e,i1,i2) -> 
+    sprintf ("if(%s)%s else %s") (dump_expression e)  
+      (dump_instruction i1) (dump_instruction i2)
+  | Pwhile(e,i) -> 
+    sprintf ("while(%s)%s") (dump_expression e) 
+      (dump_instruction i)
+  | Pblock insts ->
+    sprintf ("{%s}") (List.fold_left (fun z i -> z ^ dump_instruction i) "" insts)
+  | Pexpr e -> dump_expression e
    
 (* We don't have symbolic registers. This should be enough *)
 let fold_regs (f_reg,_f_sreg) = 
