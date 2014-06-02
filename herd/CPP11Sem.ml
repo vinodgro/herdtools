@@ -48,47 +48,48 @@ module Make (C:Sem.Config)(V:Value.S)
     let rec build_semantics_expr e ii : V.v M.t = match e with
       | CPP11.Econstant v -> 	
         M.unitT (V.intToV (constant_to_int v))
+
       | CPP11.Eregister reg ->
         read_reg reg ii >>= fun v -> 
         M.unitT v
+
       | CPP11.Eassign (reg,e) ->
         build_semantics_expr e ii >>= fun v ->
         write_reg reg v ii >>! 
         v
+
       | CPP11.Eeq (e1, e2) ->
         build_semantics_expr e1 ii >>= fun v1 ->
         build_semantics_expr e2 ii >>= fun v2 ->
         (* TODO: remove sequencing between the above *)
         M.op Op.Eq v1 v2
-        
-    let rec build_semantics st i ii : branch M.t = match i with
-      | CPP11.Pload(loc,reg,mo) ->
-	M.unitT (CPP11.maybev_to_location loc) >>=
-	(fun loc -> read_loc mo loc ii) >>= 
-	(fun v -> write_reg reg v ii) >>! 
-	B.Next
 
-      | CPP11.Pstore(l,e,mo) ->
+      | CPP11.Estore(l,e,mo) ->
 	(M.unitT (CPP11.maybev_to_location l)) >>|
-	build_semantics_expr e ii >>=
-	(fun (loc, vv) -> write_loc mo loc vv ii) >>! 
-        B.Next
+	build_semantics_expr e ii >>= fun (loc, v) -> 
+        write_loc mo loc v ii >>! 
+        v
 
-      | CPP11.Plock l ->
-	(M.unitT (CPP11.maybev_to_location l)) >>=
-	  fun loc -> 
-          M.altT
-            (* successful attempt to obtain mutex *)
-	    (M.mk_singleton_es (Act.Lock (loc, true)) ii >>! B.Next)
-            (* unsuccessful attempt to obtain mutex *)
-	    (M.mk_singleton_es (Act.Lock (loc, false)) ii >>! B.Next)
+      | CPP11.Eload(loc,mo) ->
+	M.unitT (CPP11.maybev_to_location loc) >>= fun loc -> 
+        read_loc mo loc ii
 
-      | CPP11.Punlock l ->
-	(M.unitT (CPP11.maybev_to_location l)) >>=
-	  fun loc -> 
-	  M.mk_singleton_es (Act.Unlock loc) ii >>! B.Next
+      | CPP11.Elock l ->
+	M.unitT (CPP11.maybev_to_location l) >>= fun loc -> 
+        M.altT
+          (* successful attempt to obtain mutex *)
+	  (M.mk_singleton_es (Act.Lock (loc, true)) ii >>! 
+           V.intToV 0)
+          (* unsuccessful attempt to obtain mutex *)
+	  (M.mk_singleton_es (Act.Lock (loc, false)) ii >>! 
+           V.intToV 1)
 
-      | CPP11.Pcas(obj,exp,des,success,failure,strong) ->
+      | CPP11.Eunlock l ->
+	M.unitT (CPP11.maybev_to_location l)>>= fun loc -> 
+	M.mk_singleton_es (Act.Unlock loc) ii >>! 
+        V.intToV 0
+
+      | CPP11.Ecas(obj,exp,des,success,failure,strong) ->
         (* Obtain location of "expected" value *)
         M.unitT (CPP11.maybev_to_location exp) >>= fun loc_exp ->
         (* Obtain location of object *) 
@@ -103,17 +104,19 @@ module Make (C:Sem.Config)(V:Value.S)
            (if strong then M.addNeqConstraintT v_obj v_exp else (fun x -> x)) (
            (* Non-atomically write that value into the "expected" location *)
            write_loc CPP11.NA loc_exp v_obj ii) >>!
-           B.Next)
+           V.intToV 0)
           (* Obtain "desired" value *)
           (build_semantics_expr des ii >>= fun v_des -> 
            (* Do RMW action on "object", to change its value from "expected"
               to "desired", using memory order "success" *)
            M.mk_singleton_es (Act.RMW (loc_obj,v_exp,v_des,success)) ii >>!
-           B.Next)
+           V.intToV 1)
 						    
-      | CPP11.Pfence(mo) ->
-	M.mk_singleton_es (Act.Fence mo) ii >>! B.Next
+      | CPP11.Efence(mo) ->
+	M.mk_singleton_es (Act.Fence mo) ii >>! V.intToV 0
 
+        
+    let rec build_semantics st i ii : branch M.t = match i with
       | CPP11.Pblock insts -> 
         build_semantics_list st insts ii 
       

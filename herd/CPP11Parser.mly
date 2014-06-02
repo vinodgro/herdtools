@@ -6,17 +6,19 @@ open CPP11Base
 %token EOF
 %token LK
 %token <CPP11Base.reg> ARCH_REG
-%token <int> NUM
-%token <string> NAME
+%token <int> CONSTANT
+%token <string> IDENTIFIER
 %token <string> ATOMIC_NAME
 %token <int> PROC
-%token SEMI COMMA PIPE COLON LPAR RPAR EQ EQEQ DOT LBRACE RBRACE STAR
+%token SEMI COMMA PIPE COLON LPAR RPAR EQ EQ_OP DOT LBRACE RBRACE STAR
 %token WHILE IF ELSE
 
 %nonassoc LOWER_THAN_ELSE /* This fixes the dangling-else problem */
 %nonassoc ELSE
  
-%token VOLATILE UNSIGNED SIGNED ATOMIC LONG DOUBLE BOOL INT
+%token UNSIGNED SIGNED ATOMIC LONG DOUBLE BOOL INT VOID FLOAT CHAR SHORT
+%token TYPEDEF EXTERN STATIC AUTO REGISTER
+%token CONST VOLATILE 
 %token <CPP11Base.mem_order> MEMORDER
 %token <CPP11Base.location_kind> LOCATIONKIND
 
@@ -26,13 +28,13 @@ open CPP11Base
 
 %type <LocationKindMap.lk_map> lk_map
 %type <(int * CPP11Base.pseudo list) list * MiscParser.gpu_data option> main 
-%type <(CPP11Base.pseudo list) CAst.test list> procs
+%type <(CPP11Base.pseudo list) CAst.test list> translation_unit
 %start  main
 
 %%
 
 main: 
-| procs lk_map EOF 
+| translation_unit lk_map EOF 
   { let proc_list, param_map = 
     List.fold_right (fun p (proc_list, param_map) -> 
         let proc_list = (p.CAst.proc,p.CAst.body) :: proc_list in
@@ -44,132 +46,266 @@ main:
       MiscParser.param_map = param_map} in
      (proc_list, Some additional) }
 
-procs:
-|   { [] }
-| PROC LPAR params RPAR LBRACE instr_list RBRACE procs
-    { { CAst.proc = $1; 
-        CAst.params = $3; 
-        CAst.body = List.map (fun ins -> Instruction ins) $6 } :: $8 } 
+primary_expression:
+| ARCH_REG { Eregister $1 }
+| CONSTANT { Econstant (Concrete $1) }
+| LPAR expression RPAR { $2 }
 
-instr_list:
-|            { [] }
-| instr instr_list 
-             { $1 :: $2 }
+postfix_expression:
+| primary_expression 
+  { $1 }
+| ST LPAR loc COMMA assignment_expression RPAR
+  { Estore ($3, $5, CPP11Base.SC) }
+| ST_EXPLICIT LPAR loc COMMA assignment_expression COMMA MEMORDER RPAR
+  { Estore ($3, $5, $7) }
+| LD LPAR loc RPAR
+  { Eload ($3, CPP11Base.SC) }
+| LD_EXPLICIT LPAR loc COMMA MEMORDER RPAR
+  { Eload ($3, $5) }
+| FENCE LPAR MEMORDER RPAR
+  { Efence ($3) }
+| LOCK LPAR loc RPAR
+  { Elock ($3) }
+| UNLOCK LPAR loc RPAR
+  { Eunlock ($3) }
+| WCAS LPAR loc COMMA loc COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
+  { Ecas ($3,$5,$7,$9,$11,false) }
+| SCAS LPAR loc COMMA loc COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
+  { Ecas ($3,$5,$7,$9,$11,true) }
 
-instr:
-| basic_instr SEMI     
-             { $1 } 
-| expression SEMI
-             { Pexpr $1 }
-| LBRACE instr_list RBRACE
-             { Pblock $2 }
-| WHILE LPAR expression RPAR LBRACE instr RBRACE 
-             { Pwhile ($3,$6) }
-| IF LPAR expression RPAR LBRACE instr RBRACE %prec LOWER_THAN_ELSE
-             { Pif ($3, $6, Pblock []) }
-| IF LPAR expression RPAR LBRACE instr RBRACE ELSE LBRACE instr RBRACE
-             { Pif ($3, $6, $10) }
+unary_expression:
+| postfix_expression 
+  { $1 }
+| pointer loc
+  { Eload ($2, CPP11Base.NA) }
+
+cast_expression:
+| unary_expression { $1 }
+
+multiplicative_expression:
+| cast_expression { $1 }
+
+additive_expression:
+| multiplicative_expression { $1 }
+
+shift_expression:
+| additive_expression { $1 }
+
+relational_expression:
+| shift_expression { $1 }
+
+equality_expression:
+| relational_expression 
+  { $1 }
+| equality_expression EQ_OP relational_expression 
+  { Eeq ($1,$3) }
+
+and_expression:
+| equality_expression { $1 }
+
+exclusive_or_expression:
+| and_expression { $1 }
+
+inclusive_or_expression: 
+| exclusive_or_expression { $1 }
+
+logical_and_expression: 
+| inclusive_or_expression { $1 }
+
+logical_or_expression:
+| logical_and_expression { $1 }
+
+conditional_expression:
+| logical_or_expression { $1 }
+
+assignment_expression:
+| conditional_expression 
+  { $1 }
+| reg assignment_operator assignment_expression
+  { Eassign ($1, $3) }
+| pointer loc assignment_operator assignment_expression
+  { Estore ($2, $4, CPP11Base.NA) }
+
+assignment_operator:
+| EQ { () }
 
 expression:
-  | NUM 
-    { Econstant (Concrete $1) }
-  | reg 
-    { Eregister $1 }
-  | reg EQ expression 
-    { Eassign ($1,$3) }
-  | atyp reg EQ expression 
-    { Eassign ($2,$4) }
-  | expression EQEQ expression
-    { Eeq ($1, $3) }
-
-basic_instr:
-  | atyp reg EQ LD LPAR loc RPAR
-    {Pload ($6,$2,CPP11Base.SC)}
-  | reg EQ LD LPAR loc RPAR
-    {Pload ($5,$1,CPP11Base.SC)}
-  | atyp reg EQ LD_EXPLICIT LPAR loc COMMA MEMORDER RPAR
-    {Pload ($6,$2,$8)}
-  | reg EQ LD_EXPLICIT LPAR loc COMMA MEMORDER RPAR
-    {Pload ($5,$1,$7)}
-  | atyp reg EQ STAR loc
-    {Pload ($5,$2,NA)}
-  | reg EQ STAR loc
-    {Pload ($4,$1,NA)}
-/*
-  | atyp reg EQ store_op
-    {Passign ($4,$2)}
-  | reg EQ store_op
-    {Passign ($3,$1)}
-  | store_op
-    {Pexpr_const $1}
-| store_op EQEQ reg
-    {Pexpr_eqeq ($3,$1)}
-  | loc
-    {Pexpr_const $1}
-  | reg
-    {Pexpr_reg $1}
+| assignment_expression { $1 }
+/* TODO:
+| expression COMMA assignment_expression
 */
-  | ST LPAR loc COMMA expression RPAR
-    {Pstore ($3,$5,CPP11Base.SC)}
-  | ST_EXPLICIT LPAR loc COMMA expression COMMA MEMORDER RPAR
-    {Pstore ($3,$5,$7)}
-  | STAR loc EQ expression
-    {Pstore ($2,$4,NA)}
-  | FENCE LPAR MEMORDER RPAR
-    {Pfence ($3)}
-  | LOCK LPAR loc RPAR
-    {Plock ($3)}
-  | UNLOCK LPAR loc RPAR
-    {Punlock ($3)}
-  | WCAS LPAR loc COMMA loc COMMA expression COMMA MEMORDER COMMA MEMORDER RPAR
-    {Pcas ($3,$5,$7,$9,$11,false)}
-  | SCAS LPAR loc COMMA loc COMMA expression COMMA MEMORDER COMMA MEMORDER RPAR
-    {Pcas ($3,$5,$7,$9,$11,true)}
 
-store_op :
-| NUM { Concrete $1 }
+declaration:
+| declaration_specifiers SEMI
+  { Pblock [] }
+| declaration_specifiers init_declarator_list SEMI
+  { Pblock $2 }
+
+declaration_specifiers:
+| storage_class_specifier 
+  { $1 }
+| storage_class_specifier declaration_specifiers
+  { let (ty1, vol1) = $1 in
+    let (ty2, vol2) = $2 in
+    (ty1 ^ " " ^ ty2, vol1 || vol2) }
+| type_specifier 
+  { $1 }
+| type_specifier declaration_specifiers
+  { let (ty1, vol1) = $1 in
+    let (ty2, vol2) = $2 in
+    (ty1 ^ " " ^ ty2, vol1 || vol2) }
+| type_qualifier
+  { $1 }
+| type_qualifier declaration_specifiers
+  { let (ty1, vol1) = $1 in
+    let (ty2, vol2) = $2 in
+    (ty1 ^ " " ^ ty2, vol1 || vol2) }
+
+init_declarator_list:
+| init_declarator
+  { [$1] }
+| init_declarator_list COMMA init_declarator
+  { $1 @ [$3] }
+
+init_declarator:
+| reg
+  { Pblock [] }
+| reg EQ initialiser 
+  { Pexpr (Eassign ($1, $3)) }
+
+storage_class_specifier:
+| TYPEDEF { ("typedef", false) }
+| EXTERN { ("extern", false) }
+| STATIC { ("static", false) }
+| AUTO { ("auto", false) }
+| REGISTER { ("register", false) }
+
+type_specifier:
+| VOID { ("void", false) }
+| CHAR { ("char", false) }
+| SHORT { ("short", false) }
+| INT { ("int", false) }
+| LONG { ("long", false) }
+| FLOAT { ("float", false) }
+| DOUBLE { ("double", false) }
+| SIGNED { ("signed", false) }
+| UNSIGNED { ("unsigned", false) }
+| ATOMIC_NAME { ($1, false) } 
+
+type_qualifier:
+| CONST { ("const", false) }
+| VOLATILE { ("volatile", true) }
+
+declarator:
+| pointer IDENTIFIER { (true, $2) }
+| IDENTIFIER { (false, $1) }
+
+pointer:
+| STAR { () }
+
+parameter_type_list:
+| parameter_list { $1 }
+
+parameter_list:
+| parameter_declaration
+  { [$1] }
+| parameter_list COMMA parameter_declaration
+  { $1 @ [$3] }
+
+parameter_declaration:
+| declaration_specifiers declarator
+  { let (ty, vol) = $1 in
+    let (ptr, identifier) = $2 in
+    let ty = if ptr then RunType.Pointer ty else RunType.Ty ty in
+    { CAst.param_ty = ty; 
+      CAst.volatile = vol; 
+      CAst.param_name = identifier } }
+
+initialiser:
+| assignment_expression 
+  { $1 }
+
+statement:
+| compound_statement
+  { Pblock $1 }
+| expression_statement
+  { $1 }
+| selection_statement
+  { $1 }
+| iteration_statement
+  { $1 }
+
+compound_statement:
+| LBRACE RBRACE
+  { [] }
+| LBRACE statement_list RBRACE
+  { $2 }
+| LBRACE declaration_list RBRACE
+  { $2 }
+| LBRACE declaration_list statement_list RBRACE
+  { $2 @ $3 }
+
+declaration_list:
+| declaration
+  { [$1] }
+| declaration_list declaration
+  { $1 @ [$2] }
+
+statement_list:
+| statement
+  { [$1] }
+| statement_list statement
+  { $1 @ [$2] }
+
+expression_statement:
+| SEMI
+  { Pblock [] }
+| expression SEMI
+  { Pexpr $1 }
+
+selection_statement:
+| IF LPAR expression RPAR statement %prec LOWER_THAN_ELSE
+  { Pif ($3, $5, Pblock []) }
+| IF LPAR expression RPAR statement ELSE statement
+  { Pif ($3, $5, $7) }
+
+iteration_statement:
+| WHILE LPAR expression RPAR statement
+  { Pwhile($3,$5) }
+
+translation_unit:
+| external_declaration
+  { [$1] }
+| translation_unit external_declaration 
+  { $1 @ [$2] }
+
+external_declaration:
+| function_definition { $1 }
+
+function_definition:
+| declaration_specifiers PROC LPAR parameter_type_list RPAR declaration_list compound_statement
+  { { CAst.proc = $2; 
+      CAst.params = $4; 
+      CAst.body = List.map (fun ins -> Instruction ins) ($6 @ $7) } }
+| declaration_specifiers PROC LPAR parameter_type_list RPAR compound_statement
+  { { CAst.proc = $2; 
+      CAst.params = $4; 
+      CAst.body = List.map (fun ins -> Instruction ins) $6 } }
+| PROC LPAR parameter_type_list RPAR declaration_list compound_statement
+  { { CAst.proc = $1; 
+      CAst.params = $3; 
+      CAst.body = List.map (fun ins -> Instruction ins) ($5 @ $6) } }
+| PROC LPAR parameter_type_list RPAR compound_statement
+  { { CAst.proc = $1; 
+      CAst.params = $3; 
+      CAst.body = List.map (fun ins -> Instruction ins) $5 } }
+
 
 reg:
 | ARCH_REG { $1 }
 
 loc:
-| NAME { Symbolic $1 }
-
-one_or_more_params:
-| param { [$1] }
-| param COMMA one_or_more_params { $1 :: $3 }
-
-params:
-|                    { [] }
-| one_or_more_params { $1 }
-
-param:
-| ty NAME
-    { {CAst.param_ty = $1; volatile = false; param_name = $2} }
-| VOLATILE ty NAME
-    { {CAst.param_ty = $2; volatile = true; param_name = $3} }
-
-ty:
-| atyp STAR { RunType.Ty $1 }
-/*| atyp STAR STAR { RunType.Pointer $1 }*/
-
-atyp:
-| typ { $1 }
-| ATOMIC typ { "_Atomic " ^ $2 }
-
-typ:
-| ATOMIC_NAME { $1 }
-| ty_attr INT { $1 ^ "int" }
-| ty_attr LONG { $1 ^ "long" }
-| ty_attr DOUBLE { $1 ^ "double" }
-| ty_attr LONG LONG { $1 ^ "long long" }
-| ty_attr LONG DOUBLE { $1 ^ "long double" }
-| BOOL { "_Bool" }
-
-ty_attr:
-| { "" }
-| UNSIGNED { "unsigned " }
-| SIGNED { "signed " }
+| IDENTIFIER { Symbolic $1 }
 
 lk_map:
 | LK lk_list { $2 }
@@ -180,5 +316,5 @@ lk_list:
 | lk COMMA lk_list { $1 :: $3 }
 
 lk:
-| NAME COLON LOCATIONKIND { ($1,$3) }
+| IDENTIFIER COLON LOCATIONKIND { ($1,$3) }
 

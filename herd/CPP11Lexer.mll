@@ -10,11 +10,20 @@ module LU = LexUtils.Make(O)
 (* Compiled efficiently by the next version of ocaml *)
 let tr_name = function
 | "volatile" -> VOLATILE
+| "const" -> CONST
+| "static" -> STATIC
+| "typedef" -> TYPEDEF
+| "auto" -> AUTO
+| "register" -> REGISTER
 | "unsigned" -> UNSIGNED
 | "signed" -> SIGNED
 | "_Atomic" -> ATOMIC
 | "long" -> LONG
 | "int" -> INT
+| "float" -> FLOAT
+| "void" -> VOID
+| "char" -> CHAR
+| "short" -> SHORT
 | "double" -> DOUBLE
 | "_Bool" -> BOOL
 | "atomic_bool" -> ATOMIC_NAME "_Atomic _Bool"
@@ -54,7 +63,7 @@ let tr_name = function
 | "atomic_ptrdiff_t" -> ATOMIC_NAME "_Atomic __PTRDIFF_TYPE__"
 | "atomic_intmax_t" -> ATOMIC_NAME "_Atomic __INTMAX_TYPE__"
 | "atomic_uintmax_t" -> ATOMIC_NAME "_Atomic __UINTMAX_TYPE__"
-|  x -> NAME x
+|  x -> IDENTIFIER x
 
 }
 
@@ -67,7 +76,7 @@ rule token = parse
 | [' ''\t'] { token lexbuf }
 | '\n'      { incr_lineno lexbuf; token lexbuf }
 | "(*"      { LU.skip_comment lexbuf ; token lexbuf }
-| '-' ? num as x { NUM (int_of_string x) }
+| '-' ? num as x { CONSTANT (int_of_string x) }
 | 'P' (num as x) { PROC (int_of_string x) }
 | ';' { SEMI }
 | ',' { COMMA }
@@ -82,7 +91,7 @@ rule token = parse
 | "if"    { IF }
 | "else"  { ELSE }
 | '=' {EQ}
-| "==" {EQEQ}
+| "==" {EQ_OP}
 | '.' {DOT}
 | "memory_order_acquire" {MEMORDER (CPP11Base.Acq)}
 | "memory_order_release" {MEMORDER (CPP11Base.Rel)}

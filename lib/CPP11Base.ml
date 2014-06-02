@@ -104,18 +104,18 @@ let barrier_compare = Pervasives.compare
 type loc = SymbConstant.v
 
 type expression =
-  | Econstant of SymbConstant.v
-  | Eregister of reg
-  | Eassign of reg * expression
-  | Eeq of expression * expression
+| Econstant of SymbConstant.v
+| Eregister of reg
+| Eassign of reg * expression
+| Eeq of expression * expression
+| Estore  of loc * expression * mem_order 
+| Eload   of loc * mem_order
+| Ecas    of loc * loc * expression * mem_order * mem_order * bool
+| Elock   of loc
+| Eunlock of loc
+| Efence  of mem_order
 
 type instruction = 
-| Pstore  of loc * expression * mem_order 
-| Pload   of loc * reg * mem_order
-| Pcas    of loc * loc * expression * mem_order * mem_order * bool
-| Plock   of loc
-| Punlock of loc
-| Pfence  of mem_order
 | Pif     of expression * instruction * instruction
 | Pwhile  of expression * instruction
 | Pblock  of instruction list
@@ -126,7 +126,6 @@ include Pseudo.Make
       type ins = instruction
       type reg_arg = reg
       let get_naccesses = function 
-	| Pstore _ | Pload _ -> 1
 	| _ -> 0 
        (* JPW: maybe locks/unlocks/RMWs should return something other
           than 0, but I'm not sure whether this function is
@@ -149,31 +148,35 @@ let pp_sop = function
   | Concrete i -> (sprintf "%d" i)
   | _ -> "only concrete store ops supported at this time in C++11"
 
-let dump_expression _e = "not implemented"
-
-let rec dump_instruction i = match i with
-  | Pstore(loc,e,mo) ->
+let rec dump_expression e = match e with
+  | Estore(loc,e,mo) ->
     (match mo with 
     | NA -> sprintf("%s = %s") 
 		   (pp_addr loc) (dump_expression e)
     | _ -> sprintf("%s.store(%s,%s)") 
 		  (pp_addr loc) (dump_expression e) (pp_mem_order mo))
-  | Pload(loc,reg,mo) ->
+  | Eload(loc,mo) ->
     (match mo with 
-    | NA -> sprintf("%s = %s") 
-		   (pp_reg reg) (pp_addr loc)
-    | _ -> sprintf("%s = %s.load(%s)") 
-		  (pp_reg reg) (pp_addr loc) (pp_mem_order mo))
-  | Pcas(obj,exp,des,mo_success,mo_failure,strong) ->
+    | NA -> sprintf("%s") 
+		   (pp_addr loc)
+    | _ -> sprintf("%s.load(%s)") 
+		  (pp_addr loc) (pp_mem_order mo))
+  | Ecas(obj,exp,des,mo_success,mo_failure,strong) ->
     sprintf("%sCAS(%s,%s,%s,%s,%s)") 
       (if strong then "S" else "W")
       (pp_addr obj) (pp_addr exp) (dump_expression des) 
       (pp_mem_order mo_success) (pp_mem_order mo_failure)     
-  | Plock(loc) ->
+  | Elock(loc) ->
     sprintf("Lock(%s)") (pp_addr loc)
-  | Punlock(loc) ->
+  | Eunlock(loc) ->
     sprintf("Unlock(%s)") (pp_addr loc)
-  | Pfence mo ->  sprintf("fence(%s)") (pp_mem_order mo)
+  | Efence mo -> sprintf("fence(%s)") (pp_mem_order mo)
+  | Econstant i -> pp_sop i
+  | Eregister reg -> pp_reg reg
+  | Eassign(reg,e) -> sprintf "%s = %s" (pp_reg reg) (dump_expression e)
+  | Eeq (e1,e2) -> sprintf "%s == %s" (dump_expression e1) (dump_expression e2)
+
+let rec dump_instruction i = match i with
   | Pif(e,i1,i2) -> 
     sprintf ("if(%s)%s else %s") (dump_expression e)  
       (dump_instruction i1) (dump_instruction i2)
@@ -182,7 +185,7 @@ let rec dump_instruction i = match i with
       (dump_instruction i)
   | Pblock insts ->
     sprintf ("{%s}") (List.fold_left (fun z i -> z ^ dump_instruction i) "" insts)
-  | Pexpr e -> dump_expression e
+  | Pexpr e -> sprintf "%s;" (dump_expression e)
    
 (* We don't have symbolic registers. This should be enough *)
 let fold_regs (f_reg,_f_sreg) = 
@@ -191,7 +194,6 @@ let fold_regs (f_reg,_f_sreg) =
     | _ -> y_reg, y_sreg in 
   
   fun (_y_reg,_y_sreg as c) ins -> match ins with
-  | Pload(_,reg,_) -> fold_reg (reg) c
   | _ -> c
 
 let map_regs f_reg _f_symb = 
@@ -200,7 +202,6 @@ let map_regs f_reg _f_symb =
     | _ -> reg in
 
   fun ins -> match ins with
-  | Pload(loc,reg,mo) -> Pload(loc, (map_reg reg),mo)
   | _ -> ins
 
 
