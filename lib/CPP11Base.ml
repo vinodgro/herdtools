@@ -229,5 +229,3 @@ let pp_instruction _m _ins = dump_instruction _ins
 let get_next _ins = Warn.fatal "C++11 get_next not implemented"
 
 let allowed_for_symb = []
-
-include LocationKindMap
