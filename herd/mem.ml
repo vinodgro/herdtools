@@ -226,7 +226,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 	let ii = 
 	  {A.program_order_index=prog_order;
 	   proc=proc; inst=inst; } in
-	let evts = S.build_semantics procs inst ii in
+	let evts = S.build_semantics procs ii in
 	evts  >>> (next_instr proc (A.next_po_index prog_order) seen addr nexts)
 
       and add_code proc prog_order seen nexts = match nexts with

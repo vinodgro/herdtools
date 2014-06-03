@@ -109,7 +109,7 @@ module Make (C:Sem.Config)(V : Value.S)
         and w2 = fun v -> write_loc l2 v ii in
         M.exch r1 r2 w1 w2) >>! B.Next
 
-    let rec build_semantics procs i ii = match i with
+    let rec build_semantics procs ii = match ii.A.inst with
     |  X86.I_XOR (ea,op) ->
 	(lval_ea ea ii >>=
 	 fun loc -> M.addT loc (read_loc loc ii) >>| rval_op op ii)
@@ -200,7 +200,7 @@ module Make (C:Sem.Config)(V : Value.S)
 	fun v -> B.bccT v lbl 
 
     | X86.I_LOCK inst ->
-	M.lockT (build_semantics procs inst ii)
+	M.lockT (build_semantics procs {ii with A.inst = inst})
     | X86.I_SETNB (ea) ->
 	(lval_ea ea ii >>| read_reg X86.CF ii) >>=
 	fun (loc,cf) ->

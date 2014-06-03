@@ -26,6 +26,6 @@ module type Semantics =
 
 (* Instruction semantics, highly arch dependant *)
     val build_semantics  : 
-    int list (*real proc list*) -> instruction -> A.inst_instance_id -> branch M.t
+    int list (*real proc list*) -> A.inst_instance_id -> branch M.t
   end
 
