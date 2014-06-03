@@ -130,13 +130,24 @@ module Make (C:Sem.Config)(V:Value.S)
         let ii' = {ii with A.program_order_index = A.next_po_index prog_order;} in
         (* TODO: Advance program_order_index by the right amount for each instruction *)
         evts >>> fun ret ->
-        let prog_order = A.next_po_index prog_order in
         M.choiceT ret
           (build_semantics st i1 ii')
           (build_semantics st i2 ii') >>! B.Next
-
+      
+      | CPP11.Pwhile (e,i1) ->
+        let evts = build_semantics_expr e ii in
+        let prog_order = ii.A.program_order_index in
+	let ii' = { ii with A.program_order_index = A.next_po_index prog_order;} in
+        (* TODO: Advance program_order_index by the right amount for each instruction *)
+        evts >>> fun ret -> 
+        M.choiceT ret
+            (build_semantics st i1 ii' >>> fun _ ->
+             build_semantics st i ii' >>! 
+            B.Next)
+            (M.unitT B.Next)
+        
     and build_semantics_list st insts ii = match insts with
-      | [] -> M.unitT (B.Next)
+      | [] -> M.unitT B.Next
       | inst :: insts ->
 	let ii = {ii with A.inst=inst; } in
 	let evts = build_semantics st inst ii in

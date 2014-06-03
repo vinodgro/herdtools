@@ -25,6 +25,18 @@ let is_atomic = function
   | Pointer _ -> false
   | Ty s -> is_atomic_type s
 
+let is_ptr_to_atomic = function
+  | Pointer s -> is_atomic_type s
+  | Ty _ -> false
+
+let is_mutex = function
+  | Pointer _ -> false
+  | Ty s -> 
+    try 
+      let _ = Str.search_forward (Str.regexp "mutex") s 0 in 
+      true 
+    with Not_found -> false
+
 
 let strip_atomic t = match t with
   | Pointer _ -> t

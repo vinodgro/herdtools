@@ -77,13 +77,13 @@ type mem_order =
 
 let pp_mem_order o = 
   match o with 
-  | Acq -> "mo_acquire"
-  | Rel -> "mo_release"
-  | Acq_Rel -> "mo_acq_rel"
-  | SC -> "mo_seq_cst"
-  | Rlx -> "mo_relaxed"
+  | Acq -> "memory_order_acquire"
+  | Rel -> "memory_order_release"
+  | Acq_Rel -> "memory_order_acq_rel"
+  | SC -> "memory_order_seq_cst"
+  | Rlx -> "memory_order_relaxed"
   | NA -> "non_atomic"
-  | Con -> "mo_consume"
+  | Con -> "memory_order_consume"
 
 (****************)
 (* Barriers     *)
@@ -153,13 +153,17 @@ let rec dump_expression e = match e with
     (match mo with 
     | NA -> sprintf("%s = %s") 
 		   (pp_addr loc) (dump_expression e)
-    | _ -> sprintf("%s.store(%s,%s)") 
+    | SC -> sprintf("atomic_store(%s,%s)") 
+		  (pp_addr loc) (dump_expression e)
+    | _ -> sprintf("atomic_store_explicit(%s,%s,%s)") 
 		  (pp_addr loc) (dump_expression e) (pp_mem_order mo))
   | Eload(loc,mo) ->
     (match mo with 
     | NA -> sprintf("%s") 
 		   (pp_addr loc)
-    | _ -> sprintf("%s.load(%s)") 
+    | SC -> sprintf("atomic_load(%s)") 
+		  (pp_addr loc)
+    | _ -> sprintf("atomic_load_explicit(%s,%s)") 
 		  (pp_addr loc) (pp_mem_order mo))
   | Ecas(obj,exp,des,mo_success,mo_failure,strong) ->
     sprintf("%sCAS(%s,%s,%s,%s,%s)") 
@@ -167,9 +171,9 @@ let rec dump_expression e = match e with
       (pp_addr obj) (pp_addr exp) (dump_expression des) 
       (pp_mem_order mo_success) (pp_mem_order mo_failure)     
   | Elock(loc) ->
-    sprintf("Lock(%s)") (pp_addr loc)
+    sprintf("lock(%s)") (pp_addr loc)
   | Eunlock(loc) ->
-    sprintf("Unlock(%s)") (pp_addr loc)
+    sprintf("unlock(%s)") (pp_addr loc)
   | Efence mo -> sprintf("fence(%s)") (pp_mem_order mo)
   | Econstant i -> pp_sop i
   | Eregister reg -> pp_reg reg

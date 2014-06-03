@@ -137,7 +137,7 @@ reg:
 
 scopes_and_memory_map : 
 | SCOPETREE scope_tree memory_map 
-   { { MiscParser.scope_tree=Some $2; mem_space_map=$3; lk_map=[]; param_map = [];}}
+   { { MiscParser.scope_tree=Some $2; mem_space_map=$3; param_map = [];}}
 
 scope_tree :
 |  device_list {$1}

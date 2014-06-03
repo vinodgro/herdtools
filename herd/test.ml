@@ -24,7 +24,7 @@ type ('prog,'nice_prog,'start,'state,'constr,'loc,'locset) t =
      observed : 'locset ;
      scope_tree : ScopeTree.scope_tree option ;
      mem_space_map : MemSpaceMap.mem_space_map ;
-     lk_map : LocationKindMap.lk_map ;
+     param_map : CAst.param list ;
    }
 
 (* Name and nothing else *)
@@ -73,10 +73,10 @@ module Make(A:Arch.S) =
           final locs in
 (* Hum, half satisfactory,  but steems from the test structure having
    three fields that are gpu-specific *)
-      let scope_tree, mem_space_map,lk_map = match gpu_data with
+      let scope_tree, mem_space_map,param_map = match gpu_data with
       | None -> None,[],[]
-      | Some { MiscParser.scope_tree; mem_space_map; lk_map; } ->
-          scope_tree, mem_space_map,lk_map in
+      | Some { MiscParser.scope_tree; mem_space_map; param_map; } ->
+          scope_tree, mem_space_map, param_map in
       {
        arch = A.arch ;
        name = name ;
@@ -90,7 +90,7 @@ module Make(A:Arch.S) =
        observed = observed ;       
        scope_tree = scope_tree ;
        mem_space_map = mem_space_map ;
-       lk_map = lk_map ;
+       param_map = param_map ;
      }
 
 

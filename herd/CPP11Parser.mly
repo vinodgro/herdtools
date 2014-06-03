@@ -8,7 +8,7 @@ open CPP11Base
 %token <CPP11Base.reg> ARCH_REG
 %token <int> CONSTANT
 %token <string> IDENTIFIER
-%token <string> ATOMIC_NAME
+%token <string> ATOMIC_TYPE
 %token <int> PROC
 %token SEMI COMMA PIPE COLON LPAR RPAR EQ EQ_OP DOT LBRACE RBRACE STAR
 %token WHILE IF ELSE
@@ -17,39 +17,42 @@ open CPP11Base
 %nonassoc ELSE
  
 %token UNSIGNED SIGNED ATOMIC LONG DOUBLE BOOL INT VOID FLOAT CHAR SHORT
+%token MUTEX 
 %token TYPEDEF EXTERN STATIC AUTO REGISTER
 %token CONST VOLATILE 
 %token <CPP11Base.mem_order> MEMORDER
-%token <CPP11Base.location_kind> LOCATIONKIND
 
 /* Instruction tokens */
 
 %token LD LD_EXPLICIT ST ST_EXPLICIT FENCE LOCK UNLOCK SCAS WCAS
 
-%type <LocationKindMap.lk_map> lk_map
 %type <(int * CPP11Base.pseudo list) list * MiscParser.gpu_data option> main 
 %type <(CPP11Base.pseudo list) CAst.test list> translation_unit
-%start  main
+%start main
 
 %%
 
 main: 
-| translation_unit lk_map EOF 
+| translation_unit EOF 
   { let proc_list, param_map = 
-    List.fold_right (fun p (proc_list, param_map) -> 
+      List.fold_right (fun p (proc_list, param_map) -> 
         let proc_list = (p.CAst.proc,p.CAst.body) :: proc_list in
-        let param_map = (p.CAst.proc,p.CAst.params) :: param_map in
-        (proc_list, param_map)) $1 ([],[]) in
-    let additional = { 
-      MiscParser.empty_gpu with 
-      MiscParser.lk_map = $2; 
-      MiscParser.param_map = param_map} in
-     (proc_list, Some additional) }
+        let param_map = p.CAst.params @ param_map in
+        (proc_list, param_map)) $1 ([], [])  
+    in
+    let additional = 
+      { MiscParser.empty_gpu with 
+        MiscParser.param_map = param_map; } 
+    in
+    (proc_list, Some additional) }
 
 primary_expression:
-| ARCH_REG { Eregister $1 }
-| CONSTANT { Econstant (Concrete $1) }
-| LPAR expression RPAR { $2 }
+| ARCH_REG 
+  { Eregister $1 }
+| CONSTANT 
+  { Econstant (Concrete $1) }
+| LPAR expression RPAR 
+  { $2 }
 
 postfix_expression:
 | primary_expression 
@@ -121,7 +124,7 @@ conditional_expression:
 assignment_expression:
 | conditional_expression 
   { $1 }
-| reg assignment_operator assignment_expression
+| ARCH_REG assignment_operator assignment_expression
   { Eassign ($1, $3) }
 | pointer loc assignment_operator assignment_expression
   { Estore ($2, $4, CPP11Base.NA) }
@@ -145,21 +148,15 @@ declaration_specifiers:
 | storage_class_specifier 
   { $1 }
 | storage_class_specifier declaration_specifiers
-  { let (ty1, vol1) = $1 in
-    let (ty2, vol2) = $2 in
-    (ty1 ^ " " ^ ty2, vol1 || vol2) }
+  { $1 ^ " " ^ $2 }
 | type_specifier 
   { $1 }
 | type_specifier declaration_specifiers
-  { let (ty1, vol1) = $1 in
-    let (ty2, vol2) = $2 in
-    (ty1 ^ " " ^ ty2, vol1 || vol2) }
+  { $1 ^ " " ^ $2 }
 | type_qualifier
   { $1 }
 | type_qualifier declaration_specifiers
-  { let (ty1, vol1) = $1 in
-    let (ty2, vol2) = $2 in
-    (ty1 ^ " " ^ ty2, vol1 || vol2) }
+  { $1 ^ " " ^ $2 }
 
 init_declarator_list:
 | init_declarator
@@ -168,33 +165,35 @@ init_declarator_list:
   { $1 @ [$3] }
 
 init_declarator:
-| reg
+| ARCH_REG
   { Pblock [] }
-| reg EQ initialiser 
+| ARCH_REG EQ initialiser 
   { Pexpr (Eassign ($1, $3)) }
 
 storage_class_specifier:
-| TYPEDEF { ("typedef", false) }
-| EXTERN { ("extern", false) }
-| STATIC { ("static", false) }
-| AUTO { ("auto", false) }
-| REGISTER { ("register", false) }
+| TYPEDEF { "typedef" }
+| EXTERN { "extern" }
+| STATIC { "static" }
+| AUTO { "auto" }
+| REGISTER { "register" }
 
 type_specifier:
-| VOID { ("void", false) }
-| CHAR { ("char", false) }
-| SHORT { ("short", false) }
-| INT { ("int", false) }
-| LONG { ("long", false) }
-| FLOAT { ("float", false) }
-| DOUBLE { ("double", false) }
-| SIGNED { ("signed", false) }
-| UNSIGNED { ("unsigned", false) }
-| ATOMIC_NAME { ($1, false) } 
+| VOID { "void" }
+| CHAR { "char" }
+| SHORT { "short" }
+| INT { "int" }
+| LONG { "long" }
+| FLOAT { "float" }
+| DOUBLE { "double" }
+| SIGNED { "signed" }
+| UNSIGNED { "unsigned" }
+| MUTEX { "mutex" }
+| ATOMIC { "_Atomic" }
+| ATOMIC_TYPE { $1 } 
 
 type_qualifier:
-| CONST { ("const", false) }
-| VOLATILE { ("volatile", true) }
+| CONST { "const" }
+| VOLATILE { "volatile" }
 
 declarator:
 | pointer IDENTIFIER { (true, $2) }
@@ -214,10 +213,16 @@ parameter_list:
 
 parameter_declaration:
 | declaration_specifiers declarator
-  { let (ty, vol) = $1 in
+  { let ty = $1 in
     let (ptr, identifier) = $2 in
-    let ty = if ptr then RunType.Pointer ty else RunType.Ty ty in
-    { CAst.param_ty = ty; 
+    let vol = 
+      try 
+        let _ = Str.search_forward (Str.regexp "volatile") ty 0 in 
+        true 
+      with Not_found -> false
+    in
+    let full_ty = if ptr then RunType.Pointer ty else RunType.Ty ty in
+    { CAst.param_ty = full_ty; 
       CAst.volatile = vol; 
       CAst.param_name = identifier } }
 
@@ -226,6 +231,8 @@ initialiser:
   { $1 }
 
 statement:
+| declaration /* (* Added to allow mid-block declarations *) */
+  { $1 }
 | compound_statement
   { Pblock $1 }
 | expression_statement
@@ -240,16 +247,6 @@ compound_statement:
   { [] }
 | LBRACE statement_list RBRACE
   { $2 }
-| LBRACE declaration_list RBRACE
-  { $2 }
-| LBRACE declaration_list statement_list RBRACE
-  { $2 @ $3 }
-
-declaration_list:
-| declaration
-  { [$1] }
-| declaration_list declaration
-  { $1 @ [$2] }
 
 statement_list:
 | statement
@@ -283,38 +280,14 @@ external_declaration:
 | function_definition { $1 }
 
 function_definition:
-| declaration_specifiers PROC LPAR parameter_type_list RPAR declaration_list compound_statement
-  { { CAst.proc = $2; 
-      CAst.params = $4; 
-      CAst.body = List.map (fun ins -> Instruction ins) ($6 @ $7) } }
 | declaration_specifiers PROC LPAR parameter_type_list RPAR compound_statement
   { { CAst.proc = $2; 
       CAst.params = $4; 
       CAst.body = List.map (fun ins -> Instruction ins) $6 } }
-| PROC LPAR parameter_type_list RPAR declaration_list compound_statement
-  { { CAst.proc = $1; 
-      CAst.params = $3; 
-      CAst.body = List.map (fun ins -> Instruction ins) ($5 @ $6) } }
 | PROC LPAR parameter_type_list RPAR compound_statement
   { { CAst.proc = $1; 
       CAst.params = $3; 
       CAst.body = List.map (fun ins -> Instruction ins) $5 } }
 
-
-reg:
-| ARCH_REG { $1 }
-
 loc:
 | IDENTIFIER { Symbolic $1 }
-
-lk_map:
-| LK lk_list { $2 }
-|         { [] }
-
-lk_list:
-| lk { [$1] }
-| lk COMMA lk_list { $1 :: $3 }
-
-lk:
-| IDENTIFIER COLON LOCATIONKIND { ($1,$3) }
-

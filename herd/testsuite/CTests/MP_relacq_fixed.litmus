@@ -19,8 +19,5 @@ P1 (atomic_int* y,volatile int* x) {
  }
 }
 
-LK
-  x:nonatomic, y:atomic
-
 exists
 (1:r0=1 /\ 1:r1=0)
