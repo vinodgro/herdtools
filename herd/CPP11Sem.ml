@@ -116,9 +116,9 @@ module Make (C:Sem.Config)(V:Value.S)
 	M.mk_singleton_es (Act.Fence mo) ii >>! V.intToV 0
 
         
-    let rec build_semantics st ii : branch M.t = match ii.A.inst with
+    let rec build_semantics ii : branch M.t = match ii.A.inst with
       | CPP11.Pblock insts -> 
-        build_semantics_list st insts ii 
+        build_semantics_list insts ii 
       
       | CPP11.Pexpr e ->
         build_semantics_expr e ii >>!
@@ -131,8 +131,8 @@ module Make (C:Sem.Config)(V:Value.S)
         (* TODO: Advance program_order_index by the right amount for each instruction *)
         evts >>> fun ret ->
         M.choiceT ret
-          (build_semantics st {ii' with A.inst = i1})
-          (build_semantics st {ii' with A.inst = i2}) >>! B.Next
+          (build_semantics {ii' with A.inst = i1})
+          (build_semantics {ii' with A.inst = i2}) >>! B.Next
       
       | CPP11.Pwhile (e,i1) ->
         let evts = build_semantics_expr e ii in
@@ -141,18 +141,18 @@ module Make (C:Sem.Config)(V:Value.S)
         (* TODO: Advance program_order_index by the right amount for each instruction *)
         evts >>> fun ret -> 
         M.choiceT ret
-            (build_semantics st {ii' with A.inst = i1} >>> fun _ ->
-             build_semantics st ii' >>! 
+            (build_semantics {ii' with A.inst = i1} >>> fun _ ->
+             build_semantics ii' >>! 
             B.Next)
             (M.unitT B.Next)
         
-    and build_semantics_list st insts ii = match insts with
+    and build_semantics_list insts ii = match insts with
       | [] -> M.unitT B.Next
       | inst :: insts ->
 	let ii = {ii with A.inst=inst; } in
-	let evts = build_semantics st ii in
+	let evts = build_semantics ii in
         let prog_order = ii.A.program_order_index in
         let ii' = {ii with A.program_order_index = A.next_po_index prog_order;} in
-	evts  >>> fun _branch -> build_semantics_list st insts ii'
+	evts  >>> fun _branch -> build_semantics_list insts ii'
      
   end

@@ -64,7 +64,7 @@ module Make (C:Sem.Config)(V:Value.S)
       | Constant.Concrete vv -> vv
       | _ -> Warn.fatal "Couldn't convert constant to int"
 
-    let build_semantics _st ii = match ii.A.inst with
+    let build_semantics ii = match ii.A.inst with
       | GPU_PTX.Pld(reg1,reg2,_,_cop,_) ->
 	read_reg reg2 ii >>= 
 	    (fun addr -> read_mem addr ii) >>=

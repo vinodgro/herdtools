@@ -56,7 +56,7 @@ baseline:
 	@echo "Regenerating baseline..."
 	@./herd -model power.cat testsuite/PPCTests/*  > testsuite/PPC_results_baseline.txt
 	@./herd -model arm.cat testsuite/ARMTests/* > testsuite/ARM_results_baseline.txt
-	@./herd -model cpp11.cat testsuite/CPP11Tests/* > testsuite/CPP11_results_baseline.txt
+	@./herd -model cpp11.cat testsuite/CTests/* > testsuite/CPP11_results_baseline.txt
 	@./herd -model ptx.cat testsuite/GPU_PTXTests/* > testsuite/PTX_results_baseline.txt
 	@./herd -model opencl.cat testsuite/OpenCLTests/* > testsuite/OpenCL_results_baseline.txt
 
@@ -64,7 +64,7 @@ test:
 	@echo "Running tests..."
 	@./herd -model power.cat testsuite/PPCTests/*  > testsuite/PPC_results_new.txt
 	@./herd -model arm.cat testsuite/ARMTests/* > testsuite/ARM_results_new.txt
-	@./herd -model cpp11.cat testsuite/CPP11Tests/* > testsuite/CPP11_results_new.txt
+	@./herd -model cpp11.cat testsuite/CTests/* > testsuite/CPP11_results_new.txt
 	@./herd -model ptx.cat testsuite/GPU_PTXTests/* > testsuite/PTX_results_new.txt
 	@./herd -model opencl.cat testsuite/OpenCLTests/* > testsuite/OpenCL_results_new.txt
 	@test -s ../tools/mcompare || { echo "../tools/mcompare doesn't exist. Run the \`make -C ../tools\` command."; exit 1; }
