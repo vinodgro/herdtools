@@ -114,6 +114,8 @@ type expression =
 | Elock   of loc
 | Eunlock of loc
 | Efence  of mem_order
+| Ecomma of expression * expression
+| Eparen of expression
 
 type instruction = 
 | Pif     of expression * instruction * instruction
@@ -151,7 +153,7 @@ let pp_sop = function
 let rec dump_expression e = match e with
   | Estore(loc,e,mo) ->
     (match mo with 
-    | NA -> sprintf("%s = %s") 
+    | NA -> sprintf("*%s = %s") 
 		   (pp_addr loc) (dump_expression e)
     | SC -> sprintf("atomic_store(%s,%s)") 
 		  (pp_addr loc) (dump_expression e)
@@ -159,7 +161,7 @@ let rec dump_expression e = match e with
 		  (pp_addr loc) (dump_expression e) (pp_mem_order mo))
   | Eload(loc,mo) ->
     (match mo with 
-    | NA -> sprintf("%s") 
+    | NA -> sprintf("*%s") 
 		   (pp_addr loc)
     | SC -> sprintf("atomic_load(%s)") 
 		  (pp_addr loc)
@@ -179,6 +181,8 @@ let rec dump_expression e = match e with
   | Eregister reg -> pp_reg reg
   | Eassign(reg,e) -> sprintf "%s = %s" (pp_reg reg) (dump_expression e)
   | Eeq (e1,e2) -> sprintf "%s == %s" (dump_expression e1) (dump_expression e2)
+  | Ecomma (e1,e2) -> sprintf "%s, %s" (dump_expression e1) (dump_expression e2)
+  | Eparen e -> sprintf "(%s)" (dump_expression e)
 
 let rec dump_instruction i = match i with
   | Pif(e,i1,i2) -> 

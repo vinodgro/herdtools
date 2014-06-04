@@ -1,0 +1,25 @@
+CPP11 John1
+"PodWWNaRel RfeRelAcq PodRRAcqNa Fre"
+Prefetch=0:x=F,0:y=W,1:y=F,1:x=T
+Com=Rf Fr
+Orig=PodWWNaRel RfeRelAcq PodRRAcqNa Fre
+
+{}
+
+P0 (atomic_int* y,volatile int* x) {
+  *y = 7;
+  if ( *y == *x) {
+    *x = *x == 1;
+    *y = *y == 1;
+  } else {
+    *x = *x == 0;
+    *y = *y == 7;
+  }
+}
+
+P1 (atomic_int* y,volatile int* x) {
+   *x = 7;
+}
+
+exists
+(1:r0=1 /\ 1:r1=0)

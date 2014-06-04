@@ -134,7 +134,9 @@ module Make (C:Sem.Config)(V:Value.S)
     | ARM.SetFlags -> write_flag ARM.Z Op.Eq v1 v2 ii
     | ARM.DontSetFlags -> M.unitT ()
 
-    let build_semantics ii = match ii.A.inst with
+    let build_semantics ii = 
+      M.addT (A.next_po_index ii.A.program_order_index)
+        begin match ii.A.inst with
 	  | ARM.I_ADD (set,rd,rs,v) ->
 	      ((read_reg rs ii) 
 		 >>=
@@ -300,4 +302,5 @@ module Make (C:Sem.Config)(V:Value.S)
               Warn.user_error "SADD16 not implemented"
           | ARM.I_SEL _ ->
               Warn.user_error "SEL not implemented"
+        end
   end

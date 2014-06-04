@@ -54,14 +54,15 @@ module Make (C:Sem.Config)(V:Value.S)
         M.unitT v
 
       | CPP11.Eassign (reg,e) ->
+        (* TODO: This might not be right, since there is no
+           sequence point at an assignment *)
         build_semantics_expr e ii >>= fun v ->
         write_reg reg v ii >>! 
         v
 
       | CPP11.Eeq (e1, e2) ->
-        build_semantics_expr e1 ii >>= fun v1 ->
-        build_semantics_expr e2 ii >>= fun v2 ->
-        (* TODO: remove sequencing between the above *)
+        build_semantics_expr e1 ii >>| 
+        build_semantics_expr e2 ii >>= fun (v1,v2) ->
         M.op Op.Eq v1 v2
 
       | CPP11.Estore(l,e,mo) ->
@@ -115,44 +116,52 @@ module Make (C:Sem.Config)(V:Value.S)
       | CPP11.Efence(mo) ->
 	M.mk_singleton_es (Act.Fence mo) ii >>! V.intToV 0
 
+      | CPP11.Ecomma(e1,e2) ->
+        build_semantics_expr e1 ii >>= fun _v ->
+        build_semantics_expr e2 ii
+
+      | CPP11.Eparen e ->
+        build_semantics_expr e ii
+
         
-    let rec build_semantics ii : branch M.t = match ii.A.inst with
+    let rec build_semantics ii : (A.program_order_index * B.t) M.t = match ii.A.inst with
       | CPP11.Pblock insts -> 
         build_semantics_list insts ii 
       
       | CPP11.Pexpr e ->
         build_semantics_expr e ii >>!
-        B.Next
+        (A.next_po_index ii.A.program_order_index, B.Next)
       
       | CPP11.Pif (e,i1,i2) ->
-        let evts = build_semantics_expr e ii in
-        let prog_order = ii.A.program_order_index in
-        let ii' = {ii with A.program_order_index = A.next_po_index prog_order;} in
-        (* TODO: Advance program_order_index by the right amount for each instruction *)
-        evts >>> fun ret ->
-        M.choiceT ret
-          (build_semantics {ii' with A.inst = i1})
-          (build_semantics {ii' with A.inst = i2}) >>! B.Next
+        build_semantics_expr e ii >>> fun ret ->
+        let ii' = 
+          {ii with A.program_order_index = A.next_po_index ii.A.program_order_index;} 
+        in
+        let then_branch = build_semantics {ii' with A.inst = i1} in
+        let else_branch = build_semantics {ii' with A.inst = i2} in
+        M.choiceT ret then_branch else_branch
       
       | CPP11.Pwhile (e,i1) ->
-        let evts = build_semantics_expr e ii in
-        let prog_order = ii.A.program_order_index in
-	let ii' = { ii with A.program_order_index = A.next_po_index prog_order;} in
-        (* TODO: Advance program_order_index by the right amount for each instruction *)
-        evts >>> fun ret -> 
-        M.choiceT ret
-            (build_semantics {ii' with A.inst = i1} >>> fun _ ->
-             build_semantics ii' >>! 
-            B.Next)
-            (M.unitT B.Next)
+        if ii.A.unroll_count > 2 (* TODO: magic number, eek! *) then 
+          ((* TODO: tooFar := true ; *) M.unitT (ii.A.program_order_index, B.Next)) 
+        else
+        build_semantics_expr e ii >>> fun ret ->
+	let ii' = 
+          {ii with A.program_order_index = A.next_po_index ii.A.program_order_index;} 
+        in 
+        let continue_loop = 
+          build_semantics {ii' with A.inst = i1} >>> fun (prog_order, _branch) ->
+          build_semantics {ii' with A.program_order_index = prog_order; 
+                                    A.unroll_count = ii'.A.unroll_count + 1; } 
+        in
+        let exit_loop = M.unitT (ii'.A.program_order_index, B.Next) in 
+        M.choiceT ret continue_loop exit_loop
         
     and build_semantics_list insts ii = match insts with
-      | [] -> M.unitT B.Next
+      | [] -> M.unitT (ii.A.program_order_index, B.Next)
       | inst :: insts ->
 	let ii = {ii with A.inst=inst; } in
-	let evts = build_semantics ii in
-        let prog_order = ii.A.program_order_index in
-        let ii' = {ii with A.program_order_index = A.next_po_index prog_order;} in
-	evts  >>> fun _branch -> build_semantics_list insts ii'
+	build_semantics ii >>> fun (prog_order, _branch) -> 
+        build_semantics_list insts {ii with A.program_order_index = prog_order;}
      
   end

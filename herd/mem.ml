@@ -224,10 +224,11 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 
       let rec add_next_instr proc prog_order seen addr inst nexts =
 	let ii = 
-	  {A.program_order_index=prog_order;
-	   proc=proc; inst=inst; } in
-	let evts = S.build_semantics ii in
-	evts  >>> (next_instr proc (A.next_po_index prog_order) seen addr nexts)
+	  { A.program_order_index = prog_order;
+	    proc = proc; inst = inst; unroll_count = 0; }
+        in
+	S.build_semantics ii >>> fun (prog_order, branch) -> 
+        next_instr proc prog_order seen addr nexts branch
 
       and add_code proc prog_order seen nexts = match nexts with
       | [] -> EM.unitT ()

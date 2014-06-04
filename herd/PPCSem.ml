@@ -162,7 +162,9 @@ module Make (C:Sem.Config)(V:Value.S)
       M.op1 Op.Not >>=
       fun v ->  commit ii >>= fun () -> B.bccT v lbl
 
-    let build_semantics ii = match ii.A.inst with
+    let build_semantics ii = 
+      M.addT (A.next_po_index ii.A.program_order_index)
+        begin match ii.A.inst with
 (* 3 regs ops *)
     |  PPC.Padd (set,rD,rA,rB) ->
 	op3regs ii Op.Add set rD rA rB
@@ -298,5 +300,6 @@ module Make (C:Sem.Config)(V:Value.S)
     | PPC.Pcomment _ ->
         Warn.fatal "Instruction %s not implemented"
           (PPC.dump_instruction ii.A.inst)
+        end
   end
     

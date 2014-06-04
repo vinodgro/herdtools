@@ -52,7 +52,7 @@ primary_expression:
 | CONSTANT 
   { Econstant (Concrete $1) }
 | LPAR expression RPAR 
-  { $2 }
+  { Eparen $2 }
 
 postfix_expression:
 | primary_expression 
@@ -134,9 +134,7 @@ assignment_operator:
 
 expression:
 | assignment_expression { $1 }
-/* TODO:
-| expression COMMA assignment_expression
-*/
+| expression COMMA assignment_expression { Ecomma ($1,$3) }
 
 declaration:
 | declaration_specifiers SEMI
