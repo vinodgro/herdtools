@@ -80,6 +80,11 @@ and skip_c_comment = parse
   | eof { error "eof in skip_c_comment" lexbuf }
   | _ { skip_c_comment lexbuf}
 
+and skip_c_line_comment = parse
+  | '\n' { incr_lineno lexbuf }   
+  | eof { () }
+  | _ { skip_c_line_comment lexbuf}
+
 and skip_string = parse 
   | '\n' 	{ error "newline in skip_string" lexbuf }   
   | "\""	{ () }

@@ -6,6 +6,10 @@ Orig=PodWWNaRel RfeRelAcq PodRRAcqNa Fre
 
 { [x] = 2; [y] = 0; }
 
+// contrasting with data_race.c, this 
+// shows a concurrent use of sc_atomic that does
+// not have a data race
+
 P0 (atomic_int* x) {
   atomic_store(x,3);
 }

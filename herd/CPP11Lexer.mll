@@ -77,6 +77,7 @@ rule token = parse
 | [' ''\t'] { token lexbuf }
 | '\n'      { incr_lineno lexbuf; token lexbuf }
 | "/*"      { LU.skip_c_comment lexbuf ; token lexbuf }
+| "//"      { LU.skip_c_line_comment lexbuf ; token lexbuf } 
 | '-' ? num as x { CONSTANT (int_of_string x) }
 | 'P' (num as x) { PROC (int_of_string x) }
 | ';' { SEMI }
