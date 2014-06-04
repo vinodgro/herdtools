@@ -18,6 +18,7 @@ let dump = function
 
 let atomic_prf = "_Atomic "
 let alen = String.length atomic_prf
+
 let is_atomic_type s =
   String.length s >= alen && String.sub s 0 alen = atomic_prf
 
@@ -31,12 +32,7 @@ let is_ptr_to_atomic = function
 
 let is_mutex = function
   | Pointer _ -> false
-  | Ty s -> 
-    try 
-      let _ = Str.search_forward (Str.regexp "mutex") s 0 in 
-      true 
-    with Not_found -> false
-
+  | Ty s -> RunTypeUtils.mutex_is_substring s
 
 let strip_atomic t = match t with
   | Pointer _ -> t
