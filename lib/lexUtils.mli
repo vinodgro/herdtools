@@ -35,5 +35,6 @@ val from_section : Pos.pos2 -> in_channel -> lexbuf
 
 (* Lexer used elsewhere *)
 val skip_comment : lexbuf -> unit
+val skip_c_comment : lexbuf -> unit
 val skip_string : lexbuf -> unit
 end

@@ -116,7 +116,7 @@ and inside_init = parse
 
 and inside_prog  = parse
 | '\n'  { incr_lineno lexbuf ;  inside_prog lexbuf }
-| "(*"  { skip_comment lexbuf ; inside_prog lexbuf }
+ (* Had to erase comments to handle C-code *)
 | "\""  { skip_string lexbuf ; inside_prog lexbuf }
 | "<<"|eof
     { true,lexeme_start_p lexbuf } (* boolean -> empty constraint *)

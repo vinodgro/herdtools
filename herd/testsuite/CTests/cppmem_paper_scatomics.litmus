@@ -1,18 +1,18 @@
-CPP11 John1
+CPP11 cppmem_paper_scatomics
 "PodWWNaRel RfeRelAcq PodRRAcqNa Fre"
 Prefetch=0:x=F,0:y=W,1:y=F,1:x=T
 Com=Rf Fr
 Orig=PodWWNaRel RfeRelAcq PodRRAcqNa Fre
 
-{ [x] = 0; [y] = 0; }
+{ [x] = 2; [y] = 0; }
 
 P0 (atomic_int* x) {
-  r0 = atomic_load(x);
+  atomic_store(x,3);
 }
 
-P1 (atomic_int* x, int* y) {
-  *x = 1;
+P1 (atomic_int* x, volatile int* y) {
+  *y = (atomic_load(x) == 3); 
 }
 
 exists
-(1:r0 = 1)
+([y] = 2)
