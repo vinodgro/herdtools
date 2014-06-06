@@ -55,10 +55,15 @@ struct
       else A.pp_location loc
 
   let pp_action withparen a = match a with
+    | Access (d,l,v,CPP11Base.NA) ->
+	sprintf "%s%s=%s"
+          (pp_dirn d)
+          (pp_location withparen l)
+	  (V.pp_v v)
     | Access (d,l,v,mo) ->
 	sprintf "%s(%s)%s=%s"
           (pp_dirn d)
-          (CPP11Base.pp_mem_order mo)
+          (CPP11Base.pp_mem_order_short mo)
           (pp_location withparen l)
 	  (V.pp_v v)
     | Fence mo -> 

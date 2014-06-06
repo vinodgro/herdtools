@@ -85,6 +85,15 @@ let pp_mem_order o =
   | NA -> "non_atomic"
   | Con -> "memory_order_consume"
 
+let pp_mem_order_short = function
+  | Acq -> "Acq"
+  | Rel -> "Rel"
+  | Acq_Rel -> "AR"
+  | SC -> "Sc"
+  | Rlx -> "Rlx"
+  | Con -> "Con"
+  | NA -> ""
+
 (****************)
 (* Barriers     *)
 (****************)
