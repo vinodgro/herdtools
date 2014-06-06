@@ -19,6 +19,7 @@ type t =
   | CPP11
   | OpenCL
   | GPU_PTX
+  | C
 
 val tags : string list
 val parse : string -> t option

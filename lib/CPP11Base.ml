@@ -197,7 +197,7 @@ let rec dump_instruction i = match i with
    
 (* We don't have symbolic registers. This should be enough *)
 let fold_regs (f_reg,_f_sreg) = 
-  let fold_reg reg (y_reg, y_sreg) = match reg with
+  let _fold_reg reg (y_reg, y_sreg) = match reg with
     | GPRreg _ -> f_reg reg y_reg, y_sreg
     | _ -> y_reg, y_sreg in 
   
@@ -205,7 +205,7 @@ let fold_regs (f_reg,_f_sreg) =
   | _ -> c
 
 let map_regs f_reg _f_symb = 
-  let map_reg reg = match reg with
+  let _map_reg reg = match reg with
     | GPRreg _ -> f_reg reg
     | _ -> reg in
 

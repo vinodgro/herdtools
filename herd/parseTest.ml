@@ -153,7 +153,7 @@ module Top (C:Config) = struct
           let module X = Make (X86S) (P) (X86M) in 
           X.run name chan env splitted
 
-      | Archs.CPP11 ->
+      | Archs.CPP11|Archs.C ->
         let module CPP11 = CPP11Arch.Make(C.PC)(SymbValue) in
         let module CPP11LexParse = struct
     	  type pseudo = CPP11.pseudo
