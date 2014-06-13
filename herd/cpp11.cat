@@ -1,4 +1,4 @@
-"C++11"
+"C++11" withinit
 
 (* JW: The set A can now be used to refer to all atomic events. It
    currently contains:
@@ -302,7 +302,7 @@ let narf = rf; [nonatomicloc]
 (* LUC simplified, see next check
 let narfvse = narf;~(vse^-1)
 irreflexive narfvse as nonAtomicRfConsistent *)
-*)
+
 (* narf included in vse *)
 empty narf \ vse as nonAtomicRfConsistent
 

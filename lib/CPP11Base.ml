@@ -234,8 +234,34 @@ let is_data _reg _ins = Warn.fatal "C++11 is_data has not been implemented"
 
 let map_addrs _f _ins = Warn.fatal "C++11 map_addrs has not been implemented"
 
-(*This is how PPC and ARM did it...*)
-let fold_addrs _f c _ins = c
+(* There are addresses burried in code, similar to X86 *)
+let fold_addrs f =
+  let rec fold_expr c = function
+    | Econstant _
+    | Eregister _
+    | Efence _ -> c
+    | Eassign (_,e) -> fold_expr c e
+    | Eeq (e1,e2) -> fold_expr (fold_expr c e1) e2
+    | Estore (loc,e,_) -> fold_expr (f loc c) e
+    | Eload (loc,_) -> f loc c
+    | Ecas (loc1,loc2,e,_,_,_) ->
+        f loc1 (f loc2 (fold_expr c e))
+    | Elock loc|Eunlock loc -> f loc c
+    | Ecomma (e1,e2) -> fold_expr (fold_expr c e1) e2
+    | Eparen e -> fold_expr c e in
+
+  let rec fold_ins c = function
+    | Pif (e,ifso,ifnot) ->
+        let c = fold_expr c e in
+        let c = fold_ins c ifso in
+        fold_ins c ifnot
+    | Pwhile (e,body) ->
+        let c = fold_expr c e in
+        fold_ins c body
+    | Pblock inss ->
+        List.fold_left fold_ins c inss
+    | Pexpr e -> fold_expr c e in
+  fold_ins
 
 let pp_instruction _m _ins = dump_instruction _ins
 
