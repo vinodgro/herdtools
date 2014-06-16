@@ -41,8 +41,10 @@ module Top (C:Config) = struct
           let parsed = P.parse chan splitted in
           let name = splitted.Splitter.name in
           let hash = MiscParser.get_hash parsed in
-          let env =
-            TestHash.check_env env name.Name.name filename hash in
+          let env = match hash with
+          | None -> env
+          | Some hash ->
+              TestHash.check_env env name.Name.name filename hash in
           let test = T.build name parsed in
           let module T = Top.Make(C)(M) in
           T.run test ;

@@ -81,4 +81,4 @@ type 'pseudo t =
 
 
 (* Extract hash *)
-val get_hash :  ('i, 'p, 'c, 'loc) result -> string
+val get_hash :  ('i, 'p, 'c, 'loc) result -> string option

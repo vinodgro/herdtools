@@ -1,48 +1,29 @@
 (*********************************************************************)
-(*                        Memevents                                  *)
+(*                        DIY                                        *)
 (*                                                                   *)
 (* Jade Alglave, Luc Maranget, INRIA Paris-Rocquencourt, France.     *)
 (* Susmit Sarkar, Peter Sewell, University of Cambridge, UK.         *)
 (*                                                                   *)
-(*  Copyright 2010 Institut National de Recherche en Informatique et *)
+(*  Copyright 2014 Institut National de Recherche en Informatique et *)
 (*  en Automatique and the authors. All rights reserved.             *)
 (*  This file is distributed  under the terms of the Lesser GNU      *)
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(**************)
-(* Digest Env *)
-(**************)
-
-type hinfo = { hash : string ; filename : string; }
-
-type env = hinfo StringMap.t
-
-exception Seen
-
-let check_env env name filename hash =
-  try
-    let ohash = StringMap.find name env in
-    if hash = ohash.hash then raise Seen
-    else Warn.user_error "Different hashes for test %s (previous file %s)"
-        name ohash.filename
-  with Not_found ->
-    StringMap.add name {hash;filename;} env
-
 (**********)
 (* Digest *)
 (**********)
 
-module Make(P:PseudoAbstract.S)(A:Arch.Base)
+module type Input = sig
+  type code
+
+  val dump_prog : code -> string list
+end
+
+module Make(P:Input)
     = struct
 
       open Printf
-
-      type init = (MiscParser.location * SymbConstant.v) list
-      type prog = (int * P.code) list
-      type locations =  MiscParser.LocSet.t
-
-
       open MiscParser
 
       let verbose = 0

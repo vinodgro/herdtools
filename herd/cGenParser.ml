@@ -70,7 +70,6 @@ module type S = sig
   type locations = MiscParser.LocSet.t
 
   val parse_init : Lexing.lexbuf -> init
-(*  val parse_prog : Lexing.lexbuf -> prog *)
   val parse_cond : Lexing.lexbuf -> MiscParser.constr
 
   val parse : in_channel -> Splitter.result ->  pseudo MiscParser.t
@@ -123,6 +122,7 @@ let check_regs procs init locs final =
 (***********)
 
 (* Extract locations from condition *)
+
 let get_locs_atom a =
   let open ConstrGen in
   let open MiscParser in
@@ -159,7 +159,8 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let lexbuf = LU.from_section loc chan in
       call_parser name lexbuf
 
-    module D = TestHash.Make(A)
+(* Compute hash as litmus does *)
+    module D = CTestHash.Make(DumpCAst)
 
     let parse chan
         {
@@ -172,6 +173,8 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
 	  chan init_loc SL.token StateParser.init in
       let prog,gpu_data =
 	call_parser_loc "prog" chan prog_loc L.lexer L.parser in
+      let prog_litmus =
+        call_parser_loc "prog_litmus" chan prog_loc CLexer.main CParser.main in
       let procs = List.map fst prog in 
       check_procs procs ;
       let (locs,final,_quantifiers) =
@@ -206,9 +209,8 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
               ConstrGen.set_kind k parsed.MiscParser.condition; } in
       let parsed =
         let info = parsed.MiscParser.info in
-        { parsed with
-          MiscParser.info =
-            ("Hash",D.digest init prog all_locs)::info ; } in
+        { parsed with MiscParser.info =
+            ("Hash",D.digest init prog_litmus all_locs)::info ; } in
       parsed
   end
          

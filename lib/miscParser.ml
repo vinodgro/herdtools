@@ -122,5 +122,5 @@ type 'pseudo t =
     (state, (int * 'pseudo list) list, constr, location) result
 
 let get_hash p =
-  try List.assoc "Hash" p.info
-  with Not_found -> assert false
+  try Some (List.assoc "Hash" p.info)
+  with Not_found -> None

@@ -153,7 +153,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let lexbuf = LU.from_section loc chan in
       call_parser name lexbuf
 
-    module D = CTestHash.Make(P)(A)
+    module D = CTestHash.Make(P)
 
     let parse chan
         {

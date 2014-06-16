@@ -32,7 +32,7 @@ module Top
       type t =
         { tname : string ;
           cost : int * int ;
-          hash : string; }
+          hash : string option; }
     end
 
     module Make(A:ArchBase.S) = struct

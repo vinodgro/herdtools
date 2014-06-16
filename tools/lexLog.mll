@@ -105,7 +105,7 @@ and plines k = parse
       plines (st::k) lexbuf }
 |  ("Loop" blank+ as loop)?
    ((("Succeeded"|"Failed"|"Ok"|"No"|"??" as ok) ([^'\r''\n']*))
-   |("" as ok))  nl  (* missing validation result, from some litmus logs *)
+|("" as ok))  nl  (* missing validation result, from some litmus logs *)
     { incr_lineno lexbuf ;
       let ok = match ok with
       | "Succeeded"|"Ok" -> Ok
@@ -146,7 +146,9 @@ and pwitnesses = parse
 | "" { no_wits }
 
 and pcond = parse
- blank*  nl  { incr_lineno lexbuf ; pcond lexbuf }
+| blank*  nl
+| "Bad executions:" blank+ ['0'-'9']+ blank* nl
+  { incr_lineno lexbuf ; pcond lexbuf }
 | "Condition" blank+
   ([^'\r''\n']+ as c)  nl 
  {  incr_lineno lexbuf ;
