@@ -1,7 +1,9 @@
 "OpenCL"
 
-let cacq = acq | sc
-let crel = rel | sc
+(* This model covers the fragment wh*)
+
+let set cacq = acq | (sc & (R | F)) | acq_rel
+let set crel = rel | (sc & (W | F)) | acq_rel
 
 let dd = data | addr
 
@@ -9,9 +11,12 @@ let pp_asw = asw \ (asw;po)
 let pol = po & loc
 let com = rf | fr | co
 
-let gtewi  = wi | wg | dev | all_dev
-let gtewg  = wg | dev | all_dev
+let set glF = gF & lF
+
+(* nested scope incusion --- unused, for now *)
 let gtedev = dev | all_dev
+let gtewg  = wg | gtedev
+let gtewi  = wi | gtewg
 let dwi_scope  = gtewi * gtewi
 let dwg_scope  = gtewg * gtewg
 let ddev_scope = gtedev * gtedev
@@ -19,40 +24,72 @@ let dall_scope = all_dev * all_dev
 let inclusive_scopes = int (dwi_scope)     | (int-wg & dwg_scope) |
                        (int-dev & ddev_scope) | dall_scope
 
-let gidf = (po; [gF])?
-let gfid = ([gF]; po)?
-let grs = [crel]; gfid; [A & W & global_loc]; (((co ; [rmw]) | coi) & ~(coe ; [!rmw] ; co))?
-let gswra = inclusive_scopes & ext (grs; rf; [A]; gidf; [cacq])
-let gsw = pp_asw | gswra
-let ghb = (po | gsw)+
-let ghbl = ghb & loc
-let gvse = [W];ghbl;[R] & ~(ghbl; [W]; ghbl)
-acyclic ghb as ghbAcyclic
-acyclic (ghbl | com) as ghbuniproc
+(* standard scope inclusion *)
+let std_inclusive_scopes =  int     ([wi  * wi ]) |
+                           (intwg  & [wg  * wg ]) |
+                           (intdev & [dev * dev]) |
+                           [all_dev * all_dev]
 
-let lidf = (po; [lF])?
-let lfid = ([lF]; po)?
-let lrs = [crel]; lfid; [A & W & local_loc]; (((co ; [rmw]) | coi) & ~(coe ; [!rmw] ; co))?
-let lswra = inclusive_scopes & ext (lrs; rf; [A]; lidf; [cacq])
-let lsw = pp_asw | lswra
-let lhb = (po | lsw)+
-let lhbl = lhb & loc
-let lvse = [W];lhbl;[R] & ~(lhbl; [W]; lhbl)
-acyclic lhb as lhbAcyclic
-acyclic (lhbl | com) as lhbuniproc
+let idf(f) = (po; [f])?
+let fid(f) = ([f]; po)?
 
-let narf = rf; [na]
-let narfvse = narf;~((gvse | lvse)^-1)
-irreflexive narfvse as nonAtomicRfConsistent
+let rs(f) = [crel]; fid(f); [A & W & global_loc]; (((co ; [rmw]) | coi) & ~(coe ; [~rmw] ; co))?
 
-let arf = rf; [A]
-let hbarf = (ghb | lhb);arf
-irreflexive hbarf as atomicRfConsistent
+(* region-only synchronises with *)
+let rosw(f) = std_inclusive_scopes & ext (rs(f); rf; [A]; idf(f); [cacq])
 
+(* region fence, other region fence *)
+let sw(rf,orf) = rosw(rf) | (([sc * sc] | [glF * glF]) & rosw(orf))
+
+let poasw = (po | pp_asw)+
+let gpoasw = [global_loc];poasw;[global_loc]
+let lpoasw = [local_loc];poasw;[local_loc]
+
+let ghb = (gpoasw | sw(gF,lF))+
+let lhb = (lpoasw | sw(lF,gF))+
+
+provides acyclic ghb as ghbAcyclic
+provides acyclic lhb as lhbAcyclic
+
+let rloc(r) = r & loc
+let ghbl = rloc(ghb)
+let lhbl = rloc(lhb)
+
+let vse(hbl,region_loc) = ([W];hbl;[R & region_loc]) & ~(hbl; [W]; hbl)
+
+let gvse = vse(ghbl,global_loc)
+let lvse = vse(lhbl,local_loc)
+
+let corr(hbl) = fr;rf;hbl
+let corw(hbl) = co;rf;hbl
+let cowr(hbl) = fr;hbl
+let coww(hbl) = co;hbl
+
+provides irreflexive ( corr(ghbl) | cowr(ghbl) | corw(ghbl) | coww(ghbl)
+                     | corr(lhbl) | cowr(lhbl) | corw(lhbl) | coww(lhbl)
+                     ) as coherence
+
+let gnarf = rf;[nonatomicloc & global_loc]
+let gnarfvse = gnarf;~(gvse^-1)
+provides irreflexive gnarfvse as gnonAtomicRfConsistent
+let garf = rf;[atomicloc & global_loc]
+let ghbarf = ghb;garf
+provides irreflexive ghbarf as gatomicRfConsistent
+let lnarf = rf; [nonatomicloc & local_loc]
+let lnarfvse = lnarf;~(lvse^-1)
+provides irreflexive lnarfvse as lnonAtomicRfConsistent
+let larf = rf; [atomicloc & local_loc]
+let lhbarf = lhb;larf
+provides irreflexive lhbarf as latomicRfConsistent
+
+
+let rmwv = rf;[rmw] | (co;fr) | (co;rf)
+provides irreflexive rmwv as rmwAtomicity
+
+
+(* There should be two models, with this optional: *)
 (* There's no restriction to local or global here. Is that right? *)
-let idf = (po; [F])?
-let fid = ([F]; po)?
-let scco = [sc]; fid; co; idf; [sc]
+let scco = [sc]; fid(F); co; idf(F); [sc]
 let scfr = ~[_] &
            ( ([sc]    ; rf^-1; (ghbl | lhbl)  ; [W & sc]) |
              ([sc]    ; rf^-1; [sc] ; co; [sc]) |
@@ -62,24 +99,26 @@ let scfr = ~[_] &
            )
 let scghb = [sc]; ghb; [sc]
 let sclhb = [sc]; lhb; [sc]
-let sc = scghb | sclhb | scco | scfr
-acyclic sc as scConsistent
+let scp = scghb | sclhb | scco | scfr
+(* We deal with the non-sc model initially, so we don't impose the condition: *)
+(*provides acyclic scp as scConsistent*)
 show sc
 
 let glhb = ghb | lhb
-let dr = ext ((W * _) | (_ * W)) &
+let dr = ext ([W * _] | [_ * W]) &
          loc & 
-         (~(A * A)) &
+         (~[A * A]) &
          ~glhb & ~(glhb^-1) &
-         ~inclusive_scopes
+         ~std_inclusive_scopes
 
-let ur = int ((W * M) | (M * W)) &
+let ur = int ([W * M] | [M * W]) &
          loc &
          ~[_] &
          ~po & ~(po^-1)
 
 show dr
 show ur
-undefined_unless empty dr as dataRace 
-undefined_unless empty ur as unsequencedRace 
+requires empty dr as dataRace 
+requires empty ur as unsequencedRace 
+
 
