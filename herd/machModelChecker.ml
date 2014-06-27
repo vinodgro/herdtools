@@ -28,7 +28,8 @@ module Make
     module U = MemUtils.Make(S)
     module JU = JadeUtils.Make(O)(S)(B)
 
-    let (pp,(withco,_,prog)) = O.m
+    let (pp,(opts,_,prog)) = O.m
+    let withco = opts.ModelOption.co
 
     let run_interpret failed_requires_clause test conc m id vb_pp kont res =
       match I.interpret failed_requires_clause test conc m id vb_pp with

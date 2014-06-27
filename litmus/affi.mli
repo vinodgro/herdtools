@@ -10,7 +10,7 @@
 (*********************************************************************)
 
 
-type com = Rf | Fr | Ws
+type com = Rf | Fr | Ws | Hat
 
 type t =
     int list list      (* Thread grouping *)

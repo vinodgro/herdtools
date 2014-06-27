@@ -43,7 +43,8 @@ module type S = sig
   type inst_instance_id = {
       proc       : proc;
       program_order_index   : program_order_index;
-      inst : I.arch_instruction; (* Just here for pretty printing *)
+      inst : I.arch_instruction; 
+      unroll_count : int; (* number of loop unrollings *)
     }
 
   val inst_instance_compare :
@@ -151,6 +152,7 @@ module Make(C:Config) (I:I) : S with module I = I
       proc       : proc;
       program_order_index   : program_order_index;
       inst : I.arch_instruction ;
+      unroll_count: int; (* number of loop unrollings *)
     }
 
 

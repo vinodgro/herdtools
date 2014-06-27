@@ -165,6 +165,17 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
       let init,cs,st = emit_store_idx_reg st p init x idx rA in
       init,Instruction (I_MOVI (rA,v,AL))::cs,st
 
+    let emit_one_strex st p init x v =
+      let rV,st = next_reg st in
+      let rA,init,st = next_init st p init x in
+      init,
+      pseudo
+        [I_MOVI (rA,v,AL);
+         I_STREX (tempo2,rV,rA,AL);
+         I_CMPI (tempo2,0);
+         I_BNE (Label.fail p);],
+      st
+
 (* No FNO yet *)
     and emit_fno2 _st _p _init _x = assert false
     and emit_open_fno _st _p _init _x = assert false
@@ -264,7 +275,11 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
     | W,Some Atomic ->
         let init,cs,st = emit_sta st p init e.loc e.v in
         None,init,cs,st
-        
+
+    let emit_exch st p init er ew =
+      let r,init,csr,st = emit_ldrex st p init er.loc  in
+      let init,csw,st = emit_one_strex st p init ew.loc ew.v in
+      r,init,csr@csw,st
 
     let emit_access_dep_addr st p init e  r1 =
       let r2,st = next_reg st in

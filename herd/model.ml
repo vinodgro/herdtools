@@ -69,8 +69,9 @@ let pp = function
   | Jade {jstrongst=false}-> "jade_lightst"
   | X86TSO -> "x86tso"
   | File fname -> fname
-  | Generic (_,(co,name,_)) -> sprintf "Generic%s(%s)"
-        (if co then "" else "[withoutco]") name
+  | Generic (_,(opts,name,_)) ->
+      sprintf "Generic%s(%s)"
+        (ModelOption.pp opts) name
 
 
 (* What to let through *)

@@ -26,7 +26,7 @@ type ('prog,'nice_prog,'start,'state,'constr, 'loc, 'locset) t =
      observed : 'locset ;
      scope_tree : ScopeTree.scope_tree option ;
      mem_space_map : MemSpaceMap.mem_space_map ;
-     lk_map : LocationKindMap.lk_map ;
+     param_map : CAst.param list ;
    }
 
 val simple_name :

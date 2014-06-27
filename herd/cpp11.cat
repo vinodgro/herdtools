@@ -1,4 +1,4 @@
-"C++11"
+"C++11" withinit
 
 (* JW: The set A can now be used to refer to all atomic events. It
    currently contains:
@@ -298,9 +298,13 @@ let vse = [W];hbl;[R] & ~(hbl; [W]; hbl)
 
 (* C: consistent_non_atomic_rf -- must read from vse: *)
 let narf = rf; [nonatomicloc]
-let narfvse = narf;~(vse^-1)
-irreflexive narfvse as nonAtomicRfConsistent
 
+(* LUC simplified, see next check
+let narfvse = narf;~(vse^-1)
+irreflexive narfvse as nonAtomicRfConsistent *)
+
+(* narf included in vse *)
+empty narf \ vse as nonAtomicRfConsistent
 
 (* The following might be the same as consistent reads from mapping:
 
@@ -322,10 +326,11 @@ acyclic GHB
 
 (* C: consistent_atomic_rf -- acyclicity of hb union rf for atomic reads: *)
 let arf = rf; [atomicloc]
+
 let hbarf = hb;arf
 irreflexive hbarf as atomicRfConsistent
-(*jade: arf and hbarf are funky names =)*)
 
+(*jade: arf and hbarf are funky names =)*)
 
 (* C: rmw_atomicity
 

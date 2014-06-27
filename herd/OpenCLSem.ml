@@ -45,7 +45,9 @@ module Make (C:Sem.Config)(V:Value.S)
       | Constant.Concrete vv -> vv
       | _ -> Warn.fatal "Couldn't convert constant to int"
 
-    let build_semantics _st i ii = match i with
+    let build_semantics ii = 
+      M.addT (A.next_po_index ii.A.program_order_index)
+        begin match ii.A.inst with
       | OpenCL.Pload(loc,reg,mo,scope) ->
 	M.unitT (OpenCL.maybev_to_location loc) >>=
 	(fun loc -> read_loc scope mo loc ii) >>= 
@@ -59,4 +61,5 @@ module Make (C:Sem.Config)(V:Value.S)
 
       | OpenCL.Pfence(mr, mo, scope) ->
 	M.mk_singleton_es (Act.Fence(mr, mo, scope)) ii >>! B.Next
+        end
   end

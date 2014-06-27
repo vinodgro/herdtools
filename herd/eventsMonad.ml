@@ -73,10 +73,10 @@ struct
 
       type 'a t = int -> int * ('a Evt.t) (* Threading through eiid *)
 	  
-      let zeroT : unit t
+      let zeroT : 'a t
 	  = (fun eiid_next -> (eiid_next, Evt.empty))
 	  
-      let unitT v =
+      let unitT (v : 'a) : 'a t =
 	fun eiid_next ->
 	  eiid_next,Evt.singleton (v, [], E.empty_event_structure)
 	      
@@ -223,10 +223,7 @@ struct
       let choiceT : V.v -> 'a t -> 'a t -> 'a t =
 	fun v l r eiid -> 
 	  if V.is_var_determined v then
-	    if V.is_one v  then l eiid else begin
-	      assert (V.is_zero v) ;
-	      r eiid
-	    end
+	    if V.is_zero v  then r eiid else l eiid
 	  else 
 	    let (eiid, lact) = l eiid in
 	    let (eiid, ract) = r eiid in

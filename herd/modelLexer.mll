@@ -35,6 +35,7 @@ let () =
      "undefined_unless",REQUIRES;
      "ext",EXT; "int",INT; "noid",NOID;
      "withco",WITHCO; "withoutco", WITHOUTCO;
+     "withinit",WITHINIT; "withoutinit", WITHOUTINIT;
    ]
 
 

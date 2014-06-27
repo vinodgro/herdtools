@@ -140,11 +140,11 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
     | [] -> false
     | (addr_tgt,_)::_ -> SymbConstant.compare addr_jmp addr_tgt >= 0
 
-  type result =
-     {
-      event_structures : (int * S.M.VC.cnstrnts * S.event_structure) list ;
-      too_far : bool ; (* some events structures discarded (loop) *)
-     }
+    type result =
+        {
+         event_structures : (int * S.M.VC.cnstrnts * S.event_structure) list ;
+         too_far : bool ; (* some events structures discarded (loop) *)
+       }
 
 (* All locations from init state, a bit contrieved *)
     let get_all_locs_init init =
@@ -183,7 +183,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
                   locs ins)
               locs code)
           locs
-        test.Test.start_points in
+          test.Test.start_points in
       let env =
         A.LocSet.fold
           (fun loc env ->
@@ -224,10 +224,11 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 
       let rec add_next_instr proc prog_order seen addr inst nexts =
 	let ii = 
-	  {A.program_order_index=prog_order;
-	   proc=proc; inst=inst; } in
-	let evts = S.build_semantics procs inst ii in
-	evts  >>> (next_instr proc (A.next_po_index prog_order) seen addr nexts)
+	  { A.program_order_index = prog_order;
+	    proc = proc; inst = inst; unroll_count = 0; }
+        in
+	S.build_semantics ii >>> fun (prog_order, branch) -> 
+          next_instr proc prog_order seen addr nexts branch
 
       and add_code proc prog_order seen nexts = match nexts with
       | [] -> EM.unitT ()
@@ -236,8 +237,8 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 
       and add_lbl proc prog_order seen addr_jmp lbl =
         match fetch_code seen addr_jmp lbl with
-      | None -> tooFar := true ; EM.tooFar lbl
-      | Some (code,seen) -> add_code proc prog_order seen code
+        | None -> tooFar := true ; EM.tooFar lbl
+        | Some (code,seen) -> add_code proc prog_order seen code
 
       and next_instr proc prog_order seen addr nexts b = match b with
       | S.B.Next -> add_code proc prog_order seen nexts
@@ -256,7 +257,7 @@ module Make(C:Config) (S:Sem.Semantics) : S with module S = S	=
 	evts_proc |*| evts in
 
       let add_inits env =
-        if C.initwrites then EM.initwrites env
+        if C.initwrites then  EM.initwrites env
         else EM.zeroT in
 
       let set_of_all_instr_events =

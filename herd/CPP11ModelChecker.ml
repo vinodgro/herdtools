@@ -28,7 +28,9 @@ module Make
     module U = MemUtils.Make(S)
     module JU = JadeUtils.Make(O)(S)(B)
 
-    let (pp,(withco,_,prog)) = O.m
+    let (pp,(opts,_,prog)) = O.m
+
+    let withco = opts.ModelOption.co
 
     let failed_requires_clauses = ref 0
 
@@ -92,20 +94,26 @@ module Make
          ["atomicloc", (fun e -> 
               match E.location_of e with
               | Some (E.A.Location_global a) ->
-                LocationKindMap.is_atomicloc
-                  test.Test.lk_map (E.A.V.pp_v a) 
+                List.exists (fun p -> 
+                    p.CAst.param_name = E.A.V.pp_v a && 
+                    RunType.is_ptr_to_atomic p.CAst.param_ty) 
+                  test.Test.param_map
               | _ -> false);
           "nonatomicloc", (fun e -> 
               match E.location_of e with
               | Some (E.A.Location_global a) ->
-                LocationKindMap.is_nonatomicloc
-                  test.Test.lk_map (E.A.V.pp_v a) 
+                List.exists (fun p -> 
+                    p.CAst.param_name = E.A.V.pp_v a && 
+                    not (RunType.is_ptr_to_atomic p.CAst.param_ty)) 
+                  test.Test.param_map
               | _ -> false);
           "mutexloc", (fun e -> 
               match E.location_of e with
               | Some (E.A.Location_global a) ->
-                LocationKindMap.is_mutexloc 
-                  test.Test.lk_map (E.A.V.pp_v a) 
+                List.exists (fun p -> 
+                    p.CAst.param_name = E.A.V.pp_v a && 
+                    RunType.is_mutex p.CAst.param_ty) 
+                  test.Test.param_map
               | _ -> false);
          ]) in
       let m = 

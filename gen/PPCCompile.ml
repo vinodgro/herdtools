@@ -336,7 +336,7 @@ module Make(V:Constant.S)(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile
     | None -> loop_fno_idx
     | Some u -> unroll_fno u
 
-    let emit_access  st p init e = match e.dir,e.atom with
+    let emit_access st p init e = match e.dir,e.atom with
     | R,None ->
         let emit = if e.rmw then emit_lwarx else emit_load in
         let r,init,cs,st = emit st p init e.loc  in
@@ -357,7 +357,11 @@ module Make(V:Constant.S)(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile
     | W,Some PPC.Reserve ->
         Warn.fatal "No store with reservation"
 
-          
+    let emit_exch st p init er ew =
+      let r,init,csr,st = emit_lwarx st p init er.loc  in
+      let init,csw,st = emit_one_stwcx st p init ew.loc ew.v in
+      r,init,csr@csw,st
+
     let emit_access_dep_addr st p init e  r1 =
       let r2,st = next_reg st in
       let c = PPC.Pxor(PPC.DontSetCR0,r2,r1,r1) in

@@ -25,7 +25,6 @@ module type Semantics =
     val isync : pp_barrier option
 
 (* Instruction semantics, highly arch dependant *)
-    val build_semantics  : 
-    int list (*real proc list*) -> instruction -> A.inst_instance_id -> branch M.t
+    val build_semantics : A.inst_instance_id -> (A.program_order_index * branch) M.t
   end
 

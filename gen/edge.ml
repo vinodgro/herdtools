@@ -407,10 +407,10 @@ let loc_sd e = match e.edge with
   | Leave _|Back _ -> Same
 
   let get_ie e = match e.edge with
-  | Po _|Dp _|Fenced _|Hat|Rmw|Detour _|DetourWs _ -> Int
+  | Po _|Dp _|Fenced _|Rmw|Detour _|DetourWs _ -> Int
   | Rf ie|RfStar ie|Fr ie|Ws ie -> ie
   | Store -> Int
-  | Leave _|Back _ -> Ext
+  | Leave _|Back _|Hat -> Ext
 
   type full_ie = IE of ie | LeaveBack
 

@@ -38,6 +38,7 @@ module Make
          | Rf Ext -> Some "rfe"
          | Ws Ext -> Some "wse"
          | Fr Ext -> Some "fre"
+         | Rmw -> Some "rmw"
          | Detour e ->
              Some (sprintf "det%s" (String.lowercase (pp_extr e)))
          | DetourWs e ->

@@ -11,11 +11,11 @@
 
 open Printf
 
-type com = Rf | Fr | Ws
+type com = Rf | Fr | Ws | Hat
 
 let is_not_rf = function
   | Rf -> false
-  | Fr|Ws -> true
+  | Fr|Ws|Hat -> true
 
 type t =
     int list list      (* Thread grouping *)
@@ -109,7 +109,7 @@ let collect m =
     let n = n.p in
     match e with
 (* Ws *)
-    | Ws|Fr -> [n],(add xs ys)
+    | Ws|Fr|Hat -> [n],(add xs ys)
 (* Rf *)
     | Rf-> n::xs,ys in
   

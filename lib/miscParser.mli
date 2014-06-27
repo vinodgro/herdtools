@@ -48,7 +48,7 @@ type info = (string * string) list
 type gpu_data = {
       scope_tree : ScopeTree.scope_tree option ;
       mem_space_map : MemSpaceMap.mem_space_map ;
-      lk_map : LocationKindMap.lk_map ;
+      param_map : CAst.param list ;
   }
 
 val empty_gpu : gpu_data
@@ -81,4 +81,4 @@ type 'pseudo t =
 
 
 (* Extract hash *)
-val get_hash :  ('i, 'p, 'c, 'loc) result -> string
+val get_hash :  ('i, 'p, 'c, 'loc) result -> string option

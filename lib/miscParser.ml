@@ -86,11 +86,14 @@ type info = (string * string) list
 type gpu_data = {
       scope_tree : ScopeTree.scope_tree option ;
       mem_space_map : MemSpaceMap.mem_space_map ;
-      lk_map : LocationKindMap.lk_map ;
+      param_map : CAst.param list ;
   }
 
-let empty_gpu =
-  { scope_tree = None; mem_space_map = []; lk_map = []; }
+let empty_gpu = { 
+  scope_tree = None; 
+  mem_space_map = [];
+  param_map = []; 
+}
 
 type ('i, 'p, 'c, 'loc) result =
     { info : info ;
@@ -119,5 +122,5 @@ type 'pseudo t =
     (state, (int * 'pseudo list) list, constr, location) result
 
 let get_hash p =
-  try List.assoc "Hash" p.info
-  with Not_found -> assert false
+  try Some (List.assoc "Hash" p.info)
+  with Not_found -> None
