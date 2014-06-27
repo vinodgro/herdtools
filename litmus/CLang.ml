@@ -35,8 +35,8 @@ module Make(C:Config) = struct
     let volatile = List.exists (Misc.string_eq x) envVolatile in
     let ty =
       let f t = function
-        | true -> "volatile " ^ RunType.dump t ^ "*"
-        | false -> RunType.dump t ^ "*"
+        | true -> "volatile " ^ CType.dump t ^ "*"
+        | false -> CType.dump t ^ "*"
       in
       try
         f (List.assoc x globEnv) volatile
@@ -45,12 +45,15 @@ module Make(C:Config) = struct
     in
     ty,x
 
+  let out_type env x =
+    try List.assoc x env
+    with Not_found -> assert false 
+
   let dump_output_def env proc x =
     let outname = CTarget.dump_out_reg proc x
-    and ty =
-      try List.assoc x env with Not_found -> assert false in
-    sprintf "%s*" (RunType.dump ty),outname
-      
+    and ty = out_type env x in
+    sprintf "%s*" (CType.dump ty),outname
+
   let dump_fun chan env globEnv envVolatile proc t =
     let out x = fprintf chan x in
     let input_defs =
@@ -72,8 +75,9 @@ module Make(C:Config) = struct
     (* output parameters *)
     List.iter
       (fun reg ->
-        out "  *%s = %s;\n"
+        out "  *%s = (%s)%s;\n"
           (CTarget.dump_out_reg proc reg)
+          (CType.dump (out_type env reg))
           (CTarget.fmt_reg reg))
       t.CTarget.finals ;
     out "}\n\n"
@@ -110,8 +114,10 @@ module Make(C:Config) = struct
             out "%s%s %s = (%s)_a->%s[_i];\n" indent ty x ty x
       in
       let dump_output x =
+        let ty = out_type env x in
         let outname = CTarget.compile_out_reg proc x in
-        out "%s%s = %s;\n" indent outname (CTarget.fmt_reg x)
+        out "%s%s = (%s)%s;\n"
+          indent outname (CType.dump ty) (CTarget.fmt_reg x)
       in
       let print_start = dump_start chan in
       let print_end = dump_end chan in

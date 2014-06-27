@@ -48,7 +48,7 @@ type info = (string * string) list
 type gpu_data = {
       scope_tree : ScopeTree.scope_tree option ;
       mem_space_map : MemSpaceMap.mem_space_map ;
-      param_map : CAst.param list ;
+      param_map : CPP11Ast.param list ;
   }
 
 val empty_gpu : gpu_data

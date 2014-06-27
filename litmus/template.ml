@@ -61,7 +61,7 @@ module type S = sig
 
   val to_string : ins -> string
   val compile_out_reg : int -> arch_reg -> string
-  val dump_type : ('a * RunType.t) list -> 'a -> string
+  val dump_type : ('a * CType.t) list -> 'a -> string
 end
 
 module Make(O:Config) (A:I) (V:Constant.S) =
@@ -209,7 +209,7 @@ struct
       error (sprintf "memo: %s, error: %s" t.memo msg)
 
   let dump_type env reg =
-    try RunType.dump (List.assoc reg env) with
+    try CType.dump (List.assoc reg env) with
       | Not_found -> "int"
 
 

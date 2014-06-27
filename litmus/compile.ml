@@ -17,9 +17,12 @@ module type Config = sig
   val barrier : Barrier.t
 end
 
+let base =  CType.Base "int"
 module Generic (A : Arch.Base) = struct
-  let base =  RunType.Ty "int"
-  and pointer = RunType.Pointer "int"
+  open CType
+
+  let base =  base
+  let pointer = Pointer base
 
   let typeof = function
     | Constant.Concrete _ -> base
@@ -34,8 +37,8 @@ module Generic (A : Arch.Base) = struct
             match a with
             | LV (A.Location_reg (q,r),v) when p=q && A.reg_compare reg r = 0 ->
                 begin match typeof v,t with
-                | (RunType.Ty s1, Some (RunType.Ty s2))
-                | (RunType.Pointer s1, Some (RunType.Pointer s2))
+                | (Base s1, Some (Base s2))
+                | (Pointer (Base s1), Some (Pointer (Base s2)))
                   when Misc.string_eq s1 s2 ->
                     t
                 | (ty, None) -> Some ty
@@ -43,8 +46,8 @@ module Generic (A : Arch.Base) = struct
                     Warn.fatal
                       "Type missmatch between the locations \
                        (type: %s) and the final condition (type: %s)"
-                      (RunType.dump loc_ty)
-                      (RunType.dump cond_ty)
+                      (CType.dump loc_ty)
+                      (CType.dump cond_ty)
                 end
             | _ -> t)
          final
@@ -52,8 +55,8 @@ module Generic (A : Arch.Base) = struct
             (fun (loc,t) k -> match loc with
                | A.Location_reg (q,r) when p=q && A.reg_compare reg r = 0 ->
                    begin match t with
-                   | MiscParser.Ty s -> Some (RunType.Ty s)
-                   | MiscParser.Pointer s -> Some (RunType.Pointer s)
+                   | MiscParser.Ty s -> Some (Base s)
+                   | MiscParser.Pointer s -> Some (Pointer (Base s))
                    end
                | _ -> k)
             flocs
@@ -61,24 +64,24 @@ module Generic (A : Arch.Base) = struct
       )
 
     let add_addr_type a ty env =
-(*      Printf.eprintf "Type %s : %s\n" key a (RunType.dump ty) ; *)
+(*      Printf.eprintf "Type %s : %s\n" key a (dump ty) ; *)
       try
         let tz = StringMap.find a env in
         match ty,tz with
-        | (RunType.Pointer s1, RunType.Pointer s2)
-        | (RunType.Ty s1, RunType.Ty s2) when Misc.string_eq s1 s2 -> env
+        | (Pointer (Base s1), Pointer (Base s2))
+        | (Base s1, Base s2) when Misc.string_eq s1 s2 -> env
 (* All default cases expressed,
-   will produce a warning if RunType.t is extended *)
-        | (RunType.Pointer _|RunType.Ty _),(RunType.Pointer _|RunType.Ty _) ->
+   will produce a warning if t is extended *)
+        | _,_ (* (Pointer _|Base _),(Pointer _|Base _) *) ->
             Warn.fatal
               "Type missmatch detected on location %s, required %s vs. found %s"
-              a (RunType.dump ty) (RunType.dump tz)
+              a (dump ty) (dump tz)
       with
         Not_found -> StringMap.add a ty env
 
     let add_value v env = match v with
     | Constant.Concrete _ -> env
-    | Constant.Symbolic a -> add_addr_type a (RunType.Ty "int") env
+    | Constant.Symbolic a -> add_addr_type a (Base "int") env
 end
 
 module Make
@@ -388,7 +391,7 @@ let lblmap_code =
         List.fold_right
           (fun (_,t) ->
             List.fold_right
-              (fun a -> Generic.add_addr_type a (RunType.Ty "int"))
+              (fun a -> Generic.add_addr_type a base)
               t.addrs)
           code env in
 (* Add uninitialised globals referenced as values in init,

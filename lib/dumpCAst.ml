@@ -16,7 +16,7 @@ type code = string CAst.t
 let dump_prog cfun =
   let f = function
     | CAst.Test { CAst.params; body; proc = i } ->
-        let string_of_ty ty = RunType.dump ty ^ "*" in
+        let string_of_ty ty = CType.dump ty ^ "*" in
         let f {CAst.param_ty; param_name} =
           Printf.sprintf "%s %s" (string_of_ty param_ty) param_name
         in

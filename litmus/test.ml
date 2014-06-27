@@ -20,7 +20,7 @@ module type S = sig
           C.constr, A.location)
          MiscParser.result
 
-  type 'a type_env = ('a * RunType.t) list
+  type 'a type_env = ('a * CType.t) list
   type env_volatile = string list
 
   type t =
@@ -47,7 +47,7 @@ struct
   module C = Constr.Make(A)
   module P = P
 
-  type 'a type_env = ('a * RunType.t) list
+  type 'a type_env = ('a * CType.t) list
   type src =
     ((A.location * Constant.v) list, P.code list,
           C.constr, A.location)

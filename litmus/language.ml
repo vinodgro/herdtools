@@ -15,8 +15,8 @@ module type S = sig
 (* Function dump *)
   val dump_fun :
     out_channel ->
-    (arch_reg * RunType.t) list ->
-    (string * RunType.t) list ->
+    (arch_reg * CType.t) list ->
+    (string * CType.t) list ->
     string list ->
     int ->
     t ->
@@ -25,8 +25,8 @@ module type S = sig
   val dump_call :
     out_channel ->
     string ->
-    (arch_reg * RunType.t) list ->
-    (string * RunType.t) list ->
+    (arch_reg * CType.t) list ->
+    (string * CType.t) list ->
     string list ->
     int ->
     t ->
@@ -36,8 +36,8 @@ module type S = sig
   val dump :
     out_channel ->
     string ->
-    (arch_reg * RunType.t) list ->
-    (string * RunType.t) list ->
+    (arch_reg * CType.t) list ->
+    (string * CType.t) list ->
     string list ->
     int ->
     t ->

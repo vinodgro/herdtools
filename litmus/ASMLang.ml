@@ -273,9 +273,9 @@ module Make
             with Not_found -> assert false in
           match O.memory with
           | Memory.Direct ->  
-              sprintf "%s *%s" (RunType.dump ty) x
+              sprintf "%s *%s" (CType.dump ty) x
           | Memory.Indirect -> 
-              sprintf "%s **%s" (RunType.dump ty) x)
+              sprintf "%s **%s" (CType.dump ty) x)
         addrs in
     let outs =
       List.map
@@ -284,7 +284,7 @@ module Make
             try List.assoc x env
             with Not_found -> assert false in
           let x = Tmpl.dump_out_reg proc x in
-          sprintf "%s *%s" (RunType.dump ty) x) t.Tmpl.final in          
+          sprintf "%s *%s" (CType.dump ty) x) t.Tmpl.final in          
     let params =  String.concat "," (addrs@outs) in
     LangUtils.dump_code_def chan proc params ;
     do_dump

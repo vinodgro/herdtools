@@ -27,7 +27,7 @@ open CPP11Base
 %token LD LD_EXPLICIT ST ST_EXPLICIT FENCE LOCK UNLOCK SCAS WCAS
 
 %type <(int * CPP11Base.pseudo list) list * MiscParser.gpu_data option> main 
-%type <(CPP11Base.pseudo list) CAst.test list> translation_unit
+%type <(CPP11Base.pseudo list) CPP11Ast.test list> translation_unit
 %start main
 
 %%
@@ -36,8 +36,8 @@ main:
 | translation_unit EOF 
   { let proc_list, param_map = 
       List.fold_right (fun p (proc_list, param_map) -> 
-        let proc_list = (p.CAst.proc,p.CAst.body) :: proc_list in
-        let param_map = p.CAst.params @ param_map in
+        let proc_list = (p.CPP11Ast.proc,p.CPP11Ast.body) :: proc_list in
+        let param_map = p.CPP11Ast.params @ param_map in
         (proc_list, param_map)) $1 ([], [])  
     in
     let additional = 
@@ -220,9 +220,9 @@ parameter_declaration:
       with Not_found -> false
     in
     let full_ty = if ptr then RunType.Pointer ty else RunType.Ty ty in
-    { CAst.param_ty = full_ty; 
-      CAst.volatile = vol; 
-      CAst.param_name = identifier } }
+    { CPP11Ast.param_ty = full_ty; 
+      CPP11Ast.volatile = vol; 
+      CPP11Ast.param_name = identifier } }
 
 initialiser:
 | assignment_expression 
@@ -279,13 +279,13 @@ external_declaration:
 
 function_definition:
 | declaration_specifiers PROC LPAR parameter_type_list RPAR compound_statement
-  { { CAst.proc = $2; 
-      CAst.params = $4; 
-      CAst.body = List.map (fun ins -> Instruction ins) $6 } }
+  { { CPP11Ast.proc = $2; 
+      CPP11Ast.params = $4; 
+      CPP11Ast.body = List.map (fun ins -> Instruction ins) $6 } }
 | PROC LPAR parameter_type_list RPAR compound_statement
-  { { CAst.proc = $1; 
-      CAst.params = $3; 
-      CAst.body = List.map (fun ins -> Instruction ins) $5 } }
+  { { CPP11Ast.proc = $1; 
+      CPP11Ast.params = $3; 
+      CPP11Ast.body = List.map (fun ins -> Instruction ins) $5 } }
 
 loc:
 | IDENTIFIER { Symbolic $1 }

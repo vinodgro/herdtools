@@ -106,8 +106,9 @@ module Make
               (LocMap.add loc2 (Generic.type_in_final p reg2 final flocs) acc)
       in
       let locations_flocs acc = function
-        | (x, MiscParser.Ty s) -> LocMap.add x (RunType.Ty s) acc
-        | (x, MiscParser.Pointer s) -> LocMap.add x (RunType.Pointer s) acc
+        | (x, MiscParser.Ty s) -> LocMap.add x (CType.Base s) acc
+        | (x, MiscParser.Pointer s) ->
+            LocMap.add x (CType.Pointer (CType.Base s)) acc
       in
       let locs = ConstrGen.fold_constr locations_atom final LocMap.empty in
       let locs = List.fold_left locations_flocs locs flocs in
@@ -120,12 +121,13 @@ module Make
                let proc = code.CAst.proc in
                let regs = get_locals proc (locations proc final flocs) in
                let final = List.map fst regs in
-               let volatile =
+               let volatile = []
+(*
                  let f acc = function
                    | {CAst.volatile = true; param_name; _} -> param_name :: acc
                    | {CAst.volatile = false; _} -> acc
                  in
-                 List.fold_left f [] code.CAst.params
+                 List.fold_left f [] code.CAst.params *)
                in
                acc @ [(proc, (comp_template proc init final code, (regs, volatile)))]
            | CAst.Global _ -> acc

@@ -9,6 +9,9 @@
 /*  General Public License.                                          */
 /*********************************************************************/
 
+%{
+open CType
+%}
 %token EOF COMMA STAR VOLATILE UNSIGNED SIGNED ATOMIC LONG DOUBLE BOOL
 %token LPAREN RPAREN
 %token <int> PROC
@@ -27,6 +30,7 @@ main:
 | PROC LPAREN params RPAREN BODY main
     { CAst.Test {CAst.proc = $1; params = $3; body = $5} :: $6 }
 
+/*
 params:
 | { [] }
 | ty NAME
@@ -37,23 +41,37 @@ params:
     { {CAst.param_ty = $1; volatile = false; param_name = $2} :: $4 }
 | VOLATILE ty NAME COMMA params
     { {CAst.param_ty = $2; volatile = true; param_name = $3} :: $5 }
+*/
+params:
+| { [] }
+| bind { [ $1 ] }
+| bind COMMA params { $1 :: $3 }
+ 
+bind:
+| toptyp NAME { {CAst.param_ty = $1; param_name = $2} }
 
-ty:
-| atyp STAR { RunType.Ty $1 }
-| atyp STAR STAR { RunType.Pointer $1 }
-
-atyp:
-| typ { $1 }
-| ATOMIC typ { "_Atomic " ^ $2 }
+toptyp:
+| typ STAR { $1 }
 
 typ:
-| ATOMIC_NAME { $1 }
-| ty_attr NAME { $1 ^ $2 }
-| ty_attr LONG { $1 ^ "long" }
-| ty_attr DOUBLE { $1 ^ "double" }
-| ty_attr LONG LONG { $1 ^ "long long" }
-| ty_attr LONG DOUBLE { $1 ^ "long double" }
-| BOOL { "_Bool" }
+| typ STAR { Pointer $1 } 
+| typ VOLATILE { Volatile $1 } 
+| ATOMIC base { Atomic $2 }
+| VOLATILE base0 { Volatile $2 }
+| base { $1 }
+
+base0:
+| ATOMIC_NAME { Atomic (Base $1) }
+| ty_attr NAME { Base ($1 ^ $2) }
+| ty_attr LONG { Base ($1 ^ "long") }
+| ty_attr DOUBLE { Base ($1 ^ "double") }
+| ty_attr LONG LONG { Base ($1 ^ "long long") }
+| ty_attr LONG DOUBLE { Base ($1 ^ "long double") }
+| BOOL { Base ("_Bool") }
+
+base:
+| base0 { $1 }
+| LPAREN typ RPAREN { $2 }
 
 ty_attr:
 | { "" }
