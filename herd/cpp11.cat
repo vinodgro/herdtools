@@ -46,9 +46,9 @@
 *)
 
 (* SC atomics have acquire and release semantics. *)
-let set cacq = acq | (sc & (R | F)) | acq_rel | (F & con)
-let set crel = rel | (sc & (W | F)) | acq_rel
-let set ccon = R & con
+let cacq = acq | (sc & (R | F)) | acq_rel | (F & con)
+let crel = rel | (sc & (W | F)) | acq_rel
+let ccon = R & con
 
 (* MB: What exactly are these reations? *)
 (* jade: data and addr dependencies; it might not make sense in C++ syntax. for
