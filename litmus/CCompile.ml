@@ -33,8 +33,17 @@ module Make
       | Test of A.Out.t
       | Global of string
 
-    let add_param {CAst.param_ty; param_name} =
-      StringMap.add param_name param_ty
+    let add_param {CAst.param_ty; param_name} env =
+      let ty = CType.strip_volatile param_ty in
+      try
+        let oty = StringMap.find param_name env in
+        if oty <> ty then
+          Warn.warn_always
+            "Parameter %s, type mismatch %s vs. %s\n"
+            param_name (CType.dump oty) (CType.dump ty) ;
+        env
+      with Not_found ->
+        StringMap.add param_name ty env
 
     let add_params = List.fold_right add_param
 
@@ -71,7 +80,7 @@ module Make
       List.fold_left f []
 
      let string_of_params =
-       let f {CAst.param_name; _} = param_name in
+       let f {CAst.param_name; param_ty; } = param_name,param_ty in
        List.map f
 
     let comp_template proc init final code =

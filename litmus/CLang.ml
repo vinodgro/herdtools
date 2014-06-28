@@ -30,20 +30,14 @@ module Make(C:Config) = struct
       "%sasm __volatile__ (\"\\n%s\" ::: \"memory\");\n"
       indent (LangUtils.end_comment C.comment proc)
 
-  let dump_global_def globEnv envVolatile x =
+  let dump_global_def env (x,ty) =
+(*
+    let oty =
+      try List.assoc x env with Not_found -> assert false in
+*)
     let x = CTarget.fmt_reg x in
-    let volatile = List.exists (Misc.string_eq x) envVolatile in
-    let ty =
-      let f t = function
-        | true -> "volatile " ^ CType.dump t ^ "*"
-        | false -> CType.dump t ^ "*"
-      in
-      try
-        f (List.assoc x globEnv) volatile
-      with
-      | Not_found -> assert false
-    in
-    ty,x
+    let pp_ty =  CType.dump ty in
+    pp_ty ^ "*",x
 
   let out_type env x =
     try List.assoc x env
@@ -57,7 +51,7 @@ module Make(C:Config) = struct
   let dump_fun chan env globEnv envVolatile proc t =
     let out x = fprintf chan x in
     let input_defs =
-      List.map (dump_global_def globEnv envVolatile) t.CTarget.inputs
+      List.map (dump_global_def globEnv) t.CTarget.inputs
     and output_defs =
       List.map (dump_output_def env proc) t.CTarget.finals in
     let defs = input_defs@output_defs in
@@ -86,7 +80,7 @@ module Make(C:Config) = struct
   let dump_call chan indent env globEnv envVolatile proc t =
     let global_args =
       List.map
-        (fun x -> match C.memory with
+        (fun (x,_) -> match C.memory with
         | Memory.Direct ->
           sprintf "&_a->%s[_i]" x
         | Memory.Indirect ->
@@ -106,7 +100,7 @@ module Make(C:Config) = struct
     begin
       let indent = "  " ^ indent in
       let dump_input x =
-        let ty,x = dump_global_def globEnv envVolatile x in
+        let ty,x = dump_global_def globEnv x in
         match C.memory with
         | Memory.Direct ->
             out "%s%s %s = (%s)&_a->%s[_i];\n" indent ty x ty x

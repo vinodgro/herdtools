@@ -13,7 +13,7 @@
 type arch_reg = string
 
 type t =
-  { inputs : string list ;
+  { inputs : (string * CType.t) list ;
     finals : arch_reg list ;
     code : string ; }
 
@@ -24,4 +24,4 @@ let dump_out_reg p x =  OutUtils.fmt_out_reg p x
 
 let compile_out_reg proc reg = OutUtils.fmt_index (dump_out_reg proc reg)
 
-let get_addrs t = t.inputs
+let get_addrs t = List.map fst t.inputs

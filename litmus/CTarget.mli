@@ -14,7 +14,7 @@
 type arch_reg = string
 
 type t =
-  { inputs : string list ;
+  { inputs : (string * CType.t) list ;
     finals : arch_reg list ;
     code : string ; }
 

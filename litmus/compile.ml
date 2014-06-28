@@ -64,7 +64,7 @@ module Generic (A : Arch.Base) = struct
       )
 
     let add_addr_type a ty env =
-(*      Printf.eprintf "Type %s : %s\n" key a (dump ty) ; *)
+(*      Printf.eprintf "Type %s : %s\n"  a (CType.dump ty) ;  *)
       try
         let tz = StringMap.find a env in
         match ty,tz with
@@ -81,7 +81,7 @@ module Generic (A : Arch.Base) = struct
 
     let add_value v env = match v with
     | Constant.Concrete _ -> env
-    | Constant.Symbolic a -> add_addr_type a (Base "int") env
+    | Constant.Symbolic a -> add_addr_type a base env
 end
 
 module Make
