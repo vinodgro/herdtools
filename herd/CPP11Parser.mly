@@ -51,19 +51,21 @@ primary_expression:
   { Eregister $1 }
 | CONSTANT 
   { Econstant (Concrete $1) }
+| loc
+  { Econstant $1 }
 | LPAR expression RPAR 
   { Eparen $2 }
 
 postfix_expression:
 | primary_expression 
   { $1 }
-| ST LPAR loc COMMA assignment_expression RPAR
+| ST LPAR addr COMMA assignment_expression RPAR
   { Estore ($3, $5, CPP11Base.SC) }
-| ST_EXPLICIT LPAR loc COMMA assignment_expression COMMA MEMORDER RPAR
+| ST_EXPLICIT LPAR addr COMMA assignment_expression COMMA MEMORDER RPAR
   { Estore ($3, $5, $7) }
-| LD LPAR loc RPAR
+| LD LPAR addr RPAR
   { Eload ($3, CPP11Base.SC) }
-| LD_EXPLICIT LPAR loc COMMA MEMORDER RPAR
+| LD_EXPLICIT LPAR addr COMMA MEMORDER RPAR
   { Eload ($3, $5) }
 | FENCE LPAR MEMORDER RPAR
   { Efence ($3) }
@@ -79,7 +81,7 @@ postfix_expression:
 unary_expression:
 | postfix_expression 
   { $1 }
-| pointer loc
+| pointer addr
   { Eload ($2, CPP11Base.NA) }
 
 cast_expression:
@@ -126,7 +128,7 @@ assignment_expression:
   { $1 }
 | ARCH_REG assignment_operator assignment_expression
   { Eassign ($1, $3) }
-| pointer loc assignment_operator assignment_expression
+| pointer addr assignment_operator assignment_expression
   { Estore ($2, $4, CPP11Base.NA) }
 
 assignment_operator:
@@ -289,3 +291,7 @@ function_definition:
 
 loc:
 | IDENTIFIER { Symbolic $1 }
+
+addr:
+| loc { AddrDirect $1 }
+| ARCH_REG { AddrIndirect $1 }

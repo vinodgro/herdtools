@@ -112,13 +112,15 @@ let barrier_compare = Pervasives.compare
 
 type loc = SymbConstant.v
 
+type addr = AddrDirect of loc | AddrIndirect of reg
+
 type expression =
 | Econstant of SymbConstant.v
 | Eregister of reg
 | Eassign of reg * expression
 | Eeq of expression * expression
-| Estore  of loc * expression * mem_order 
-| Eload   of loc * mem_order
+| Estore  of addr * expression * mem_order 
+| Eload   of addr * mem_order
 | Ecas    of loc * loc * expression * mem_order * mem_order * bool
 | Elock   of loc
 | Eunlock of loc
@@ -151,9 +153,13 @@ include Pseudo.Make
 
      end)
     
-let pp_addr = function
+let pp_loc = function
   | Symbolic s -> s
   | _ -> "concrete addresses not supported in C++11"
+
+let pp_addr = function
+  | AddrDirect loc -> pp_loc loc
+  | AddrIndirect r -> pp_reg r
 
 let pp_sop = function
   | Concrete i -> (sprintf "%d" i)
@@ -179,12 +185,12 @@ let rec dump_expression e = match e with
   | Ecas(obj,exp,des,mo_success,mo_failure,strong) ->
     sprintf("%sCAS(%s,%s,%s,%s,%s)") 
       (if strong then "S" else "W")
-      (pp_addr obj) (pp_addr exp) (dump_expression des) 
+      (pp_loc obj) (pp_loc exp) (dump_expression des) 
       (pp_mem_order mo_success) (pp_mem_order mo_failure)     
   | Elock(loc) ->
-    sprintf("lock(%s)") (pp_addr loc)
+    sprintf("lock(%s)") (pp_loc loc)
   | Eunlock(loc) ->
-    sprintf("unlock(%s)") (pp_addr loc)
+    sprintf("unlock(%s)") (pp_loc loc)
   | Efence mo -> sprintf("fence(%s)") (pp_mem_order mo)
   | Econstant i -> pp_sop i
   | Eregister reg -> pp_reg reg
@@ -236,14 +242,17 @@ let map_addrs _f _ins = Warn.fatal "C++11 map_addrs has not been implemented"
 
 (* There are addresses burried in code, similar to X86 *)
 let fold_addrs f =
+  let fold_addr c = function
+    | AddrDirect loc -> f loc c
+    | AddrIndirect _ -> c in
   let rec fold_expr c = function
     | Econstant _
     | Eregister _
     | Efence _ -> c
     | Eassign (_,e) -> fold_expr c e
     | Eeq (e1,e2) -> fold_expr (fold_expr c e1) e2
-    | Estore (loc,e,_) -> fold_expr (f loc c) e
-    | Eload (loc,_) -> f loc c
+    | Estore (loc,e,_) -> fold_expr (fold_addr c loc) e
+    | Eload (loc,_) -> fold_addr c loc
     | Ecas (loc1,loc2,e,_,_,_) ->
         f loc1 (f loc2 (fold_expr c e))
     | Elock loc|Eunlock loc -> f loc c

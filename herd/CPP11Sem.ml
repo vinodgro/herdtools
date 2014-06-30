@@ -37,7 +37,9 @@ module Make (C:Sem.Config)(V:Value.S)
     let read_reg r ii = read_loc CPP11.NA (A.Location_reg (ii.A.proc,r)) ii
     let read_mem mo a = read_loc mo (A.Location_global a)
 
-    let write_loc mo loc v ii = M.mk_singleton_es (Act.Access (Dir.W, loc, v, mo)) ii
+    let write_loc mo loc v ii =
+      M.mk_singleton_es (Act.Access (Dir.W, loc, v, mo)) ii
+
     let write_reg r v ii = write_loc CPP11.NA (A.Location_reg (ii.A.proc,r)) v ii
     let write_mem mo a  = write_loc mo (A.Location_global a) 	     
 		 
@@ -65,15 +67,24 @@ module Make (C:Sem.Config)(V:Value.S)
         build_semantics_expr e2 ii >>= fun (v1,v2) ->
         M.op Op.Eq v1 v2
 
-      | CPP11.Estore(l,e,mo) ->
+      | CPP11.Estore(CPP11.AddrDirect l,e,mo) ->
 	(M.unitT (CPP11.maybev_to_location l)) >>|
 	build_semantics_expr e ii >>= fun (loc, v) -> 
         write_loc mo loc v ii >>! 
         v
+      | CPP11.Estore(CPP11.AddrIndirect reg,e,mo) ->
+	read_reg reg ii >>|
+	build_semantics_expr e ii >>= fun (loc, v) -> 
+        write_mem mo loc v ii >>! 
+        v
 
-      | CPP11.Eload(loc,mo) ->
+      | CPP11.Eload(CPP11.AddrDirect loc,mo) ->
 	M.unitT (CPP11.maybev_to_location loc) >>= fun loc -> 
         read_loc mo loc ii
+
+      | CPP11.Eload(CPP11.AddrIndirect reg,mo) ->
+	 read_reg reg ii >>= fun loc -> 
+         read_mem mo loc ii
 
       | CPP11.Elock l ->
 	M.unitT (CPP11.maybev_to_location l) >>= fun loc -> 
