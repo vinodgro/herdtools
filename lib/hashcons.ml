@@ -253,7 +253,9 @@ module Make(H : HashedType) : (S with type key = H.t) = struct
 
   let hashcons t d =
     let hkey = H.hash d in
-    let index = hkey mod (Array.length t.table) in
+    let hkey = hkey land max_int in (* >=0 !!! *)
+    let sztable = Array.length t.table in
+    let index = hkey mod sztable in    
     let bucket = t.table.(index) in
     let sz = Weak.length bucket in
     let rec loop i =
