@@ -10,6 +10,9 @@
 (*********************************************************************)
 
 {
+
+module LU = LexUtils.Make(struct let debug = false end)
+
 (* Compiled efficiently by the next version of ocaml *)
 let tr_name = function
 | "volatile" -> CParser.VOLATILE
@@ -66,6 +69,8 @@ let name = (alpha (num|alpha)*)
 rule main = parse
 | [' ''\t']+ { main lexbuf }
 | '\n' { Lexing.new_line lexbuf ; main lexbuf ; }
+| "/*" { LU.skip_c_comment lexbuf ; main lexbuf }
+| "//" { LU.skip_c_line_comment lexbuf ; main lexbuf } 
 | 'P' (num+ as x) { CParser.PROC (int_of_string x) }
 | '(' { CParser.LPAREN }
 | ')' { CParser.RPAREN }

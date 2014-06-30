@@ -61,6 +61,10 @@ module Make(O:Config)(M:XXXMem.S) =
         0
 
     let report_bad_executions = ref false
+    (* Identifies the current execution. The use of mutable state
+       is not very nice. I need to find another way to find out
+       which execution is currently being tested. *)
+    let execution_idx = ref 0
 
 (* Test result *)
     type count =
@@ -69,8 +73,8 @@ module Make(O:Config)(M:XXXMem.S) =
 (* NB: pos and neg are w.r.t. proposition *)
           pos : int ;
           neg : int ;
-(* number of executions that fail at least one requires-clause *)
-	  bad : int ;
+(* list of executions that fail at least one requires-clause *)
+	  bad : int list ;
 (* shown executions *)
           shown : int;
 (* registers that read memory *)
@@ -78,7 +82,7 @@ module Make(O:Config)(M:XXXMem.S) =
         }
 
     let start =
-      { states = A.StateSet.empty; cands=0; pos=0; neg=0; bad=0; shown=0;
+      { states = A.StateSet.empty; cands=0; pos=0; neg=0; bad=[]; shown=0;
         reads = A.LocSet.empty; }
 
 (* Check condition *)
@@ -227,13 +231,14 @@ module Make(O:Config)(M:XXXMem.S) =
           | _ -> ()
           end ;
 	  report_bad_executions := (failed_requires_clauses != None);
+          execution_idx := (!execution_idx) + 1;
           let r =
             { cands = c.cands+1;
               states = A.StateSet.add fsc c.states;
               pos = if ok then c.pos+1 else c.pos;
               neg = if ok then c.neg else c.neg+1;
               bad = (match failed_requires_clauses with 
-		    | Some n when n > 0 -> c.bad+1 
+		    | Some n when n > 0 -> ((!execution_idx) :: c.bad) 
 		    | _ -> c.bad);
               shown = if show_exec then c.shown+1 else c.shown;
               reads = 
@@ -347,8 +352,13 @@ module Make(O:Config)(M:XXXMem.S) =
         let pos,neg = check_wit test c in
         printf "Witnesses\n" ;
         printf "Positive: %i Negative: %i\n" pos neg ;
-	if (!report_bad_executions) then 
-	  printf "Bad executions: %i\n" c.bad ;
+	if (!report_bad_executions) then begin
+          printf "Bad executions (%i in total): %s \n" 
+            (List.length c.bad) 
+            (List.fold_right 
+               (fun i s -> s ^ (if s="" then "" else ",") ^ sprintf "%i" i) 
+               c.bad "")
+        end;
         printf "Condition %a\n" C.dump_constraints cstr ;
         printf "Observation %s %s %i %i\n%!" tname
           (if c.pos = 0 then "Never"
