@@ -94,25 +94,25 @@ module Make
          ["atomicloc", (fun e -> 
               match E.location_of e with
               | Some (E.A.Location_global a) ->
-                List.exists (fun p -> 
-                    p.CPP11Ast.param_name = E.A.V.pp_v a && 
-                    RunType.is_ptr_to_atomic p.CPP11Ast.param_ty) 
+                Misc.exists_exists (fun p -> 
+                    p.CAst.param_name = E.A.V.pp_v a && 
+                    CType.is_ptr_to_atomic p.CAst.param_ty) 
                   test.Test.param_map
               | _ -> false);
           "nonatomicloc", (fun e -> 
               match E.location_of e with
               | Some (E.A.Location_global a) ->
-                List.exists (fun p -> 
-                    p.CPP11Ast.param_name = E.A.V.pp_v a && 
-                    not (RunType.is_ptr_to_atomic p.CPP11Ast.param_ty)) 
+                Misc.exists_exists (fun p -> 
+                    p.CAst.param_name = E.A.V.pp_v a && 
+                    not (CType.is_ptr_to_atomic p.CAst.param_ty)) 
                   test.Test.param_map
               | _ -> false);
           "mutexloc", (fun e -> 
               match E.location_of e with
               | Some (E.A.Location_global a) ->
-                List.exists (fun p -> 
-                    p.CPP11Ast.param_name = E.A.V.pp_v a && 
-                    RunType.is_mutex p.CPP11Ast.param_ty) 
+                Misc.exists_exists (fun p -> 
+                    p.CAst.param_name = E.A.V.pp_v a && 
+                    CType.is_mutex p.CAst.param_ty) 
                   test.Test.param_map
               | _ -> false);
          ]) in

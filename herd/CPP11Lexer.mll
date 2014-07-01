@@ -9,61 +9,54 @@ module LU = LexUtils.Make(O)
 
 (* Compiled efficiently by the next version of ocaml *)
 let tr_name = function
-| "mutex" -> MUTEX
 | "volatile" -> VOLATILE
-| "const" -> CONST
-| "static" -> STATIC
-| "typedef" -> TYPEDEF
-| "auto" -> AUTO
-| "register" -> REGISTER
 | "unsigned" -> UNSIGNED
 | "signed" -> SIGNED
 | "_Atomic" -> ATOMIC
-| "long" -> LONG
-| "int" -> INT
-| "float" -> FLOAT
-| "void" -> VOID
 | "char" -> CHAR
 | "short" -> SHORT
+| "int" ->  INT
+| "long" -> LONG
+| "float" -> FLOAT
 | "double" -> DOUBLE
 | "_Bool" -> BOOL
-| "atomic_bool" -> ATOMIC_TYPE "_Atomic _Bool"
-| "atomic_char" -> ATOMIC_TYPE "_Atomic char"
-| "atomic_schar" -> ATOMIC_TYPE "_Atomic signed char"
-| "atomic_uchar" -> ATOMIC_TYPE "_Atomic unsigned char"
-| "atomic_short" -> ATOMIC_TYPE "_Atomic short"
-| "atomic_ushort" -> ATOMIC_TYPE "_Atomic unsigned short"
-| "atomic_int" -> ATOMIC_TYPE "_Atomic int"
-| "atomic_uint" -> ATOMIC_TYPE "_Atomic unsigned int"
-| "atomic_long" -> ATOMIC_TYPE "_Atomic long"
-| "atomic_ulong" -> ATOMIC_TYPE "_Atomic unsigned long"
-| "atomic_llong" -> ATOMIC_TYPE "_Atomic long long"
-| "atomic_ullong" -> ATOMIC_TYPE "_Atomic unsigned long long"
-| "atomic_char16_t" -> ATOMIC_TYPE "_Atomic __CHAR16_TYPE__"
-| "atomic_char32_t" -> ATOMIC_TYPE "_Atomic __CHAR32_TYPE__"
-| "atomic_wchar_t" -> ATOMIC_TYPE "_Atomic __WCHAR_TYPE__"
-| "atomic_int_least8_t" -> ATOMIC_TYPE "_Atomic __INT_LEAST8_TYPE__"
-| "atomic_uint_least8_t" -> ATOMIC_TYPE "_Atomic __UINT_LEAST8_TYPE__"
-| "atomic_int_least16_t" -> ATOMIC_TYPE "_Atomic __INT_LEAST16_TYPE__"
-| "atomic_uint_least16_t" -> ATOMIC_TYPE "_Atomic __UINT_LEAST16_TYPE__"
-| "atomic_int_least32_t" -> ATOMIC_TYPE "_Atomic __INT_LEAST32_TYPE__"
-| "atomic_uint_least32_t" -> ATOMIC_TYPE "_Atomic __UINT_LEAST32_TYPE__"
-| "atomic_int_least64_t" -> ATOMIC_TYPE "_Atomic __INT_LEAST64_TYPE__"
-| "atomic_uint_least64_t" -> ATOMIC_TYPE "_Atomic __UINT_LEAST64_TYPE__"
-| "atomic_int_fast8_t" -> ATOMIC_TYPE "_Atomic __INT_FAST8_TYPE__"
-| "atomic_uint_fast8_t" -> ATOMIC_TYPE "_Atomic __UINT_FAST8_TYPE__"
-| "atomic_int_fast16_t" -> ATOMIC_TYPE "_Atomic __INT_FAST16_TYPE__"
-| "atomic_uint_fast16_t" -> ATOMIC_TYPE "_Atomic __UINT_FAST16_TYPE__"
-| "atomic_int_fast32_t" -> ATOMIC_TYPE "_Atomic __INT_FAST32_TYPE__"
-| "atomic_uint_fast32_t" -> ATOMIC_TYPE "_Atomic __UINT_FAST32_TYPE__"
-| "atomic_int_fast64_t" -> ATOMIC_TYPE "_Atomic __INT_FAST64_TYPE__"
-| "atomic_uint_fast64_t" -> ATOMIC_TYPE "_Atomic __UINT_FAST64_TYPE__"
-| "atomic_intptr_t" -> ATOMIC_TYPE "_Atomic __INTPTR_TYPE__"
-| "atomic_uintptr_t" -> ATOMIC_TYPE "_Atomic __UINTPTR_TYPE__"
-| "atomic_size_t" -> ATOMIC_TYPE "_Atomic __SIZE_TYPE__"
-| "atomic_ptrdiff_t" -> ATOMIC_TYPE "_Atomic __PTRDIFF_TYPE__"
-| "atomic_intmax_t" -> ATOMIC_TYPE "_Atomic __INTMAX_TYPE__"
-| "atomic_uintmax_t" -> ATOMIC_TYPE "_Atomic __UINTMAX_TYPE__"
+| "atomic_bool" -> ATOMIC_TYPE "_Bool"
+| "atomic_char" -> ATOMIC_TYPE "char"
+| "atomic_schar" -> ATOMIC_TYPE "signed char"
+| "atomic_uchar" -> ATOMIC_TYPE "unsigned char"
+| "atomic_short" -> ATOMIC_TYPE "short"
+| "atomic_ushort" -> ATOMIC_TYPE "unsigned short"
+| "atomic_int" -> ATOMIC_TYPE "int"
+| "atomic_uint" -> ATOMIC_TYPE "unsigned int"
+| "atomic_long" -> ATOMIC_TYPE "long"
+| "atomic_ulong" -> ATOMIC_TYPE "unsigned long"
+| "atomic_llong" -> ATOMIC_TYPE "long long"
+| "atomic_ullong" -> ATOMIC_TYPE "unsigned long long"
+| "atomic_char16_t" -> ATOMIC_TYPE "__CHAR16_TYPE__"
+| "atomic_char32_t" -> ATOMIC_TYPE "__CHAR32_TYPE__"
+| "atomic_wchar_t" -> ATOMIC_TYPE "__WCHAR_TYPE__"
+| "atomic_int_least8_t" -> ATOMIC_TYPE "__INT_LEAST8_TYPE__"
+| "atomic_uint_least8_t" -> ATOMIC_TYPE "__UINT_LEAST8_TYPE__"
+| "atomic_int_least16_t" -> ATOMIC_TYPE "__INT_LEAST16_TYPE__"
+| "atomic_uint_least16_t" -> ATOMIC_TYPE "__UINT_LEAST16_TYPE__"
+| "atomic_int_least32_t" -> ATOMIC_TYPE "__INT_LEAST32_TYPE__"
+| "atomic_uint_least32_t" -> ATOMIC_TYPE "__UINT_LEAST32_TYPE__"
+| "atomic_int_least64_t" -> ATOMIC_TYPE "__INT_LEAST64_TYPE__"
+| "atomic_uint_least64_t" -> ATOMIC_TYPE "__UINT_LEAST64_TYPE__"
+| "atomic_int_fast8_t" -> ATOMIC_TYPE "__INT_FAST8_TYPE__"
+| "atomic_uint_fast8_t" -> ATOMIC_TYPE "__UINT_FAST8_TYPE__"
+| "atomic_int_fast16_t" -> ATOMIC_TYPE "__INT_FAST16_TYPE__"
+| "atomic_uint_fast16_t" -> ATOMIC_TYPE "__UINT_FAST16_TYPE__"
+| "atomic_int_fast32_t" -> ATOMIC_TYPE "__INT_FAST32_TYPE__"
+| "atomic_uint_fast32_t" -> ATOMIC_TYPE "__UINT_FAST32_TYPE__"
+| "atomic_int_fast64_t" -> ATOMIC_TYPE "__INT_FAST64_TYPE__"
+| "atomic_uint_fast64_t" -> ATOMIC_TYPE "__UINT_FAST64_TYPE__"
+| "atomic_intptr_t" -> ATOMIC_TYPE "__INTPTR_TYPE__"
+| "atomic_uintptr_t" -> ATOMIC_TYPE "__UINTPTR_TYPE__"
+| "atomic_size_t" -> ATOMIC_TYPE "__SIZE_TYPE__"
+| "atomic_ptrdiff_t" -> ATOMIC_TYPE "__PTRDIFF_TYPE__"
+| "atomic_intmax_t" -> ATOMIC_TYPE "__INTMAX_TYPE__"
+| "atomic_uintmax_t" -> ATOMIC_TYPE "__UINTMAX_TYPE__"
 |  x -> IDENTIFIER x
 
 }

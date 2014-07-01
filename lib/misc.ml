@@ -183,6 +183,9 @@ let rec for_all_strict p = function
         false
       end
 
+let exists_exists p xss =
+  List.exists (fun xs -> List.exists p xs) xss
+
 (* Connectors for predicates *)
 
 let (|||) p1 p2 = fun e -> p1 e || p2 e

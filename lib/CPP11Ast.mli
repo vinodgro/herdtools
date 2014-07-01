@@ -9,7 +9,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-type param = { param_ty : RunType.t; volatile : bool; param_name : string }
+type param = { param_ty : CType.t; param_name : string }
 
 type 'body test =
   { proc : int

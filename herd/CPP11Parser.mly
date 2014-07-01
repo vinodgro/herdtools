@@ -1,6 +1,7 @@
 %{
 open Constant
 open CPP11Base
+open CType
 %}
 
 %token EOF
@@ -27,17 +28,17 @@ open CPP11Base
 %token LD LD_EXPLICIT ST ST_EXPLICIT FENCE LOCK UNLOCK SCAS WCAS
 
 %type <(int * CPP11Base.pseudo list) list * MiscParser.gpu_data option> main 
-%type <(CPP11Base.pseudo list) CPP11Ast.test list> translation_unit
+%type <(CPP11Base.pseudo list) CAst.test list> translation_unit
 %start main
 
 %%
 
 main: 
 | translation_unit EOF 
-  { let proc_list, param_map = 
+  { let proc_list,param_map = 
       List.fold_right (fun p (proc_list, param_map) -> 
-        let proc_list = (p.CPP11Ast.proc,p.CPP11Ast.body) :: proc_list in
-        let param_map = p.CPP11Ast.params @ param_map in
+        let proc_list = (p.CAst.proc,p.CAst.body) :: proc_list in
+        let param_map = p.CAst.params :: param_map in
         (proc_list, param_map)) $1 ([], [])  
     in
     let additional = 
@@ -81,7 +82,7 @@ postfix_expression:
 unary_expression:
 | postfix_expression 
   { $1 }
-| pointer addr
+| STAR addr
   { Eload ($2, CPP11Base.NA) }
 
 cast_expression:
@@ -128,7 +129,7 @@ assignment_expression:
   { $1 }
 | ARCH_REG assignment_operator assignment_expression
   { Eassign ($1, $3) }
-| pointer addr assignment_operator assignment_expression
+| STAR addr assignment_operator assignment_expression
   { Estore ($2, $4, CPP11Base.NA) }
 
 assignment_operator:
@@ -139,68 +140,13 @@ expression:
 | expression COMMA assignment_expression { Ecomma ($1,$3) }
 
 declaration:
-| declaration_specifiers SEMI
-  { Pblock [] }
-| declaration_specifiers init_declarator_list SEMI
-  { Pblock $2 }
-
-declaration_specifiers:
-| storage_class_specifier 
-  { $1 }
-| storage_class_specifier declaration_specifiers
-  { $1 ^ " " ^ $2 }
-| type_specifier 
-  { $1 }
-| type_specifier declaration_specifiers
-  { $1 ^ " " ^ $2 }
-| type_qualifier
-  { $1 }
-| type_qualifier declaration_specifiers
-  { $1 ^ " " ^ $2 }
-
-init_declarator_list:
-| init_declarator
-  { [$1] }
-| init_declarator_list COMMA init_declarator
-  { $1 @ [$3] }
+| typ  init_declarator SEMI  { $2; }
 
 init_declarator:
 | ARCH_REG
   { Pblock [] }
 | ARCH_REG EQ initialiser 
   { Pexpr (Eassign ($1, $3)) }
-
-storage_class_specifier:
-| TYPEDEF { "typedef" }
-| EXTERN { "extern" }
-| STATIC { "static" }
-| AUTO { "auto" }
-| REGISTER { "register" }
-
-type_specifier:
-| VOID { "void" }
-| CHAR { "char" }
-| SHORT { "short" }
-| INT { "int" }
-| LONG { "long" }
-| FLOAT { "float" }
-| DOUBLE { "double" }
-| SIGNED { "signed" }
-| UNSIGNED { "unsigned" }
-| MUTEX { "mutex" }
-| ATOMIC { "_Atomic" }
-| ATOMIC_TYPE { $1 } 
-
-type_qualifier:
-| CONST { "const" }
-| VOLATILE { "volatile" }
-
-declarator:
-| pointer IDENTIFIER { (true, $2) }
-| IDENTIFIER { (false, $1) }
-
-pointer:
-| STAR { () }
 
 parameter_type_list:
 | parameter_list { $1 }
@@ -212,19 +158,8 @@ parameter_list:
   { $1 @ [$3] }
 
 parameter_declaration:
-| declaration_specifiers declarator
-  { let ty = $1 in
-    let (ptr, identifier) = $2 in
-    let vol = 
-      try 
-        let _ = Str.search_forward (Str.regexp "volatile") ty 0 in 
-        true 
-      with Not_found -> false
-    in
-    let full_ty = if ptr then RunType.Pointer ty else RunType.Ty ty in
-    { CPP11Ast.param_ty = full_ty; 
-      CPP11Ast.volatile = vol; 
-      CPP11Ast.param_name = identifier } }
+| typstar IDENTIFIER
+  { {CAst.param_ty = $1; param_name = $2} }
 
 initialiser:
 | assignment_expression 
@@ -251,8 +186,8 @@ compound_statement:
 statement_list:
 | statement
   { [$1] }
-| statement_list statement
-  { $1 @ [$2] }
+| statement statement_list
+  { $1 :: $2 }
 
 expression_statement:
 | SEMI
@@ -280,14 +215,10 @@ external_declaration:
 | function_definition { $1 }
 
 function_definition:
-| declaration_specifiers PROC LPAR parameter_type_list RPAR compound_statement
-  { { CPP11Ast.proc = $2; 
-      CPP11Ast.params = $4; 
-      CPP11Ast.body = List.map (fun ins -> Instruction ins) $6 } }
 | PROC LPAR parameter_type_list RPAR compound_statement
-  { { CPP11Ast.proc = $1; 
-      CPP11Ast.params = $3; 
-      CPP11Ast.body = List.map (fun ins -> Instruction ins) $5 } }
+  { { CAst.proc = $1; 
+      CAst.params = $3; 
+      CAst.body = List.map (fun ins -> Instruction ins) $5 } }
 
 loc:
 | IDENTIFIER { Symbolic $1 }
@@ -295,3 +226,34 @@ loc:
 addr:
 | loc { AddrDirect $1 }
 | ARCH_REG { AddrIndirect $1 }
+
+typstar:
+| typ STAR { Pointer $1 }
+
+typ:
+| typ STAR { Pointer $1 } 
+| typ VOLATILE { Volatile $1 } 
+| ATOMIC base { Atomic $2 }
+| VOLATILE base0 { Volatile $2 }
+| base { $1 }
+
+base0:
+| ATOMIC_TYPE { Atomic (Base $1) }
+| ty_attr MUTEX { Base ($1 ^ "mutex") }
+| ty_attr CHAR { Base ($1 ^ "char") }
+| ty_attr INT { Base ($1 ^ "int") }
+| ty_attr LONG { Base ($1 ^ "long") }
+| ty_attr FLOAT { Base ($1 ^ "float") }
+| ty_attr DOUBLE { Base ($1 ^ "double") }
+| ty_attr LONG LONG { Base ($1 ^ "long long") }
+| ty_attr LONG DOUBLE { Base ($1 ^ "long double") }
+| BOOL { Base ("_Bool") }
+
+base:
+| base0 { $1 }
+| LPAR typ RPAR { $2 }
+
+ty_attr:
+| { "" }
+| UNSIGNED { "unsigned " }
+| SIGNED { "signed " }
