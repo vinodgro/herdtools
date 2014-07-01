@@ -43,13 +43,11 @@ module Make (C:Sem.Config)(V:Value.S)
     let write_reg r v ii = write_loc CPP11.NA (A.Location_reg (ii.A.proc,r)) v ii
     let write_mem mo a  = write_loc mo (A.Location_global a) 	     
 		 
-    let constant_to_int v = match v with
-      | Constant.Concrete vv -> vv
-      | _ -> Warn.fatal "Couldn't convert constant to int"
 
     let rec build_semantics_expr e ii : V.v M.t = match e with
       | CPP11.Econstant v -> 	
-        M.unitT (V.intToV (constant_to_int v))
+        M.unitT (V.maybevToV v)
+
 
       | CPP11.Eregister reg ->
         read_reg reg ii >>= fun v -> 
