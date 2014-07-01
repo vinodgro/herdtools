@@ -829,15 +829,15 @@ let dump_read_timebase () =
             O.fi "else if (v_addr == (void *)_a->%s[_i]) return %i;"
               s k in
       O.o "static int idx_addr(ctx_t *_a,int _i,void *v_addr) {" ;
-      O.oi "if (v_addr == NULL) { fatal(\"NULL\"); return -1;}" ;
-      Misc.iteri (fun k (s,_) -> dump_test k s) test.T.globals ;
+      O.oi "if (v_addr == NULL) { return 0;}" ;
+      Misc.iteri (fun k (s,_) -> dump_test (k+1) s) test.T.globals ;
       O.oi "else { fatal(\"???\"); return -1;}" ;
       O.o "}" ;
       O.o "" ;
 (* Pretty-print indices *)
       let naddrs = List.length test.T.globals in
-      O.f "static char *pretty_addr[%i] = {%s};"
-        naddrs
+      O.f "static char *pretty_addr[%i] = {\"0\",%s};"
+        (naddrs+1)
         (String.concat ""
            (List.map (fun (s,_) -> sprintf "\"%s\"," s) test.T.globals)) ;
       O.o "" ;
