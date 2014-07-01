@@ -175,6 +175,21 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
 	call_parser_loc "prog" chan prog_loc L.lexer L.parser in
       let prog_litmus =
         call_parser_loc "prog_litmus" chan prog_loc CLexer.main CParser.main in
+(* Add parameter passsing as inits *)
+      let full_init =
+        let open CAst in
+        List.fold_left
+          (fun env f -> match f with
+          | Global _ -> env
+          | Test t ->
+               let p = t.proc in
+               List.fold_left
+                 (fun env param ->
+                   let loc = param.param_name in
+                   (MiscParser.Location_reg (p,loc),
+                    SymbConstant.nameToV loc)::env)
+                 env t.params)
+          init prog_litmus in            
       let procs = List.map fst prog in 
       check_procs procs ;
       let (locs,final,_quantifiers) =
@@ -187,7 +202,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
           (get_locs final) in
       let parsed =
         {
-         MiscParser.info; init; prog = prog;
+         MiscParser.info; init=full_init; prog = prog;
          condition = final; 
          locations = locs;
          gpu_data;

@@ -38,7 +38,7 @@ module Make (C:Sem.Config)(V:Value.S)
     let read_mem mo a = read_loc mo (A.Location_global a)
 
     let write_loc mo loc v ii =
-      M.mk_singleton_es (Act.Access (Dir.W, loc, v, mo)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, loc, v, mo)) ii >>! v
 
     let write_reg r v ii = write_loc CPP11.NA (A.Location_reg (ii.A.proc,r)) v ii
     let write_mem mo a  = write_loc mo (A.Location_global a) 	     
@@ -65,41 +65,53 @@ module Make (C:Sem.Config)(V:Value.S)
         build_semantics_expr e2 ii >>= fun (v1,v2) ->
         M.op Op.Eq v1 v2
 
-      | CPP11.Estore(CPP11.AddrDirect l,e,mo) ->
-	(M.unitT (CPP11.maybev_to_location l)) >>|
-	build_semantics_expr e ii >>= fun (loc, v) -> 
-        write_loc mo loc v ii >>! 
-        v
-      | CPP11.Estore(CPP11.AddrIndirect reg,e,mo) ->
-	read_reg reg ii >>|
-	build_semantics_expr e ii >>= fun (loc, v) -> 
-        write_mem mo loc v ii >>! 
-        v
+      | CPP11.Estore(loc,e,mo) ->
+          build_semantics_expr loc ii >>| 
+          build_semantics_expr e ii >>= fun (loc,v) ->
+          write_mem mo loc v ii 
 
-      | CPP11.Eload(CPP11.AddrDirect loc,mo) ->
-	M.unitT (CPP11.maybev_to_location loc) >>= fun loc -> 
-        read_loc mo loc ii
+      | CPP11.Eload(loc,mo) ->
+          build_semantics_expr loc ii >>= fun loc ->
+          read_mem mo loc ii 
 
-      | CPP11.Eload(CPP11.AddrIndirect reg,mo) ->
-	 read_reg reg ii >>= fun loc -> 
-         read_mem mo loc ii
-
-      | CPP11.Elock l ->
-	M.unitT (CPP11.maybev_to_location l) >>= fun loc -> 
-        M.altT
+      | CPP11.Elock loc ->
+          build_semantics_expr loc ii >>= fun loc ->
+          M.altT
           (* successful attempt to obtain mutex *)
-	  (M.mk_singleton_es (Act.Lock (loc, true)) ii >>! 
-           V.intToV 0)
+	    (M.mk_singleton_es (Act.Lock (A.Location_global loc, true)) ii >>! 
+             V.intToV 0)
           (* unsuccessful attempt to obtain mutex *)
-	  (M.mk_singleton_es (Act.Lock (loc, false)) ii >>! 
-           V.intToV 1)
+            (M.mk_singleton_es (Act.Lock (A.Location_global loc, false)) ii >>! 
+             V.intToV 1)
 
-      | CPP11.Eunlock l ->
-	M.unitT (CPP11.maybev_to_location l)>>= fun loc -> 
-	M.mk_singleton_es (Act.Unlock loc) ii >>! 
-        V.intToV 0
+      | CPP11.Eunlock loc ->
+          build_semantics_expr loc ii >>= fun loc ->
+	  M.mk_singleton_es (Act.Unlock (A.Location_global loc)) ii >>! 
+          V.intToV 0
 
       | CPP11.Ecas(obj,exp,des,success,failure,strong) ->
+       (* Obtain location of "expected" value *)
+        build_semantics_expr exp ii >>= fun loc_exp ->
+       (* Obtain location of object *)
+        build_semantics_expr obj ii >>= fun loc_obj ->
+       (* Non-atomically read the value at "expected" location *)
+        read_mem CPP11.NA loc_exp ii >>*= fun v_exp ->
+ (* Non-deterministic choice *)
+        M.altT
+           (read_mem failure loc_obj ii >>*= fun v_obj ->
+           (* For "strong" cas: fail only when v_obj != v_exp *)
+           (if strong then M.addNeqConstraintT v_obj v_exp else (fun x -> x)) (
+           (* Non-atomically write that value into the "expected" location *)
+           write_mem CPP11.NA loc_exp v_obj ii) >>!
+           V.intToV 0)
+          (* Obtain "desired" value *)
+          (build_semantics_expr des ii >>= fun v_des -> 
+           (* Do RMW action on "object", to change its value from "expected"
+              to "desired", using memory order "success" *)
+           M.mk_singleton_es
+             (Act.RMW (A.Location_global loc_obj,v_exp,v_des,success)) ii >>!
+           V.intToV 1)
+(*
         (* Obtain location of "expected" value *)
         M.unitT (CPP11.maybev_to_location exp) >>= fun loc_exp ->
         (* Obtain location of object *) 
@@ -121,7 +133,7 @@ module Make (C:Sem.Config)(V:Value.S)
               to "desired", using memory order "success" *)
            M.mk_singleton_es (Act.RMW (loc_obj,v_exp,v_des,success)) ii >>!
            V.intToV 1)
-						    
+*)
       | CPP11.Efence(mo) ->
 	M.mk_singleton_es (Act.Fence mo) ii >>! V.intToV 0
 

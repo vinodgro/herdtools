@@ -23,44 +23,13 @@ let arch = Archs.CPP11
 (* Registers *)
 (*************)
 
-type gpr_reg =
-  | GPR0 | GPR1 | GPR2 | GPR3
-  | GPR4 | GPR5 | GPR6 | GPR7
-  | GPR8 | GPR9 
+type reg = string
 
-let gpr_regs =
-  [
-   GPR0,"r0";  GPR1,"r1";
-   GPR2,"r2";  GPR3,"r3";
-   GPR4,"r4";  GPR5,"r5";
-   GPR6,"r6";  GPR7,"r7";
-   GPR8,"r8";  GPR9,"r9";
-  ]
+let pp_reg r = r
 
-type reg =
-  | GPRreg of gpr_reg (* integer registers *)
-  | PC (* program counter *)
+let reg_compare = String.compare
 
-let pp_reg r =
-  try List.assoc r gpr_regs with
-  | Not_found -> assert false
-
-let pp_reg r =
-  match r with
-  | GPRreg(ir) -> pp_reg ir
-  | PC -> "pc"
-
-let reg_compare = Pervasives.compare
-
-let parse_list =
-  List.map (fun (r,s) -> s, GPRreg r) gpr_regs 
-
-let parse_reg s =
-  let s = String.lowercase s in
-  try Some (List.assoc s parse_list)
-  with Not_found -> None
-    
-let pc = PC
+let parse_reg s = Some s
 
 (*******************)
 (* Mem order stuff *)
@@ -110,20 +79,16 @@ let barrier_compare = Pervasives.compare
 (* Instructions *)
 (****************)
 
-type loc = SymbConstant.v
-
-type addr = AddrDirect of loc | AddrIndirect of reg
-
 type expression =
 | Econstant of SymbConstant.v
 | Eregister of reg
 | Eassign of reg * expression
 | Eeq of expression * expression
-| Estore  of addr * expression * mem_order 
-| Eload   of addr * mem_order
-| Ecas    of loc * loc * expression * mem_order * mem_order * bool
-| Elock   of loc
-| Eunlock of loc
+| Estore  of expression * expression * mem_order 
+| Eload   of expression * mem_order
+| Ecas    of expression * expression * expression * mem_order * mem_order * bool
+| Elock   of expression
+| Eunlock of expression
 | Efence  of mem_order
 | Ecomma of expression * expression
 | Eparen of expression
@@ -153,14 +118,6 @@ include Pseudo.Make
 
      end)
     
-let pp_loc = function
-  | Symbolic s -> s
-  | _ -> "concrete addresses not supported in C++11"
-
-let pp_addr = function
-  | AddrDirect loc -> pp_loc loc
-  | AddrIndirect r -> pp_reg r
-
 let pp_sop = function
   | Concrete i -> (sprintf "%d" i)
   | _ -> "only concrete store ops supported at this time in C++11"
@@ -168,29 +125,28 @@ let pp_sop = function
 let rec dump_expression e = match e with
   | Estore(loc,e,mo) ->
     (match mo with 
-    | NA -> sprintf("*%s = %s") 
-		   (pp_addr loc) (dump_expression e)
+    | NA -> sprintf "*%s = %s"  (pp_addr loc) (dump_expression e)
     | SC -> sprintf("atomic_store(%s,%s)") 
-		  (pp_addr loc) (dump_expression e)
+		  (dump_expression loc) (dump_expression e)
     | _ -> sprintf("atomic_store_explicit(%s,%s,%s)") 
-		  (pp_addr loc) (dump_expression e) (pp_mem_order mo))
+		  (dump_expression loc) (dump_expression e) (pp_mem_order mo))
   | Eload(loc,mo) ->
     (match mo with 
     | NA -> sprintf("*%s") 
 		   (pp_addr loc)
     | SC -> sprintf("atomic_load(%s)") 
-		  (pp_addr loc)
+		  (dump_expression loc)
     | _ -> sprintf("atomic_load_explicit(%s,%s)") 
-		  (pp_addr loc) (pp_mem_order mo))
+		  (dump_expression loc) (pp_mem_order mo))
   | Ecas(obj,exp,des,mo_success,mo_failure,strong) ->
     sprintf("%sCAS(%s,%s,%s,%s,%s)") 
       (if strong then "S" else "W")
-      (pp_loc obj) (pp_loc exp) (dump_expression des) 
+      (dump_expression obj) (dump_expression exp) (dump_expression des) 
       (pp_mem_order mo_success) (pp_mem_order mo_failure)     
   | Elock(loc) ->
-    sprintf("lock(%s)") (pp_loc loc)
+    sprintf("lock(%s)") (dump_expression loc)
   | Eunlock(loc) ->
-    sprintf("unlock(%s)") (pp_loc loc)
+    sprintf("unlock(%s)") (dump_expression loc)
   | Efence mo -> sprintf("fence(%s)") (pp_mem_order mo)
   | Econstant i -> pp_sop i
   | Eregister reg -> pp_reg reg
@@ -198,6 +154,11 @@ let rec dump_expression e = match e with
   | Eeq (e1,e2) -> sprintf "%s == %s" (dump_expression e1) (dump_expression e2)
   | Ecomma (e1,e2) -> sprintf "%s, %s" (dump_expression e1) (dump_expression e2)
   | Eparen e -> sprintf "(%s)" (dump_expression e)
+
+and pp_addr e = match e with
+  | Eregister _
+  | Eload (_,NA) -> dump_expression e
+  | _ -> sprintf "(%s)" (dump_expression e)
 
 let rec dump_instruction i = match i with
   | Pif(e,i1,i2) -> 
@@ -212,18 +173,12 @@ let rec dump_instruction i = match i with
    
 (* We don't have symbolic registers. This should be enough *)
 let fold_regs (f_reg,_f_sreg) = 
-  let _fold_reg reg (y_reg, y_sreg) = match reg with
-    | GPRreg _ -> f_reg reg y_reg, y_sreg
-    | _ -> y_reg, y_sreg in 
-  
+  let _fold_reg reg (y_reg, y_sreg) = f_reg reg y_reg, y_sreg in  
   fun (_y_reg,_y_sreg as c) ins -> match ins with
   | _ -> c
 
 let map_regs f_reg _f_symb = 
-  let _map_reg reg = match reg with
-    | GPRreg _ -> f_reg reg
-    | _ -> reg in
-
+  let _map_reg reg = f_reg reg in
   fun ins -> match ins with
   | _ -> ins
 
@@ -240,37 +195,9 @@ let is_data _reg _ins = Warn.fatal "C++11 is_data has not been implemented"
 
 let map_addrs _f _ins = Warn.fatal "C++11 map_addrs has not been implemented"
 
-(* There are addresses burried in code, similar to X86 *)
-let fold_addrs f =
-  let fold_addr c = function
-    | AddrDirect loc -> f loc c
-    | AddrIndirect _ -> c in
-  let rec fold_expr c = function
-    | Econstant _
-    | Eregister _
-    | Efence _ -> c
-    | Eassign (_,e) -> fold_expr c e
-    | Eeq (e1,e2) -> fold_expr (fold_expr c e1) e2
-    | Estore (loc,e,_) -> fold_expr (fold_addr c loc) e
-    | Eload (loc,_) -> fold_addr c loc
-    | Ecas (loc1,loc2,e,_,_,_) ->
-        f loc1 (f loc2 (fold_expr c e))
-    | Elock loc|Eunlock loc -> f loc c
-    | Ecomma (e1,e2) -> fold_expr (fold_expr c e1) e2
-    | Eparen e -> fold_expr c e in
+(* No address in code, addresses are declared parameters *)
+let fold_addrs _f c _i = c
 
-  let rec fold_ins c = function
-    | Pif (e,ifso,ifnot) ->
-        let c = fold_expr c e in
-        let c = fold_ins c ifso in
-        fold_ins c ifnot
-    | Pwhile (e,body) ->
-        let c = fold_expr c e in
-        fold_ins c body
-    | Pblock inss ->
-        List.fold_left fold_ins c inss
-    | Pexpr e -> fold_expr c e in
-  fold_ins
 
 let pp_instruction _m _ins = dump_instruction _ins
 

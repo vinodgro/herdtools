@@ -104,11 +104,8 @@ rule token = parse
 | "SCAS"  { SCAS }
 | "unlock"    { UNLOCK }
 | "LK" { LK }
-| name as x { 
-  match CPP11Base.parse_reg x with
-  | Some r -> ARCH_REG r
-  | None -> tr_name x 
-  }
+| name as x
+    { tr_name x  }
 | eof { EOF }
 | "" { LexMisc.error "C lexer" lexbuf }
 

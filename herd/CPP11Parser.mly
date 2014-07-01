@@ -6,7 +6,6 @@ open CType
 
 %token EOF
 %token LK
-%token <CPP11Base.reg> ARCH_REG
 %token <int> CONSTANT
 %token <string> IDENTIFIER
 %token <string> ATOMIC_TYPE
@@ -48,41 +47,39 @@ main:
     (proc_list, Some additional) }
 
 primary_expression:
-| ARCH_REG 
+| IDENTIFIER
   { Eregister $1 }
 | CONSTANT 
   { Econstant (Concrete $1) }
-| loc
-  { Econstant $1 }
 | LPAR expression RPAR 
   { Eparen $2 }
 
 postfix_expression:
 | primary_expression 
   { $1 }
-| ST LPAR addr COMMA assignment_expression RPAR
+| ST LPAR assignment_expression COMMA assignment_expression RPAR
   { Estore ($3, $5, CPP11Base.SC) }
-| ST_EXPLICIT LPAR addr COMMA assignment_expression COMMA MEMORDER RPAR
+| ST_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
   { Estore ($3, $5, $7) }
-| LD LPAR addr RPAR
+| LD LPAR assignment_expression RPAR
   { Eload ($3, CPP11Base.SC) }
-| LD_EXPLICIT LPAR addr COMMA MEMORDER RPAR
+| LD_EXPLICIT LPAR assignment_expression COMMA MEMORDER RPAR
   { Eload ($3, $5) }
 | FENCE LPAR MEMORDER RPAR
   { Efence ($3) }
-| LOCK LPAR loc RPAR
+| LOCK LPAR assignment_expression RPAR
   { Elock ($3) }
-| UNLOCK LPAR loc RPAR
+| UNLOCK LPAR assignment_expression RPAR
   { Eunlock ($3) }
-| WCAS LPAR loc COMMA loc COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
+| WCAS LPAR  assignment_expression COMMA assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
   { Ecas ($3,$5,$7,$9,$11,false) }
-| SCAS LPAR loc COMMA loc COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
+| SCAS LPAR  assignment_expression COMMA  assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
   { Ecas ($3,$5,$7,$9,$11,true) }
 
 unary_expression:
 | postfix_expression 
   { $1 }
-| STAR addr
+| STAR unary_expression
   { Eload ($2, CPP11Base.NA) }
 
 cast_expression:
@@ -127,10 +124,10 @@ conditional_expression:
 assignment_expression:
 | conditional_expression 
   { $1 }
-| ARCH_REG assignment_operator assignment_expression
+| IDENTIFIER assignment_operator assignment_expression
   { Eassign ($1, $3) }
-| STAR addr assignment_operator assignment_expression
-  { Estore ($2, $4, CPP11Base.NA) }
+| STAR IDENTIFIER assignment_operator assignment_expression
+  { Estore (Eregister $2, $4, CPP11Base.NA) }
 
 assignment_operator:
 | EQ { () }
@@ -143,9 +140,9 @@ declaration:
 | typ  init_declarator SEMI  { $2; }
 
 init_declarator:
-| ARCH_REG
+| IDENTIFIER
   { Pblock [] }
-| ARCH_REG EQ initialiser 
+| IDENTIFIER EQ initialiser 
   { Pexpr (Eassign ($1, $3)) }
 
 parameter_type_list:
@@ -219,13 +216,6 @@ function_definition:
   { { CAst.proc = $1; 
       CAst.params = $3; 
       CAst.body = List.map (fun ins -> Instruction ins) $5 } }
-
-loc:
-| IDENTIFIER { Symbolic $1 }
-
-addr:
-| loc { AddrDirect $1 }
-| ARCH_REG { AddrIndirect $1 }
 
 typstar:
 | typ STAR { Pointer $1 }
