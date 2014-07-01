@@ -304,6 +304,12 @@ module Make
 
 (* Showing bound variables, (-doshow option) *)
 
+      let find_show_rel env x =
+        try
+          rt_loc
+            (as_rel (Lazy.force (StringMap.find x env)))
+        with Not_found -> E.EventRel.empty in
+
       let doshow bds st =
         let to_show =
           StringSet.inter S.O.PC.doshow (StringSet.of_list (List.map fst bds)) in
@@ -312,7 +318,8 @@ module Make
           let show = lazy begin
             StringSet.fold
               (fun x show  ->
-                StringMap.add x (rt_loc (eval_rel st.env (Var x))) show)
+                let r = find_show_rel st.env x in
+                StringMap.add x r show)
               to_show
               (Lazy.force st.show)
           end in
@@ -325,7 +332,7 @@ module Make
           let show = lazy begin              
             List.fold_left
               (fun show x ->
-                StringMap.add x (rt_loc (eval_rel st.env (Var x))) show)
+                StringMap.add x (find_show_rel st.env x) show)
               (Lazy.force st.show) xs
           end in
           run { st with show;} c
