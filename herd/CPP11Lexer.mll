@@ -57,6 +57,7 @@ let tr_name = function
 | "atomic_ptrdiff_t" -> ATOMIC_TYPE "__PTRDIFF_TYPE__"
 | "atomic_intmax_t" -> ATOMIC_TYPE "__INTMAX_TYPE__"
 | "atomic_uintmax_t" -> ATOMIC_TYPE "__UINTMAX_TYPE__"
+| "NULL" -> NULL
 |  x -> IDENTIFIER x
 
 }
@@ -78,6 +79,11 @@ rule token = parse
 | '|' { PIPE }
 | ':' { COLON }
 | '*' { STAR }
+| '/' { DIV }
+| '+' { ADD }
+| '-' { SUB }
+| '^' { XOR }
+| '&' { LAND }
 | '(' { LPAR }
 | ')' { RPAR }
 | '{' { LBRACE }
@@ -87,6 +93,7 @@ rule token = parse
 | "else"  { ELSE }
 | '=' {EQ}
 | "==" {EQ_OP}
+| "!=" {NEQ_OP}
 | '.' {DOT}
 | "memory_order_acquire" {MEMORDER (CPP11Base.Acq)}
 | "memory_order_release" {MEMORDER (CPP11Base.Rel)}
