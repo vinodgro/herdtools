@@ -12,6 +12,10 @@ open CType
 %token <int> PROC
 %token NULL
 %token SEMI COMMA PIPE COLON LPAR RPAR EQ EQ_OP NEQ_OP DOT LBRACE RBRACE STAR
+%token XOR
+%token LAND
+%token ADD SUB
+%token MUL DIV
 %token WHILE IF ELSE
 
 %nonassoc LOWER_THAN_ELSE /* This fixes the dangling-else problem */
@@ -90,9 +94,17 @@ cast_expression:
 
 multiplicative_expression:
 | cast_expression { $1 }
+| multiplicative_expression STAR cast_expression
+   { Eop (Op.Mul,$1,$3) }
+| multiplicative_expression DIV cast_expression
+   { Eop (Op.Div,$1,$3) }
 
 additive_expression:
 | multiplicative_expression { $1 }
+| additive_expression ADD multiplicative_expression
+  { Eop (Op.Add,$1,$3) }
+| additive_expression SUB multiplicative_expression
+  { Eop (Op.Sub,$1,$3) }
 
 shift_expression:
 | additive_expression { $1 }
@@ -107,14 +119,21 @@ equality_expression:
   { Eop (Op.Eq,$1,$3) }
 | equality_expression NEQ_OP relational_expression 
   { Eop (Op.Ne,$1,$3) }
+
 and_expression:
 | equality_expression { $1 }
+| and_expression LAND  equality_expression
+  { Eop (Op.And,$1,$3) }
 
 exclusive_or_expression:
 | and_expression { $1 }
+| exclusive_or_expression XOR  and_expression
+  { Eop (Op.Xor,$1,$3) }
 
 inclusive_or_expression: 
 | exclusive_or_expression { $1 }
+| inclusive_or_expression PIPE exclusive_or_expression
+  { Eop (Op.Or,$1,$3) }
 
 logical_and_expression: 
 | inclusive_or_expression { $1 }

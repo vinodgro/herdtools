@@ -79,6 +79,11 @@ rule token = parse
 | '|' { PIPE }
 | ':' { COLON }
 | '*' { STAR }
+| '/' { DIV }
+| '+' { ADD }
+| '-' { SUB }
+| '^' { XOR }
+| '&' { LAND }
 | '(' { LPAR }
 | ')' { RPAR }
 | '{' { LBRACE }
