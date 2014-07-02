@@ -1,0 +1,18 @@
+C MP_relcon_addr+REAL
+
+{ y = 0 ; p = y; }
+
+P0 (_Atomic (int *) *p,volatile int* x) {
+  *x = 1;
+  atomic_store_explicit(p,x,memory_order_release);
+}
+
+P1 (_Atomic (int *) *p,volatile int* x) {
+  int *r0 = atomic_load_explicit(p,memory_order_consume);
+  int r1 = -1;
+  if (r0 == x) {
+    r1 = *r0;
+  }
+}
+
+~exists (1:r0=x /\ 1:r1=0)
