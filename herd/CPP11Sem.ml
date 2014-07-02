@@ -48,17 +48,14 @@ module Make (C:Sem.Config)(V:Value.S)
       | CPP11.Econstant v -> 	
         M.unitT (V.maybevToV v)
 
-
       | CPP11.Eregister reg ->
-        read_reg reg ii >>= fun v -> 
-        M.unitT v
+        read_reg reg ii 
 
       | CPP11.Eassign (reg,e) ->
         (* TODO: This might not be right, since there is no
            sequence point at an assignment *)
         build_semantics_expr e ii >>= fun v ->
-        write_reg reg v ii >>! 
-        v
+        write_reg reg v ii 
 
       | CPP11.Eeq (e1, e2) ->
         build_semantics_expr e1 ii >>| 
