@@ -83,7 +83,7 @@ type expression =
 | Econstant of SymbConstant.v
 | Eregister of reg
 | Eassign of reg * expression
-| Eeq of expression * expression
+| Eop of Op.op * expression * expression
 | Estore  of expression * expression * mem_order 
 | Eload   of expression * mem_order
 | Ecas    of expression * expression * expression * mem_order * mem_order * bool
@@ -151,7 +151,8 @@ let rec dump_expression e = match e with
   | Econstant i -> pp_sop i
   | Eregister reg -> pp_reg reg
   | Eassign(reg,e) -> sprintf "%s = %s" (pp_reg reg) (dump_expression e)
-  | Eeq (e1,e2) -> sprintf "%s == %s" (dump_expression e1) (dump_expression e2)
+  | Eop (op,e1,e2) ->
+      sprintf "%s %s %s" (dump_expression e1) (Op.pp_op op) (dump_expression e2)
   | Ecomma (e1,e2) -> sprintf "%s, %s" (dump_expression e1) (dump_expression e2)
   | Eparen e -> sprintf "(%s)" (dump_expression e)
 

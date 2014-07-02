@@ -60,10 +60,10 @@ module Make (C:Sem.Config)(V:Value.S)
         write_reg reg v ii >>! 
         v
 
-      | CPP11.Eeq (e1, e2) ->
+      | CPP11.Eop (op, e1, e2) ->
         build_semantics_expr e1 ii >>| 
         build_semantics_expr e2 ii >>= fun (v1,v2) ->
-        M.op Op.Eq v1 v2
+        M.op op v1 v2
 
       | CPP11.Estore(loc,e,mo) ->
           build_semantics_expr loc ii >>| 

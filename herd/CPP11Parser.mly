@@ -10,7 +10,8 @@ open CType
 %token <string> IDENTIFIER
 %token <string> ATOMIC_TYPE
 %token <int> PROC
-%token SEMI COMMA PIPE COLON LPAR RPAR EQ EQ_OP DOT LBRACE RBRACE STAR
+%token NULL
+%token SEMI COMMA PIPE COLON LPAR RPAR EQ EQ_OP NEQ_OP DOT LBRACE RBRACE STAR
 %token WHILE IF ELSE
 
 %nonassoc LOWER_THAN_ELSE /* This fixes the dangling-else problem */
@@ -51,6 +52,8 @@ primary_expression:
   { Eregister $1 }
 | CONSTANT 
   { Econstant (Concrete $1) }
+| NULL
+  { Econstant (Concrete 0) }
 | LPAR expression RPAR 
   { Eparen $2 }
 
@@ -101,8 +104,9 @@ equality_expression:
 | relational_expression 
   { $1 }
 | equality_expression EQ_OP relational_expression 
-  { Eeq ($1,$3) }
-
+  { Eop (Op.Eq,$1,$3) }
+| equality_expression NEQ_OP relational_expression 
+  { Eop (Op.Ne,$1,$3) }
 and_expression:
 | equality_expression { $1 }
 
