@@ -33,15 +33,26 @@ module Make
       | Test of A.Out.t
       | Global of string
 
+    let rec compat t1 t2 =
+      let open CType in
+      match t1,t2 with
+      | Base s1,Base s2 -> s1 = s2
+      | (Volatile t1|Atomic t1),_ -> compat t1 t2
+      | _,(Volatile t2|Atomic t2) -> compat t1 t2
+      | Pointer t1,Pointer t2 -> compat t1 t2
+      | _,_ -> false
+
     let add_param {CAst.param_ty; param_name} env =
       let ty = CType.strip_volatile param_ty in
       try
         let oty = StringMap.find param_name env in
-        if oty <> ty then
+        if compat oty ty then StringMap.add param_name ty env
+        else begin
           Warn.warn_always
             "Parameter %s, type mismatch %s vs. %s\n"
             param_name (CType.dump oty) (CType.dump ty) ;
-        env
+          env
+        end
       with Not_found ->
         StringMap.add param_name ty env
 
