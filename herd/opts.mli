@@ -54,6 +54,7 @@ module PP : sig
   val gv : bool ref
   val showevents : showevents ref
   val texmacros : bool ref
+  val tikz : bool ref
   val hexa : bool ref
   val mono : bool ref
   val fontname : string option ref

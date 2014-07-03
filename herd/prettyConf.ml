@@ -96,6 +96,7 @@ module type S = sig
   val dotmode : dotmode
   val showevents : showevents
   val texmacros : bool
+  val tikz : bool
   val hexa : bool
   val mono : bool
   val fontname : string option
