@@ -17,7 +17,7 @@ module Make (C:Sem.Config)(V:Value.S)
   struct
 
     module GPU_PTX = GPU_PTXArch.Make(C.PC)(V)
-    module Act = MachAction.Make(GPU_PTX)
+    module Act = GPU_PTXAction.Make(GPU_PTX)
     include SemExtra.Make(C)(GPU_PTX)(Act)
 
 (* barrier pretty print *)
@@ -39,17 +39,17 @@ module Make (C:Sem.Config)(V:Value.S)
     let (>>::) = M.(>>::)
     let (>>!) = M.(>>!)
 
-    let mk_read ato loc v = Act.Access (Dir.R, loc, v, ato)
+    let mk_read ato cop loc v = Act.Access (Dir.R, loc, v, ato, cop)
 
     let read_reg r ii = 
-      M.read_loc (mk_read false) (A.Location_reg (ii.A.proc,r)) ii
-    let read_mem a ii = 
-      M.read_loc (mk_read false) (A.Location_global a) ii
+      M.read_loc (mk_read false GPU_PTXBase.NCOP) (A.Location_reg (ii.A.proc,r)) ii
+    let read_mem cop a ii = 
+      M.read_loc (mk_read false cop) (A.Location_global a) ii
 
     let write_reg r v ii = 
-      M.mk_singleton_es (Act.Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
-    let write_mem a v ii = 
-      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, false)) ii
+      M.mk_singleton_es (Act.Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false, GPU_PTXBase.NCOP)) ii
+    let write_mem cop a v ii = 
+      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, false, cop)) ii
 
     let create_barrier b ii = 
       M.mk_singleton_es (Act.Barrier b) ii
@@ -67,26 +67,26 @@ module Make (C:Sem.Config)(V:Value.S)
     let build_semantics ii = 
       M.addT (A.next_po_index ii.A.program_order_index)
         begin match ii.A.inst with
-      | GPU_PTX.Pld(reg1,reg2,_,_cop,_) ->
+      | GPU_PTX.Pld(reg1,reg2,_,cop,_) ->
 	read_reg reg2 ii >>= 
-	    (fun addr -> read_mem addr ii) >>=
+	    (fun addr -> read_mem cop addr ii) >>=
 	    (fun v -> write_reg reg1 v ii) >>!
 	  B.Next
 
-      | GPU_PTX.Pst(reg1,reg2,_,_cop,_) -> 
+      | GPU_PTX.Pst(reg1,reg2,_,cop,_) -> 
 	read_reg reg1 ii >>| read_reg reg2 ii >>=
-	    (fun (addr,v) -> write_mem addr v ii) >>!
+	    (fun (addr,v) -> write_mem cop addr v ii) >>!
 	      B.Next 
 
       | GPU_PTX.Pldvol(reg1,reg2,_,_) ->
 	read_reg reg2 ii >>= 
-	    (fun addr -> read_mem addr ii) >>=
+	    (fun addr -> read_mem GPU_PTXBase.NCOP addr ii) >>=
 	    (fun v -> write_reg reg1 v ii) >>!
 	  B.Next
 
       | GPU_PTX.Pstvol(reg1,reg2,_,_) ->
 	read_reg reg1 ii >>| read_reg reg2 ii >>=
-	    (fun (addr,v) -> write_mem addr v ii) >>!
+	    (fun (addr,v) -> write_mem GPU_PTXBase.NCOP addr v ii) >>!
 	      B.Next 
 
       | GPU_PTX.Pmov(reg1,op,_) ->

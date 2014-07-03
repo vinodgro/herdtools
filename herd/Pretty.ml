@@ -441,7 +441,6 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
       else lbl in
     let lbl =
       if PC.tikz then
-        let {color=color ; style=style; } = get_ea (fun x -> x) lbl in
         sprintf "{\\small %s}" lbl
       else lbl in
     escape_label dm lbl
