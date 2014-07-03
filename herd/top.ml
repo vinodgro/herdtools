@@ -24,6 +24,7 @@ module type Config = sig
   val suffix : string
   val dumpes : bool
   val dumplem : bool
+  val badexecs : bool
   include Mem.Config
 end
 
@@ -335,10 +336,11 @@ module Make(O:Config)(M:XXXMem.S) =
       | NonAmbiguous when c.cands <> nfinals -> do_show ()
       | CondOne when c.pos <> count_prop test finals -> do_show ()
       | _ ->
-          begin
+        try begin
 (* Header *)
         let tname = test.Test.name.Name.name in
-        printf "Test %s %s\n" tname (C.dump_as_kind cstr) ;
+        if not O.badexecs &&  c.bad <> [] then raise Exit ;
+        printf "Test %s %s\n" tname (C.dump_as_kind cstr) ;        
 (**********)
 (* States *)
 (**********)
@@ -383,6 +385,6 @@ module Make(O:Config)(M:XXXMem.S) =
                 printf "%s=%s\n" k v)
             test.Test.info ;
         print_newline ()
-      end ;
+      end with Exit -> () ;
       ()
   end

@@ -30,6 +30,7 @@ let unroll = ref 2
 let speedcheck = ref Speed.False
 let optace = ref None
 let initwrites = ref None
+let badexecs = ref true
 let through = ref Model.ThroughNone
 let skipchecks = ref StringSet.empty
 let strictskip = ref false

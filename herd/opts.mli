@@ -29,6 +29,7 @@ val unroll : int ref
 val speedcheck : Speed.t ref
 val optace : bool option ref
 val initwrites : bool option ref
+val badexecs : bool ref
 val through : Model.through ref
 val skipchecks : StringSet.t ref
 val strictskip : bool ref
