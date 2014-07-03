@@ -54,6 +54,7 @@ module PP = struct
   let evince = ref false
   let showevents = ref NonRegEvents
   let texmacros = ref false
+  let tikz = ref false
   let hexa = ref false
   let mono = ref false
   let fontname = ref None

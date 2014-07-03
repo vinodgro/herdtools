@@ -213,7 +213,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
      }
 
   let ea_t = Hashtbl.create 17
-  let def_ea = {color="" ; style="" }
+  let def_ea = {color="black" ; style="" }
 
   let add_ea key a1 a2 = Hashtbl.add ea_t key (a1,a2)
   let add_eas lbls a1 a2 =
@@ -439,6 +439,11 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
         else
           lbl ^ String.make sz ' '
       else lbl in
+    let lbl =
+      if PC.tikz then
+        let {color=color ; style=style; } = get_ea (fun x -> x) lbl in
+        sprintf "{\\small %s}" lbl
+      else lbl in
     escape_label dm lbl
 
   let pp_thread chan i =
@@ -475,9 +480,13 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
         (pp_edge_label movelbl lbl) ;
       if not (overridden "color") then begin
         pp_attr chan "color" color ;
-        pp_attr chan "fontcolor" color
+        if not (PC.tikz) then
+          pp_attr chan "fontcolor" color
       end ;
-      if not (overridden "fontsize") then pp_fontsize_edge chan ;
+      if PC.tikz then 
+        pp_attr chan "lblstyle" "auto";
+      if not PC.tikz && not (overridden "fontsize") then
+        pp_fontsize_edge chan;
       if not (overridden "penwidth") then pp_penwidth chan ;
       if not (overridden "arrowsize") then pp_arrowsize chan ;
       if not (overridden "style") then

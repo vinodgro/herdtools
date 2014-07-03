@@ -263,6 +263,7 @@ let options = [
   parse_bool "-brackets" PP.brackets
     "show brackets around locations in pictures" ;
   parse_bool "-texmacros" PP.texmacros "use latex commands in output";
+  parse_bool "-tikz" PP.tikz "generate dot files suitable for processing with TikZ";
 (* Edge selection *)
   parse_bool "-showpo" PP.showpo "show po edges in pictures" ;
   parse_bool "-showinitrf" PP.showinitrf
@@ -442,6 +443,7 @@ let () =
       let evince = !PP.evince
       let showevents = !PP.showevents
       let texmacros = !PP.texmacros
+      let tikz = !PP.tikz
       let hexa = !PP.hexa
       let mono = !PP.mono
       let fontname = !PP.fontname
