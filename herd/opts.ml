@@ -96,7 +96,9 @@ module PP = struct
 
   let doshow = ref StringSet.empty
   let unshow = ref StringSet.empty
+  let symetric = ref StringSet.empty
   let extrachars = ref 0.0
   let shift = ref [| |]
+  let edgemerge = ref false
 end
 

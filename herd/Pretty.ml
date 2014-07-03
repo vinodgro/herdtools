@@ -451,56 +451,183 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
       else "" in
     fprintf chan "%s" (escape_label dm pp)
 
+  module StringPair = struct
+    type t = string * string
+
+    let compare (e1,e2) (e3,e4) =
+      match String.compare e1 e3 with
+      | 0 ->  String.compare e2 e4
+      | r -> r
+  end
+
+  module PairSet = MySet.Make(StringPair)
+  module PairMap = MyMap.Make(StringPair)
+
+  type info = { ikey:string; icolor:string; }
+
+  let edges = ref PairMap.empty
+  let edges_seen = ref PairSet.empty
+
+  let reset_pairs () =    
+    edges := PairMap.empty ;
+    edges_seen := PairSet.empty ;
+    ()
+
+  let find_pair p m =
+    try PairMap.find p m with Not_found -> []
+  
+  let do_add_pair p i m =
+    let old = find_pair p m in
+    PairMap.add p (i::old) m
+
+  let add_end p i m =
+    let old = find_pair p m in
+    PairMap.add p (old@[i]) m
+      
+  let handle_symetric m =
+    let yes,no =
+      PairMap.fold
+        (fun (n1,n2 as p) infos (m_yes,m_no) ->
+          let yes,no =
+            List.partition
+              (fun i -> StringSet.mem i.ikey PC.symetric)
+              infos in
+          let m_yes =
+            let q =
+              if String.compare n2 n1 < 0 then (n2,n1) else p in
+            List.fold_left
+              (fun m_yes i -> ((q,i)::m_yes))
+              m_yes yes
+          and m_no =
+            match no with
+            | [] -> m_no
+            | _ -> PairMap.add p no m_no in
+          m_yes,m_no)
+        m ([],PairMap.empty) in
+    let new_m,rem =
+      List.fold_left
+        (fun (new_m,rem) ((n1,n2 as p),i) ->
+          let q = n2,n1 in
+          let no_p = find_pair p no
+          and no_q = find_pair q no in
+          match no_p,no_q with
+          | [],[] -> new_m,(p,i)::rem
+          | [],_ -> add_end q i new_m,rem
+          | _,[] -> add_end p i new_m,rem
+          | _,_  -> add_end p i (add_end q i new_m),rem)
+        (no,[]) yes in
+    List.fold_left (fun m (p,i) -> do_add_pair p i m) new_m rem
+
+  let dump_pairs chan =
+    let new_edges = handle_symetric !edges in
+    PairMap.iter
+      (fun (n1,n2) infos ->
+        let all_syms =
+          List.for_all
+            (fun i -> StringSet.mem i.ikey PC.symetric)
+            infos in
+        let colors =
+          String.concat ":"
+            (List.map (fun i -> i.icolor) infos)
+        and lbl =
+          String.concat ","
+            (List.map
+               (fun i ->
+                 let pp_label = pp_edge_label false i.ikey in
+                 sprintf "<font color=\"%s\">%s</font>"
+                   i.icolor pp_label) infos) in        
+        fprintf chan "%s -> %s [label=<%s>, color=\"%s\""
+          n1 n2 lbl colors ;
+        pp_fontsize_edge chan ;
+        pp_penwidth chan ;
+        pp_arrowsize chan ;
+        if all_syms then pp_attr chan "arrowhead" "none" ;
+        fprintf chan "];\n" ;
+        ())
+      new_edges ;
+    reset_pairs ()
+
+  let add_pair p i = edges := do_add_pair p i !edges
+
+  let do_merge_edge n1 n2 lbl def_color =
+    let color = 
+      try
+        DotEdgeAttr.find lbl "color" PC.edgeattrs
+      with Not_found ->
+        let {color;_} = get_ea def_color lbl in
+        color in
+    add_pair (n1,n2) {ikey=lbl; icolor=color; }
+
+  let real_do_pp_edge
+      chan n1 n2 lbl def_color override_style extra_attr backwards
+      movelbl
+      =
+
+    let backwards = match PC.graph with
+    | Graph.Cluster|Graph.Free -> false
+    | Graph.Columns ->
+        if lbl = "po" then false
+        else backwards in
+
+    let overridden a =
+      try
+        ignore (DotEdgeAttr.find lbl a PC.edgeattrs) ; true
+      with Not_found -> false in
+
+    let {color=color ; style=style; } = get_ea def_color lbl in
+    fprintf chan "%s -> %s [%s=\"%s\""
+      (if backwards then n2 else n1)
+      (if backwards then n1 else n2)      
+      (if PC.movelabel && movelbl then "taillabel" else "label")
+      (pp_edge_label movelbl lbl) ;
+
+    if StringSet.mem lbl PC.symetric then pp_attr chan "arrowhead" "none" ;
+    if not (overridden "color") then begin
+      pp_attr chan "color" color ;
+      pp_attr chan "fontcolor" color
+    end ;
+    if not (overridden "fontsize") then pp_fontsize_edge chan ;
+    if not (overridden "penwidth") then pp_penwidth chan ;
+    if not (overridden "arrowsize") then pp_arrowsize chan ;
+    if not (overridden "style") then
+      pp_attr chan "style"
+        (if override_style = "" then style  else override_style) ;
+    pp_extra chan extra_attr ;
+    if backwards then pp_attr chan "dir" "back" ;
+    List.iter
+      (fun (a,v) -> match a with
+      | "color" ->
+          pp_attr chan "color" v ;
+          pp_attr chan "fontcolor" v
+      | _ ->
+          pp_attr chan a v)
+      (DotEdgeAttr.find_all lbl PC.edgeattrs) ;
+    fprintf chan "];\n" ;
+    ()
+
   let do_pp_edge
       chan n1 n2 lbl def_color override_style extra_attr backwards
       movelbl
       =
-    if StringSet.mem lbl PC.unshow then ()
-    else
-      let backwards = match PC.graph with
-      | Graph.Cluster|Graph.Free -> false
-      | Graph.Columns ->
-          if lbl = "po" then false
-          else backwards in
-
-      let overridden a =
-        try
-          ignore (DotEdgeAttr.find lbl a PC.edgeattrs) ; true
-        with Not_found -> false in
-
-      let {color=color ; style=style; } = get_ea def_color lbl in
-      fprintf chan "%s -> %s [%s=\"%s\""
-        (if backwards then n2 else n1) (if backwards then n1 else n2)
-        (if PC.movelabel && movelbl then "taillabel" else "label")
-        (pp_edge_label movelbl lbl) ;
-      if not (overridden "color") then begin
-        pp_attr chan "color" color ;
-        pp_attr chan "fontcolor" color
+    try
+      if StringSet.mem lbl PC.unshow then raise Exit ;
+      if StringSet.mem lbl PC.symetric then begin
+        if
+          PairSet.mem (n1,n2) !edges_seen ||
+          PairSet.mem (n2,n1) !edges_seen
+        then raise Exit ;
+        edges_seen := PairSet.add (n1,n2) !edges_seen
       end ;
-      if not (overridden "fontsize") then pp_fontsize_edge chan ;
-      if not (overridden "penwidth") then pp_penwidth chan ;
-      if not (overridden "arrowsize") then pp_arrowsize chan ;
-      if not (overridden "style") then
-        pp_attr chan "style"
-          (if override_style = "" then style  else override_style) ;
-      pp_extra chan extra_attr ;
-      if backwards then pp_attr chan "dir" "back" ;
-      List.iter
-        (fun (a,v) -> match a with
-        | "color" ->
-            pp_attr chan "color" v ;
-            pp_attr chan "fontcolor" v
-        | _ ->
-            pp_attr chan a v)
-        (DotEdgeAttr.find_all lbl PC.edgeattrs) ;
-      fprintf chan "];\n" ;
-      ()
+      if PC.edgemerge then
+        do_merge_edge n1 n2 lbl def_color
+      else
+        real_do_pp_edge
+          chan n1 n2 lbl def_color override_style extra_attr backwards
+          movelbl
+    with Exit -> ()
 
   let pp_edge chan n1 n2 lbl backwards =
     do_pp_edge chan n1 n2 lbl (fun x -> x) "" "" backwards
-
-  let _pp_dashed_edge chan n1 n2 lbl backwards =
-    do_pp_edge chan n1 n2 lbl (fun x -> x) "dashed" "" backwards      
 
   let pp_point chan n lbl pos =
     let {color=color;_} = get_ea (fun x -> x) lbl in
@@ -717,8 +844,8 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
         pp_attr chan "fixedsize" "true" ;
         pp_attr chan "height"
           (sprintf "%f"
-           (if PC.fixedsize then boxheight
-           else fscale *. dsize)) ;
+             (if PC.fixedsize then boxheight
+             else fscale *. dsize)) ;
         pp_attr chan "width"
           (sprintf "%f"
 (* For neato to route splines... *)
@@ -899,7 +1026,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
 
     
 
-
+    reset_pairs () ;
     pl "digraph G {" ;
     pl "" ;
     begin match PC.dotheader with
@@ -995,6 +1122,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
             vbs)
         vbss
     end ;
+    dump_pairs chan ;
     pl "}"
 
 (*********************************************)

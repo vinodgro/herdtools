@@ -68,6 +68,9 @@ let lex_float_opt r arg =
 let lex_string_opt v arg =
   v := lex_some "string" (fun s -> s) arg
 
+let lex_stringset v arg =
+  let es =  Misc.split_comma arg in
+  v := StringSet.union (StringSet.of_list es) !v
 
 open Lexing 
 let dolex main fname =
@@ -122,13 +125,7 @@ and opt = parse
        "through" Model.parse_through Model.tags_through
        through arg }
 | "skipchecks" arg
-   { 
-     let tags = Misc.split_comma arg in
-     List.iter
-       (fun tag ->
-         skipchecks := StringSet.add tag !skipchecks)
-       tags
-   }
+   { lex_stringset skipchecks arg }
 | "strictskip" arg
    { lex_bool strictskip arg }
 | "unroll" arg
@@ -217,16 +214,12 @@ and opt = parse
 | "fixedsize" arg { lex_bool PP.fixedsize arg }
 | "extrachars" arg { lex_float PP.extrachars arg }
 | "dotheader" arg { PP.dotheader := Some arg }
-| "unshow" arg
-    {
-      let es =  Misc.split_comma arg in
-      PP.unshow := StringSet.union (StringSet.of_list es) !PP.unshow
-   }
 | "doshow" arg
-    {
-      let es =  Misc.split_comma arg in
-      PP.doshow := StringSet.union (StringSet.of_list es) !PP.doshow
-   }
+    { lex_stringset PP.doshow arg }
+| "unshow" arg
+    { lex_stringset PP.unshow arg }
+| "symetric" arg
+    { lex_stringset PP.symetric arg }
 | "edgeattr" arg
   {
     match Misc.split_comma arg with
@@ -245,6 +238,8 @@ and opt = parse
         fs in
     PP.shift := Array.of_list fs
    }
+| "edgemerge" arg
+   { lex_bool PP.edgemerge arg }
 (* Errors *)
 | ['a'-'z''A'-'Z']+ as key
    { error (sprintf "Unkown key '%s' in configuration file" key) }
