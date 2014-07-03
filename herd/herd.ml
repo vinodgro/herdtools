@@ -127,6 +127,8 @@ let options = [
    "switch something") ;
   ("-web",
    Arg.Unit (fun () -> load_config "web.cfg")," alias for -conf web.cfg");
+  ("-c11",
+   Arg.Unit (fun () -> load_config "cpp11.cfg")," alias for -conf cpp11.cfg");
   parse_tag
     "-debug"
     (fun tag -> match Debug.parse !debug tag with
@@ -189,6 +191,7 @@ let options = [
   "-nshow",
   Arg.Int (fun n -> nshow := Some n),
   "<n> collect at most <n> pictures, default is to collect all (specified) pictures";
+  parse_bool "-badexecs" badexecs "list results of bad executions" ;
 (* undocumented *)
   "-showone",
   Arg.Bool (fun b -> if b then nshow := Some 1),
@@ -406,6 +409,7 @@ let () =
     let strictskip = !strictskip
     let outcomereads = !outcomereads
     let show = !show
+    let badexecs = !badexecs 
 
     let check_name = match names with
     | None -> fun _ -> true
