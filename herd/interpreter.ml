@@ -421,9 +421,13 @@ module Make
 
       let show =
         lazy begin
-          List.fold_left
-            (fun show (tag,v) -> StringMap.add tag v show)
-            StringMap.empty (Lazy.force vb_pp)
+          let show =
+            List.fold_left
+              (fun show (tag,v) -> StringMap.add tag v show)
+              StringMap.empty (Lazy.force vb_pp) in
+          StringSet.fold
+            (fun tag show -> StringMap.add tag (find_show_rel m tag) show)
+            S.O.PC.doshow show
         end in
       run {env=m; show=show; 
         seen_requires_clause=false;
