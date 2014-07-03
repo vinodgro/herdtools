@@ -484,7 +484,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
           pp_attr chan "fontcolor" color
       end ;
       if PC.tikz then 
-        pp_attr chan "lblstyle" "auto";
+        pp_attr chan "lblstyle" "auto, midway, inner sep=0.7mm";
       if not PC.tikz && not (overridden "fontsize") then
         pp_fontsize_edge chan;
       if not (overridden "penwidth") then pp_penwidth chan ;
