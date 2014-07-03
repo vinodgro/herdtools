@@ -85,6 +85,14 @@ let parse_string opt v msg =
   Arg.String (fun s -> v := s),
   sprintf "<string> %s, default %s" msg !v
 
+let parse_stringset opt v msg =
+  opt,
+  Arg.String
+    (fun tag ->
+      let es = Misc.split_comma tag in
+      v := StringSet.union (StringSet.of_list es) !v),
+  sprintf "<name,..,name> %s" msg
+
 (* Option list *)
 
 let load_config s =  LexConf.lex (MyLib.find s)
@@ -251,6 +259,7 @@ let options = [
           fs in
       PP.shift := Array.of_list fs),
   "<float,...,float> add vertical space at thread start (column mode only)";
+  parse_bool "-edgemerge" PP.edgemerge "merhe edges, cppmem style" ;
 (* Legend *)
   parse_bool "-showlegend" PP.showlegend  "show legend in pictures" ;
   parse_bool "-showkind" showkind  "show test kind in legends" ;
@@ -279,18 +288,10 @@ let options = [
     "show from-read edges in pictures" ;
   parse_bool "-showinitwrites" PP.showinitwrites
     "show init write events in pictures" ;
- "-unshow",
-  Arg.String
-    (fun tag ->
-      let es = Misc.split_comma tag in
-      PP.unshow := StringSet.union (StringSet.of_list es) !PP.unshow),
-  "<name,..,name> do not show those edges";
- "-doshow",
-  Arg.String
-    (fun tag ->
-      let es = Misc.split_comma tag in
-      PP.doshow := StringSet.union (StringSet.of_list es) !PP.doshow),
-  "<name,..,name> do show those edges";
+ parse_stringset "-doshow" PP.doshow "show those edges";
+ parse_stringset "-unshow" PP.unshow "do not show those edges" ;
+ parse_stringset "-symetric" PP.symetric "declare those edges as symetric" ;
+
 (* DOT contents control *)
   parse_tag "-splines"
     (fun tag -> match Splines.parse tag with
@@ -485,6 +486,8 @@ let () =
       let edgeattrs = PP.get_edgeattrs ()
       let doshow = !PP.doshow
       let unshow = !PP.unshow
+      let symetric = !PP.symetric
+
       let dotheader = match !PP.dotheader with
       | None -> None
       | Some f ->
@@ -500,6 +503,7 @@ let () =
             eprintf "Cannot read %s: %s\n" f msg ;
             exit 2
       let shift = !PP.shift
+      let edgemerge = !PP.edgemerge
     end
 
   end in
