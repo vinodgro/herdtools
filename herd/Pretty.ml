@@ -522,6 +522,14 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
         (no,[]) yes in
     List.fold_left (fun m (p,i) -> do_add_pair p i m) new_m rem
 
+  let compute_colors cs = (* NB keep order *)
+    let rec do_rec = function
+      | [] -> []
+      | c::cs -> 
+          if List.mem c cs then do_rec cs
+          else c::do_rec cs in
+    String.concat ":" (do_rec cs)
+
   let dump_pairs chan =
     let new_edges = handle_symetric !edges in
     PairMap.iter
@@ -530,9 +538,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
           List.for_all
             (fun i -> StringSet.mem i.ikey PC.symetric)
             infos in
-        let colors =
-          String.concat ":"
-            (List.map (fun i -> i.icolor) infos)
+        let colors = compute_colors (List.map (fun i -> i.icolor) infos)
         and lbl =
           String.concat ","
             (List.map
