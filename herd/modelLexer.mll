@@ -71,11 +71,33 @@ rule token = parse
 | ';'   { SEMI }
 | ','   { COMMA }
 | "->"  { ARROW }
+| '{'   { let buf = Buffer.create 4096 in
+          get_body 0 buf lexbuf;
+          LATEX (Buffer.contents buf)
+        }
 | '"' ([^'"']* as s) '"' { STRING s } (* '"' *)
 | name as x { 
     try Hashtbl.find table x with Not_found -> VAR x }
 | eof { EOF }
 | ""  { error "Model lexer" lexbuf }
+
+and get_body i buf = parse
+| '\n' as lxm
+    { Lexing.new_line lexbuf ;
+      Buffer.add_char buf lxm ;
+      get_body i buf lexbuf ; }
+| '{' as lxm
+    { Buffer.add_char buf lxm;
+      get_body (succ i) buf lexbuf
+    }
+| '}' as lxm
+    { if i > 0 then begin
+       Buffer.add_char buf lxm;
+       get_body (pred i) buf lexbuf
+     end
+    }
+| eof { LexMisc.error "missing a closing brace" lexbuf }
+| _ as lxm { Buffer.add_char buf lxm; get_body i buf lexbuf }
 
 {
 let token lexbuf =

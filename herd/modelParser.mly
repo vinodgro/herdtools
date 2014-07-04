@@ -36,6 +36,7 @@ let pp () =
 %token EOF
 %token <string> VAR
 %token <string> STRING
+%token <string> LATEX
 %token LPAR RPAR LBRAC RBRAC
 %token EMPTY EMPTY_SET UNDERSCORE
 %token WITHCO WITHOUTCO WITHINIT WITHOUTINIT
@@ -81,6 +82,7 @@ ins:
 | SHOW exp AS VAR { ShowAs ($2, $4) }
 | SHOW var_list { Show $2 }
 | UNSHOW var_list { UnShow $2 }
+| LATEX { Latex $1 }
 
 test_type:
 |          { Provides }

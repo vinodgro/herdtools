@@ -125,6 +125,9 @@ let options = [
   ( "-dumplem",
     Arg.Unit (fun _ -> dumplem := true),
     "<non-default> convert the given model to Lem format") ;
+  ( "-dumptex",
+    Arg.Unit (fun _ -> dumptex := true),
+    "<non-default> convert the given model to Latex format") ;
   ("-unroll",
    Arg.Int (fun x -> unroll := x),
    sprintf "<int> branch unrolling upper limit, default %i" !unroll);
@@ -439,6 +442,7 @@ let () =
     let suffix = !suffix
     let dumpes = !dumpes
     let dumplem = !dumplem
+    let dumptex = !dumptex
 
     module PC = struct
       let verbose = verbose

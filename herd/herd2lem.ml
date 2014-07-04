@@ -98,6 +98,7 @@ let lem_of_ins chan = function
   | UnShow _ -> ()
   | Show _ -> ()
   | ShowAs _ -> ()
+  | Latex _ -> ()
 
 let lem_of_prog chan prog = 
   fprintf chan "open import Pervasives\n";

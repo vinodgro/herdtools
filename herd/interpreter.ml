@@ -414,6 +414,7 @@ module Make
           let st = { st with env; } in
           let st = doshow bds st in
           run st c
+      | Latex _ -> run st c
 
       and run st = function
         | [] ->  Some st 

@@ -24,6 +24,7 @@ module type Config = sig
   val suffix : string
   val dumpes : bool
   val dumplem : bool
+  val dumptex : bool
   val badexecs : bool
   include Mem.Config
 end
@@ -275,6 +276,13 @@ module Make(O:Config)(M:XXXMem.S) =
         match M.model with
         | Model.Generic (_,(_,_,prog)) -> 
           Herd2lem.lem_of_prog stdout prog; 
+          exit 0
+        | _ -> Warn.user_error "No model given"
+      end;
+      if O.dumptex then begin
+        match M.model with
+        | Model.Generic (_,(_,_,prog)) -> 
+          Herd2tex.tex_of_prog stdout prog; 
           exit 0
         | _ -> Warn.user_error "No model given"
       end;

@@ -62,6 +62,7 @@ type ins =
   | UnShow of string list
   | Show of string list
   | ShowAs of exp * string
+  | Latex of string
 
 (** Name X model definition *)
 type t = ModelOption.t * string * ins list
