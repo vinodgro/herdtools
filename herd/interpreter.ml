@@ -131,7 +131,9 @@ module Make
 	  seen_requires_clause : bool ;
           skipped : StringSet.t ; }
 
-    let rt_loc = if O.verbose <= 1 then S.rt else (fun x -> x)
+    let rt_loc lbl =
+      if O.verbose <= 1 && not (StringSet.mem lbl S.O.PC.symetric)
+      then S.rt else (fun x -> x)
 
     let show_to_vbpp st =
       StringMap.fold (fun tag v k -> (tag,v)::k)   (Lazy.force st.show) []
@@ -277,7 +279,7 @@ module Make
           if O.debug && O.verbose > 1 then begin
             let vb_pp =
               List.map2
-                (fun (x,_) v -> x,rt_loc v)
+                (fun (x,_) v -> x,rt_loc x v)
                 bds vs in
             let vb_pp = pp vb_pp in
             MU.pp_failure test conc
@@ -306,8 +308,7 @@ module Make
 
       let find_show_rel env x =
         try
-          rt_loc
-            (as_rel (Lazy.force (StringMap.find x env)))
+          rt_loc x (as_rel (Lazy.force (StringMap.find x env)))
         with Not_found -> E.EventRel.empty in
 
       let doshow bds st =
@@ -346,7 +347,7 @@ module Make
       | ShowAs (e,id) ->
           let show = lazy begin
             StringMap.add id
-              (rt_loc (eval_rel st.env e)) (Lazy.force st.show)
+              (rt_loc id (eval_rel st.env e)) (Lazy.force st.show)
           end in
           run { st with show; } c
       | Test (pos,t,e,name,test_type) ->
