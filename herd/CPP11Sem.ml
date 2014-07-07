@@ -97,9 +97,9 @@ module Make (C:Sem.Config)(V:Value.S)
         M.altT
            (read_mem failure loc_obj ii >>*= fun v_obj ->
            (* For "strong" cas: fail only when v_obj != v_exp *)
-           (if strong then M.addNeqConstraintT v_obj v_exp else (fun x -> x)) (
+           (if strong then M.neqT v_obj v_exp else M.unitT ()) >>= fun () -> 
            (* Non-atomically write that value into the "expected" location *)
-           write_mem CPP11.NA loc_exp v_obj ii) >>!
+           write_mem CPP11.NA loc_exp v_obj ii >>!
            V.intToV 0)
           (* Obtain "desired" value *)
           (build_semantics_expr des ii >>= fun v_des -> 
