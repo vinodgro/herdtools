@@ -211,12 +211,11 @@ struct
 	    (eiid1, poss_with_upd_cnstrnts)
 
 
-(* Add a constraint *)
- let addNeqConstraintT : V.v -> V.v -> 'a t -> 'a t
-   = fun v1 v2 s eiid ->
-     let (eiid, sact) = s eiid in
-     (eiid, Evt.map (fun (r,cs,es) ->
-         (r,(VC.Assign (v1, VC.Unop(Op.Not, v2)))::cs,es)) sact)
+(* Add an inequality constraint *)
+ let neqT : V.v -> V.v -> unit t
+   = fun v1 v2 eiid ->
+     (eiid, Evt.singleton 
+        ((), [VC.Assign (v1, VC.Unop(Op.Not, v2))], E.empty_event_structure))
             
 (* Choosing dependant upon flag,
    notice that, once determined v is either one or zero *)

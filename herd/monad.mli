@@ -49,7 +49,7 @@ module type S =
     val filterT : A.V.v -> A.V.v t -> A.V.v t
     val choiceT : A.V.v -> 'a t -> 'a t -> 'a t  
     val altT : 'a t -> 'a t -> 'a t 
-    val addNeqConstraintT : A.V.v -> A.V.v -> 'a t -> 'a t 
+    val neqT : A.V.v -> A.V.v -> unit t 
 
     val tooFar : string -> 'a t
 
