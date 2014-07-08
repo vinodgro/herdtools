@@ -58,6 +58,17 @@ let tr_name = function
 | "atomic_intmax_t" -> ATOMIC_TYPE "__INTMAX_TYPE__"
 | "atomic_uintmax_t" -> ATOMIC_TYPE "__UINTMAX_TYPE__"
 | "NULL" -> NULL
+(* Atomic fetch *)
+| "atomic_fetch_add" -> ATOMIC_FETCH Op.Add
+| "atomic_fetch_add_explicit" -> ATOMIC_FETCH_EXPLICIT Op.Add
+| "atomic_fetch_sub" -> ATOMIC_FETCH Op.Add
+| "atomic_fetch_sub_explicit" -> ATOMIC_FETCH_EXPLICIT Op.Add
+| "atomic_fetch_or" -> ATOMIC_FETCH Op.Or
+| "atomic_fetch_or_explicit" -> ATOMIC_FETCH_EXPLICIT Op.Or
+| "atomic_fetch_xor" -> ATOMIC_FETCH Op.Xor
+| "atomic_fetch_xor_explicit" -> ATOMIC_FETCH_EXPLICIT Op.Xor
+| "atomic_fetch_and" -> ATOMIC_FETCH Op.And
+| "atomic_fetch_and_explicit" -> ATOMIC_FETCH_EXPLICIT Op.And
 |  x -> IDENTIFIER x
 
 }

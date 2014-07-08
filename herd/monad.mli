@@ -59,7 +59,7 @@ module type S =
        instruction id "ii", and action "mk_action v loc". *)
     val read_loc : (A.location -> A.V.v -> E.action) -> 
 		   A.location -> A.inst_instance_id -> A.V.v t
-
+                       
     (* mk_singleton_es a ii: 
        make an event structure comprising a single event with
        instruction id "ii", and action "a". *)
@@ -70,6 +70,11 @@ module type S =
     val op : Op.op -> A.V.v -> A.V.v -> A.V.v t
     val op3 : Op.op3 -> A.V.v -> A.V.v -> A.V.v -> A.V.v t
     val add : A.V.v -> A.V.v -> A.V.v t
+
+(* Buid evt structure for fetch_and_op *)
+    val fetch :
+        Op.op -> A.V.v -> (A.V.v -> A.V.v -> E.action) -> 
+	  A.inst_instance_id -> A.V.v t
 
     val assign : A.V.v -> A.V.v -> unit t
 

@@ -361,7 +361,21 @@ struct
 	   Evt.singleton
 	     ((), [(VC.Assign (v1,VC.Atom v2))],
 	      E.empty_event_structure)
-	  
+
+     let fetch op arg mk_action ii =
+       fun eiid ->
+	 V.fold_over_vals
+	   (fun v (eiid1,acc_inner) ->
+             let vstored = V.fresh_var () in
+	     (eiid1+1,
+	      Evt.add 
+		(v, [VC.Assign (vstored,VC.Binop (op,v,arg))],
+		 trivial_event_structure
+		   {E.eiid = eiid1 ;
+		    E.iiid = Some ii;
+		    E.action = mk_action v vstored})
+		acc_inner)) (eiid,Evt.empty)	
+
       let tooFar _msg = zeroT
 (*
 	fun eiid ->

@@ -35,8 +35,8 @@ module Make (C:Sem.Config)(V:Value.S)
 		       
     let read_loc mo = M.read_loc (fun loc v -> Act.Access (Dir.R, loc, v, mo))
     let read_exchange vstored mo =
-       M.read_loc
-        (fun loc v -> (Act.RMW (loc,v,vstored,mo)))
+      M.read_loc (fun loc v -> Act.RMW (loc,v,vstored,mo))
+
     let read_reg r ii = read_loc CPP11.NA (A.Location_reg (ii.A.proc,r)) ii
     let read_mem mo a = read_loc mo (A.Location_global a)
 
@@ -46,6 +46,8 @@ module Make (C:Sem.Config)(V:Value.S)
     let write_reg r v ii = write_loc CPP11.NA (A.Location_reg (ii.A.proc,r)) v ii
     let write_mem mo a  = write_loc mo (A.Location_global a) 	     
 		 
+    let fetch_op op v mo loc =
+      M.fetch op v (fun v vstored -> Act.RMW (loc,v,vstored,mo))
 
     let rec build_semantics_expr e ii : V.v M.t = match e with
       | CPP11.Econstant v -> 	
@@ -74,6 +76,11 @@ module Make (C:Sem.Config)(V:Value.S)
           build_semantics_expr loc ii >>| 
           build_semantics_expr e ii >>= fun (loc,v) ->
             read_exchange v mo (A.Location_global loc) ii
+
+      | CPP11.Efetch (op,loc,e,mo) ->
+          build_semantics_expr loc ii >>| 
+          build_semantics_expr e ii >>= fun (loc,v) ->
+            fetch_op op v mo (A.Location_global loc) ii
 
       | CPP11.Eload(loc,mo) ->
           build_semantics_expr loc ii >>= fun loc ->

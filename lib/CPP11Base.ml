@@ -86,6 +86,7 @@ type expression =
 | Eop of Op.op * expression * expression
 | Estore  of expression * expression * mem_order 
 | Eexchange  of expression * expression * mem_order 
+| Efetch  of Op.op * expression * expression * mem_order 
 | Eload   of expression * mem_order
 | Ecas    of expression * expression * expression * mem_order * mem_order * bool
 | Elock   of expression
@@ -123,6 +124,16 @@ let pp_sop = function
   | Concrete i -> (sprintf "%d" i)
   | _ -> "only concrete store ops supported at this time in C++11"
 
+let dump_key op =
+  let open Op in
+  match op with
+  | Add -> "add"
+  | Sub -> "sub"
+  | Or -> "or"
+  | Xor -> "xor"
+  | And -> "and"
+  | _ -> assert false
+
 let rec dump_expression e = match e with
   | Estore(loc,e,mo) ->
     (match mo with 
@@ -138,7 +149,17 @@ let rec dump_expression e = match e with
 		  (dump_expression loc) (dump_expression e)
     | _ -> sprintf("atomic_exchange_explicit(%s,%s,%s)") 
 		  (dump_expression loc) (dump_expression e) (pp_mem_order mo))  
-| Eload(loc,mo) ->
+  | Efetch(op,loc,e,mo) ->
+    (match mo with 
+    | NA -> assert false
+    | SC -> 
+        sprintf("atomic_fetch_%s(%s,%s)") 
+	  (dump_key op) (dump_expression loc) (dump_expression e)
+    | _ ->
+        sprintf("atomic_fetch_%s_explicit(%s,%s,%s)") 
+	  (dump_key op) (dump_expression loc)
+          (dump_expression e) (pp_mem_order mo))  
+  | Eload(loc,mo) ->
     (match mo with 
     | NA -> sprintf("*%s") 
 		   (pp_addr loc)

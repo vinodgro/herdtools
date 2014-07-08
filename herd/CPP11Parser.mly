@@ -30,6 +30,8 @@ open CType
 /* Instruction tokens */
 
 %token LD LD_EXPLICIT ST ST_EXPLICIT EXC EXC_EXPLICIT FENCE LOCK UNLOCK SCAS WCAS
+%token <Op.op> ATOMIC_FETCH
+%token <Op.op> ATOMIC_FETCH_EXPLICIT
 
 %type <(int * CPP11Base.pseudo list) list * MiscParser.gpu_data option> main 
 %type <(CPP11Base.pseudo list) CAst.test list> translation_unit
@@ -72,6 +74,10 @@ postfix_expression:
   { Eexchange ($3, $5, CPP11Base.SC) }
 | EXC_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
   { Eexchange ($3, $5, $7) }
+| ATOMIC_FETCH LPAR assignment_expression COMMA assignment_expression RPAR
+  { Efetch ($1, $3, $5, CPP11Base.SC) }
+| ATOMIC_FETCH_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
+  { Efetch ($1, $3, $5, $7) }
 | LD LPAR assignment_expression RPAR
   { Eload ($3, CPP11Base.SC) }
 | LD_EXPLICIT LPAR assignment_expression COMMA MEMORDER RPAR
