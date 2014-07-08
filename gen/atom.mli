@@ -11,7 +11,7 @@
 module type S = sig
   type atom
   val default_atom : atom
-  val applies_atom : atom -> Code.extr -> bool
+  val applies_atom : atom -> Code.dir -> bool
   val compare_atom : atom -> atom -> int
   val sig_of_atom : atom -> char
   val pp_as_a : atom option

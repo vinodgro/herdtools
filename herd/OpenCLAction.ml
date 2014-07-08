@@ -78,32 +78,36 @@ struct
     | Access (_,_ , v,_,_) -> Some v
     | _ -> None
 
+    let read_of a = match a with
+    | Access (R,_ , v,_,_)
+    | RMW (_,v,_,_,_)
+      -> Some v
+    | _ -> None
+
+    let written_of = function
+    | Access (W,_ , v,_,_)
+    | RMW (_,_,v,_,_)
+      -> Some v
+    | _ -> None
+
+
     let location_of a = match a with
     | Access (_, l, _,_,_) 
     | RMW (l,_,_,_,_)
     | Blocked_RMW l -> Some l
     | _ -> None
 
-    let location_reg_of a = match a with
-    | Access (_,A.Location_reg (_,r),_,_,_) -> Some r
-    | _ -> None
-
-    let global_loc_of a = match a with
-    | Access (_,A.Location_global loc,_,_,_) -> Some loc
-    | _ -> None
-
-    let location_compare a1 a2 = match location_of a1,location_of a2 with
-    | Some loc1,Some loc2 -> 
-	A.location_compare loc1 loc2
-    | _,_ -> assert false
-
 (* relative to memory *)
     let is_mem_store a = match a with
-    | Access (W,A.Location_global _,_,_,_) -> true
+    | Access (W,A.Location_global _,_,_,_)
+    | RMW (A.Location_global _,_,_,_,_)
+        -> true
     | _ -> false
 
     let is_mem_load a = match a with
-    | Access (R,A.Location_global _,_,_,_) -> true
+    | Access (R,A.Location_global _,_,_,_)
+    | RMW (A.Location_global _,_,_,_,_)
+        -> true
     | _ -> false
 
     let is_mem a = match a with
@@ -137,11 +141,15 @@ struct
 
 (* Store/Load anywhere *)
     let is_store a = match a with
-    | Access (W,_,_,_,_) -> true
+    | Access (W,_,_,_,_)
+    | RMW _
+      -> true
     | _ -> false
 
     let is_load a = match a with
-    | Access (R,_,_,_,_) -> true
+    | Access (R,_,_,_,_)
+    | RMW _
+         -> true
     | _ -> false
 
     let is_reg_any a = match a with

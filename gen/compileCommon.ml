@@ -34,7 +34,7 @@ module type S = sig
   and type dp = A.dp
   and type edge = E.edge
   
-  module C : Cycle.S with type edge=E.edge
+  module C : Cycle.S with type edge=E.edge and type atom = A.atom
 end
 
 open Printf

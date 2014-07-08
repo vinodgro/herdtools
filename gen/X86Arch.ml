@@ -17,7 +17,7 @@ module Make(V:Constant.S) =
     let default_atom = Atomic
 
     let applies_atom a d = match a,d with
-    | Atomic,Dir W -> true
+    | Atomic,W -> true
     | _,_ -> false
 
     let compare_atom = Pervasives.compare

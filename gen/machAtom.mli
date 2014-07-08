@@ -13,7 +13,7 @@ type atom = Atomic | Reserve
 
 val default_atom : atom
 val sig_of_atom : atom -> char
-val applies_atom : atom -> Code.extr -> bool
+val applies_atom : atom -> Code.dir -> bool
 
 val pp_as_a : atom option
 val pp_atom : atom -> string

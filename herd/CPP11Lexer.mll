@@ -106,6 +106,8 @@ rule token = parse
 | "atomic_store" { ST }
 | "atomic_load_explicit"  { LD_EXPLICIT }
 | "atomic_store_explicit" { ST_EXPLICIT }
+| "atomic_exchange" { EXC }
+| "atomic_exchange_explicit" { EXC_EXPLICIT }
 | "lock"  { LOCK }
 | "WCAS"  { WCAS }
 | "SCAS"  { SCAS }

@@ -85,6 +85,7 @@ type expression =
 | Eassign of reg * expression
 | Eop of Op.op * expression * expression
 | Estore  of expression * expression * mem_order 
+| Eexchange  of expression * expression * mem_order 
 | Eload   of expression * mem_order
 | Ecas    of expression * expression * expression * mem_order * mem_order * bool
 | Elock   of expression
@@ -130,7 +131,14 @@ let rec dump_expression e = match e with
 		  (dump_expression loc) (dump_expression e)
     | _ -> sprintf("atomic_store_explicit(%s,%s,%s)") 
 		  (dump_expression loc) (dump_expression e) (pp_mem_order mo))
-  | Eload(loc,mo) ->
+  | Eexchange(loc,e,mo) ->
+    (match mo with 
+    | NA -> assert false
+    | SC -> sprintf("atomic_exchange(%s,%s)") 
+		  (dump_expression loc) (dump_expression e)
+    | _ -> sprintf("atomic_exchange_explicit(%s,%s,%s)") 
+		  (dump_expression loc) (dump_expression e) (pp_mem_order mo))  
+| Eload(loc,mo) ->
     (match mo with 
     | NA -> sprintf("*%s") 
 		   (pp_addr loc)
@@ -156,10 +164,7 @@ let rec dump_expression e = match e with
   | Ecomma (e1,e2) -> sprintf "%s, %s" (dump_expression e1) (dump_expression e2)
   | Eparen e -> sprintf "(%s)" (dump_expression e)
 
-and pp_addr e = match e with
-  | Eregister _
-  | Eload (_,NA) -> dump_expression e
-  | _ -> sprintf "(%s)" (dump_expression e)
+and pp_addr e = dump_expression e
 
 let rec dump_instruction i = match i with
   | Pif(e,i1,i2) -> 

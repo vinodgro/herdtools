@@ -32,18 +32,10 @@ module type S = sig
 (**************************************)
 
   val value_of : action -> A.V.v option
+  val read_of : action -> A.V.v option
+  val written_of : action -> A.V.v option
   val location_of   : action -> A.location option
-  val location_reg_of : action -> A.reg option
-  val global_loc_of    : action -> A.global_loc option
 
-(****************************)
-(* Convenience on locations *)
-(****************************)
-
-  val location_compare : action -> action -> int
-(*  val same_location : action -> action -> bool
-  val same_value : action -> action -> bool
-  val is_visible_location : A.location -> bool *)
 
 (************************)
 (* Predicates on events *)

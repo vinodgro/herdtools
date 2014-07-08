@@ -191,7 +191,10 @@ module Make(S : SemExtra.S) = struct
         let erf = find_rf er conc.S.rfmap in
         E.EventSet.fold
           (fun ew k ->
-            if E.same_location ew er then match erf with
+            if 
+              not (E.event_equal er ew) (* RMW *) &&
+              E.same_location ew er
+            then match erf with
             | S.Init ->
                 E.EventRel.add (er,ew) k
             | S.Store erf ->

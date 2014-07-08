@@ -29,7 +29,7 @@ open CType
 
 /* Instruction tokens */
 
-%token LD LD_EXPLICIT ST ST_EXPLICIT FENCE LOCK UNLOCK SCAS WCAS
+%token LD LD_EXPLICIT ST ST_EXPLICIT EXC EXC_EXPLICIT FENCE LOCK UNLOCK SCAS WCAS
 
 %type <(int * CPP11Base.pseudo list) list * MiscParser.gpu_data option> main 
 %type <(CPP11Base.pseudo list) CAst.test list> translation_unit
@@ -68,6 +68,10 @@ postfix_expression:
   { Estore ($3, $5, CPP11Base.SC) }
 | ST_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
   { Estore ($3, $5, $7) }
+| EXC LPAR assignment_expression COMMA assignment_expression RPAR
+  { Eexchange ($3, $5, CPP11Base.SC) }
+| EXC_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
+  { Eexchange ($3, $5, $7) }
 | LD LPAR assignment_expression RPAR
   { Eload ($3, CPP11Base.SC) }
 | LD_EXPLICIT LPAR assignment_expression COMMA MEMORDER RPAR

@@ -55,7 +55,8 @@ module Make(C:Builder.S)
       | Set fs ->
           (fun f -> List.exists (equal_fence f) fs)
 
-    let choice_sc (po_safe,fence_safe) e1 e2 = match e1.edge,e2.edge with
+    let choice_sc (po_safe,fence_safe) e1 e2 =
+      let r = match e1.edge,e2.edge with
 (*
   Now reject all po;po, except for Rfi.
   A bit rude, maybe...
@@ -91,7 +92,9 @@ module Make(C:Builder.S)
     | _,_ ->
         match get_ie e1, get_ie e2 with
         | Int,Int -> false
-        | Ext,_|_,Ext -> true 
+        | Ext,_|_,Ext -> true  in
+(*      eprintf "Choice: %s %s -> %b\n" (C.E.pp_edge e1) (C.E.pp_edge e2) r ; *)
+      r
 
 (* Check altenance of com/po *)              
     let choice_critical e1 e2 =

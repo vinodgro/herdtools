@@ -278,7 +278,8 @@ let fold_tedges f r =
 
   let fold_atomo f k = f None (F.fold_atom (fun a k -> f  (Some a) k) k)
 
-  let applies_atom a d = match a with
+
+  let _applies_atom a d = match a with
   | None -> true
   | Some a -> F.applies_atom a d
 
@@ -294,12 +295,19 @@ let fold_tedges f r =
                      if a1 = None && a2=None then
                        f {a1; a2; edge=te;} k
                      else k
+                 | Rmw ->
+                     if a1 = a2 then
+                       f {a1; a2; edge=te;} k
+                     else k
                  | _ ->
+                     f {a1; a2; edge=te;} k))))
+
+(* checked later... because rmw accepts all atomicity
                      let d1 = do_dir_src te
                      and d2 = do_dir_tgt te in
                      if applies_atom a1 d1 && applies_atom a2 d2 then
                        f {a1; a2; edge=te;} k
-                     else k))))
+                     else k *)
 
   let iter_edges f = fold_edges (fun e () -> f e) ()
 
@@ -435,11 +443,10 @@ let loc_sd e = match e.edge with
   | Leave _|Back _ -> true
   | _ -> false
 
-  let can_precede_atoms x y = match x.a1,y.a2 with
+  let can_precede_atoms x y = match x.a2,y.a1 with
   | None,_
   | _,None -> true
   | Some a1,Some a2 -> F.compare_atom a1 a2 = 0
-
 
   let can_precede x y = can_precede_dirs  x y && can_precede_atoms x y
 

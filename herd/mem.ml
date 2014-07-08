@@ -289,9 +289,14 @@ let get_loc e = match E.location_of e with
 | Some loc -> loc
 | None -> assert false
 
-and get_value e = match E.value_of e with
+and get_read e = match E.read_of e  with
 | Some v -> v
 | None -> assert false
+
+and get_written e = match E.written_of e with
+| Some v -> v
+| None -> assert false
+
 
 
 
@@ -362,7 +367,7 @@ let get_rf_value test read rf = match rf with
     let loc = get_loc read in
     begin try A.look_in_state test.Test.init_state loc
     with A.LocUndetermined -> assert false end
-| S.Store e -> get_value e
+| S.Store e -> get_written e
  
 (* Add a constraint for two values *)
 
@@ -389,7 +394,7 @@ let solve_regs test es csn =
       (fun wt rf csn -> match wt with
       | S.Final _ -> csn
       | S.Load load ->
-	  let v_loaded = get_value load in
+	  let v_loaded = get_read load in
 	  let v_stored = get_rf_value test load rf in
 	  try add_eq v_loaded v_stored csn
 	  with Contradiction -> assert false)              
@@ -413,26 +418,29 @@ let solve_regs test es csn =
 (**************************************)
 
 let get_loc_as_value e = match  E.global_loc_of e with
-  | None -> assert false
+  | None -> eprintf "%a\n" E.debug_event e ; assert false
   | Some v -> v
 
 (* Compatible location are:
    - either both determined and equal,
    - or at least one location is undetermined. *)
 let compatible_locs_mem e1 e2 =
-  let loc1 = get_loc e1
-  and loc2 = get_loc e2 in
-  let ov1 =  A.undetermined_vars_in_loc loc1
-  and ov2 =  A.undetermined_vars_in_loc loc2 in
-  match ov1,ov2 with
-  | None,None -> E.same_location e1 e2
-  | (Some _,None)|(None,Some _)
-  | (Some _,Some _) -> true
+  E.event_compare e1 e2 <> 0 && (* RMW cannot feed themselves *)
+  begin
+    let loc1 = get_loc e1
+    and loc2 = get_loc e2 in
+    let ov1 =  A.undetermined_vars_in_loc loc1
+    and ov2 =  A.undetermined_vars_in_loc loc2 in
+    match ov1,ov2 with
+    | None,None -> E.same_location e1 e2
+    | (Some _,None)|(None,Some _)
+    | (Some _,Some _) -> true
+  end
 
 (* Add a constraint for a store/load match *)
 
     let add_mem_eqs test rf load eqs =
-      let v_loaded = get_value load in
+      let v_loaded = get_read load in
       match rf with
       | S.Init -> (* Tricky, if location (of load) is
                      not know yet, emit a specific constraint *)    
@@ -446,7 +454,7 @@ let compatible_locs_mem e1 e2 =
 	      (v_loaded, VC.ReadInit (loc_load,state))::eqs
           end
       | S.Store store ->
-          add_eq v_loaded (get_value store)
+          add_eq v_loaded (get_written store)
 	    (add_eq
 	       (get_loc_as_value store)
 	       (get_loc_as_value load) eqs)
@@ -617,7 +625,7 @@ let compatible_locs_mem e1 e2 =
       S.RFMap.fold
         (fun wt rf k -> match wt,rf with
         | S.Final loc,S.Store ew ->
-            A.state_add k loc (get_value ew)
+            A.state_add k loc (get_written ew)
         | _,_ -> k)
         rfm test.Test.init_state
 
@@ -705,11 +713,13 @@ let make_atomic_load_store es =
               let loads = map_loc_find loc loc_loads in
               let k =
                 List.fold_left
-                  (fun k er -> match S.RFMap.find (S.Load er) rfm with
-                  | S.Init -> E.EventRel.add (er,max) k
-                  | S.Store my_ew ->
-                      if E.event_equal my_ew max then k
-                      else E.EventRel.add (er,max) k)
+                  (fun k er ->
+                    if E.event_equal er max then k (* possible with RMW *)
+                    else match S.RFMap.find (S.Load er) rfm with
+                    | S.Init -> E.EventRel.add (er,max) k
+                    | S.Store my_ew ->
+                        if E.event_equal my_ew max then k
+                        else E.EventRel.add (er,max) k)
                   k loads in
               List.fold_left
                 (fun k ew ->
@@ -781,6 +791,12 @@ let make_atomic_load_store es =
         Misc.fold_cross
           possible_finals
           (fun ws res ->
+(*
+            eprintf "Finals:" ;
+            List.iter
+              (fun e -> eprintf " %a"  E.debug_event e) ws ;
+            eprintf "\n";
+*)
             let rfm =
               List.fold_left
                 (fun k w ->
@@ -813,7 +829,7 @@ let make_atomic_load_store es =
                    atomic_load_store = atomic_load_store ;
                  } in
                 kont conc res
-              else res
+              else begin res end
             end else res)
           res
       with Exit -> res

@@ -110,7 +110,9 @@ module Make(O:Config) : Builder.S
         | None ->
             A.Store (loc,A.Const v)
         | Some a ->
-            A.AtomicStore(a,loc,A.Const v)
+            if A.applies_atom a Code.W then
+              A.AtomicStore(a,loc,A.Const v)
+            else Warn.fatal "wrong memory order for store"
 
       let load_checked_not = None
 
@@ -118,8 +120,10 @@ module Make(O:Config) : Builder.S
       | None ->
           if O.cpp then A.Load loc
           else A.Deref (A.Load loc)
-      | Some mo -> A.AtomicLoad (mo,loc)
-
+      | Some mo ->
+          if A.applies_atom mo Code.R then
+            A.AtomicLoad (mo,loc)
+          else Warn.fatal "wrong memory order for load"
       let excl_from mo loc v = match mo with
       | None -> Warn.fatal "Non atomic RMW"
       | Some mo -> A.AtomicExcl (mo,loc,v)

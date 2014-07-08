@@ -16,7 +16,7 @@ let default_atom = Atomic
 open Code
 
 let applies_atom a d = match a,d with
-| Reserve,Dir W -> false
+| Reserve,W -> false
 | _,_ -> true
 
 let sig_of_atom = function

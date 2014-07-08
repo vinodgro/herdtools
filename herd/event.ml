@@ -195,8 +195,9 @@ module type S = sig
 (*************************************)
 (* Access to sub_components of events *)
 (*************************************)
-
-  val value_of : event -> A.V.v option
+  val value_of : event -> A.V.v option (* Warning: fails on RMW actions *)
+  val read_of : event -> A.V.v option
+  val written_of : event -> A.V.v option
   val location_of   : event -> A.location option
   val location_reg_of : event -> A.reg option
   val global_loc_of    : event -> A.global_loc option
@@ -277,12 +278,21 @@ struct
 
 (* Utility functions to pick out components *)
     let value_of e = Act.value_of e.action
+    let read_of e = Act.read_of e.action
+    let written_of e = Act.written_of e.action
     let location_of e = Act.location_of e.action 
-    let location_reg_of e = Act.location_reg_of e.action 
-    let global_loc_of e = Act.global_loc_of e.action 
 
-    let location_compare e1 e2 = 
-      Act.location_compare e1.action e2.action
+    let  location_reg_of e = match location_of e with
+    | Some (A.Location_reg (_,r)) -> Some r
+    | _ -> None
+
+    let  global_loc_of e = match location_of e with
+    | Some (A.Location_global a) -> Some a
+    | _ -> None
+
+    let location_compare e1 e2 = match location_of e1,location_of e2 with
+    | Some loc1,Some loc2 -> A.location_compare loc1 loc2
+    | _,_ -> assert false
 
 (* Visible locations *)
     let is_visible_location  = function 
@@ -307,7 +317,7 @@ struct
 
     let same_subst_value e1 e2 =
 (*      eprintf "SUBST: %a vs. %a:%!" debug_event e1 debug_event e2 ; *)
-      let r = match value_of e1, value_of e2 with
+      let r = match read_of e1, written_of e2 with
       | Some (v1),Some (v2) -> v1 == v2
       | _,_ -> assert false in
 (*      eprintf "%b\n" r  ; *)

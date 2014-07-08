@@ -95,7 +95,14 @@ module U = TopUtils.Make(O)(Comp)
         Some r,init,cs,st
     | W -> None,init,[],st
 
-    else Comp.emit_access st p init e
+    else if 
+      match e.C.atom with
+      | None -> true
+      | Some a ->  A.applies_atom a e.C.dir
+    then      
+      Comp.emit_access st p init e
+    else
+      Warn.fatal "atomicity mismatch"
 
 (* Encodes load of first non-initial value in chain,
    can poll on value in place of checking it *)

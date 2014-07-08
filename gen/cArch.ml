@@ -25,8 +25,8 @@ open Code
 type atom = MemOrder.t
 let default_atom = SC
 let applies_atom a d = match a,d with
-| (Acq|Acq_Rel|Con),Dir W -> false
-| (Rel|Acq_Rel),Dir R -> false
+| (Acq|Acq_Rel|Con),W -> false
+| (Rel|Acq_Rel),R -> false
 | _,_ -> true
 
 let compare_atom = Pervasives.compare

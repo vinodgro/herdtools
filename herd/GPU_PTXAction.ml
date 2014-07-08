@@ -67,22 +67,14 @@ module Make (A : Arch.S) : (S with module A_ = A) = struct
     | Access (_,_ , v,_,_) -> Some v
     | _ -> None
 
+    let read_of = value_of
+    and written_of = value_of
+
     let location_of a = match a with
     | Access (_, l, _,_,_) -> Some l
     | _ -> None
 
-    let location_reg_of a = match a with
-    | Access (_,A.Location_reg (_,r),_,_,_) -> Some r
-    | _ -> None
-
-    let global_loc_of a = match a with
-    | Access (_,A.Location_global loc,_,_,_) -> Some loc
-    | _ -> None
-
-    let location_compare a1 a2 = match location_of a1,location_of a2 with
-    | Some loc1,Some loc2 -> 
-	A.location_compare loc1 loc2
-    | _,_ -> assert false
+  
 
 (* relative to memory *)
     let is_mem_store a = match a with
@@ -94,7 +86,7 @@ module Make (A : Arch.S) : (S with module A_ = A) = struct
     | _ -> false
 
     let is_mem a = match a with
-    | Access (_,A.Location_global _,_,_,_) -> true
+    | Access (_,A.Location_global _,_,_,_)   -> true
     | _ -> false
 
     let is_atomic a = match a with
