@@ -7,14 +7,15 @@ let invrf=(rf)-1
 
 (* co observations in test *)
 let obsco =
+  noid
   (WW(po-loc)
   |(rf;RW(po-loc))
   |(WR(po-loc);invrf)
-  |(rf;RR(po-loc);invrf))\id
+  |(rf;RR(po-loc);invrf))
 
 
 let co = (obsco|co0)+
-let fr = (invrf;co)|fr0
+let fr = noid(invrf;co)|fr0
 show fr
 show co
 let coi = int(co)

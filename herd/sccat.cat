@@ -5,13 +5,13 @@ let invrf=(rf)-1
 
 (* co observations in test *)
 let obsco =
-    (WW(po-loc)
+    noid(WW(po-loc)
     |(rf;RW(po-loc))
-    |noid(WR(po-loc);invrf)
-    |noid(rf;RR(po-loc);invrf))
+    |(WR(po-loc);invrf)
+    |(rf;RR(po-loc);invrf))
 
 let co = (obsco|co0) (* NB no transitive closure... *)
-let fr = (invrf;co)
+let fr = noid(invrf;co)
 show co,fr
 
 acyclic po | fr | rf | co

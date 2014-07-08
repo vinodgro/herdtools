@@ -20,7 +20,7 @@ let obsco =
 let cobase = obsco|co0
 acyclic cobase as uniproc
 let co = cobase+
-let fr = (invrf;co)
+let fr = noid(invrf;co)
 show fr
 show co
 let coi = int(co)
