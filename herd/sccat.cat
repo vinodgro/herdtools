@@ -10,8 +10,18 @@ let obsco =
     |(WR(po-loc);invrf)
     |(rf;RR(po-loc);invrf))
 
-let co = (obsco|co0) (* NB no transitive closure... *)
-let fr = noid(invrf;co)
+let rmw = R & W
+let rmwco = (rf ; [rmw]) (* co observation by atomicity *)
+
+let cobase = obsco|rmwco|co0
+
+let rec co =
+  cobase       (* initial observations *)
+| ([rmw];fr)   (* by atomicity *)
+| (co ; co)    (* transitivity *)
+
+and fr = noid(invrf;co) (* notice: avoid self fr (RMW) *)
+
 show co,fr
 
 acyclic po | fr | rf | co

@@ -4,8 +4,6 @@
 (* Computes co and fr *)
 (**********************)
 
-(* NB: this model handles RMW *)
-
 let invrf=rf -1
 
 (* co observations in test *)
@@ -15,17 +13,10 @@ let obsco =
     |noid(WR(po-loc);invrf)
     |noid(rf;RR(po-loc);invrf))
 
-let rmw = R & W
-let rmwco = (rf ; [rmw]) (* co observation by atomicity *)
+let cobase = obsco|co0
 
-let cobase = obsco|rmwco|co0
-
-let rec co =
-  cobase       (* initial observations *)
-| ([rmw];fr)   (* by atomicity *)
-| (co ; co)    (* transitivity *)
-
-and fr = noid(invrf;co) (* notice: avoid self fr (RMW) *)
+let co = cobase+
+let fr = noid(invrf;co) (* notice: avoid self fr (RMW) *)
 
 show fr
 show co
