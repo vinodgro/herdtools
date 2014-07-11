@@ -79,7 +79,7 @@ let lem_of_ins chan = function
   (* doesn't handle recursion properly *)
   | Test (_, test, exp, name, test_type) -> 
     let name = begin match name with 
-        | None -> Warn.user_error "Unnamed test!" 
+        | None -> Warn.user_error "Unnamed constraint."
         | Some name -> name 
     end in
     fprintf chan "let %s X = %s %a" 
