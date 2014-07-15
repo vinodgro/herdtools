@@ -118,7 +118,20 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
       Buffer.add_char buff c 
     done ;
     Buffer.contents buff
-      
+
+  let escape_html s =
+    let buff = Buffer.create 16 in
+    for k=0 to String.length s-1 do
+      let c = s.[k] in
+      begin match c with
+      | '<' -> Buffer.add_string buff "&lt;"
+      | '>' -> Buffer.add_string buff "&gt;"
+      | '&' -> Buffer.add_string buff "&amper;"
+      | _ -> Buffer.add_char buff c
+      end
+    done ;
+    Buffer.contents buff
+
   let escape_label dm = match dm with
   | Plain -> escape_dot
   | Fig -> (fun s -> escape_dot (escape_tex s))
@@ -543,7 +556,8 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
           String.concat ","
             (List.map
                (fun i ->
-                 let pp_label = pp_edge_label false i.ikey in
+                 let pp_label =  escape_html i.ikey in
+                 let pp_label = pp_edge_label false pp_label in
                  sprintf "<font color=\"%s\">%s</font>"
                    i.icolor pp_label) infos) in        
         fprintf chan "%s -> %s [label=<%s>, color=\"%s\""
