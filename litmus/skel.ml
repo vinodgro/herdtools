@@ -35,6 +35,7 @@ module type Config = sig
   val memory : Memory.t
   val contiguous : bool
   val prealloc : bool
+  val doublealloc : bool
   val launch : Launch.t
   val affinity : Affinity.t
   val logicalprocs : int list option
@@ -1729,7 +1730,10 @@ let dump_read_timebase () =
     O.o "" ;
 
 (* Initialize *)
-    if not do_prealloc then O.oi "init(&ctx);" ;
+    if not do_prealloc then begin
+      if Cfg.doublealloc then O.oi "init(&ctx); finalize(&ctx);" ;
+      O.oi "init(&ctx);"
+    end ;
 (* Build T preads arguments (which are constant) *)
     loop_proc_prelude indent ;
     O.oii "parg[_p].th_id = _p; parg[_p]._a = &ctx;" ;
@@ -2200,7 +2204,11 @@ let dump_read_timebase () =
     O.oii "zyva_t *p = &zarg[k];" ;
     O.oii "p->_p = &prm;" ;
     O.oii "p->p_mutex = p_mutex; p->p_barrier = p_barrier; " ;
-    if do_prealloc then O.oii "p->ctx._p = &prm; init(&p->ctx);" ;
+    if do_prealloc then begin
+      O.oii "p->ctx._p = &prm;" ;
+      if Cfg.doublealloc then O.oi "init(&p->ctx); finalize(&p->ctx);" ;
+      O.oii "init(&p->ctx);"
+    end ;
     if do_affinity then begin
       O.oii "p->z_id = k;" ;
       O.oii "p->cpus = aff_p;" ;

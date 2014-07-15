@@ -106,6 +106,7 @@ let force_affinity = ref false
 let smtmode = ref Smt.No
 let smt = ref 2
 let prealloc = ref false
+let doublealloc = ref false
 let speedcheck = ref Speedcheck.NoSpeed
 let gcc = ref "gcc"
 let c11 = ref false

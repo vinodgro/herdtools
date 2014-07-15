@@ -133,6 +133,8 @@ rule main = parse
     P.lexfun "collect" collect arg ; main lexbuf }
 | "prealloc" arg
    { set_bool prealloc arg ; main lexbuf }
+| "doublealloc" arg
+   { set_bool doublealloc arg ; main lexbuf }
 | "carch" arg
    { let module P = LexTag(Archs.System) in
      P.lexfun_with_fun "carch" set_carch arg ; main lexbuf }

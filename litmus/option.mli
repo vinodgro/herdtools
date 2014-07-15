@@ -66,6 +66,7 @@ val force_affinity : bool ref
 val smtmode : Smt.t ref
 val smt : int ref
 val prealloc : bool ref
+val doublealloc : bool ref
 val speedcheck : Speedcheck.t ref
 val gcc : string ref
 val c11 : bool ref

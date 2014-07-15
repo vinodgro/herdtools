@@ -105,6 +105,8 @@ let opts =
    argint "-smt" Option.smt "specify <n>-ways SMT" ;
    argbool "-prealloc" Option.prealloc
      "alloc memory before forking any thread" ;
+   argbool "-doublealloc" Option.doublealloc
+     "perform a malloc/free once before allocating for real" ;
    begin let module P = ParseTag.Make(Speedcheck) in
    P.parse"-speedcheck" Option.speedcheck
      "stop test as soon as condition is settled"  end ;
@@ -260,6 +262,7 @@ let () =
       let barrier = !barrier
       let launch = !launch
       let prealloc = !prealloc
+      let doublealloc = !doublealloc
       let memory = !memory
       let preload = !preload
       let safer = !safer
