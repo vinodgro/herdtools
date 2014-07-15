@@ -27,6 +27,8 @@ type op =
 
 val pp_op : op -> string
 
+val pp_ptx_cmp_op : op -> string
+
 (*********)
 (* Unary *)
 (*********)

@@ -35,6 +35,13 @@ let pp_op o =
   | Gt -> ">"
   | Ne -> "!="
 
+let pp_ptx_cmp_op = function
+  | Eq -> ".eq"
+  | Lt -> ".lt"
+  | Gt -> ".gt"
+  | Ne -> ".ne"
+  | _ -> Warn.user_error "Invalid PTX comparison operator"
+
 (********************)
 
 type op1 =

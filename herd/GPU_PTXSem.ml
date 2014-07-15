@@ -122,6 +122,15 @@ module Make (C:Sem.Config)(V:Value.S)
       | GPU_PTX.Pguardnot (reg,ins) ->
         read_reg reg ii >>= fun v ->
         M.choiceT v (M.unitT B.Next) (build_semantics_inner {ii with A.inst = ins})
+
+      | GPU_PTX.Psetp (cmp_op, reg, op1, op2, _) ->
+	read_ins_op op1 ii >>| read_ins_op op2 ii >>= fun (v1,v2) -> 
+        M.op cmp_op v1 v2 >>= fun v ->
+        write_reg reg v ii >>! 
+        B.Next    
+
+      | GPU_PTX.Pjmp lbl -> B.branchT lbl    
+
       in 
       M.addT (A.next_po_index ii.A.program_order_index) (build_semantics_inner ii)
   end

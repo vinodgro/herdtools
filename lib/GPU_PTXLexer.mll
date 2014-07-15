@@ -48,23 +48,34 @@ rule token = parse
 | "ld" {LD}
 | "st" {ST}
 | "mov" {MOV}
+| "setp" {SETP}
 | "add" {ADD}
 | "and" {AND}
 | "cvt" {CVT}
+| "bra" {BRA}
 | ".cta" { BARRIER_SCOPE GPU_PTXBase.CTA_bar }
 | ".gl"  { BARRIER_SCOPE GPU_PTXBase.GL_bar }
 | ".sys" { BARRIER_SCOPE GPU_PTXBase.SYS_bar }
+
 | ".ca"  {CACHE_OP GPU_PTXBase.CA}
 | ".cg"  {CACHE_OP GPU_PTXBase.CG}
 | ".cv"  {CACHE_OP GPU_PTXBase.CV}
 | ".wb"  {CACHE_OP GPU_PTXBase.WB}
 | ".wt"  {CACHE_OP GPU_PTXBase.WT}
+
+| ".eq" {CMP_OP Op.Eq}
+| ".ne" {CMP_OP Op.Ne}
+| ".lt" {CMP_OP Op.Lt}
+| ".gt" {CMP_OP Op.Gt}
+
 | ".s32" {OP_TYPE GPU_PTXBase.S32}
 | ".b64" {OP_TYPE GPU_PTXBase.B64}
 | ".b32" {OP_TYPE GPU_PTXBase.B32}
 | ".u64" {OP_TYPE GPU_PTXBase.U64}
+| ".s64" {OP_TYPE GPU_PTXBase.S64}
 | ".u32" {OP_TYPE GPU_PTXBase.U32}
 | ".pred" {OP_TYPE GPU_PTXBase.PRED}
+
 | ".shared" {STATE_SPACE GPU_PTXBase.Shared}
 | ".global" {STATE_SPACE GPU_PTXBase.Global}
 | ".volatile" {VOL}

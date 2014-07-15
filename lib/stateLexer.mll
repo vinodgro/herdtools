@@ -60,7 +60,12 @@ rule token = parse
 | "locations" { LOCATIONS }
 (*for GPU*)
 | ".reg" {PTX_REG_DEC}
-| ".s32" as x | ".b64" as x | ".b32" as x | ".u64" as x | ".u32" as x {PTX_REG_TYPE x}
+| ".s32" as x 
+| ".b64" as x 
+| ".b32" as x 
+| ".u64" as x 
+| ".u32" as x 
+| ".pred" as x {PTX_REG_TYPE x}
 
 | "*" { STAR }
 | name as name { NAME name }

@@ -24,7 +24,9 @@ let arch = Archs.GPU_PTX
 type gpr_reg =
   | GPR0 | GPR1 | GPR2 | GPR3
   | GPR4 | GPR5 | GPR6 | GPR7
-  | GPR8 | GPR9 
+  | GPR8 | GPR9 | PR0  | PR1 
+  | PR2  | PR3  | PR4  | PR5 
+  | PR6  | PR7  | PR8  | PR9
 
 let gpr_regs =
   [
@@ -33,19 +35,23 @@ let gpr_regs =
    GPR4,"r4";  GPR5,"r5";
    GPR6,"r6";  GPR7,"r7";
    GPR8,"r8";  GPR9,"r9";
+   PR0,"p0";  PR1,"p1";
+   PR2,"p2";  PR3,"p3";
+   PR4,"p4";  PR5,"p5";
+   PR6,"p6";  PR7,"p7";
+   PR8,"p8";  PR9,"p9";
   ]
 
 type reg =
-  | GPRreg of gpr_reg (* integer registers *)
+  | GPRreg of gpr_reg (* integer and boolean registers *)
   | PC (* program counter *)
 
 let pp_reg r =
-  try List.assoc r gpr_regs with
-  | Not_found -> assert false
-
-let pp_reg r =
   match r with
-  | GPRreg(ir) -> pp_reg ir
+  | GPRreg ir -> begin 
+      try List.assoc ir gpr_regs with
+      | Not_found -> assert false 
+    end
   | PC -> "pc"
 
 let reg_compare = Pervasives.compare
@@ -118,6 +124,7 @@ type op_type =
   | B64
   | B32
   | U64
+  | S64
   | U32
   | PRED
 
@@ -126,6 +133,7 @@ let pp_op_type o = match o with
   | B64 -> ".b64"
   | B32 -> ".b32"
   | U64 -> ".u64"
+  | S64 -> ".s64"
   | U32 -> ".u32"
   | PRED -> ".pred"
 
@@ -158,6 +166,8 @@ let mk_s32_reg r = match r with
   | GPRreg(r) -> r
   | _ -> assert false
 
+type lbl = Label.t
+
 type instruction = 
 | Pld of reg*reg*state_space*cache_op*op_type
 | Pst of reg*reg*state_space*cache_op*op_type
@@ -170,6 +180,8 @@ type instruction =
 | Pmembar of bar_scope
 | Pguard of reg*instruction
 | Pguardnot of reg*instruction
+| Psetp of Op.op*reg*ins_op*ins_op*op_type
+| Pjmp of lbl
 
 include Pseudo.Make
     (struct
@@ -235,6 +247,8 @@ let rec dump_instruction i = match i with
   | Pmembar s -> sprintf "membar.%s" (pp_bar_scope s)
   | Pguard(r,ins) -> sprintf "@%s %s" (pp_reg r) (dump_instruction ins)
   | Pguardnot(r,ins) -> sprintf "@!%s %s" (pp_reg r) (dump_instruction ins)
+  | Psetp(cmp_op,r,op1,op2,t) -> sprintf "setp %s %s %s, %s, %s" (Op.pp_ptx_cmp_op cmp_op) (pp_op_type t) (pp_reg r) (pp_ins_op op1) (pp_ins_op op2)
+  | Pjmp (lbl) -> sprintf "bra %s" lbl
 
 (* Required by archBase.mli   *)
 
@@ -256,14 +270,8 @@ let fold_regs (f_reg,_f_sreg) =
     | _          -> fold_reg (r1) c
     end
 
-  | Padd(r1, op1, op2, _) ->
-    begin match op1,op2 with
-    | Reg r2, Reg r3 -> fold_reg (r1 )(fold_reg (r2) (fold_reg (r3) c))
-    | _, Reg r2      -> fold_reg (r1 )(fold_reg (r2) c)
-    | Reg r2, _      -> fold_reg (r1 )(fold_reg (r2) c)
-    | _, _           -> fold_reg (r1) c
-    end
-
+  | Padd(r1, op1, op2, _) 
+  | Psetp(_, r1, op1, op2, _) 
   | Pand(r1, op1, op2, _) ->
     begin match op1,op2 with
     | Reg r2, Reg r3 -> fold_reg (r1 )(fold_reg (r2) (fold_reg (r3) c))
@@ -272,13 +280,14 @@ let fold_regs (f_reg,_f_sreg) =
     | _, _           -> fold_reg (r1) c
     end
 
-  (*zero registers*)
-  | Pmembar _  -> c
-
-  (* guarded instructions -- the following is a blind guess *) 
+  (* guarded instructions -- the following is a bit of a guess *) 
   | Pguard(r,ins) -> fold_reg (r) (fold_ins c ins)
 
   | Pguardnot(r,ins) -> fold_reg (r) (fold_ins c ins)
+
+  (*zero registers*)
+  | Pmembar _  -> c
+  | Pjmp _  -> c
 
   end 
   in fold_ins
@@ -322,7 +331,18 @@ let map_regs f_reg _f_symb =
     | _, Reg r2 ->
       map2 (fun (r1,r2) -> Padd(r1, op1, Reg r2,t)) r1 r2
     | _,_ -> Padd(map_reg r1, op1, op2, t)
-    end    
+    end   
+
+  | Psetp (cmp_op,r1,op1,op2,t) ->
+    begin match op1,op2 with
+    | Reg r2, Reg r3 -> 
+      map3 (fun (r1,r2,r3) -> Psetp(cmp_op,r1, Reg r2, Reg r3,t)) r1 r2 r3
+    | Reg r2, _ ->
+      map2 (fun (r1,r2) -> Psetp(cmp_op,r1, Reg r2, op2,t)) r1 r2
+    | _, Reg r2 ->
+      map2 (fun (r1,r2) -> Psetp(cmp_op,r1, op1, Reg r2,t)) r1 r2
+    | _,_ -> Psetp(cmp_op,map_reg r1, op1, op2, t)
+    end  
 
   | Pand (r1,op1,op2,t) ->
     begin match op1,op2 with
@@ -333,11 +353,12 @@ let map_regs f_reg _f_symb =
       map2 (fun (r1,r2) -> Pand(r1, op1, Reg r2,t)) r1 r2
     | _,_ -> Pand(map_reg r1, op1, op2, t)
     end    
-
-      (*Zero registers*)
-  | Pmembar _  -> ins
   | Pguard (r,ins) -> Pguard (map_reg r, map_ins ins)
   | Pguardnot (r,ins) -> Pguardnot (map_reg r, map_ins ins)
+
+      (*Zero registers*)
+  | Pmembar _ 
+  | Pjmp _  -> ins
   end in
   map_ins
   

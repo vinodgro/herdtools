@@ -20,6 +20,7 @@ open GPU_PTX
 %token <GPU_PTXBase.op_type> OP_TYPE
 %token <GPU_PTXBase.state_space> STATE_SPACE
 %token <GPU_PTXBase.cache_op> CACHE_OP
+%token <Op.op> CMP_OP
 %token <GPU_PTXBase.bar_scope> BARRIER_SCOPE
 %token <int> NUM
 %token <string> NAME
@@ -30,7 +31,7 @@ open GPU_PTX
 %token <int> CRK
 
 /* Instruction tokens */
-%token ST LD MEMBAR MOV ADD AND CVT VOL
+%token ST LD MEMBAR MOV ADD AND CVT VOL SETP BRA
 
 %type <int list * (GPU_PTXBase.pseudo) list list * MiscParser.gpu_data option> main 
 %start  main
@@ -69,6 +70,7 @@ instr_option_list :
 
 instr_option :
 |            { Nop }
+| NAME COLON instr_option { Label ($1,$3) }
 | instr      { Instruction $1}
 
 instr:
@@ -77,6 +79,12 @@ instr:
 
   | AMPERSAT BANG reg instr
     { Pguardnot ($3,$4) }
+
+  | BRA NAME
+    { Pjmp $2 }
+
+  | SETP CMP_OP OP_TYPE reg COMMA ins_op COMMA ins_op
+    { Psetp ($2, $4, $6, $8, $3) }
 
   | ST prefix cop OP_TYPE LBRAC reg RBRAC COMMA reg
     { Pst ($6, $9, $2, $3, $4) }
