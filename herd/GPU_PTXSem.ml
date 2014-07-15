@@ -65,8 +65,8 @@ module Make (C:Sem.Config)(V:Value.S)
       | _ -> Warn.fatal "Couldn't convert constant to int"
 
     let build_semantics ii = 
-      M.addT (A.next_po_index ii.A.program_order_index)
-        begin match ii.A.inst with
+    let rec build_semantics_inner ii =
+    match ii.A.inst with
       | GPU_PTX.Pld(reg1,reg2,_,cop,_) ->
 	read_reg reg2 ii >>= 
 	    (fun addr -> read_mem cop addr ii) >>=
@@ -95,7 +95,7 @@ module Make (C:Sem.Config)(V:Value.S)
 	      B.Next 
 
       | GPU_PTX.Padd(reg,op1,op2,_) ->
-	read_ins_op op1 ii >>| read_ins_op op2 ii >>= 
+	read_ins_op op1 ii >>| read_ins_op op2 ii >>=
 	    (fun (v1,v2) -> M.op Op.Add v1 v2) >>=
 	    (fun v -> write_reg reg v ii) >>!
 	      B.Next
@@ -114,5 +114,14 @@ module Make (C:Sem.Config)(V:Value.S)
       | GPU_PTX.Pcvt (reg1,reg2,_,_) -> 
 	read_reg reg2 ii >>= 
 	  (fun v -> write_reg reg1 v ii) >>! B.Next
-        end
+
+      | GPU_PTX.Pguard (reg,ins) ->
+        read_reg reg ii >>= fun v ->
+        M.choiceT v (build_semantics_inner {ii with A.inst = ins}) (M.unitT B.Next)
+
+      | GPU_PTX.Pguardnot (reg,ins) ->
+        read_reg reg ii >>= fun v ->
+        M.choiceT v (M.unitT B.Next) (build_semantics_inner {ii with A.inst = ins})
+      in 
+      M.addT (A.next_po_index ii.A.program_order_index) (build_semantics_inner ii)
   end

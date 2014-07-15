@@ -17,15 +17,15 @@ open GPU_PTX
 
 %token EOF
 %token <GPU_PTXBase.reg> ARCH_REG
-%token <GPU_PTXBase.op_type> S32 B64 B32 U64 U32
-%token <GPU_PTXBase.state_space> GLOB SH
-%token <GPU_PTXBase.cache_op> CA CG CV WB WT
-%token DOTCTA DOTGL DOTSYS
+%token <GPU_PTXBase.op_type> OP_TYPE
+%token <GPU_PTXBase.state_space> STATE_SPACE
+%token <GPU_PTXBase.cache_op> CACHE_OP
+%token <GPU_PTXBase.bar_scope> BARRIER_SCOPE
 %token <int> NUM
 %token <string> NAME
 %token <int> PROC
 
-%token SEMI COMMA PIPE COLON LPAR RPAR LBRAC RBRAC LBRACE RBRACE
+%token SEMI COMMA PIPE COLON LPAR RPAR LBRAC RBRAC LBRACE RBRACE AMPERSAT BANG
 
 %token <int> CRK
 
@@ -72,61 +72,50 @@ instr_option :
 | instr      { Instruction $1}
 
 instr:
-  | ST prefix cop ins_type LBRAC reg RBRAC COMMA reg
+  | AMPERSAT reg instr
+    { Pguard ($2,$3) }
+
+  | AMPERSAT BANG reg instr
+    { Pguardnot ($3,$4) }
+
+  | ST prefix cop OP_TYPE LBRAC reg RBRAC COMMA reg
     { Pst ($6, $9, $2, $3, $4) }
 
-  | LD prefix cop ins_type reg COMMA LBRAC reg RBRAC
+  | LD prefix cop OP_TYPE reg COMMA LBRAC reg RBRAC
     { Pld ($5, $8, $2, $3, $4) }
 
-  | ST VOL prefix ins_type LBRAC reg RBRAC COMMA reg
+  | ST VOL prefix OP_TYPE LBRAC reg RBRAC COMMA reg
     { Pstvol ($6, $9, $3, $4) }
 
-  | LD VOL prefix ins_type reg COMMA LBRAC reg RBRAC
+  | LD VOL prefix OP_TYPE reg COMMA LBRAC reg RBRAC
     { Pldvol ($5, $8, $3, $4) }
 
-  | MOV ins_type reg COMMA ins_op
+  | MOV OP_TYPE reg COMMA ins_op
     { Pmov ($3,$5,$2) }
 
-  | ADD ins_type reg COMMA ins_op COMMA ins_op
+  | ADD OP_TYPE reg COMMA ins_op COMMA ins_op
     { Padd ($3,$5,$7,$2) }
 
-  | AND ins_type reg COMMA ins_op COMMA ins_op
+  | AND OP_TYPE reg COMMA ins_op COMMA ins_op
     { Pand ($3,$5,$7,$2) }
 
-  | CVT ins_type ins_type reg COMMA reg
+  | CVT OP_TYPE OP_TYPE reg COMMA reg
     { Pcvt ($4,$6,$2,$3) }
 
-  | MEMBAR bscope
+  | MEMBAR BARRIER_SCOPE
     { Pmembar ($2) }
 
 ins_op:
 | reg {Reg $1}
 | NUM {Im $1}
 
-bscope:
-| DOTCTA {GPU_PTXBase.CTA_bar}
-| DOTGL  {GPU_PTXBase.GL_bar}
-| DOTSYS {GPU_PTXBase.SYS_bar}
-
-ins_type:
-| S32 {$1}
-| B64 {$1}
-| B32 {$1}
-| U64 {$1}
-| U32 {$1}
-
 prefix:
-| {NOMP}
-| GLOB {$1}
-| SH {$1}
+|             { NOMP }
+| STATE_SPACE { $1 }
 
 cop:
-| {NCOP}
-| CA {$1}
-| CG {$1}
-| CV {$1}
-| WB {$1}
-| WT {$1}
+|          { NCOP }
+| CACHE_OP { $1 }
  
 reg:
 | ARCH_REG { $1 }

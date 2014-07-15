@@ -42,29 +42,32 @@ rule token = parse
 | '[' { LBRAC }
 | '{' { LBRACE }
 | '}' { RBRACE }
+| '@' { AMPERSAT }
+| '!' { BANG }
 | "membar" { MEMBAR }
-| ".cta" {DOTCTA}
-| ".gl"  {DOTGL}
-| ".sys" {DOTSYS}
 | "ld" {LD}
 | "st" {ST}
 | "mov" {MOV}
 | "add" {ADD}
 | "and" {AND}
 | "cvt" {CVT}
-| ".ca"  {CA (GPU_PTX.CA)}
-| ".cg"  {CG (GPU_PTX.CG)}
-| ".cv"  {CV (GPU_PTX.CV)}
-| ".wb"  {WB (GPU_PTX.WB)}
-| ".wt"  {WT (GPU_PTX.WT)}
-| ".s32" {S32 (GPU_PTX.S32)}
-| ".b64" {B64 (GPU_PTX.B64)}
-| ".b32" {B32 (GPU_PTX.B32)}
-| ".u64" {U64 (GPU_PTX.U64)}
-| ".u32" {U32 (GPU_PTX.U32)}
+| ".cta" { BARRIER_SCOPE GPU_PTXBase.CTA_bar }
+| ".gl"  { BARRIER_SCOPE GPU_PTXBase.GL_bar }
+| ".sys" { BARRIER_SCOPE GPU_PTXBase.SYS_bar }
+| ".ca"  {CACHE_OP GPU_PTXBase.CA}
+| ".cg"  {CACHE_OP GPU_PTXBase.CG}
+| ".cv"  {CACHE_OP GPU_PTXBase.CV}
+| ".wb"  {CACHE_OP GPU_PTXBase.WB}
+| ".wt"  {CACHE_OP GPU_PTXBase.WT}
+| ".s32" {OP_TYPE GPU_PTXBase.S32}
+| ".b64" {OP_TYPE GPU_PTXBase.B64}
+| ".b32" {OP_TYPE GPU_PTXBase.B32}
+| ".u64" {OP_TYPE GPU_PTXBase.U64}
+| ".u32" {OP_TYPE GPU_PTXBase.U32}
+| ".pred" {OP_TYPE GPU_PTXBase.PRED}
+| ".shared" {STATE_SPACE GPU_PTXBase.Shared}
+| ".global" {STATE_SPACE GPU_PTXBase.Global}
 | ".volatile" {VOL}
-| ".shared" {SH (GPU_PTX.Shared)}
-| ".global" {GLOB (GPU_PTX.Global)}
 | "scopeTree" { SCOPETREE }
 | "global"  { GLOBAL }
 | "shared"|"local" { SHARED }

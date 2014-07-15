@@ -119,6 +119,7 @@ type op_type =
   | B32
   | U64
   | U32
+  | PRED
 
 let pp_op_type o = match o with
   | S32 -> ".s32"
@@ -126,6 +127,7 @@ let pp_op_type o = match o with
   | B32 -> ".b32"
   | U64 -> ".u64"
   | U32 -> ".u32"
+  | PRED -> ".pred"
 
 let pp_state_space m = match m with
   | Shared -> ".shared"
@@ -166,6 +168,8 @@ type instruction =
 | Pmov of reg*ins_op*op_type
 | Pcvt of reg*reg*op_type*op_type
 | Pmembar of bar_scope
+| Pguard of reg*instruction
+| Pguardnot of reg*instruction
 
 include Pseudo.Make
     (struct
@@ -189,7 +193,7 @@ include Pseudo.Make
      end)
     
 
-let dump_instruction i = match i with
+let rec dump_instruction i = match i with
   | Pld(r1,r2,m,cop,t) -> sprintf "ld%s%s%s %s, [%s]" (pp_state_space m)
                                                       (pp_cache_op cop)
                                                       (pp_op_type t)
@@ -229,6 +233,8 @@ let dump_instruction i = match i with
                                                        (pp_reg r2)
 
   | Pmembar s -> sprintf "membar.%s" (pp_bar_scope s)
+  | Pguard(r,ins) -> sprintf "@%s %s" (pp_reg r) (dump_instruction ins)
+  | Pguardnot(r,ins) -> sprintf "@!%s %s" (pp_reg r) (dump_instruction ins)
 
 (* Required by archBase.mli   *)
 
@@ -237,9 +243,8 @@ let fold_regs (f_reg,_f_sreg) =
   let fold_reg reg (y_reg,y_sreg) = match reg with
     | GPRreg _ -> f_reg reg y_reg,y_sreg
     | _ -> y_reg, y_sreg in
-  
+  let rec fold_ins (_y_reg,_y_sreg as c) ins = begin match ins with
 
-  fun (_y_reg,_y_sreg as c) ins -> match ins with
     (*two registers*)
   | Pld(r1,r2,_,_,_) | Pst(r1,r2,_,_,_) | Pcvt(r1,r2,_,_) | Pldvol(r1,r2,_,_) | Pstvol(r1,r2,_,_)
       -> fold_reg (r2 )(fold_reg (r1) c)
@@ -269,6 +274,14 @@ let fold_regs (f_reg,_f_sreg) =
 
   (*zero registers*)
   | Pmembar _  -> c
+
+  (* guarded instructions -- the following is a blind guess *) 
+  | Pguard(r,ins) -> fold_reg (r) (fold_ins c ins)
+
+  | Pguardnot(r,ins) -> fold_reg (r) (fold_ins c ins)
+
+  end 
+  in fold_ins
     
 
 let map_regs f_reg _f_symb = 
@@ -279,7 +292,7 @@ let map_regs f_reg _f_symb =
   let map2 ins r1 r2 = ins (map_reg r1,map_reg r2) in
   let map3 ins r1 r2 r3 =ins (map_reg r1,map_reg r2,map_reg r3) in
 
-  fun ins -> match ins with
+  let rec map_ins ins = begin match ins with
   (*Two registers*)
   | Pld(r1,r2,m,cop,t) ->
     map2 (fun (r1,r2) -> Pld(r1,r2,m,cop,t)) r1 r2
@@ -323,6 +336,10 @@ let map_regs f_reg _f_symb =
 
       (*Zero registers*)
   | Pmembar _  -> ins
+  | Pguard (r,ins) -> Pguard (map_reg r, map_ins ins)
+  | Pguardnot (r,ins) -> Pguardnot (map_reg r, map_ins ins)
+  end in
+  map_ins
   
 
 (* GPU operation to change memory into shared or global locations *)
