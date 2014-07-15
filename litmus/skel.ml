@@ -1723,9 +1723,9 @@ let dump_read_timebase () =
     begin if do_prealloc then
       O.oi "ctx_t ctx = _a->ctx;"
     else
-      O.oi "ctx_t ctx;"
+      O.oi "ctx_t ctx;" ;
+      O.oi "ctx._p = _b;"
     end ;
-    O.oi "ctx._p = _b;" ;
     O.o "" ;
 
 (* Initialize *)
@@ -2200,7 +2200,7 @@ let dump_read_timebase () =
     O.oii "zyva_t *p = &zarg[k];" ;
     O.oii "p->_p = &prm;" ;
     O.oii "p->p_mutex = p_mutex; p->p_barrier = p_barrier; " ;
-    if do_prealloc then O.oii "init(&p->ctx);" ;
+    if do_prealloc then O.oii "p->ctx._p = &prm; init(&p->ctx);" ;
     if do_affinity then begin
       O.oii "p->z_id = k;" ;
       O.oii "p->cpus = aff_p;" ;
