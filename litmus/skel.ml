@@ -56,6 +56,8 @@ module type Config = sig
   include DumpParams.Config
 end
 
+let sentinel = "-239487" (* Susmit's sentinel *)
+
 module Make
          (Cfg:sig include Config val sysarch : Archs.System.t end)
          (P:sig type code end)
@@ -449,64 +451,64 @@ let user2_barrier_def () =
   if Cfg.cautious then O.oi "mcautious();" ;
   O.o "}"
 
-let dump_read_timebase () =
-  if (do_verbose_barrier || do_timebase) && have_timebase then begin
-    O.o "typedef uint64_t tb_t ;" ;
-    O.o "#define PTB PRIu64" ;
-    O.o "" ;
-    let aux = function
-    | `X86 ->
-       O.o "inline static tb_t read_timebase(void) {" ;
-       O.oi "unsigned int a,d;" ;
-       O.oi "asm __volatile__ (\"rdtsc\" : \"=a\" (a), \"=d\" (d));" ;
-       O.oi "return ((tb_t)a) | (((tb_t)d)<<32);" ;
-       O.o "}"
-    | `PPCGen
-    | `PPC ->
-       O.oi "tb_t r;" ;
-       O.o "inline static tb_t read_timebase(void) {" ;
-       begin match ws with
-       | Word.W32|Word.WXX ->
-         let asm s = O.o (sprintf "\"%s\\n\\t\"" s) in
-         O.oi "uint32_t r1,r2,r3;" ;
-         O.o "asm __volatile__ (" ;
-         asm "0:" ;
-         asm "mftbu %[r1]" ;
-         asm "mftb %[r2]" ;
-         asm "mftbu %[r3]" ;
-         asm "cmpw %[r1],%[r3]" ;
-         asm "bne 0b" ;
-         O.o ":[r1] \"=r\" (r1), [r2] \"=r\" (r2), [r3] \"=r\" (r3)" ;
-         O.o ": :\"memory\" );" ;
-         O.oi "r = r2;" ;
-         O.oi "r |= ((tb_t)r1) << 32;" ;
-         ()
-       | Word.W64->
-          O.oi "asm __volatile__ (\"mftb %[r1]\" :[r1] \"=r\" (r) : : \"memory\");"
-       end ;
-       O.oi "return r;" ;
-       O.o "}"
-   | `ARM -> assert false
-    in
-    aux Cfg.sysarch
-   end
+  let dump_read_timebase () =
+    if (do_verbose_barrier || do_timebase) && have_timebase then begin
+      O.o "typedef uint64_t tb_t ;" ;
+      O.o "#define PTB PRIu64" ;
+      O.o "" ;
+      let aux = function
+        | `X86 ->
+            O.o "inline static tb_t read_timebase(void) {" ;
+            O.oi "unsigned int a,d;" ;
+            O.oi "asm __volatile__ (\"rdtsc\" : \"=a\" (a), \"=d\" (d));" ;
+            O.oi "return ((tb_t)a) | (((tb_t)d)<<32);" ;
+            O.o "}"
+        | `PPCGen
+        | `PPC ->
+            O.oi "tb_t r;" ;
+            O.o "inline static tb_t read_timebase(void) {" ;
+            begin match ws with
+            | Word.W32|Word.WXX ->
+                let asm s = O.o (sprintf "\"%s\\n\\t\"" s) in
+                O.oi "uint32_t r1,r2,r3;" ;
+                O.o "asm __volatile__ (" ;
+                asm "0:" ;
+                asm "mftbu %[r1]" ;
+                asm "mftb %[r2]" ;
+                asm "mftbu %[r3]" ;
+                asm "cmpw %[r1],%[r3]" ;
+                asm "bne 0b" ;
+                O.o ":[r1] \"=r\" (r1), [r2] \"=r\" (r2), [r3] \"=r\" (r3)" ;
+                O.o ": :\"memory\" );" ;
+                O.oi "r = r2;" ;
+                O.oi "r |= ((tb_t)r1) << 32;" ;
+                ()
+            | Word.W64->
+                O.oi "asm __volatile__ (\"mftb %[r1]\" :[r1] \"=r\" (r) : : \"memory\");"
+            end ;
+            O.oi "return r;" ;
+            O.o "}"
+        | `ARM -> assert false
+      in
+      aux Cfg.sysarch
+    end
 
   let lab_ext = if do_numeric_labels then "" else "_lab"
 
   let dump_tb_barrier_def () =
     let fname =
       function
-      | `PPCGen
-      | `PPC -> sprintf "_ppc_barrier%s.c" lab_ext
-      | `X86 -> sprintf "_x86_barrier%s.c" lab_ext
-      | `ARM ->
-          begin match Cfg.morearch with
-          | MoreArch.ARMv6K ->
-              Warn.fatal
-                "timebase barrier not supported for ARMv6K" ;
-          | _ -> ()
-          end ;
-          sprintf "_arm_barrier%s.c" lab_ext
+        | `PPCGen
+        | `PPC -> sprintf "_ppc_barrier%s.c" lab_ext
+        | `X86 -> sprintf "_x86_barrier%s.c" lab_ext
+        | `ARM ->
+            begin match Cfg.morearch with
+            | MoreArch.ARMv6K ->
+                Warn.fatal
+                  "timebase barrier not supported for ARMv6K" ;
+            | _ -> ()
+            end ;
+            sprintf "_arm_barrier%s.c" lab_ext
     in
     let fname = fname Cfg.sysarch in
     ObjUtil.insert_lib_file O.out fname
@@ -571,16 +573,16 @@ let dump_read_timebase () =
   let flush_def ()=
     O.o "inline static void cache_flush(void *p) {" ;
     let aux = function
-    | `PPCGen|`PPC ->
-        O.o "asm __volatile__ (" ;
-        asm "dcbf 0,%[p]" ;
-        O.o ": : [p] \"r\" (p) : \"memory\");"
-    | `X86 ->
-        O.o "asm __volatile__ (" ;
-        asm "clflush 0(%[p])" ;
-        O.o ": : [p] \"r\" (p) : \"memory\");"
-    | `ARM -> (* No cache flush for ARM? *)
-        ()
+      | `PPCGen|`PPC ->
+          O.o "asm __volatile__ (" ;
+          asm "dcbf 0,%[p]" ;
+          O.o ": : [p] \"r\" (p) : \"memory\");"
+      | `X86 ->
+          O.o "asm __volatile__ (" ;
+          asm "clflush 0(%[p])" ;
+          O.o ": : [p] \"r\" (p) : \"memory\");"
+      | `ARM -> (* No cache flush for ARM? *)
+          ()
     in
     aux Cfg.sysarch ;
     O.o "}"
@@ -589,15 +591,15 @@ let dump_read_timebase () =
     O.o "inline static void cache_touch(void *p) {" ;
     O.o "asm __volatile__ (" ;
     let aux = function
-    | `PPCGen|`PPC ->
-        asm "dcbt 0,%[p]" ;
-        O.o ": : [p] \"r\" (p) : \"memory\");"
-    | `X86 ->
-        asm "prefetcht0 0(%[p])" ;
-        O.o ": : [p] \"r\" (p) : \"memory\");"
-    | `ARM ->
-        asm "pld [%[p]]" ;
-        O.o ": : [p] \"r\" (p) : \"memory\");"
+      | `PPCGen|`PPC ->
+          asm "dcbt 0,%[p]" ;
+          O.o ": : [p] \"r\" (p) : \"memory\");"
+      | `X86 ->
+          asm "prefetcht0 0(%[p])" ;
+          O.o ": : [p] \"r\" (p) : \"memory\");"
+      | `ARM ->
+          asm "pld [%[p]]" ;
+          O.o ": : [p] \"r\" (p) : \"memory\");"
     in
     aux Cfg.sysarch ;
     O.o "}"
@@ -605,20 +607,20 @@ let dump_read_timebase () =
   let touch_store_def ()=
     O.o "inline static void cache_touch_store(void *p) {" ;
     let aux = function
-    | `PPCGen|`PPC ->
-        O.o "asm __volatile__ (" ;
-        asm "dcbtst 0,%[p]" ;
-        O.o ": : [p] \"r\" (p) : \"memory\");" ;
-    | `X86 ->
-        O.o "/* Did not find how to announce intention to store for x86 */" ;
-        O.o "asm __volatile__ (" ;
-        asm "prefetcht0 0(%[p])" ;
-        O.o ": : [p] \"r\" (p) : \"memory\");"
-    | `ARM ->
-        O.o "/* to get pldw: -mcpu=cortex-a9 -marm */" ;
-        O.o "asm __volatile__ (" ;
-        asm (if Cfg.pldw then "pldw [%[p]]" else "pld [%[p]]") ;
-        O.o ": : [p] \"r\" (p) : \"memory\");"
+      | `PPCGen|`PPC ->
+          O.o "asm __volatile__ (" ;
+          asm "dcbtst 0,%[p]" ;
+          O.o ": : [p] \"r\" (p) : \"memory\");" ;
+      | `X86 ->
+          O.o "/* Did not find how to announce intention to store for x86 */" ;
+          O.o "asm __volatile__ (" ;
+          asm "prefetcht0 0(%[p])" ;
+          O.o ": : [p] \"r\" (p) : \"memory\");"
+      | `ARM ->
+          O.o "/* to get pldw: -mcpu=cortex-a9 -marm */" ;
+          O.o "asm __volatile__ (" ;
+          asm (if Cfg.pldw then "pldw [%[p]]" else "pld [%[p]]") ;
+          O.o ": : [p] \"r\" (p) : \"memory\");"
     in
     aux Cfg.sysarch ;
     O.o "}"
@@ -659,9 +661,9 @@ let dump_read_timebase () =
   let dumb_one_mbar name fence =
     O.f "inline static void %s(void) {"  name ;
     (if Cfg.c11_fence then
-       O.oi "atomic_thread_fence(memory_order_acq_rel);"
-     else
-       O.fi "asm __volatile__ (\"%s\" ::: \"memory\");" fence
+      O.oi "atomic_thread_fence(memory_order_acq_rel);"
+    else
+      O.fi "asm __volatile__ (\"%s\" ::: \"memory\");" fence
     );
     O.o "}"
 
@@ -1090,6 +1092,22 @@ let dump_read_timebase () =
             (if do_randompl then "rand_bit(&(_a->seed)) && " else "")
             (dump_test x))
         test.T.globals ;
+(* Check locals *)
+      if Cfg.cautious then begin
+        List.iter
+          (fun (proc,(_,(outs,_))) ->
+            List.iter
+              (fun (reg,t) ->
+                O.fii "if (%s%s)  fatal(\"check_globals failed\");"
+                  (if do_randompl then "rand_bit(&(_a->seed)) && " else "")
+                  (sprintf "_a->%s[_i] != %s"
+                     (A.Out.dump_out_reg proc reg)
+                     (match is_ptr t with
+                     | false -> sentinel
+                     | true -> "NULL")))
+              outs)
+          test.T.code ;
+      end ;
       loop_test_postlude indent ;
 (*END LOOP*)
       O.fi "pb_wait(_a->fst_barrier);" ;
@@ -1368,7 +1386,7 @@ let dump_read_timebase () =
               O.fii "_a->%s[_i] = %s;"
                 (A.Out.dump_out_reg proc reg)
                 (match is_ptr t with
-                | false -> "-239487" (* Susmit's sentinel *)
+                | false -> sentinel
                 | true -> "NULL"))
             outs)
         test.T.code ;
@@ -1470,12 +1488,12 @@ let dump_read_timebase () =
         end ;
         let addrs = A.Out.get_addrs out in
 (*
-        List.iter
-          (fun a ->
-            let t = find_global_type a env in
-            O.fi "%s *%s = _a->%s;" (dump_global_type t) a a)
-          addrs ;
-*)
+  List.iter
+  (fun a ->
+  let t = find_global_type a env in
+  O.fi "%s *%s = _a->%s;" (dump_global_type t) a a)
+  addrs ;
+ *)
         List.iter
           (fun (r,t) ->
             let name = A.Out.dump_out_reg  proc r in
@@ -1519,7 +1537,7 @@ let dump_read_timebase () =
                     | Prefetch.Flush -> "cache_flush"
                     | Prefetch.Touch -> "cache_touch"
                     | Prefetch.TouchStore -> "cache_touch_store" in
-                      pp f (dump_a_addr loc)
+                    pp f (dump_a_addr loc)
                   with Exit -> ()
                 end else
                   Warn.warn_always
@@ -1608,12 +1626,12 @@ let dump_read_timebase () =
         if do_isync then begin match barrier with
         | User | User2 | UserFence | UserFence2 | TimeBase ->
             let aux = function
-            | `PPCGen
-            | `PPC ->
-                O.fx iloop "asm __volatile__ (\"isync\" : : : \"memory\");"
-            | `ARM ->
-                O.fx iloop "asm __volatile__ (\"isb\" : : : \"memory\");"
-            | `X86 -> ()
+              | `PPCGen
+              | `PPC ->
+                  O.fx iloop "asm __volatile__ (\"isync\" : : : \"memory\");"
+              | `ARM ->
+                  O.fx iloop "asm __volatile__ (\"isb\" : : : \"memory\");"
+              | `X86 -> ()
             in
             aux Cfg.sysarch
         | Pthread|NoBarrier -> ()
