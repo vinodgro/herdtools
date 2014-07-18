@@ -1185,11 +1185,11 @@ The structure of model files has been updated to include a {\tt withco} flag, wh
 The top-level syntax of model files thus becomes:
 
 \begin{syntax}
-\NT{model} \is \NT{model-comment} \boption \NT{include-co} \eoption \brepet \NT{instruction} \erepet
+\nt{model} \is \NT{model-comment} \boption \NT{include-co} \eoption \brepet \NT{instruction} \erepet
 \sep
 \NT{include-co} \is \T{withco} \orelse \T{withoutco}
 \sep
-\NT{model-comment} \is \NT{id}
+\nt{model-comment} \is \NT{id}
 \alt \nt{string}
 \end{syntax}
 
@@ -1202,7 +1202,7 @@ This is an appendix to Section~\ref{language:expression}.
 There are three additional \synt{\NT{selector}} expressions: \synt{\T{ext}}, \synt{\T{int}}, and \synt{\T{noid}}. The first selects pairs of events in different threads (``external''), the second selects pairs of events in the same thread (``internal''), and the third selects pairs of events that are different (``not identical''). This syntactic category thus becomes:
 
 \begin{syntax}
-\NT{selector} \is
+\nt{selector} \is
 \T{MM} \orelse
 \T{MR} \orelse
 \T{RM} \orelse
@@ -1231,13 +1231,13 @@ This is an amendment to Section~\ref{language:expression}.
 
 The syntax of expressions with respect to function application is currently described as:
 \begin{syntax}
-\NT{expr} \is{} \dots 
+\nt{expr} \is{} \dots 
 \alt \NT{id} \T{(} \NT{args} \T{)}
 \end{syntax}
 
 In fact, the syntax is more general: multiple arguments may be given, in a currying fashion. For instance, one may write such expressions as {\tt f (a,b) (c,d,e)}. The syntax should therefore be updated as follows:
 \begin{syntax}
-\NT{expr} \is{} \dots 
+\nt{expr} \is{} \dots 
 \alt \NT{id} \brepet \T{(} \NT{args} \T{)} \erepet
 \end{syntax}
 
@@ -1250,7 +1250,7 @@ This is an appendix to Section~\ref{language:expression}.
 Models can now define expressions over sets, and also bind identifiers to sets. The syntax of expressions thus becomes:
 
 \begin{syntax}
-\NT{expr} \is{} \T{0}
+\nt{expr} \is{} \T{0}
 \alt \NT{id}
 \alt \NT{expr}\T{*} \orelse \NT{expr}\T{+}  \orelse \NT{expr}\T{?}
 \alt \NT{expr}\T{|}\NT{expr} \orelse
@@ -1284,7 +1284,7 @@ A test-instruction is used to enforce a contract between the programming languag
 The syntax for instructions thus becomes:
 
 \begin{syntax}
-\NT{instruction} \is{} \T{let} \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{}
+\nt{instruction} \is{} \T{let} \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{}
 \alt \T{let} \T{rec} \NT{valbinding} \brepet{} \T{and} \NT{valbinding} \erepet{}
 \alt \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption
 \alt \T{undefined\_unless} \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption

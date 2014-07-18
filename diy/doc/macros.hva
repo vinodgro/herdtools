@@ -17,5 +17,4 @@
 \newenvironment{showcenter}
 {\begin{divstyle}{showcenter}}
 {\end{divstyle}}
-%%
 \usepackage{tests}
