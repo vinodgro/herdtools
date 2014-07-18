@@ -22,7 +22,7 @@ module type CommonConfig = sig
   val linkopt : string
   val barrier : Barrier.t
   val launch : Launch.t
-  val prealloc : bool
+  val alloc : Alloc.t
   val memory : Memory.t
   val preload : Preload.t
   val safer : Safer.t
@@ -136,7 +136,7 @@ let report_parameters out =
   | Some xs ->
       pf "/* procs: {%s} */" (LexSplit.pp_ints xs)
   end ;
-  pf "/* prealloc: %b */" O.prealloc ;
+  pf "/* alloc: %s */" (Alloc.pp O.alloc) ;
   pf "/* memory: %s */" (Memory.pp O.memory) ;
   begin match O.stride with
   | None -> ()

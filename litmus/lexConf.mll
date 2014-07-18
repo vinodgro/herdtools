@@ -131,8 +131,9 @@ rule main = parse
 | "collect" arg
    {let module P = LexTag(Collect) in
     P.lexfun "collect" collect arg ; main lexbuf }
-| "prealloc" arg
-   { set_bool prealloc arg ; main lexbuf }
+| "alloc" arg
+   { let module P = LexTag(Alloc) in
+   P.lexfun "alloc" alloc arg  ; main lexbuf }
 | "doublealloc" arg
    { set_bool doublealloc arg ; main lexbuf }
 | "carch" arg
