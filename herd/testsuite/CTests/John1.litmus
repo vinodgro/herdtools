@@ -8,17 +8,16 @@ Orig=PodWWNaRel RfeRelAcq PodRRAcqNa Fre
 
 P0 (atomic_int* x, int* y) {
   r0 = *x;
+  fence(memory_order_seq_cst);
   r1 = *y;
 }
 
 P1 (atomic_int* x, int* y) {
   *x = 1;
+  fence(memory_order_seq_cst);
   *y = 2;
 }
 
-P2 (atomic_int* x, int* y) {
-  *x = 3;
-}
 
 exists
 (1:r0 = 1)

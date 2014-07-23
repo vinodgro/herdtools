@@ -60,7 +60,7 @@ module Make
 	   "unv", unv;
             "loc", E.EventRel.restrict_rel E.same_location unv;
            "atom",conc.S.atomic_load_store;
-           "po",S.restrict E.is_mem E.is_mem conc.S.po;
+           "po", (* S.restrict E.is_mem E.is_mem *) conc.S.po;
            "pos", conc.S.pos;
            "po-loc", conc.S.pos;
            "addr", pr.S.addr;

@@ -65,7 +65,7 @@ module Make
            "asw", S.restrict E.is_mem_store_init
 	     (fun x -> not (E.is_mem_store_init x)) 
 	     unv ;
-           "po",S.restrict E.is_mem E.is_mem conc.S.po;
+           "po", (* S.restrict E.is_mem E.is_mem *) conc.S.po;
            "pos", conc.S.pos;
            "po-loc", conc.S.pos;
 	   "loc", E.EventRel.restrict_rel E.same_location unv;
