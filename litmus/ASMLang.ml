@@ -149,7 +149,7 @@ module Make
              trashed []) in
     fprintf chan ":%s\n" outs
 
-  let dump_copies chan indent env proc t =
+  let dump_copies compile_out_reg chan indent env proc t =
 (*
     List.iter
       (fun (_,a) ->
@@ -165,7 +165,7 @@ module Make
         fprintf chan "%s%s %s = %s;\n" indent
           (Tmpl.dump_type env reg)
           (copy_name (Tmpl.dump_out_reg proc reg))
-          (Tmpl.compile_out_reg proc reg) ;
+          (compile_out_reg proc reg) ;
         fprintf chan "%smcautious();\n" indent)
       t.Tmpl.final ;
     begin match O.memory with
@@ -185,22 +185,22 @@ module Make
     end ;
     ()
 
-  let dump_save_copies chan indent proc t =
+  let dump_save_copies compile_out_reg chan indent proc t =
     List.iter
       (fun reg ->
         fprintf chan "%smcautious();\n" indent ;
         fprintf chan "%s%s = %s;\n" indent
-          (Tmpl.compile_out_reg proc reg)
+          (compile_out_reg proc reg)
           (copy_name (Tmpl.dump_out_reg proc reg)))
       t.Tmpl.final ;
     ()
 
-  let after_dump chan indent proc t =
+  let after_dump compile_out_reg chan indent proc t =
     if O.cautious then begin
-      dump_save_copies chan indent proc t
+      dump_save_copies compile_out_reg chan indent proc t
     end
 
-  let before_dump chan indent env proc t trashed =
+  let before_dump compile_out_reg chan indent env proc t trashed =
     RegSet.iter
       (fun reg ->
         let ty = match A.internal_init reg with
@@ -210,7 +210,7 @@ module Make
           indent ty (dump_trashed_reg reg))
       trashed ;
     if O.cautious then begin
-      dump_copies chan indent env proc t
+      dump_copies compile_out_reg chan indent env proc t
     end
 
   let do_dump compile_val compile_addr compile_out_reg chan indent env proc t =
@@ -232,7 +232,7 @@ module Make
 *)
         dump_ins (k+1) ts in
     let trashed = trashed_regs t in
-    before_dump chan indent env proc t trashed;
+    before_dump compile_out_reg chan indent env proc t trashed;
     fprintf chan "asm __volatile__ (\n" ;
     fprintf chan "\"\\n\"\n" ;
     fprintf chan "\"%s\\n\"\n" (LangUtils.start_comment A.comment proc) ;
@@ -245,7 +245,7 @@ module Make
     dump_inputs compile_val chan t trashed ;
     dump_clobbers chan t  ;
     fprintf chan ");\n" ;
-    after_dump chan indent proc t;
+    after_dump compile_out_reg chan indent proc t;
     ()
 
   let dump chan indent env globEnv volatileEnv proc t =
