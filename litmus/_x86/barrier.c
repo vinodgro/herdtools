@@ -4,16 +4,17 @@
 
 typedef struct {
   volatile int c,sense ;
+  int n ;
 } sense_t ;
 
 
-static void barrier_init(sense_t *p) {
-  p->c = N ;
+static void barrier_init(sense_t *p, int n) {  
+  p->n = p->c = n ;
   p->sense = 0 ;
 }
 
-static void barrier_wait(sense_t *p, int *mySense) {
-  int sense = *mySense ;
+static void barrier_wait(sense_t *p) {
+  int sense = p->sense ;
   int r1 ;
   asm __volatile__ (
     "movl $-1,%[eax]\n\t"
@@ -33,13 +34,8 @@ static void barrier_wait(sense_t *p, int *mySense) {
     "mfence\n\t"
     "jmp 3f\n\t"
     "2:\n\t"
-    "xorl %[eax],%[eax]\n\t"
-    "testl %[ms],%[ms]\n\t"
-    "sete %%al\n\t"
-    "3:\n\t"
     : [eax] "=&a" (r1)
-    : [ms] "r" (sense), [s] "m" (p->sense), [c] "m" (p->c), [np] "n" (N)
+    : [ms] "r" (sense), [s] "m" (p->sense), [c] "m" (p->c), [np] "r" (p->n)
     : "memory") ;
-  *mySense = r1 ;
 }
 

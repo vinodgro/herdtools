@@ -210,6 +210,16 @@ end = struct
   let do_kind = Cfg.kind
   let do_numeric_labels = Cfg.numeric_labels
 
+
+(* Inserted source *)
+
+module Insert =
+  ObjUtil.Insert
+    (struct
+      let sysarch = Cfg.sysarch
+      let word = ws
+    end)
+
 (* Location utilities *)
   let get_global_names t = List.map fst t.T.globals
   let find_index  v =
@@ -471,44 +481,10 @@ let user2_barrier_def () =
 
   let dump_read_timebase () =
     if (do_verbose_barrier || do_timebase) && have_timebase then begin
+      O.o "/* Read timebase */" ;
       O.o "typedef uint64_t tb_t ;" ;
       O.o "#define PTB PRIu64" ;
-      O.o "" ;
-      let aux = function
-        | `X86 ->
-            O.o "inline static tb_t read_timebase(void) {" ;
-            O.oi "unsigned int a,d;" ;
-            O.oi "asm __volatile__ (\"rdtsc\" : \"=a\" (a), \"=d\" (d));" ;
-            O.oi "return ((tb_t)a) | (((tb_t)d)<<32);" ;
-            O.o "}"
-        | `PPCGen
-        | `PPC ->
-            O.oi "tb_t r;" ;
-            O.o "inline static tb_t read_timebase(void) {" ;
-            begin match ws with
-            | Word.W32|Word.WXX ->
-                let asm s = O.o (sprintf "\"%s\\n\\t\"" s) in
-                O.oi "uint32_t r1,r2,r3;" ;
-                O.o "asm __volatile__ (" ;
-                asm "0:" ;
-                asm "mftbu %[r1]" ;
-                asm "mftb %[r2]" ;
-                asm "mftbu %[r3]" ;
-                asm "cmpw %[r1],%[r3]" ;
-                asm "bne 0b" ;
-                O.o ":[r1] \"=r\" (r1), [r2] \"=r\" (r2), [r3] \"=r\" (r3)" ;
-                O.o ": :\"memory\" );" ;
-                O.oi "r = r2;" ;
-                O.oi "r |= ((tb_t)r1) << 32;" ;
-                ()
-            | Word.W64->
-                O.oi "asm __volatile__ (\"mftb %[r1]\" :[r1] \"=r\" (r) : : \"memory\");"
-            end ;
-            O.oi "return r;" ;
-            O.o "}"
-        | `ARM -> assert false
-      in
-      aux Cfg.sysarch
+      Insert.insert O.o "timebase.c"
     end
 
   let lab_ext = if do_numeric_labels then "" else "_lab"
@@ -517,8 +493,8 @@ let user2_barrier_def () =
     let fname =
       function
         | `PPCGen
-        | `PPC -> sprintf "_ppc_barrier%s.c" lab_ext
-        | `X86 -> sprintf "_x86_barrier%s.c" lab_ext
+        | `PPC
+        | `X86 -> sprintf "barrier%s.c" lab_ext
         | `ARM ->
             begin match Cfg.morearch with
             | MoreArch.ARMv6K ->
@@ -526,10 +502,8 @@ let user2_barrier_def () =
                   "timebase barrier not supported for ARMv6K" ;
             | _ -> ()
             end ;
-            sprintf "_arm_barrier%s.c" lab_ext
-    in
-    let fname = fname Cfg.sysarch in
-    ObjUtil.insert_lib_file O.out fname
+            sprintf "barrier%s.c" lab_ext in
+    Insert.insert O.o (fname Cfg.sysarch)
 
   let dump_user_barrier_vars () = O.oi "int volatile *barrier;"
 
@@ -594,66 +568,23 @@ let user2_barrier_def () =
     | NoBarrier -> ()
     end
 
-  let asm s = O.o (sprintf "\"%s\\n\\t\"" s)
+  let dump_cache_def () =
+    begin match Cfg.sysarch with
+    | `ARM when Cfg.pldw ->
+        O.o "#define HAS_PLDW 1" ;
+        O.o ""
+    | _ -> ()
+    end ;
+    O.o "/*************************/" ;
+    O.o "/* cache flush and touch */" ;
+    O.o "/*************************/" ;
+    Insert.insert O.o "cache.c"
 
-  let flush_def ()=
-    O.o "inline static void cache_flush(void *p) {" ;
-    let aux = function
-      | `PPCGen|`PPC ->
-          O.o "asm __volatile__ (" ;
-          asm "dcbf 0,%[p]" ;
-          O.o ": : [p] \"r\" (p) : \"memory\");"
-      | `X86 ->
-          O.o "asm __volatile__ (" ;
-          asm "clflush 0(%[p])" ;
-          O.o ": : [p] \"r\" (p) : \"memory\");"
-      | `ARM -> (* No cache flush for ARM? *)
-          ()
-    in
-    aux Cfg.sysarch ;
-    O.o "}"
-
-  let touch_def ()=
-    O.o "inline static void cache_touch(void *p) {" ;
-    O.o "asm __volatile__ (" ;
-    let aux = function
-      | `PPCGen|`PPC ->
-          asm "dcbt 0,%[p]" ;
-          O.o ": : [p] \"r\" (p) : \"memory\");"
-      | `X86 ->
-          asm "prefetcht0 0(%[p])" ;
-          O.o ": : [p] \"r\" (p) : \"memory\");"
-      | `ARM ->
-          asm "pld [%[p]]" ;
-          O.o ": : [p] \"r\" (p) : \"memory\");"
-    in
-    aux Cfg.sysarch ;
-    O.o "}"
-
-  let touch_store_def ()=
-    O.o "inline static void cache_touch_store(void *p) {" ;
-    let aux = function
-      | `PPCGen|`PPC ->
-          O.o "asm __volatile__ (" ;
-          asm "dcbtst 0,%[p]" ;
-          O.o ": : [p] \"r\" (p) : \"memory\");" ;
-      | `X86 ->
-          O.o "/* Did not find how to announce intention to store for x86 */" ;
-          O.o "asm __volatile__ (" ;
-          asm "prefetcht0 0(%[p])" ;
-          O.o ": : [p] \"r\" (p) : \"memory\");"
-      | `ARM ->
-          O.o "/* to get pldw: -mcpu=cortex-a9 -marm */" ;
-          O.o "asm __volatile__ (" ;
-          asm (if Cfg.pldw then "pldw [%[p]]" else "pld [%[p]]") ;
-          O.o ": : [p] \"r\" (p) : \"memory\");"
-    in
-    aux Cfg.sysarch ;
-    O.o "}"
 
   let get_prefetch_info test =
     try List.assoc "Prefetch" test.T.info
     with Not_found -> ""
+
 
   let preload_def = match Cfg.preload with
   | NoPL|RandomPL -> fun _test -> ()
@@ -664,53 +595,21 @@ let user2_barrier_def () =
           (sprintf "static char *global_names[] = {%s};"
              (String.concat ","
                 (List.map (sprintf "\"%s\"") (get_global_names test)))) ;
-        O.o "" ; flush_def () ;  O.o "" ;
-        O.o "" ; touch_def () ;  O.o "" ;
-        O.o "" ; touch_store_def () ;  O.o "" ;
-        ()
+        O.o "" ;
+        dump_cache_def ()
   |StaticPL|StaticNPL _ ->
-      fun test ->
-        let prf =
-          Prefetch.parse (get_prefetch_info test) in
-        let is_here t = List.exists  (fun (_,_,i) -> t=i) prf in
-        if is_here Prefetch.Flush then begin
-          O.o "" ; flush_def () ;  O.o ""
-        end ;
-        if is_here Prefetch.Touch then begin
-          O.o "" ; touch_def () ;  O.o ""
-        end ;
-        if is_here Prefetch.TouchStore then begin
-          O.o "" ; touch_store_def () ;  O.o ""
-        end ;
-        ()
-
-  let dumb_one_mbar name fence =
-    O.f "inline static void %s(void) {"  name ;
-    (if Cfg.c11_fence then
-      O.oi "atomic_thread_fence(memory_order_acq_rel);"
-    else
-      O.fi "asm __volatile__ (\"%s\" ::: \"memory\");" fence
-    );
-    O.o "}"
+      fun _test -> dump_cache_def ()
 
   let dump_mbar_def () =
     O.o "" ;
     O.o "/* Full memory barrier */" ;
-    let aux inst = function
-      | `PPCGen|`PPC -> "sync"
-      | `X86 -> "mfence"
-      | `ARM ->
-          begin match Cfg.morearch with
-          | MoreArch.ARMv6K -> ""
-          | _ -> inst
-          end
-    in
-    dumb_one_mbar "mbar" (aux "dsb" Cfg.sysarch) ;
+    Insert.insert O.o "mbar.c" ;
     if Cfg.cautious then begin
       O.o "" ;
-      dumb_one_mbar "mcautious" (aux "dmb" Cfg.sysarch)
+      O.o "inline static void mcautious(void) { mbar(); }" ;
+      O.o ""
     end
-
+      
 (* All of them *)
 
   let dump_threads test =
@@ -1509,7 +1408,7 @@ let user2_barrier_def () =
         O.oii "_a->barrier[_i] = !(((_a->_p->size_of_test -_i -1) % (2*N)) < N);" ;
         O.oi "}"
     | TimeBase ->
-        O.oi "barrier_init(&_a->barrier);"
+        O.oi "barrier_init(&_a->barrier,N);"
     | NoBarrier|Pthread|User|UserFence|UserFence2 -> ()
     end ;
     O.o "}" ;
@@ -1568,7 +1467,6 @@ let user2_barrier_def () =
             O.fi "int _th_id = _b->th_id;" ;
             O.fi "int volatile *barrier = _a->barrier;"
         | TimeBase ->
-            O.fi "int mySense = 0;" ;
             O.fi "sense_t *barrier = &_a->barrier;"
         | Pthread ->
             O.fi "barrier_t *barrier = _a->barrier;"
@@ -1698,10 +1596,10 @@ let user2_barrier_def () =
               O.fx iloop
                 "if (_i %% N == %i) _a->next_tb = read_timebase();"
                 proc ;
-              O.fx iloop "barrier_wait(barrier,&mySense);" ;
+              O.fx iloop "barrier_wait(barrier);" ;
               O.fx iloop "tb_t _tb0 = _a->next_tb;"
             end else begin
-              O.fx iloop "barrier_wait(barrier,&mySense);" ;
+              O.fx iloop "barrier_wait(barrier);" ;
             end
         | Pthread ->
             O.fx iloop "barrier_wait(%i,barrier);" proc ;
@@ -1754,7 +1652,7 @@ let user2_barrier_def () =
 
         if do_collect then begin
           let locs = get_final_locs test in
-          O.fx iloop "barrier_wait(barrier,&mySense);" ;
+          O.fx iloop "barrier_wait(barrier);" ;
           O.fx iloop "int cond = %s;"
             (dump_cond_fun_call test
                (dump_ctx_loc "_a->") dump_a_addr) ;
@@ -1782,9 +1680,9 @@ let user2_barrier_def () =
             O.fx iloop "}"
           end
         end else if do_collect_local then begin
-          O.fx iloop "barrier_wait(barrier,&mySense);"
+          O.fx iloop "barrier_wait(barrier);"
         end else if do_timebase && have_timebase then begin
-(*          O.fx iloop "barrier_wait(barrier,&mySense);"
+(*          O.fx iloop "barrier_wait(barrier);"
             Problematic 4.2W on squale *)
         end  ;
         begin match stride with

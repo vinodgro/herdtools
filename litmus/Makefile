@@ -12,7 +12,13 @@ CFG=conti.cfg saumur.cfg saumur.close.cfg doko.cfg squale.cfg hpcx.cfg \
  tst.cfg auto.cfg power7.smt.cfg power6.smt.cfg \
  mp.cfg ipad.cfg asus.cfg asus-debian.cfg asus-debian-thumb.cfg cortexA15.cfg \
  mike.cfg youpla.cfg hopla.cfg corei7.cfg x86.cfg nexus10.cfg nexus7.cfg \
- odroid-xu.cfg odroid-xu-ubuntu.cfg
+ odroid-xu.cfg odroid-xu-ubuntu.cfg \
+ cubietruck.cfg
+
+INSERT_XXX=mbar.c cache.c
+INSERT_X86=$(INSERT_XXX) timebase.c
+INSERT_PPC=$(INSERT_XXX) timebase32.c timebase64.c barrier_lab.c
+INSERT_ARM=$(INSERT_XXX)
 
 OCBOPT=
 OCB=ocamlbuild $(OCBOPT) -cflags -w,A-4-9-27-29-45 -classic-display
@@ -25,10 +31,11 @@ install:
 	cp _utils.c _utils.h $(LIBDIR)
 	cp _outs.c _outs.h $(LIBDIR)
 	cp _aix_affinity.c _linux_affinity.c _affinity.h $(LIBDIR)
-	cp _ppc_barrier.c  _x86_barrier.c  _arm_barrier.c $(LIBDIR)
-	cp _ppc_barrier_lab.c $(LIBDIR)
 	cp _show.awk _showC.awk _toh.sh $(LIBDIR)
 	cp $(CFG) $(LIBDIR)
+	mkdir -p  $(LIBDIR)/_ppc && ( cd _ppc && cp $(INSERT_PPC) $(LIBDIR)/_ppc )
+	mkdir -p  $(LIBDIR)/_x86 && ( cd _x86 && cp $(INSERT_X86) $(LIBDIR)/_x86 )
+	mkdir -p  $(LIBDIR)/_arm  && ( cd _arm && cp $(INSERT_ARM) $(LIBDIR)/_arm )
 
 luc: all install
 
