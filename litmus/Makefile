@@ -15,7 +15,7 @@ CFG=conti.cfg saumur.cfg saumur.close.cfg doko.cfg squale.cfg hpcx.cfg \
  odroid-xu.cfg odroid-xu-ubuntu.cfg \
  cubietruck.cfg
 
-INSERT_XXX=mbar.c cache.c
+INSERT_XXX=mbar.c cache.c barrier.c
 INSERT_X86=$(INSERT_XXX) timebase.c
 INSERT_PPC=$(INSERT_XXX) timebase32.c timebase64.c barrier_lab.c
 INSERT_ARM=$(INSERT_XXX)
