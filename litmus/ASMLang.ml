@@ -149,7 +149,7 @@ module Make
              trashed []) in
     fprintf chan ":%s\n" outs
 
-  let dump_copies compile_out_reg chan indent env proc t =
+  let dump_copies compile_out_reg compile_val compile_cpy chan indent env proc t =
 (*
     List.iter
       (fun (_,a) ->
@@ -200,7 +200,7 @@ module Make
       dump_save_copies compile_out_reg chan indent proc t
     end
 
-  let before_dump compile_out_reg chan indent env proc t trashed =
+  let before_dump compile_out_reg compile_val compile_cpy chan indent env proc t trashed =
     RegSet.iter
       (fun reg ->
         let ty = match A.internal_init reg with
@@ -210,10 +210,10 @@ module Make
           indent ty (dump_trashed_reg reg))
       trashed ;
     if O.cautious then begin
-      dump_copies compile_out_reg chan indent env proc t
+      dump_copies compile_out_reg compile_val compile_cpy chan indent env proc t
     end
 
-  let do_dump compile_val compile_addr compile_out_reg chan indent env proc t =
+  let do_dump compile_val compile_addr compile_cpy compile_out_reg chan indent env proc t =
     let rec dump_ins k ts = match ts with
     | [] -> ()
     | t::ts ->
@@ -232,7 +232,8 @@ module Make
 *)
         dump_ins (k+1) ts in
     let trashed = trashed_regs t in
-    before_dump compile_out_reg chan indent env proc t trashed;
+    before_dump
+      compile_out_reg compile_val compile_cpy chan indent env proc t trashed;
     fprintf chan "asm __volatile__ (\n" ;
     fprintf chan "\"\\n\"\n" ;
     fprintf chan "\"%s\\n\"\n" (LangUtils.start_comment A.comment proc) ;
@@ -250,7 +251,9 @@ module Make
 
   let dump chan indent env globEnv volatileEnv proc t =
     do_dump 
-      Tmpl.dump_v compile_addr_inline Tmpl.compile_out_reg
+      Tmpl.dump_v compile_addr_inline 
+      (fun x -> sprintf "_a->%s[_i]" (Tmpl.addr_cpy_name x proc))
+      Tmpl.compile_out_reg
       chan indent env proc t
 
   let compile_val_fun = match O.memory with
@@ -263,8 +266,11 @@ module Make
       | Constant.Symbolic s -> sprintf "*%s" s
       | Constant.Concrete _ -> Tmpl.dump_v v)
 
+  let compile_cpy_fun proc a = sprintf "*%s" (Tmpl.addr_cpy_name a proc)
+    
+
   let dump_fun chan env globEnv volatileEnv proc t =
-    let addrs = Tmpl.get_addrs t in
+    let addrs_proc = Tmpl.get_addrs t in
     let addrs =
       List.map
         (fun x ->
@@ -276,7 +282,19 @@ module Make
               sprintf "%s *%s" (CType.dump ty) x
           | Memory.Indirect -> 
               sprintf "%s **%s" (CType.dump ty) x)
-        addrs in
+        addrs_proc in
+    let cpys =
+      if O.cautious then
+        List.map
+          (fun x ->
+            let ty =
+              try List.assoc x globEnv
+              with Not_found -> assert false in
+            sprintf "%s **%s"
+              (CType.dump ty)
+              (Tmpl.addr_cpy_name x proc))
+          addrs_proc
+      else [] in
     let outs =
       List.map
         (fun x ->
@@ -285,24 +303,31 @@ module Make
             with Not_found -> assert false in
           let x = Tmpl.dump_out_reg proc x in
           sprintf "%s *%s" (CType.dump ty) x) t.Tmpl.final in          
-    let params =  String.concat "," (addrs@outs) in
+    let params =  String.concat "," (addrs@cpys@outs) in
     LangUtils.dump_code_def chan proc params ;
     do_dump
       compile_val_fun
       compile_addr_fun
+      (compile_cpy_fun proc)
       (fun p r  -> sprintf "*%s" (Tmpl.dump_out_reg p r))
       chan "  " env proc t ;
     fprintf chan "}\n\n" ;
     ()
 
   let compile_addr_call x = sprintf "&_a->%s[_i]" x
+  let compile_cpy_addr_call proc x =
+    sprintf "&_a->%s[_i]" (Tmpl.addr_cpy_name x proc)
   let compile_out_reg_call proc reg = 
     sprintf "&%s" (Tmpl.compile_out_reg proc reg)
 
   let dump_call chan indent env globEnv volatileEnv proc t =
-    let addrs = List.map compile_addr_call (Tmpl.get_addrs t)
+    let addrs_proc = Tmpl.get_addrs t in
+    let addrs = List.map compile_addr_call addrs_proc
+    and addrs_cpy =
+      if O.cautious then List.map (compile_cpy_addr_call proc) addrs_proc
+      else []
     and outs = List.map (compile_out_reg_call proc) t.Tmpl.final in
-    let args = String.concat "," (addrs@outs) in
+    let args = String.concat "," (addrs@addrs_cpy@outs) in
     LangUtils.dump_code_call chan indent proc args
 
 end
