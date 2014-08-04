@@ -72,12 +72,10 @@ module Make
 *)
     let dump_pair reg v =
       let dump_v = (* catch those addresses that are saved in a variable *)
-        if O.cautious then match O.memory with
-         | Memory.Indirect ->
-            (fun v -> match v with
-            | Constant.Symbolic _ -> copy_name (Tmpl.tag_reg reg)
-            | Constant.Concrete _ -> Tmpl.dump_v v)
-        | Memory.Direct -> Tmpl.dump_v
+        if O.cautious then
+          (fun v -> match v with
+          | Constant.Symbolic _ -> copy_name (Tmpl.tag_reg reg)
+          | Constant.Concrete _ -> compile_val v)
         else compile_val  in
       if RegSet.mem reg in_outputs then begin
         match A.internal_init reg with
@@ -182,7 +180,16 @@ module Make
               fprintf chan "%smcautious();\n" indent
           | Constant.Concrete _ -> ())
           t.Tmpl.init
-    | Memory.Direct -> ()
+    | Memory.Direct ->
+        List.iter
+          (fun (reg,v) -> match v with
+          | Constant.Symbolic a ->
+              let cpy =  copy_name (Tmpl.tag_reg reg) in
+              fprintf chan "%svoid *%s = %s;\n" indent
+                cpy
+                (compile_val v) ;
+          | Constant.Concrete _ -> ())
+          t.Tmpl.init
     end ;
     ()
 
@@ -285,7 +292,7 @@ module Make
               sprintf "%s **%s" (CType.dump ty) x)
         addrs_proc in
     let cpys =
-      if O.cautious then
+      if O.memory = Memory.Indirect && O.cautious then
         List.map
           (fun x ->
             let ty =
@@ -325,7 +332,8 @@ module Make
     let addrs_proc = Tmpl.get_addrs t in
     let addrs = List.map compile_addr_call addrs_proc
     and addrs_cpy =
-      if O.cautious then List.map (compile_cpy_addr_call proc) addrs_proc
+      if O.memory = Memory.Indirect && O.cautious then
+        List.map (compile_cpy_addr_call proc) addrs_proc
       else []
     and outs = List.map (compile_out_reg_call proc) t.Tmpl.final in
     let args = String.concat "," (addrs@addrs_cpy@outs) in
