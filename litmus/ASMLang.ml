@@ -173,11 +173,12 @@ module Make
         List.iter
           (fun (reg,v) -> match v with
           | Constant.Symbolic a ->
+              let cpy =  copy_name (Tmpl.tag_reg reg) in
               fprintf chan "%svoid *%s = %s;\n" indent
-                (copy_name (Tmpl.tag_reg reg))
-                (Tmpl.dump_v v) ;
-              fprintf chan "%s_a->%s[_i] = %s;\n" indent
-                (Tmpl.addr_cpy_name a proc)  (copy_name (Tmpl.tag_reg reg)) ;
+                cpy
+                (compile_val v) ;
+              fprintf chan "%s%s = %s;\n" indent
+                (compile_cpy a)  cpy ;
               fprintf chan "%smcautious();\n" indent
           | Constant.Concrete _ -> ())
           t.Tmpl.init
