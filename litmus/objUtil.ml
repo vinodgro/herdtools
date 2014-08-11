@@ -25,6 +25,50 @@ let insert_lib_file chan src =
   MySys.cat_chan in_chan (fprintf chan "%s\n") ;
   close_in in_chan
 
+module type InsertConfig = sig
+  val sysarch : Archs.System.t
+  val word : Word.t
+end
+
+module Insert (O:InsertConfig) :
+    sig
+      val insert : (string -> unit) -> string -> unit
+    end =
+  struct
+    open Word
+
+    let dir = match O.sysarch with
+    | `X86 -> "_x86"
+    | `PPC|`PPCGen -> "_ppc"
+    | `ARM -> "_arm"
+
+    let sz = match O.word with
+    | W32|WXX -> "32" (* our "default" word size, used for PPC only *)
+    | W64 -> "64"
+
+
+    let find_lib src =
+      let len = String.length src in
+      let base =
+        try Filename.chop_extension src
+        with Invalid_argument _ -> src in
+      let baselen = String.length base in
+      let ext = String.sub src baselen (len-baselen) in
+      let n1 = Filename.concat dir src in
+      try MyName.open_lib n1
+      with Misc.Fatal _ ->
+        try
+          let n2 = Filename.concat dir (sprintf "%s%s%s" base sz ext) in
+          MyName.open_lib n2
+        with Misc.Fatal _ ->
+          Warn.fatal "Cannot insert lib file %s" src
+
+    let insert out src =
+      let _,in_chan = find_lib src in
+      MySys.cat_chan in_chan out ;
+      close_in in_chan
+  end
+
 module type Config = sig
   val targetos : TargetOS.t
   val driver : Driver.t

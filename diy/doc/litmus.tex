@@ -1456,7 +1456,7 @@ file~\file{@name}.
 The following options set the default values of
 the options of the executable files produced:
 \begin{description}
-\item[{\tt -a <n>}] Run maximal number of tests concurrently for $n$~available
+\item[\aname{avail}{{\tt -a <n>}}]Run maximal number of tests concurrently for $n$~available
 logical processors ---
 set default value for \opt{-a} of Sec.~\ref{exec:control}.
 Default is~$1$ (run one test).
@@ -1471,7 +1471,7 @@ Default is \opt{true}.
 option~\opt{-r} of Sec.~\ref{exec:control}.
 The option accepts generalised syntax for integers and
 default is~$10$.
-\item[{\tt -s <n>}] Size of a run --- set default value for
+\item[\aname{sizeoftest}{{\tt -s <n>}}]Size of a run --- set default value for
 option \opt{-s} of Sec.~\ref{exec:control}.
 The option accepts generalised syntax for integers and
 default is $100000$ (or \opt{100k}).
@@ -1500,9 +1500,19 @@ Perform several tests concurrently, either by forking POSIX
 threads (as described in Sec.~\ref{sec:arch}), or by forking
 Unix processes. Only applies for cross compilation.
 Default is \opt{self}.
-\item[{\tt -prealloc <bool>}]
-Enable or disable pre-allocation mode, default disabled.
-In pre-allocation mode, memory is allocated before forking any thread.
+\item[{\tt -alloc (dynamic|static|before)}]
+Set memory allocation mode. In ``dynamic'' and ``before'' modes, the memory
+used by test threads is allocated with \texttt{malloc} --- in ``before'' mode,
+memory is allocated before forking test instances.
+In ``static'' mode, the memory is pre-allocated as static arrays.
+In that latter case, the size of allocated arrays depend upon
+compile time defined parameters: the number of available logical processors
+(see option \ahrefloc{avail}{\opt{-a <n>}})
+and the size of a run (see option \ahrefloc{sizeoftest}{\opt{-s <n>}}).
+It remains possible to change those those at execution time, provided
+the resulting memory size does not exceed the compile time value.
+Default is \texttt{dynamic}.
+
 \item[{\tt -preload (no|random|custom|static|static1|static2)}]
 Specify preload mode (see Sec.~\ref{defpreload}), default is \texttt{random}.
 Starting from version 5.0 we provide additional ``custom'' and ``static''

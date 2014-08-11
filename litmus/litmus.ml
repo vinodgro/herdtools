@@ -75,8 +75,6 @@ let opts =
    P.parse "-mem" Option.memory "set memory mode" end ;
    argint "-st" Option.stride "stride for scanning memory" ;
    argint "-stride" Option.stride "alias for -st" ;
-   argbool "-contiguous" Option.contiguous
-   "allocate shared locations as a big chunk of memory" ;
    begin let module P = ParseTag.Make(Preload) in
    P.parse "-preload" Option.preload "set preload mode" end ;
    begin let module P = ParseTag.Make(Collect) in
@@ -103,14 +101,19 @@ let opts =
    P.parse "-smtmode" Option.smtmode
    "how logical processors from the same core are numbered" end;
    argint "-smt" Option.smt "specify <n>-ways SMT" ;
-   argbool "-prealloc" Option.prealloc
-     "alloc memory before forking any thread" ;
+(* Allocation *)
+  begin let module P = ParseTag.Make(Alloc) in
+   P.parse"-alloc" Option.alloc
+     "allocation mode"  end ;
    argbool "-doublealloc" Option.doublealloc
      "perform a malloc/free once before allocating for real" ;
+   argbool "-contiguous" Option.contiguous
+   "allocate shared locations as a big chunk of memory" ;
+(* Premature stop *)
    begin let module P = ParseTag.Make(Speedcheck) in
    P.parse"-speedcheck" Option.speedcheck
      "stop test as soon as condition is settled"  end ;
-
+(* C compiler *)
    "-ccopts", Arg.String set_gccopts,
    begin let get_gccopts a = Option.get_gccopts (Option.get_default a) in
    sprintf
@@ -261,7 +264,7 @@ let () =
       let linkopt = !linkopt
       let barrier = !barrier
       let launch = !launch
-      let prealloc = !prealloc
+      let alloc = !alloc
       let doublealloc = !doublealloc
       let memory = !memory
       let preload = !preload

@@ -116,3 +116,9 @@
 \def\syntaxleft{$\begin{array}{>{\set@name}rcl}\spacefalse}
 \def\endsyntaxleft{\end{array}$}
 \def\synt#1{$\spacefalse#1$}
+%%%
+%%
+%\stx@silent{model}\stx@silent{model-comment}
+%\stx@silent{selector}
+%\stx@silent{expr}\stx@silent{instruction}
+%%%

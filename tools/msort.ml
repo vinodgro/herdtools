@@ -16,12 +16,30 @@
 
 open Printf
 
+type duplicates = Keep | Comment | Delete
+
+let parse_duplicates = function
+  | "keep" -> Keep
+  | "comment" -> Comment
+  | "delete" -> Delete
+  | tag ->
+      raise 
+        (Arg.Bad
+           (sprintf
+              "wrong tag %s for -dups, allowed tags are <keep|comment|delete>"
+              tag))
+
+let pp_duplicates = function
+  | Keep -> "keep"
+  | Comment -> "comment"
+  | Delete -> "delete"
+
 
 module Top
     (Opt:
        sig
          val verbose : bool
-         val duplicates : bool
+         val duplicates : duplicates
          val reverse : bool
          val cost : string -> int
          val tnames : bool
@@ -53,7 +71,17 @@ module Top
 
     module Z = ToolParse.Top(T)(Make)
 
-    type names = {fname:string; tname:string;}
+    type name = {fname:string; tname:string;}
+
+    let rec compare_names xs ys = match xs,ys with
+    | [],[] -> 0
+    | [],_::_ -> -1
+    | _::_,[] -> 1
+    | x::xs,y::ys ->
+        begin match String.compare x.tname y.tname with
+        | 0 -> compare_names xs ys
+        | r -> r
+        end
 
     let do_test name k =
       try
@@ -132,15 +160,15 @@ module Top
                   (String.concat " " fs)
             | _ -> ()) t      
         end ;
-        if Opt.duplicates then
-          Hashtbl.fold (fun _h (sz,fs) k ->
-            List.fold_left
-              (fun k f -> (f,sz)::k)
-              k fs)
-            t []
-        else
-          Hashtbl.fold
-            (fun _h (sz,fs) k -> (get_min fname_compare fs,sz)::k) t [] in
+        begin  match Opt.duplicates with
+        | Keep|Comment ->
+            Hashtbl.fold (fun _h (sz,fs) k ->
+              (List.sort fname_compare fs,sz)::k)
+              t []
+        | Delete ->
+            Hashtbl.fold
+              (fun _h (sz,fs) k -> ([get_min fname_compare fs],sz)::k) t []
+        end in
 
       let do_pint_compare (i1,j1) (i2,j2) =
         match Misc.int_compare i1 i2 with
@@ -159,7 +187,7 @@ module Top
       let xs = List.sort
           (fun (n1,l1) (n2,l2) ->
             match tint_compare l1 l2 with
-            | 0 -> String.compare n1.tname n2.tname
+            | 0 -> compare_names n1 n2
             | r -> r) xs in
 
       let () =
@@ -168,19 +196,36 @@ module Top
           printf " %s" Sys.argv.(k)
         done ;
         printf "\n" ;
+        let pname =
+          if Opt.tnames then (fun n -> n.tname) else (fun n -> n.fname) in
         List.iter
-          (fun (n,(c1,(c2,c3))) ->
-            let name = if Opt.tnames then n.tname else n.fname in
+          (fun (ns,(c1,(c2,c3))) ->
             if Opt.verbose then printf "#%i %i %i\n" c1 c2 c3;
-            printf "%s\n" name)
-          xs in
+            match Opt.duplicates with
+            | Delete ->
+                begin match ns with
+                | n::_ -> printf "%s\n" (pname n)
+                | [] -> assert false
+                end
+            | Keep ->
+                List.iter (fun n -> printf "%s\n" (pname n)) ns
+            | Comment ->
+                begin match ns with
+                | [n] ->  printf "%s\n" (pname n)
+                | n::ns ->
+                    printf "#DUPS\n" ;
+                    printf "%s\n" (pname n) ;
+                    List.iter (fun n -> printf "#%s\n" (pname n)) ns
+                | [] -> assert false
+                end)
+          xs
+        in
       ()
-
-  end
+   end
 
 
 let verbose = ref false
-let duplicates = ref false
+let duplicates = ref Delete
 let arg = ref []
 let orders = ref []
 let reverse = ref false
@@ -192,9 +237,13 @@ let prog =
 let () =
   Arg.parse
     ["-v",Arg.Unit (fun () -> verbose := true), " be verbose";
-     "-d",Arg.Unit (fun () -> duplicates := true)," keep duplicates";
+     "-d",Arg.Unit (fun () -> duplicates := Keep)," keep duplicates";
+     "-dups",Arg.String (fun tag -> duplicates := parse_duplicates tag),
+     sprintf
+       "<keep|comment|delete> what to do with duplicates, default %s"
+       (pp_duplicates !duplicates);
      "-r",Arg.Unit (fun () -> reverse := true)," reverse sort";
-     "-t",Arg.Unit (fun () -> tnames := true)," output test names";
+     "-t",Arg.Unit (fun () -> tnames := true)," output test names";   
      "-cost",
      Arg.String (fun s -> orders := !orders @ [s]),
      "<name> specify order file";]       

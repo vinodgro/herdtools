@@ -31,7 +31,7 @@ module type CommonConfig = sig
   val cautious : bool
   val preload : Preload.t
   val memory : Memory.t
-  val prealloc : bool
+  val alloc : Alloc.t
   val doublealloc : bool
   val launch : Launch.t
   val barrier : Barrier.t
