@@ -1,38 +1,51 @@
 "GPU_PTX"
 
 {
-  {\bf Uniproc check.} Allows ll hazard, as does the hardware (intentially? Vinod said it is not intential!)
+  \paragraph{SC-per-location with load-load hazard} 
+  We require that communications do not
+  contradict program order, unless the events
+  are for different locations, or both events
+  are reads.
 }
 
 let com = rf | fr | co
-let po_llh = (WM(po-loc) | MW(po-loc))
-acyclic po_llh | com as uniproc_llh
-
-let dep = addr | data
-acyclic dep | rf as thin
-
-let ppo = dep
-
-let sys_fence = membar.sys
-let gl_fence  = membar.gl  | sys_fence
-let cta_fence = membar.cta | gl_fence
+let po-loc-llh = 
+  WW(po-loc) | WR(po-loc) | RW(po-loc)
+acyclic (po-loc-llh | com) as sc-per-loc-llh
 
 {
-Should to be able to say 'acyclic' in functions
+  \paragraph{No thin air} 
+  This prevents causal loops. No event
+  may read from its dependants.
 }
-let scope(r,s) = (r & s)
+
+let dp = addr | data | ctrl
+acyclic (dp | rf) as no-thin-air
 
 {
-scope/fence parameterized $\mathit{rmo}$
+  \paragraph{Scoped RMO} 
+  We now integrate the concurrency hierarchy.
+  The $X${\tt -fence} relation relates events
+  that are separated by a fence of scope $X$
+  or wider.
 }
-let rmo(s,fence) = scope((ppo | fence | rf | co | fr), s)
 
-let cta_constraint = rmo(int-cta, cta_fence)
-let gl_constraint = rmo(int-dev, gl_fence)
-let sys_constraint = rmo(unv, sys_fence)
+let sys-fence = membar.sys
+let gl-fence  = membar.gl  | sys-fence
+let cta-fence = membar.cta | gl-fence
 
-acyclic cta_constraint
-acyclic gl_constraint
-acyclic sys_constraint
+{ 
+  We declare a generic {\tt rmo} relation, and
+  instantiate it for each scope. We implement
+  RMO-per-scope by requiring each of these
+  relations to be acyclic.
+}
 
-show cta_constraint
+let rmo(fence) = dp | fence | rfe | co | fr
+let rmo-cta = rmo(cta-fence) & int-cta
+let rmo-gl = rmo(gl-fence) & int-dev
+let rmo-sys = rmo(sys-fence) & unv
+
+acyclic rmo-cta as cta-constraint
+acyclic rmo-gl as gl-constraint
+acyclic rmo-sys as sys-constraint

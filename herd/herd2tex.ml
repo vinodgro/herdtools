@@ -102,8 +102,8 @@ let tex_of_test = function
   | TestEmpty -> "\\kwd{empty}"
 
 let tex_of_test_type = function
-  | Provides -> "\\KWD{provides}"
-  | Requires -> "\\KWD{requires}"
+  | Provides -> ""
+  | Requires -> "\\KWD{undefined\\_unless}~"
 
 let tex_of_ins chan = function
   | Let bs -> 
@@ -113,7 +113,7 @@ let tex_of_ins chan = function
     fprintf chan "\\KWD{let}~\\KWD{rec}~"; 
     list_iter_alt (tex_of_binding chan) (fun () -> fprintf chan "~\\KWD{and}~") bs 
   | Test (_, test, exp, name, test_type) -> 
-    fprintf chan "%s~%s~$%a$"
+    fprintf chan "%s%s~$%a$"
       (tex_of_test_type test_type)
       (tex_of_test test)
       tex_of_exp exp;
@@ -132,13 +132,19 @@ let tex_of_ins chan = function
     fprintf chan "\\KWD{show}~$%a$~\\kwd{as}~$\\mathrm{%a}$" 
       tex_of_exp exp 
       tex_of_name name
-  | Latex s -> fprintf chan "%s" s
+  | Latex s -> 
+    fprintf chan "\\end{quote}\n";
+    fprintf chan "\\noindent %s" s;
+    fprintf chan "\\begin{quote}\n"
 
 let tex_of_prog chan prog = 
-  fprintf chan "\\documentclass{article}\n";
+  fprintf chan "\\documentclass[12pt]{article}\n";
+  fprintf chan "\\usepackage[margin=1in]{geometry}\n";
   fprintf chan "\\usepackage[usenames,dvipsnames]{color}\n";
   fprintf chan "\\newcommand\\KWD[1]{{\\color{RoyalPurple}\\bfseries #1}}\n";
   fprintf chan "\\newcommand\\kwd[1]{{\\color{ForestGreen}#1}}\n";
   fprintf chan "\\begin{document}\n";
+  fprintf chan "\\begin{quote}\n";
   List.iter (fprintf chan "\\noindent %a\n\n" tex_of_ins) prog;
-  fprintf chan "\\end{document}\n";
+  fprintf chan "\\end{quote}\n";
+  fprintf chan "\\end{document}\n"
