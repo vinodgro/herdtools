@@ -92,9 +92,17 @@ and tex_of_name chan x =
     fprintf chan "\\mathrm{%s}" x
 
 and tex_of_binding chan (x, e) = 
-  fprintf chan "$%a = %a$" 
-    tex_of_var x 
-    tex_of_exp e
+  begin match e with
+  | Fun (xs,e) ->
+    fprintf chan "$%a(%a) = %a$" 
+      tex_of_var x 
+      tex_of_formals xs
+      tex_of_exp e
+  | _ ->
+    fprintf chan "$%a = %a$" 
+      tex_of_var x 
+      tex_of_exp e
+  end
 
 let tex_of_test = function
   | Acyclic -> "\\kwd{acyclic}"
