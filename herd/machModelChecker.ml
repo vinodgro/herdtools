@@ -98,16 +98,13 @@ module Make
            | Some scope_tree ->
         List.fold_left (fun z (k,v) ->
             ("ext-" ^ k, U.ext_scope v unv scope_tree) :: 
-            ("int-" ^ k, U.int_scope v unv scope_tree) :: 
+            ((* "int-" ^ *) k, U.int_scope v unv scope_tree) :: 
             z ) [] [ 
-          "wi", AST.Work_Item; 
-          "thread", AST.Work_Item;
+          "wi", AST.Work_Item; "thread", AST.Work_Item;
           "sg", AST.Sub_Group; "warp", AST.Sub_Group;
-          "wg", AST.Work_Group; 
-          "block", AST.Work_Group; 
-          "cta", AST.Work_Group;
-	  "kernel", AST.Kernel;
-	  "dev", AST.Device; 
+          "wg", AST.Work_Group; "block", AST.Work_Group; "cta", AST.Work_Group;
+          "kernel", AST.Kernel;
+	  "dev", AST.Device; "gl", AST.Device;
 	])) in
       let m =
         List.fold_left

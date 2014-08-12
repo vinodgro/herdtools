@@ -42,9 +42,9 @@ let cta-fence = membar.cta | gl-fence
 }
 
 let rmo(fence) = dp | fence | rfe | co | fr
-let rmo-cta = rmo(cta-fence) & int-cta
-let rmo-gl = rmo(gl-fence) & int-dev
-let rmo-sys = rmo(sys-fence) & unv
+let rmo-cta = rmo(cta-fence) & cta
+let rmo-gl = rmo(gl-fence) & gl
+let rmo-sys = rmo(sys-fence)
 
 acyclic rmo-cta as cta-constraint
 acyclic rmo-gl as gl-constraint
