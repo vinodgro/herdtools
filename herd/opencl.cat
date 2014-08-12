@@ -21,18 +21,15 @@ let com = rf | fr | co
 let glF = gF & lF
 
 (* nested scope incusion --- unused, for now *)
-let gtedev = memory_scope_device | memory_scope_all_svm_devices
+let gteall = memory_scope_all_svm_devices
+let gtedev = memory_scope_device | gteall
 let gtewg  = memory_scope_work_group | gtedev
 let gtewi  = memory_scope_work_item | gtewg
-let dwi_scope  = gtewi^2
-let dwg_scope  = gtewg^2
-let ddev_scope = gtedev^2
-let dall_scope = memory_scope_all_svm_devices^2
 let inclusive_scopes = 
-  int (dwi_scope) | 
-  (wg & dwg_scope) |
-  (dev & ddev_scope) | 
-  dall_scope
+  int (gtewi^2) | 
+  (wg & (gtewg^2)) |
+  (dev & (gtedev^2)) | 
+  (gteall^2)
 
 (* standard scope inclusion *)
 let std_inclusive_scopes =  
