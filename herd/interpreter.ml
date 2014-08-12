@@ -166,9 +166,11 @@ module Make
                 "Expected a set or a relation, found a closure"
             | Set v -> begin match op with
                 | Set_to_rln -> Rel (E.EventRel.set_to_rln v)
+                | Square -> Rel (E.EventRel.cartesian v v)
                 | Comp SET -> 
                   Set (E.EventSet.diff (eval_set env (Var "_")) v)
-                | Comp RLN -> assert false
+                | Comp RLN ->
+                  Warn.user_error "Bad syntax. Use '!' to complement a set, not '~'"
                 | _ -> 
                   Warn.user_error "Expected a relation, found a set"
               end
@@ -187,10 +189,13 @@ module Make
                  | Opt -> S.union v id
                  | Comp RLN -> 
                    E.EventRel.diff (eval_rel env (Var "unv")) v
-                 | Comp SET -> assert false
+                 | Comp SET -> 
+                   Warn.user_error "Bad syntax. Use '~' to complement a relation, not '!'"
                  | Select (s1,s2) ->
                    let f1 = is_dir s1 and f2 = is_dir s2 in
                    S.restrict f1 f2 v
+                 | Square -> 
+                   Warn.user_error "Expected a set, found a relation"
                  | Set_to_rln -> 
                    Warn.user_error "Expected a set, found a relation")
           end

@@ -48,6 +48,7 @@ and tex_of_op1 chan e = function
       (string_of_dir d2)
       tex_of_exp e
   | Inv -> fprintf chan "(%a^{-1})" tex_of_exp e
+  | Square -> fprintf chan "(%a^{2})" tex_of_exp e
   | Ext -> fprintf chan "(\\mathrm{ext} %a)" tex_of_exp e
   | Int -> fprintf chan "(\\mathrm{int} %a)" tex_of_exp e
   | NoId -> fprintf chan "(\\mathrm{noid} %a)" tex_of_exp e

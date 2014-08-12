@@ -43,7 +43,7 @@ struct
     | Blocked_RMW of A.location
   type action = action_
  
-  let mk_init_write l v = Access (W,l,v,OpenCLBase.NA,OpenCLBase.S_all_svn_devices)
+  let mk_init_write l v = Access (W,l,v,OpenCLBase.NA,OpenCLBase.S_all_svm_devices)
 
 (* Local pp_location that adds [..] around global locations *)        
     let pp_location withparen loc =
@@ -217,18 +217,18 @@ struct
      "gF", is_global_fence;
      "lF", is_local_fence;
    ] @ List.map (fun (k,v) -> (k,mo_matches v)) [
-     "acq", OpenCLBase.Acq;
-     "sc", OpenCLBase.SC;
-     "rel", OpenCLBase.Rel; 
-     "acq_rel", OpenCLBase.Acq_Rel;
-     "rlx", OpenCLBase.Rlx;
+     "memory_order_acquire", OpenCLBase.Acq;
+     "memory_order_seq_cst", OpenCLBase.SC;
+     "memory_order_release", OpenCLBase.Rel; 
+     "memory_order_acq_rel", OpenCLBase.Acq_Rel;
+     "memory_order_relaxed", OpenCLBase.Rlx;
      "na", OpenCLBase.NA;
    ] @ List.map (fun (k,v) -> (k,scope_matches v)) [
-     "wi", OpenCLBase.S_workitem;
-     "sg", OpenCLBase.S_subgroup;
-     "wg", OpenCLBase.S_workgroup;
-     "dev", OpenCLBase.S_device;
-     "all_dev", OpenCLBase.S_all_svn_devices;
+     "memory_scope_work_item", OpenCLBase.S_workitem;
+     "memory_scope_sub_group", OpenCLBase.S_subgroup;
+     "memory_scope_work_group", OpenCLBase.S_workgroup;
+     "memory_scope_device", OpenCLBase.S_device;
+     "memory_scope_all_svm_devices", OpenCLBase.S_all_svm_devices;
    ]
 
 (* Equations *)

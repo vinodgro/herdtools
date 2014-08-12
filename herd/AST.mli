@@ -30,6 +30,7 @@ type op1 =
   | Plus | Star | Opt  | Select of direction * direction
   | Comp of set_or_rln (** Set or relation complement *)
   | Inv  (** Relation inverse *)
+  | Square (** x^2 is shorthand for x * x *)
   | Ext  (** External subrelation (events from <> threads) *)
   | Int  (** Internal subrelation (events from = threads) *)
   | NoId (** Irreflexive subrelation (<> events, aka r\id) *)

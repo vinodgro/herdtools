@@ -83,7 +83,7 @@ module Make
            | Some scope_tree ->
         List.fold_left (fun z (k,v) ->
             ("ext-" ^ k, U.ext_scope v unv scope_tree) :: 
-            ("int-" ^ k, U.int_scope v unv scope_tree) :: 
+            ((*"int-" ^ *) k, U.int_scope v unv scope_tree) :: 
             z ) [] [ 
           "wi", AST.Work_Item; 
           "thread", AST.Work_Item;
@@ -116,6 +116,22 @@ module Make
               match E.location_of e with
               | Some (E.A.Location_global a) ->
                 MemSpaceMap.is_global test.Test.mem_space_map (E.A.V.pp_v a) 
+              | _ -> false);
+          "atomicloc", (fun e -> 
+              match E.location_of e with
+              | Some (E.A.Location_global a) ->
+                Misc.exists_exists (fun p -> 
+                    p.CAst.param_name = E.A.V.pp_v a && 
+                    CType.is_ptr_to_atomic p.CAst.param_ty) 
+                  test.Test.param_map
+              | _ -> false);
+          "nonatomicloc", (fun e -> 
+              match E.location_of e with
+              | Some (E.A.Location_global a) ->
+                Misc.exists_exists (fun p -> 
+                    p.CAst.param_name = E.A.V.pp_v a && 
+                    not (CType.is_ptr_to_atomic p.CAst.param_ty)) 
+                  test.Test.param_map
               | _ -> false);
          ]) in
       let m = 

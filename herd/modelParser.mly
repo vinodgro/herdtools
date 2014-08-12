@@ -45,7 +45,7 @@ let pp () =
 /* Plain/Atomic */
 %token AA AP PA PP
 %token SEMI UNION INTER COMMA DIFF
-%token STAR PLUS OPT INV COMP NOT
+%token STAR PLUS OPT INV COMP NOT HAT TWO
 %token LET REC SET RLN AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN
 %token REQUIRES
 %token ARROW
@@ -146,7 +146,8 @@ base:
 | base STAR { Op1(Star,$1) }
 | base PLUS { Op1(Plus,$1) }
 | base OPT { Op1(Opt,$1) }
-| base INV { Op1(Inv,$1) }
+| base HAT INV { Op1(Inv,$1) }
+| base HAT TWO { Op1(Square,$1) }
 | base SEMI base { do_op Seq $1 $3 }
 | base UNION base { do_op (Union) $1 $3 }
 | base DIFF base { do_op (Diff) $1 $3 }

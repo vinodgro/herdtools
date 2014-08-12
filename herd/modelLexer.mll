@@ -63,7 +63,8 @@ rule token = parse
 | '~'   { COMP }
 | '!'   { NOT }
 | '+'   { PLUS }
-| "^-1" { INV }
+| '^'   { HAT }
+| '2'   { TWO }
 | "-1"  { INV }
 | '\\'  { DIFF }
 | '?'   { OPT }
