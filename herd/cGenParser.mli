@@ -30,10 +30,15 @@ module type LexParse = sig
   type token
   type pseudo
 
-  val lexer : Lexing.lexbuf -> token
-  val parser :
-       (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
-	 (int * pseudo list) list * MiscParser.gpu_data option
+  val deep_lexer : Lexing.lexbuf -> token
+  val deep_parser :
+        (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
+	  (int * pseudo list) list * MiscParser.gpu_data option
+
+  val shallow_lexer : Lexing.lexbuf -> token
+  val shallow_parser :
+        (Lexing.lexbuf -> token) -> Lexing.lexbuf ->
+	  string CAst.t list
 end
 
 module type S = sig

@@ -13,6 +13,6 @@
 (** Lexing OpenCL source *)
 
 module Make : functor(O:LexUtils.Config) -> sig
-  val token : Lexing.lexbuf -> OpenCLParser.token
+  val token : bool -> Lexing.lexbuf -> OpenCLParser.token
 end
 

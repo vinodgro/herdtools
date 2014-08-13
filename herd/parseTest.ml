@@ -159,10 +159,12 @@ module Top (C:Config) = struct
         let module CPP11 = CPP11Arch.Make(C.PC)(SymbValue) in
         let module CPP11LexParse = struct
     	  type pseudo = CPP11.pseudo
-	  type token = CPP11Parser.token
-          module Lexer = CPP11Lexer.Make(LexConfig)
-	  let lexer = Lexer.token
-	  let parser = CPP11Parser.main
+	  type token = CParser.token
+          module Lexer = CLexer.Make(LexConfig)
+	  let shallow_lexer = Lexer.token false
+	  let deep_lexer = Lexer.token true
+	  let shallow_parser = CParser.shallow_main
+	  let deep_parser = CParser.deep_main
         end in
         let module CPP11S = CPP11Sem.Make(C)(SymbValue) in
         let module  CPP11Barrier = struct
@@ -178,11 +180,13 @@ module Top (C:Config) = struct
       | Archs.OpenCL ->
         let module OpenCL = OpenCLArch.Make(C.PC)(SymbValue) in
         let module OpenCLLexParse = struct
-  	  type instruction = OpenCL.pseudo
+  	  type pseudo = OpenCL.pseudo
 	  type token = OpenCLParser.token
           module Lexer = OpenCLLexer.Make(LexConfig)
-	  let lexer = Lexer.token
-	  let parser = OpenCLParser.main
+	  let shallow_lexer = Lexer.token false
+	  let deep_lexer = Lexer.token true
+	  let shallow_parser = OpenCLParser.shallow_main
+	  let deep_parser = OpenCLParser.deep_main
         end in
         let module OpenCLS = OpenCLSem.Make(C)(SymbValue) in
         let module OpenCLBarrier = struct
@@ -191,7 +195,7 @@ module Top (C:Config) = struct
           let a_to_b _ = ()	    
         end in
         let module OpenCLM = OpenCLMem.Make(ModelConfig)(OpenCLS) (OpenCLBarrier) in
-        let module P = GenParser.Make (C) (OpenCL) (OpenCLLexParse) in
+        let module P = CGenParser.Make (C) (OpenCL) (OpenCLLexParse) in
         let module X = Make (OpenCLS) (P) (OpenCLM) in 
         X.run name chan env splitted
 

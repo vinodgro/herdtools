@@ -1,87 +1,298 @@
-/*Much copied from the C++11 parser*/
+/*********************************************************************/
+/*                          Litmus                                   */
+/*                                                                   */
+/*     Jacques-Pascal Deplaix, INRIA Paris-Rocquencourt, France.     */
+/*                                                                   */
+/*  Copyright 2010 Institut National de Recherche en Informatique et */
+/*  en Automatique and the authors. All rights reserved.             */
+/*  This file is distributed  under the terms of the Lesser GNU      */
+/*  General Public License.                                          */
+/*********************************************************************/
 
 %{
-module OpenCL = OpenCLBase
 open Constant
-open OpenCL
+open OpenCLBase
+open CType
 %}
 
 %token EOF
-%token <OpenCLBase.reg> ARCH_REG
-%token <int> NUM
-%token <string> NAME
+%token <string> IDENTIFIER
+%token <string> ATOMIC_TYPE
 %token <int> PROC
-%token SEMI COMMA PIPE COLON LPAR RPAR EQ DOT 
+%token LPAR RPAR COMMA LBRACE RBRACE STAR 
+%token UNSIGNED SIGNED ATOMIC LONG DOUBLE BOOL INT VOID FLOAT CHAR SHORT
+%token MUTEX 
+%token TYPEDEF EXTERN STATIC AUTO REGISTER
+%token CONST VOLATILE 
+
+/* For shallow parsing */
+%token <string> BODY
+%type <string CAst.t list> shallow_main 
+%start shallow_main
+
+/* For deep parsing */
+%token <int> CONSTANT
+%token NULL
+%token SEMI COLON EQ EQ_OP NEQ_OP DOT
+%token XOR PIPE
+%token LAND
+%token ADD SUB
+%token MUL DIV
+%token WHILE IF ELSE
+%nonassoc LOWER_THAN_ELSE /* This fixes the dangling-else problem */
+%nonassoc ELSE
 %token <OpenCLBase.mem_order> MEMORDER
 %token <OpenCLBase.mem_scope> MEMSCOPE
-%token <OpenCLBase.gpu_memory_space> MEMREGION
-
-/* Instruction tokens */
-
-%token LD ST FENCE
-
-%type <int list * (OpenCLBase.pseudo) list list * MiscParser.gpu_data option> main 
-%start  main
-
-%nonassoc SEMI
-
-%token SCOPETREE DEVICE KERNEL CTA WARP THREAD COMMA PTX_REG_DEC 
-
-%type <MiscParser.gpu_data> scopes_and_memory_map
-
+%token <MemSpaceMap.gpu_memory_space> MEMREGION
+%token SCOPETREE GLOBAL SHARED DEVICE KERNEL CTA WARP THREAD COMMA
+%token LD LD_EXPLICIT ST ST_EXPLICIT EXC EXC_EXPLICIT FENCE LOCK UNLOCK SCAS WCAS
+%token <Op.op> ATOMIC_FETCH
+%token <Op.op> ATOMIC_FETCH_EXPLICIT
+%type <(int * OpenCLBase.pseudo list) list * MiscParser.gpu_data option> deep_main 
+%start deep_main
 %%
 
-main:
-| semi_opt proc_list iol_list scopes_and_memory_map EOF { $2,$3,Some $4 }
+parameter_list:
+| { [] }
+| parameter_declaration { [ $1 ] }
+| parameter_declaration COMMA parameter_list { $1 :: $3 }
+ 
+parameter_declaration:
+| toptyp IDENTIFIER { {CAst.param_ty = $1; param_name = $2} }
 
-semi_opt:
-|      { () }
-| SEMI { () }
+toptyp:
+| typ STAR { $1 }
 
-proc_list:
-| PROC SEMI           { [$1] }
-| PROC PIPE proc_list { $1::$3 }
+typ:
+| typ STAR { Pointer $1 } 
+| typ VOLATILE { Volatile $1 } 
+| ATOMIC base { Atomic $2 }
+| VOLATILE base0 { Volatile $2 }
+| base { $1 }
 
-iol_list :
-|  instr_option_list SEMI          { [$1] }
-|  instr_option_list SEMI iol_list { $1::$3 }
+base0:
+| ATOMIC_TYPE { Atomic (Base $1) }
+| ty_attr MUTEX { Base ($1 ^ "mutex") }
+| ty_attr CHAR { Base ($1 ^ "char") }
+| ty_attr INT { Base ($1 ^ "int") }
+| ty_attr LONG { Base ($1 ^ "long") }
+| ty_attr FLOAT { Base ($1 ^ "float") }
+| ty_attr DOUBLE { Base ($1 ^ "double") }
+| ty_attr LONG LONG { Base ($1 ^ "long long") }
+| ty_attr LONG DOUBLE { Base ($1 ^ "long double") }
+| BOOL { Base ("_Bool") }
 
-instr_option_list :
-| instr_option                        { [$1] }
-| instr_option PIPE instr_option_list { $1::$3 }
+base:
+| base0 { $1 }
+| LPAR typ RPAR { $2 }
 
-instr_option :
-|            { Nop }
-| instr      { Instruction $1}
+ty_attr:
+| { "" }
+| UNSIGNED { "unsigned " }
+| SIGNED { "signed " }
 
-instr:
-  | reg EQ loc DOT LD LPAR MEMORDER COMMA MEMSCOPE RPAR
-    {Pload ($3,$1,$7,$9)}
-  | loc DOT ST LPAR store_op COMMA MEMORDER COMMA MEMSCOPE RPAR
-    {Pstore ($1,$5,$7,$9)}
-  | loc EQ store_op
-    {Pstore ($1,$3,NA,S_workitem)}
-  | reg EQ loc
-    {Pload ($3,$1,NA,S_workitem)}
-  | FENCE LPAR MEMREGION COMMA MEMORDER COMMA MEMSCOPE RPAR
-    {Pfence ($3,$5,$7)}
+shallow_main:
+| SCOPETREE scope_tree memory_map EOF { [] } /* when doing shallow-parse, ignore scope_tree for now. */
+| BODY shallow_main { CAst.Global $1 :: $2 }
+| PROC LPAR parameter_list RPAR BODY shallow_main
+    { CAst.Test {CAst.proc = $1; params = $3; body = $5} :: $6 }
 
-store_op :
-| NUM { Concrete $1 }
+primary_expression:
+| IDENTIFIER
+  { Eregister $1 }
+| CONSTANT 
+  { Econstant (Concrete $1) }
+| NULL
+  { Econstant (Concrete 0) }
+| LPAR expression RPAR 
+  { Eparen $2 }
 
-reg:
-| ARCH_REG { $1 }
+postfix_expression:
+| primary_expression 
+  { $1 }
+| ST LPAR assignment_expression COMMA assignment_expression RPAR
+  { Estore ($3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices) }
+| ST_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Estore ($3, $5, $7, $9) }
+| EXC LPAR assignment_expression COMMA assignment_expression RPAR
+  { Eexchange ($3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices) }
+| EXC_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Eexchange ($3, $5, $7, $9) }
+| ATOMIC_FETCH LPAR assignment_expression COMMA assignment_expression RPAR
+  { Efetch ($1, $3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices) }
+| ATOMIC_FETCH_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Efetch ($1, $3, $5, $7, $9) }
+| LD LPAR assignment_expression RPAR
+  { Eload ($3, OpenCLBase.SC, OpenCLBase.S_all_svm_devices) }
+| LD_EXPLICIT LPAR assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Eload ($3, $5, $7) }
+| FENCE LPAR MEMREGION COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Efence ($3,$5,$7) }
+| WCAS LPAR  assignment_expression COMMA assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Ecas ($3,$5,$7,$9,$11,$13,false) }
+| SCAS LPAR  assignment_expression COMMA  assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Ecas ($3,$5,$7,$9,$11,$13,true) }
 
-loc:
-| NAME { Symbolic $1 }
+unary_expression:
+| postfix_expression 
+  { $1 }
+| STAR unary_expression
+  { Eload ($2, OpenCLBase.NA, OpenCLBase.S_all_svm_devices) }
+
+cast_expression:
+| unary_expression { $1 }
+
+multiplicative_expression:
+| cast_expression { $1 }
+| multiplicative_expression STAR cast_expression
+   { Eop (Op.Mul,$1,$3) }
+| multiplicative_expression DIV cast_expression
+   { Eop (Op.Div,$1,$3) }
+
+additive_expression:
+| multiplicative_expression { $1 }
+| additive_expression ADD multiplicative_expression
+  { Eop (Op.Add,$1,$3) }
+| additive_expression SUB multiplicative_expression
+  { Eop (Op.Sub,$1,$3) }
+
+shift_expression:
+| additive_expression { $1 }
+
+relational_expression:
+| shift_expression { $1 }
+
+equality_expression:
+| relational_expression 
+  { $1 }
+| equality_expression EQ_OP relational_expression 
+  { Eop (Op.Eq,$1,$3) }
+| equality_expression NEQ_OP relational_expression 
+  { Eop (Op.Ne,$1,$3) }
+
+and_expression:
+| equality_expression { $1 }
+| and_expression LAND  equality_expression
+  { Eop (Op.And,$1,$3) }
+
+exclusive_or_expression:
+| and_expression { $1 }
+| exclusive_or_expression XOR  and_expression
+  { Eop (Op.Xor,$1,$3) }
+
+inclusive_or_expression: 
+| exclusive_or_expression { $1 }
+| inclusive_or_expression PIPE exclusive_or_expression
+  { Eop (Op.Or,$1,$3) }
+
+logical_and_expression: 
+| inclusive_or_expression { $1 }
+
+logical_or_expression:
+| logical_and_expression { $1 }
+
+conditional_expression:
+| logical_or_expression { $1 }
+
+assignment_expression:
+| conditional_expression 
+  { $1 }
+| IDENTIFIER assignment_operator assignment_expression
+  { Eassign ($1, $3) }
+| STAR IDENTIFIER assignment_operator assignment_expression
+  { Estore (Eregister $2, $4, OpenCLBase.NA, OpenCLBase.S_all_svm_devices) }
+
+assignment_operator:
+| EQ { () }
+
+expression:
+| assignment_expression { $1 }
+| expression COMMA assignment_expression { Ecomma ($1,$3) }
+
+declaration:
+| typ  init_declarator SEMI  { $2; }
+
+init_declarator:
+| IDENTIFIER
+  { Pblock [] }
+| IDENTIFIER EQ initialiser 
+  { Pexpr (Eassign ($1, $3)) }
+
+initialiser:
+| assignment_expression 
+  { $1 }
+
+statement:
+| declaration /* (* Added to allow mid-block declarations *) */
+  { $1 }
+| compound_statement
+  { Pblock $1 }
+| expression_statement
+  { $1 }
+| selection_statement
+  { $1 }
+| iteration_statement
+  { $1 }
+
+compound_statement:
+| LBRACE RBRACE
+  { [] }
+| LBRACE statement_list RBRACE
+  { $2 }
+
+statement_list:
+| statement
+  { [$1] }
+| statement statement_list
+  { $1 :: $2 }
+
+expression_statement:
+| SEMI
+  { Pblock [] }
+| expression SEMI
+  { Pexpr $1 }
+
+selection_statement:
+| IF LPAR expression RPAR statement %prec LOWER_THAN_ELSE
+  { Pif ($3, $5, Pblock []) }
+| IF LPAR expression RPAR statement ELSE statement
+  { Pif ($3, $5, $7) }
+
+iteration_statement:
+| WHILE LPAR expression RPAR statement
+  { Pwhile($3,$5) }
+
+function_definition:
+| PROC LPAR parameter_list RPAR compound_statement
+  { { CAst.proc = $1; 
+      CAst.params = $3; 
+      CAst.body = List.map (fun ins -> Instruction ins) $5 } }
+
+translation_unit:
+| function_definition
+  { [$1] }
+| translation_unit function_definition 
+  { $1 @ [$2] }
+
+deep_main:
+| translation_unit SCOPETREE scope_tree memory_map EOF 
+  { let proc_list,param_map = 
+      List.fold_right (fun p (proc_list, param_map) -> 
+        let proc_list = (p.CAst.proc,p.CAst.body) :: proc_list in
+        let param_map = p.CAst.params :: param_map in
+        (proc_list, param_map)) $1 ([], [])  
+    in
+    let additional = 
+      { MiscParser.scope_tree=Some $3; 
+        MiscParser.mem_space_map=$4;
+        MiscParser.param_map = param_map; } 
+    in
+    (proc_list, Some additional) }
+
 
 /* 
    Parsing a simple S expression that needs to have a certain value.
 */
-
-scopes_and_memory_map : 
-| SCOPETREE scope_tree memory_map 
-   { { MiscParser.scope_tree=Some $2; mem_space_map=$3; param_map=[]; } }
 
 scope_tree :
 |  device_list {$1}
@@ -133,5 +344,5 @@ memory_map_list:
 | memory_map_atom COMMA memory_map_list { [$1]@$3 }
 
 memory_map_atom:
-| NAME COLON MEMREGION { ($1,$3) }
-| NAME COLON MEMREGION { ($1,$3) }
+| IDENTIFIER COLON GLOBAL { ($1,OpenCLBase.GlobalMem) }
+| IDENTIFIER COLON SHARED { ($1,OpenCLBase.LocalMem) }

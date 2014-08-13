@@ -9,4 +9,6 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-val main : Lexing.lexbuf -> CParser.token
+module Make : functor(O:LexUtils.Config) -> sig
+  val token : bool -> Lexing.lexbuf -> CParser.token
+end

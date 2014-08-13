@@ -9,8 +9,8 @@ type gpu_memory_space =
 
 let pp_gpu_memory_space x =
   match x with
-  | GlobalMem -> "global"
-  | LocalMem -> "local"
+  | GlobalMem -> "CLK_GLOBAL_MEM_FENCE"
+  | LocalMem -> "CLK_LOCAL_MEM_FENCE"
 
 type mem_space_map = (string * gpu_memory_space) list
 
