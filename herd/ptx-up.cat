@@ -1,35 +1,21 @@
 "GPU_PTX"
 
-(* Uniproc check *)
-(* Allows ll hazard, as does the hardware (intentially? Vinod said it is not intential!) *)
 let com = rf | fr | co
-let po_llh = (WM(po-loc) | MW(po-loc))
-acyclic po_llh | com as uniproc_llh
+let po-loc-llh = (Ww(po-loc) | WR(po-loc) | RW(po-loc))
+acyclic (po-loc-llh | com) as sc-per-loc-llh
 
-let dep = addr | data
-acyclic dep | rf as thin
+let dp = addr | data | ctrl
+acyclic (dp | rf) as no-thin-air
 
-let ppo = dep
+let sys-fence = membar.sys
+let gl-fence  = membar.gl  | sys_fence
+let cta-fence = membar.cta | gl_fence
 
-let sys_fence = membar.sys
-let gl_fence  = membar.gl  | sys_fence
-let cta_fence = membar.cta | gl_fence
+let rmo(r,fence) = dep | rfe | co | fr | r?;fence;r?
+let rmo-cta = rmo(id,      cta-fence) & int-cta
+let rmo-gl  = rmo(rmo_cta, gl-fence)  & int-gl
+let rmo-sys = rmo(rmo_gl,  sys-fence) & int_sys
 
-(*Should to be able to say 'acyclic' in functions*)
-let scope(r,s) = (r & s)
-
-(* MB: this is a guess, but seems to match the principle J,T,M
-   discussed. *)
-let rmo_cta = scope((ppo | cta_fence | rf | co | fr ), int-cta)
-let rmo_gl  = scope((ppo | gl_fence  | rf | co | fr | rmo_cta;gl_fence), int-gl)
-let rmo_sys = scope((ppo | gl_fence  | rf | co | fr | rmo_gl;sys_fence), int_sys)
-
-let cta_constraint = rmo_cta
-let gl_constraint = rmo_dev
-let sys_constraint = rmo_sys
-
-acyclic cta_constraint
-acyclic gl_constraint
-acyclic sys_constraint
-
-show cta_constraint
+acyclic rmo-cta as cta-constraint
+acyclic rmo-gl as gl-constraint
+acyclic rmo-sys as sys-constraint

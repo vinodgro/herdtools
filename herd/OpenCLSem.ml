@@ -93,7 +93,7 @@ module Make (C:Sem.Config)(V:Value.S)
         read_mem OpenCL.S_all_svm_devices OpenCL.NA loc_exp ii >>*= fun v_exp ->
  (* Non-deterministic choice *)
         M.altT
-           (read_mem OpenCL.S_all_svm_devices failure loc_obj ii >>*= fun v_obj ->
+           (read_mem ms failure loc_obj ii >>*= fun v_obj ->
            (* For "strong" cas: fail only when v_obj != v_exp *)
            (if strong then M.neqT v_obj v_exp else M.unitT ()) >>= fun () -> 
            (* Non-atomically write that value into the "expected" location *)

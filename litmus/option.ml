@@ -163,6 +163,8 @@ let get_default arch = match arch with
 | `PPC -> ppcopt
 | `ARM -> armopt
 | `C -> copt
+| `GPU_PTX 
+| `OpenCL -> assert false
 
 let replace_config f =
   let g = !mod_config in

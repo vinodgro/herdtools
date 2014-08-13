@@ -17,7 +17,7 @@ open Constant
 
 (*Initial CPP11 file*)
 
-let arch = Archs.CPP11
+let arch = Archs.c
 
 (*************)
 (* Registers *)

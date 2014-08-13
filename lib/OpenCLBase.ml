@@ -17,7 +17,7 @@ open Constant
 
 (*Initial OpenCL file*)
 
-let arch = Archs.OpenCL
+let arch = Archs.opencl
 
 (*************)
 (* Registers *)

@@ -15,7 +15,7 @@
 open Printf
 
 (* Who am i ? *)
-let arch = Archs.GPU_PTX
+let arch = Archs.gpu_ptx
 
 (*************)
 (* Registers *)

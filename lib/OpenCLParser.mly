@@ -44,7 +44,8 @@ open CType
 %token <OpenCLBase.mem_order> MEMORDER
 %token <OpenCLBase.mem_scope> MEMSCOPE
 %token <MemSpaceMap.gpu_memory_space> MEMREGION
-%token SCOPETREE GLOBAL SHARED DEVICE KERNEL CTA WARP THREAD COMMA
+%token GLOBAL LOCAL
+%token SCOPETREE DEVICE KERNEL CTA WARP THREAD
 %token LD LD_EXPLICIT ST ST_EXPLICIT EXC EXC_EXPLICIT FENCE LOCK UNLOCK SCAS WCAS
 %token <Op.op> ATOMIC_FETCH
 %token <Op.op> ATOMIC_FETCH_EXPLICIT
@@ -68,6 +69,8 @@ typ:
 | typ VOLATILE { Volatile $1 } 
 | ATOMIC base { Atomic $2 }
 | VOLATILE base0 { Volatile $2 }
+| GLOBAL base { Global $2 }
+| LOCAL base { Local $2 }
 | base { $1 }
 
 base0:
@@ -92,7 +95,7 @@ ty_attr:
 | SIGNED { "signed " }
 
 shallow_main:
-| SCOPETREE scope_tree memory_map EOF { [] } /* when doing shallow-parse, ignore scope_tree for now. */
+| SCOPETREE scope_tree EOF { [] } /* when doing shallow-parse, ignore scope_tree for now. */
 | BODY shallow_main { CAst.Global $1 :: $2 }
 | PROC LPAR parameter_list RPAR BODY shallow_main
     { CAst.Test {CAst.proc = $1; params = $3; body = $5} :: $6 }
@@ -275,7 +278,7 @@ translation_unit:
   { $1 @ [$2] }
 
 deep_main:
-| translation_unit SCOPETREE scope_tree memory_map EOF 
+| translation_unit SCOPETREE scope_tree EOF 
   { let proc_list,param_map = 
       List.fold_right (fun p (proc_list, param_map) -> 
         let proc_list = (p.CAst.proc,p.CAst.body) :: proc_list in
@@ -283,8 +286,8 @@ deep_main:
         (proc_list, param_map)) $1 ([], [])  
     in
     let additional = 
-      { MiscParser.scope_tree=Some $3; 
-        MiscParser.mem_space_map=$4;
+      { MiscParser.empty_gpu with 
+        MiscParser.scope_tree=Some $3; 
         MiscParser.param_map = param_map; } 
     in
     (proc_list, Some additional) }
@@ -334,15 +337,3 @@ thread_list:
 
 thread:
 | PROC {$1}
-
-memory_map:
-| memory_map_list { $1 }
-|                 { [] }
-
-memory_map_list:
-| memory_map_atom { [$1] }
-| memory_map_atom COMMA memory_map_list { [$1]@$3 }
-
-memory_map_atom:
-| IDENTIFIER COLON GLOBAL { ($1,OpenCLBase.GlobalMem) }
-| IDENTIFIER COLON SHARED { ($1,OpenCLBase.LocalMem) }

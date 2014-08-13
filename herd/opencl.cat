@@ -28,14 +28,14 @@ let gtewi  = memory_scope_work_item | gtewg
 let inclusive_scopes = 
   int (gtewi^2) | 
  (* (wg & (gtewg^2)) |
-  (dev & (gtedev^2)) | *)
+  (dev & (gtedev^2)) | *) (* temporarily disabled, wg/dev not working *)
   (gteall^2)
 
 (* standard scope inclusion *)
 let std_inclusive_scopes =  
   int (memory_scope_work_item^2) |
  (* (wg & (memory_scope_work_group^2)) |
-  (dev & (memory_scope_device^2)) | *)
+  (dev & (memory_scope_device^2)) | *) (* temporarily disabled, wg/dev not working *)
   (memory_scope_all_svm_devices^2)
 
 let idf(f) = (po; [f])?

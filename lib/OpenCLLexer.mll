@@ -109,6 +109,7 @@ rule token deep = parse
           get_body 0 buf lexbuf;
           BODY (Buffer.contents buf)
         end }
+| '}' { RBRACE }
 | "while" { WHILE }
 | "if"    { IF }
 | "else"  { ELSE }
@@ -123,9 +124,9 @@ rule token deep = parse
 | "memory_scope_all_svm_devices" {MEMSCOPE (OpenCLBase.S_all_svm_devices)}
 | "CLK_GLOBAL_MEM_FENCE" { MEMREGION (OpenCLBase.GlobalMem) }
 | "CLK_LOCAL_MEM_FENCE"  { MEMREGION (OpenCLBase.LocalMem) }
+| "__global"       { GLOBAL }
+| "__local"        { LOCAL }
 | "scopeTree" | "ScopeTree" { SCOPETREE }
-| "global"                  { GLOBAL }
-| "shared" | "local"        { SHARED }
 | "kernel"                  { KERNEL }
 | "device"                  { DEVICE }
 | "cta" | "block" | "work_group" { CTA }
@@ -150,7 +151,7 @@ rule token deep = parse
 | "unlock"    { UNLOCK }
 | name as x   { tr_name x  }
 | eof { EOF }
-| "" { LexMisc.error "C lexer" lexbuf }
+| "" { LexMisc.error "OpenCL lexer" lexbuf }
 
 and get_body i buf = parse
 | '\n' as lxm

@@ -14,8 +14,6 @@
 (* Apply a function (zyva) to one test *)
 (***************************************)
 
-open Archs
-
 module Top
     (T:sig type t end) (* Return type, must be abstracted *)
     (B: functor(A:ArchBase.S)->
@@ -42,7 +40,7 @@ end = struct
 
   let from_chan chan splitted = 
     match splitted.Splitter.arch with
-    | PPC ->
+    | `PPC ->
         let module PPC = PPCBase in
         let module PPCLexParse = struct
 	  type instruction = PPC.pseudo
@@ -67,7 +65,7 @@ end = struct
   let module X = Make (PPCGen) (PPCGenLexParse) in
   X.zyva chan splitted
  *)
-    | X86 ->
+    | `X86 ->
         let module X86 = X86Base in
         let module X86LexParse = struct
 	  type instruction = X86.pseudo
@@ -79,7 +77,7 @@ end = struct
         end in
         let module X = Make (X86) (X86LexParse) in
         X.zyva chan splitted
-    | ARM ->
+    | `ARM ->
         let module ARM = ARMBase in
         let module ARMLexParse = struct
 	  type instruction = ARM.pseudo
@@ -91,7 +89,8 @@ end = struct
         end in
         let module X = Make (ARM) (ARMLexParse) in
         X.zyva chan splitted
-    | C -> Warn.fatal "No C arch in toolParse.ml"
+    | `C -> Warn.fatal "No C arch in toolParse.ml"
+    | `GPU_PTX | `OpenCL -> assert false
 
   let from_file name =
     let module Y = ToolSplit.Top(LexConf)(T)

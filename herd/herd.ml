@@ -155,9 +155,9 @@ let options = [
     | Some _ as m -> model :=  m ; true)
     Model.tags
     (sprintf " select model, defaults X86=%s, PPC=%s, ARM=%s"
-       (Model.pp (Model.get_default_model X86))
-       (Model.pp (Model.get_default_model PPC))
-       (Model.pp (Model.get_default_model ARM))) ;
+       (Model.pp (Model.get_default_model x86))
+       (Model.pp (Model.get_default_model ppc))
+       (Model.pp (Model.get_default_model arm))) ;
   parse_tag
     "-through"
     (fun tag -> match Model.parse_through tag with

@@ -110,12 +110,26 @@ module Make
          ["global_loc", (fun e -> 
               match E.location_of e with
               | Some (E.A.Location_global a) ->
-                MemSpaceMap.is_global test.Test.mem_space_map (E.A.V.pp_v a) 
+                Misc.exists_exists (fun p -> 
+                    p.CAst.param_name = E.A.V.pp_v a && 
+                    CType.is_ptr_to_global p.CAst.param_ty) 
+                  test.Test.param_map
               | _ -> false);
           "local_loc", (fun e -> 
               match E.location_of e with
               | Some (E.A.Location_global a) ->
-                MemSpaceMap.is_global test.Test.mem_space_map (E.A.V.pp_v a) 
+                Misc.exists_exists (fun p -> 
+                    p.CAst.param_name = E.A.V.pp_v a && 
+                    CType.is_ptr_to_local p.CAst.param_ty) 
+                  test.Test.param_map
+              | _ -> false);
+          "private_loc", (fun e -> 
+              match E.location_of e with
+              | Some (E.A.Location_global a) ->
+                Misc.exists_exists (fun p -> 
+                    p.CAst.param_name = E.A.V.pp_v a && 
+                    CType.is_ptr_to_private p.CAst.param_ty) 
+                  test.Test.param_map
               | _ -> false);
           "atomicloc", (fun e -> 
               match E.location_of e with

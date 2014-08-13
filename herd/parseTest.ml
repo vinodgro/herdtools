@@ -82,7 +82,7 @@ module Top (C:Config) = struct
         let optace = C.optace
       end in
       match arch with
-      | Archs.PPC ->
+      | `PPC ->
 	  let module PPC = PPCArch.Make(C.PC)(SymbValue) in
 	  let module PPCLexParse = struct
 	    type instruction = PPC.pseudo
@@ -106,7 +106,7 @@ module Top (C:Config) = struct
           let module X = Make (PPCS) (P) (PPCM) in 
           X.run name chan env splitted
 
-      | Archs.ARM ->
+      | `ARM ->
 	  let module ARM = ARMArch.Make(C.PC)(SymbValue) in
 	  let module ARMLexParse = struct
 	    type instruction = ARM.pseudo
@@ -132,7 +132,7 @@ module Top (C:Config) = struct
           let module X = Make (ARMS) (P) (ARMM) in 
           X.run name chan env splitted
 
-      | Archs.X86 ->
+      | `X86 ->
           let module X86 = X86Arch.Make(C.PC)(SymbValue) in
           let module X86LexParse = struct
 	    type instruction = X86.pseudo
@@ -155,7 +155,7 @@ module Top (C:Config) = struct
           let module X = Make (X86S) (P) (X86M) in 
           X.run name chan env splitted
 
-      | Archs.CPP11|Archs.C ->
+      | `C ->
         let module CPP11 = CPP11Arch.Make(C.PC)(SymbValue) in
         let module CPP11LexParse = struct
     	  type pseudo = CPP11.pseudo
@@ -177,7 +177,7 @@ module Top (C:Config) = struct
         let module X = Make (CPP11S) (P) (CPP11M) in
         X.run name chan env splitted
 
-      | Archs.OpenCL ->
+      | `OpenCL ->
         let module OpenCL = OpenCLArch.Make(C.PC)(SymbValue) in
         let module OpenCLLexParse = struct
   	  type pseudo = OpenCL.pseudo
@@ -199,7 +199,7 @@ module Top (C:Config) = struct
         let module X = Make (OpenCLS) (P) (OpenCLM) in 
         X.run name chan env splitted
 
-      | Archs.GPU_PTX ->
+      | `GPU_PTX ->
         let module GPU_PTX = GPU_PTXArch.Make(C.PC)(SymbValue) in
         let module GPU_PTXLexParse = struct
   	  type instruction = GPU_PTX.pseudo

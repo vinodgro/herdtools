@@ -105,8 +105,9 @@ module type Config = sig
   val optace : bool
 end
 
-let get_default_model a = match a with
-| Archs.X86 -> X86TSO
-| Archs.PPC|Archs.ARM -> Misc.as_some (parse "herd")
+let get_default_model a = 
+match a with
+| `X86 -> X86TSO
+| `PPC | `ARM -> Misc.as_some (parse "herd")
 | _ -> Warn.user_error 
     "There is no default model for this architecture. Specify a model explicitly using the -model flag."

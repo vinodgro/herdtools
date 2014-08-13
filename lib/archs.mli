@@ -10,48 +10,33 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(*********)
-(* Archs *)
-(*********)
+module System : sig
+  (* Current architecture *)
+  type t =
+    [ `X86
+    | `PPC
+    | `ARM
+    | `PPCGen
+    | `GPU_PTX
+    ]
 
-type t =
-  | X86
-  | PPC
-  | ARM
-  | CPP11
-  | OpenCL
-  | GPU_PTX
-  | C
+  val tags : string list
+  val parse : string -> t option
+  val lex : string -> t
+  val pp : t -> string
+end
 
-let tags = ["X86";"PPC";"ARM";"CPP11";"OpenCL";"GPU_PTX";"C"]
+type t = [ System.t | `C | `OpenCL ]
 
-let parse s = match s with
-| "X86" -> Some X86
-| "PPC" -> Some PPC
-| "ARM" -> Some ARM
-| "CPP11" -> Some CPP11
-| "C" -> Some C
-| "OpenCL" -> Some OpenCL
-| "GPU_PTX" -> Some GPU_PTX
-| _ -> None
+val tags : string list
+val parse : string -> t option
+val lex : string -> t
+val pp : t -> string
 
-let lex s = match parse s with
-| Some a -> a
-| None -> assert false
-
-
-let pp a = match a with
-| X86 -> "X86"
-| PPC -> "PPC"
-| ARM -> "ARM"
-| CPP11 -> "CPP11"
-| OpenCL -> "OpenCL"
-| GPU_PTX -> "GPU_PTX"
-| C -> "C"
-
-let arm = ARM
-let ppc = PPC
-let x86 = X86
-let cpp11 = CPP11
-let opencl = OpenCL
-let gpu_ptx = GPU_PTX
+val arm : t
+val ppc : t
+val x86 : t
+val ppcgen : t
+val gpu_ptx : t
+val c : t
+val opencl : t

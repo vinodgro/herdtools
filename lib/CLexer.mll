@@ -109,6 +109,7 @@ rule token deep = parse
           get_body 0 buf lexbuf;
           BODY (Buffer.contents buf)
         end }
+| '}' { RBRACE }
 | "while" { WHILE }
 | "if"    { IF }
 | "else"  { ELSE }

@@ -293,8 +293,9 @@ end = struct
     struct
       module L = struct
         type token = CParser.token
-        let lexer = CLexer.main
-        let parser = CParser.main
+        module CL = CLexer.Make(struct let debug = false end)
+        let lexer = CL.token false
+        let parser = CParser.shallow_main
       end
       module A' = struct
         module V =
@@ -413,6 +414,7 @@ end = struct
           | Some a -> a
           | None  -> Warn.fatal "Test %s not performed because -carch is not given but required while using C arch" tname
         end
+        | `OpenCL -> assert false
       end in
       let module Cfg = OX in
       let aux = function
@@ -474,10 +476,12 @@ end = struct
               | `PPCGen -> PPCGenArch.comment
               | `X86 -> X86Arch.comment
               | `ARM -> ARMArch.comment
+              | `GPU_PTX -> assert false
             end in
             let module X = Make'(Cfg)(Arch') in
             X.compile cycles hash_env
               name in_chan out_chan splitted
+        | `OpenCL | `GPU_PTX -> assert false
       in
       aux arch
     end else begin (* Excluded explicitely, (check_tname), do not warn *)
