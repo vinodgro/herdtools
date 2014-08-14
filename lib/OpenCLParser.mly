@@ -115,18 +115,26 @@ postfix_expression:
   { $1 }
 | ST LPAR assignment_expression COMMA assignment_expression RPAR
   { Estore ($3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices) }
+| ST_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
+  { Estore ($3, $5, $7, OpenCLBase.S_all_svm_devices) }
 | ST_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Estore ($3, $5, $7, $9) }
 | EXC LPAR assignment_expression COMMA assignment_expression RPAR
   { Eexchange ($3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices) }
+| EXC_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
+  { Eexchange ($3, $5, $7, OpenCLBase.S_all_svm_devices) }
 | EXC_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Eexchange ($3, $5, $7, $9) }
 | ATOMIC_FETCH LPAR assignment_expression COMMA assignment_expression RPAR
   { Efetch ($1, $3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices) }
+| ATOMIC_FETCH_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
+  { Efetch ($1, $3, $5, $7, OpenCLBase.S_all_svm_devices) }
 | ATOMIC_FETCH_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Efetch ($1, $3, $5, $7, $9) }
 | LD LPAR assignment_expression RPAR
   { Eload ($3, OpenCLBase.SC, OpenCLBase.S_all_svm_devices) }
+| LD_EXPLICIT LPAR assignment_expression COMMA MEMORDER RPAR
+  { Eload ($3, $5, OpenCLBase.S_all_svm_devices) }
 | LD_EXPLICIT LPAR assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Eload ($3, $5, $7) }
 | FENCE LPAR MEMREGION COMMA MEMORDER COMMA MEMSCOPE RPAR
