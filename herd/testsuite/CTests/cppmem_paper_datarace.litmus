@@ -1,4 +1,4 @@
-CPP11 cppmem_paper_datarace
+C cppmem_paper_datarace
 "PodWWNaRel RfeRelAcq PodRRAcqNa Fre"
 Prefetch=0:x=F,0:y=W,1:y=F,1:x=T
 Com=Rf Fr
