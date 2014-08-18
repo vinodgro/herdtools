@@ -230,7 +230,11 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
       let parsed =
         let info = parsed.MiscParser.info in
         { parsed with MiscParser.info =
-            ("Hash",D.digest init prog_litmus all_locs)::info ; } in
+            ("Hash",
+             (* For computing hash, we must parse as litmus does.
+                This includes stripping away toplevel '*' of types *)
+             let prog = List.map CAstUtils.strip_pointers prog_litmus in
+             D.digest init prog all_locs)::info ; } in
       parsed
   end
          
