@@ -106,6 +106,25 @@ let check_procs prog =
     procs ;
   procs
 
+(* Strip away initial pointer of argument types,
+   as all the rest of litmus consider the type of a location
+   to be the type of what is in the location *)
+let strip_pointers f =
+  let open CAst in
+  match f with
+  | Global _ -> f
+  | Test t ->
+      let open CType in
+      let ps =
+        List.map
+          (fun p -> match p.param_ty with
+          | Pointer ty -> { p with param_ty=ty; }
+          | _ ->
+              Warn.fatal
+                "parameter %s of function P%i is not a pointer"
+                p.param_name t.proc) t.params in
+      Test { t with params = ps; }
+
 let check_loc procs loc = match loc with
 | MiscParser.Location_reg (p,_) ->
     if not (List.mem p procs) then
@@ -166,6 +185,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
 	  chan init_loc SL.token StateParser.init in
       let prog =
 	call_parser_loc "prog" chan prog_loc L.lexer L.parser in
+      let prog = List.map strip_pointers prog in
       let procs = check_procs prog in
       let (locs,final,_quantifiers) =
 	call_parser_loc "final"

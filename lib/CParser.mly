@@ -58,7 +58,7 @@ parameter_declaration:
 | toptyp IDENTIFIER { {CAst.param_ty = $1; param_name = $2} }
 
 toptyp:
-| typ STAR { $1 }
+| typ STAR { Pointer $1 }
 
 typ:
 | typ STAR { Pointer $1 } 
