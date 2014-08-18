@@ -92,3 +92,4 @@ let rec is_ptr_to_private = function
 let rec is_mutex = function
   | Volatile t | Atomic t | Global t | Local t -> is_mutex t
   | Base s -> RunTypeUtils.mutex_is_substring s
+  | Pointer _ -> assert false
