@@ -17,7 +17,7 @@ open LexMisc
 module LU = LexUtils.Make(O)
 
 (* Compiled efficiently by the next version of ocaml *)
-let tr_name = function
+let tr_name s = match s with
 | "volatile" -> VOLATILE
 | "unsigned" -> UNSIGNED
 | "signed" -> SIGNED
@@ -29,6 +29,11 @@ let tr_name = function
 | "float" -> FLOAT
 | "double" -> DOUBLE
 | "_Bool" -> BOOL
+| "int32_t" 
+| "uint32_t"
+| "int64_t" 
+| "uint64_t" ->
+    BASE_TYPE s
 | "atomic_bool" -> ATOMIC_TYPE "_Bool"
 | "atomic_char" -> ATOMIC_TYPE "char"
 | "atomic_schar" -> ATOMIC_TYPE "signed char"
@@ -123,7 +128,7 @@ rule token deep = parse
 | "memory_order_seq_cst" {MEMORDER (CPP11Base.SC)}
 | "memory_order_relaxed" {MEMORDER (CPP11Base.Rlx)}
 | "memory_order_consume" {MEMORDER (CPP11Base.Con)}
-| "fence" { FENCE }
+| "fence"|"atomic_thread_fence" { FENCE }
 | "atomic_load"  { LD }
 | "atomic_store" { ST }
 | "atomic_load_explicit"  { LD_EXPLICIT }

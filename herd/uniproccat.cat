@@ -6,7 +6,7 @@
 
 (* NB: this model handles RMW *)
 
-let invrf=rf -1
+let invrf=rf^-1
 
 (* co observations in test *)
 let obsco =

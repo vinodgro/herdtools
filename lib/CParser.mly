@@ -17,6 +17,7 @@ open CType
 
 %token EOF
 %token <string> IDENTIFIER
+%token <string> BASE_TYPE
 %token <string> ATOMIC_TYPE
 %token <int> PROC
 %token LPAR RPAR COMMA LBRACE RBRACE STAR 
@@ -58,7 +59,7 @@ parameter_declaration:
 | toptyp IDENTIFIER { {CAst.param_ty = $1; param_name = $2} }
 
 toptyp:
-| typ STAR { $1 }
+| typ STAR { Pointer $1 }
 
 typ:
 | typ STAR { Pointer $1 } 
@@ -69,6 +70,7 @@ typ:
 
 base0:
 | ATOMIC_TYPE { Atomic (Base $1) }
+| BASE_TYPE { (Base $1) }
 | ty_attr MUTEX { Base ($1 ^ "mutex") }
 | ty_attr CHAR { Base ($1 ^ "char") }
 | ty_attr INT { Base ($1 ^ "int") }

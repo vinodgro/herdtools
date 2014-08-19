@@ -166,6 +166,7 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
 	  chan init_loc SL.token StateParser.init in
       let prog =
 	call_parser_loc "prog" chan prog_loc L.lexer L.parser in
+      let prog = List.map CAstUtils.strip_pointers prog in
       let procs = check_procs prog in
       let (locs,final,_quantifiers) =
 	call_parser_loc "final"

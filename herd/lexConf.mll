@@ -220,6 +220,8 @@ and opt = parse
     { lex_stringset PP.unshow arg }
 | "symetric" arg
     { lex_stringset PP.symetric arg }
+| "showraw" arg
+    { lex_stringset PP.showraw arg }
 | "edgeattr" arg
   {
     match Misc.split_comma arg with

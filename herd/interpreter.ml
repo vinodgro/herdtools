@@ -132,7 +132,10 @@ module Make
           skipped : StringSet.t ; }
 
     let rt_loc lbl =
-      if O.verbose <= 1 && not (StringSet.mem lbl S.O.PC.symetric)
+      if
+        O.verbose <= 1 &&
+        not (StringSet.mem lbl S.O.PC.symetric) &&
+        not (StringSet.mem lbl S.O.PC.showraw)
       then S.rt else (fun x -> x)
 
     let show_to_vbpp st =

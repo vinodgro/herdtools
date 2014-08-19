@@ -5,6 +5,6 @@ show dmb dsb dsbst dmbst
 show isb isync
 
 let co=co0+
-let fr=noid((rf)-1;co)
+let fr=noid((rf)^-1;co)
 show co,fr
 

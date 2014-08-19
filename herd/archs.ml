@@ -19,16 +19,14 @@ module System = struct
     [ `X86
     | `PPC
     | `ARM
-    | `PPCGen
     | `GPU_PTX
     ]
 
-  let tags = ["X86";"PPC";"ARM";"PPCGen";"GPU_PTX"]
+  let tags = ["X86";"PPC";"ARM";"GPU_PTX"]
 
   let parse s = match s with
   | "X86" -> Some `X86
   | "PPC" -> Some `PPC
-  | "PPCGen" -> Some `PPCGen
   | "ARM" -> Some `ARM
   | "GPU_PTX" -> Some `GPU_PTX
   | _ -> None
@@ -41,19 +39,17 @@ module System = struct
   let pp a = match a with
   | `X86 -> "X86"
   | `PPC -> "PPC"
-  | `PPCGen -> "PPCGen"
   | `ARM -> "ARM"
   | `GPU_PTX -> "GPU_PTX"
 end
 
 type t = [ System.t | `C | `OpenCL ]
 
-let tags = ["X86";"PPC";"ARM";"PPCGen";"GPU_PTX";"C";"OpenCL"]
+let tags = ["X86";"PPC";"ARM";"GPU_PTX";"C";"OpenCL"]
 
 let parse s = match s with
 | "X86" -> Some `X86
 | "PPC" -> Some `PPC
-| "PPCGen" -> Some `PPCGen
 | "ARM" -> Some `ARM
 | "GPU_PTX" -> Some `GPU_PTX
 | "C" -> Some `C
@@ -68,7 +64,6 @@ let lex s = match parse s with
 let pp a = match a with
 | `X86 -> "X86"
 | `PPC -> "PPC"
-| `PPCGen -> "PPCGen"
 | `ARM -> "ARM"
 | `GPU_PTX -> "GPU_PTX"
 | `C -> "C"
@@ -77,7 +72,6 @@ let pp a = match a with
 let arm = `ARM
 let ppc = `PPC
 let x86 = `X86
-let ppcgen = `PPCGen
 let gpu_ptx = `GPU_PTX
 let c = `C
 let opencl = `OpenCL

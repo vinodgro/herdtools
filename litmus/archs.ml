@@ -10,33 +10,62 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-module System : sig
-  (* Current architecture *)
+(*********)
+(* Archs *)
+(*********)
+
+module System = struct
   type t =
     [ `X86
     | `PPC
     | `ARM
     | `PPCGen
-    | `GPU_PTX
     ]
 
-  val tags : string list
-  val parse : string -> t option
-  val lex : string -> t
-  val pp : t -> string
+  let tags = ["X86";"PPC";"ARM";"PPCGen";]
+
+  let parse s = match s with
+  | "X86" -> Some `X86
+  | "PPC" -> Some `PPC
+  | "PPCGen" -> Some `PPCGen
+  | "ARM" -> Some `ARM
+  | _ -> None
+
+  let lex s = match parse s with
+  | Some a -> a
+  | None -> assert false
+
+
+  let pp a = match a with
+  | `X86 -> "X86"
+  | `PPC -> "PPC"
+  | `PPCGen -> "PPCGen"
+  | `ARM -> "ARM"
 end
 
-type t = [ System.t | `C | `OpenCL ]
+type t = [ System.t | `C ]
 
-val tags : string list
-val parse : string -> t option
-val lex : string -> t
-val pp : t -> string
+let tags = "C"::System.tags
 
-val arm : t
-val ppc : t
-val x86 : t
-val ppcgen : t
-val gpu_ptx : t
-val c : t
-val opencl : t
+let parse s = match System.parse s with
+| Some _ as r -> r
+| None -> match s with
+  | "C" -> Some `C
+  | _ -> None
+
+
+let lex s = match parse s with
+| Some a -> a
+| None -> assert false
+
+
+let pp = function
+| `C -> "C"
+| #System.t as a -> System.pp a
+
+
+let arm = `ARM
+let ppc = `PPC
+let x86 = `X86
+let ppcgen = `PPCGen
+let c = `C

@@ -1,7 +1,7 @@
 SC withoutco
 (* Sequential consistency, no co version *)
 
-let invrf=(rf)-1
+let invrf=(rf)^-1
 
 (* co observations in test *)
 let obsco =
@@ -24,4 +24,5 @@ and fr = noid(invrf;co) (* notice: avoid self fr (RMW) *)
 
 show co,fr
 
-acyclic po | fr | rf | co
+acyclic po | fr | rf | co as sc
+
