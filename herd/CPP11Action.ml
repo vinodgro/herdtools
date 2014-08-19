@@ -69,7 +69,7 @@ struct
 	  (V.pp_v v)
     | Fence mo -> 
        sprintf "F(%s)"
-	  (CPP11Base.pp_mem_order mo)
+	  (CPP11Base.pp_mem_order_short mo)
     | RMW (l,v1,v2,mo) ->
        	sprintf "RMW(%s)%s(%s>%s)"
           (CPP11Base.pp_mem_order_short mo)

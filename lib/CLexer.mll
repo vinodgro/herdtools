@@ -123,7 +123,7 @@ rule token deep = parse
 | "memory_order_seq_cst" {MEMORDER (CPP11Base.SC)}
 | "memory_order_relaxed" {MEMORDER (CPP11Base.Rlx)}
 | "memory_order_consume" {MEMORDER (CPP11Base.Con)}
-| "fence" { FENCE }
+| "fence"|"atomic_thread_fence" { FENCE }
 | "atomic_load"  { LD }
 | "atomic_store" { ST }
 | "atomic_load_explicit"  { LD_EXPLICIT }

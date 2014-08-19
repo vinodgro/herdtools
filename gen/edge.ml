@@ -217,8 +217,8 @@ and type atom = F.atom = struct
       end
   | r -> r
 
-  let pp_strong sd e1 e2 = 
-    sprintf "Fenced%s%s%s" (pp_sd sd) (pp_extr e1) (pp_extr e2)
+  let pp_strong sd e1 e2 =
+    sprintf "Fence%s%s%s" (pp_sd sd) (pp_extr e1) (pp_extr e2)
 
 (* Backward compatibility... *)
 
