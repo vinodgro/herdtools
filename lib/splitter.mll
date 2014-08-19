@@ -118,7 +118,8 @@ and inside_prog  = parse
 | '\n'  { incr_lineno lexbuf ;  inside_prog lexbuf }
  (* Had to erase comments to handle C-code *)
 | "\""  { skip_string lexbuf ; inside_prog lexbuf }
-| "<<"|eof
+(* | "<<" *)  (* Had to erase this to handle C-code *)
+|eof
     { true,lexeme_start_p lexbuf } (* boolean -> empty constraint *)
 (* | "+" *) (* Had to erase this to handle C-code, why here ?? *)
 | "final"
