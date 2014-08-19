@@ -281,8 +281,8 @@ module Make(O:Config)(M:XXXMem.S) =
       end;
       if O.dumptex then begin
         match M.model with
-        | Model.Generic (_,(_,_,prog)) -> 
-          Herd2tex.tex_of_prog stdout prog; 
+        | Model.Generic (_,(_,name,prog)) -> 
+          Herd2tex.tex_of_prog stdout name prog; 
           exit 0
         | _ -> Warn.user_error "No model given"
       end;

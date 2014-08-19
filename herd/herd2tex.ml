@@ -26,8 +26,8 @@ let rec tex_of_op2 chan es = function
   | Union -> fprintf_list_infix "\\cup" tex_of_exp chan es
   | Inter -> fprintf_list_infix "\\cap" tex_of_exp chan es
   | Diff -> fprintf_list_infix "\\setminus" tex_of_exp chan es
-  | Seq -> fprintf_list ";" tex_of_exp chan es
-  | Cartesian -> fprintf_list "\\times" tex_of_exp chan es
+  | Seq -> fprintf_list_infix ";" tex_of_exp chan es
+  | Cartesian -> fprintf_list_infix "\\times" tex_of_exp chan es
 
 and string_of_dir = function
   | Write -> "W" 
@@ -49,9 +49,9 @@ and tex_of_op1 chan e = function
       tex_of_exp e
   | Inv -> fprintf chan "(%a^{-1})" tex_of_exp e
   | Square -> fprintf chan "(%a^{2})" tex_of_exp e
-  | Ext -> fprintf chan "(\\mathrm{ext} %a)" tex_of_exp e
-  | Int -> fprintf chan "(\\mathrm{int} %a)" tex_of_exp e
-  | NoId -> fprintf chan "(\\mathrm{noid} %a)" tex_of_exp e
+  | Ext -> fprintf chan "(\\mathrm{ext}(%a))" tex_of_exp e
+  | Int -> fprintf chan "(\\mathrm{int}(%a))" tex_of_exp e
+  | NoId -> fprintf chan "(\\mathrm{noid}(%a))" tex_of_exp e
   | Set_to_rln -> fprintf chan "[%a]" tex_of_exp e
   | Comp SET -> fprintf chan "(%a^\\mathsf{c})" tex_of_exp e
   | Comp RLN -> fprintf chan "(%a^\\mathsf{c})" tex_of_exp e
@@ -81,16 +81,20 @@ and tex_of_formals chan = function
     fprintf chan ")";
 
 and tex_of_var chan x =
-    let x = Str.global_replace (Str.regexp_string "_") "_{" x in
-    let x = if String.contains x '_' then x ^ "}" else x in
+(*  let x = Str.global_replace (Str.regexp_string "_") "_{" x in
+    let x = if String.contains x '_' then x ^ "}" else x in 
     let x = Str.global_replace (Str.regexp_string "-") "\\mbox{-}" x in
-    fprintf chan "\\mathit{%s}" x
+    let x = Str.global_replace (Str.regexp_string "_") "\\_" x in
+*)
+    fprintf chan "\\var{%s}" x
 
 and tex_of_name chan x =
-    let x = Str.global_replace (Str.regexp_string "_") "_{" x in
+(*  let x = Str.global_replace (Str.regexp_string "_") "_{" x in
     let x = if String.contains x '_' then x ^ "}" else x in
     let x = Str.global_replace (Str.regexp_string "-") "\\mbox{-}" x in
-    fprintf chan "\\mathrm{%s}" x
+    let x = Str.global_replace (Str.regexp_string "_") "\\_" x in
+*)
+    fprintf chan "\\name{%s}" x
 
 and tex_of_binding chan (x, e) = 
   begin match e with
@@ -128,7 +132,7 @@ let tex_of_ins chan = function
       tex_of_exp exp;
     begin match name with 
     | None -> () 
-    | Some name -> fprintf chan "~\\kwd{as}~$\\mathrm{%a}$" tex_of_name name end;
+    | Some name -> fprintf chan "~\\kwd{as}~%a" tex_of_name name end;
   | UnShow xs ->
     fprintf chan "\\KWD{unshow}~$";
     list_iter_alt (tex_of_var chan) (fun () -> fprintf chan ",") xs;
@@ -142,18 +146,16 @@ let tex_of_ins chan = function
       tex_of_exp exp 
       tex_of_name name
   | Latex s -> 
-    fprintf chan "\\end{quote}\n";
-    fprintf chan "\\noindent %s" s;
-    fprintf chan "\\begin{quote}\n"
+    fprintf chan "\\entercomment\n";
+    fprintf chan "\\noindent %s\n" s;
+    fprintf chan "\\exitcomment\n"
 
-let tex_of_prog chan prog = 
+let tex_of_prog chan name prog = 
   fprintf chan "\\documentclass[12pt]{article}\n";
-  fprintf chan "\\usepackage[margin=1in]{geometry}\n";
-  fprintf chan "\\usepackage[usenames,dvipsnames]{color}\n";
-  fprintf chan "\\newcommand\\KWD[1]{{\\color{RoyalPurple}\\bfseries #1}}\n";
-  fprintf chan "\\newcommand\\kwd[1]{{\\color{ForestGreen}#1}}\n";
+  fprintf chan "\\input{herd2tex}\n";
   fprintf chan "\\begin{document}\n";
-  fprintf chan "\\begin{quote}\n";
+  fprintf chan "\\begin{source}\n";
+  fprintf chan "\\noindent \\modelname{%s}\n\n" name;
   List.iter (fprintf chan "\\noindent %a\n\n" tex_of_ins) prog;
-  fprintf chan "\\end{quote}\n";
+  fprintf chan "\\end{source}\n";
   fprintf chan "\\end{document}\n"
