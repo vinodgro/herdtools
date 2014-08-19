@@ -134,6 +134,7 @@ module type S = sig
   val doshow : StringSet.t
   val unshow : StringSet.t
   val symetric : StringSet.t
+  val showraw : StringSet.t
   val extrachars : float
   val shift : float array
   val ptscale : float

@@ -294,6 +294,8 @@ let options = [
  parse_stringset "-doshow" PP.doshow "show those edges";
  parse_stringset "-unshow" PP.unshow "do not show those edges" ;
  parse_stringset "-symetric" PP.symetric "declare those edges as symetric" ;
+ parse_stringset "-showraw" PP.showraw
+    "do not perform transitivity removal on those edges" ;
 
 (* DOT contents control *)
   parse_tag "-splines"
@@ -491,6 +493,7 @@ let () =
       let doshow = !PP.doshow
       let unshow = !PP.unshow
       let symetric = !PP.symetric
+      let showraw = !PP.showraw
 
       let dotheader = match !PP.dotheader with
       | None -> None
