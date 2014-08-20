@@ -1595,9 +1595,7 @@ let user2_barrier_def () =
             ()
         | TimeBase ->
             if have_timebase then begin
-              O.fx iloop
-                "if (_i %% N == %i) _a->next_tb = read_timebase();"
-                proc ;
+              O.fx iloop "_a->next_tb = read_timebase();" ;
               O.fx iloop "barrier_wait(barrier);" ;
               O.fx iloop "tb_t _tb0 = _a->next_tb;"
             end else begin
