@@ -5,8 +5,8 @@ Com=Rf Fr
 Orig=PodWW Rfe PodRR Fre
 
 {
-x = 0;
-y = 0;
+[x] = 0;
+[y] = 0;
 }
 
 P0 (__global int* x, __local int* y) {
