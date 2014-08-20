@@ -521,6 +521,20 @@ let () =
 
 (* Just go *)
   let tests = !args in
+  if Config.dumplem then begin
+    match model with
+    | Some (Model.Generic (_,(_,_,prog))) -> 
+      Herd2lem.lem_of_prog stdout prog; 
+      exit 0
+    | _ -> Warn.user_error "No model given"
+  end;
+  if Config.dumptex then begin
+    match model with
+    | Some (Model.Generic (_,(_,name,prog))) -> 
+      Herd2tex.tex_of_prog stdout name prog; 
+      exit 0
+    | _ -> Warn.user_error "No model given"
+  end;
   let _seen =
     Misc.fold_argv
       (fun name seen ->

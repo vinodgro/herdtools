@@ -272,20 +272,6 @@ module Make(O:Config)(M:XXXMem.S) =
       let ochan = open_dot test in
 (* So small a race condition... *)
       Handler.push (fun () -> erase_dot ochan) ;
-      if O.dumplem then begin
-        match M.model with
-        | Model.Generic (_,(_,_,prog)) -> 
-          Herd2lem.lem_of_prog stdout prog; 
-          exit 0
-        | _ -> Warn.user_error "No model given"
-      end;
-      if O.dumptex then begin
-        match M.model with
-        | Model.Generic (_,(_,name,prog)) -> 
-          Herd2tex.tex_of_prog stdout name prog; 
-          exit 0
-        | _ -> Warn.user_error "No model given"
-      end;
 (* Dump event structures ... *)
       if O.dumpes then begin
         match ochan with
