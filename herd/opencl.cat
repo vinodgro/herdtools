@@ -142,19 +142,39 @@ We define $\var{rel_seq}(F)$ as the set of pairs $(a,b)$ for which $b$ is in the
 let rel_seq(F) = rel'(F); max_co?
 
 {%(* 
-\paragraph{Synchronisation}
-We define $\var{ir_sw}(F)$ (intra-region synchronizes-with) as the set of pairs of events $(a,b)$ that synchronise with each other on the same region. The events must have inclusive scopes, they must be in different work-items, and $b$ must acquire from $a$'s release sequence.
+\paragraph{Synchronisation}~
+\myquote{p.~47}{
+An atomic operation $A$ that performs a release operation on a global object $M$ global-synchronizes-with an atomic operation $B$ that performs an acquire operation on $M$ and reads a value written by any side effect in the release sequence headed by $A$. A similar rule holds for atomic operations on objects in local memory [...]
+}
+Note that the paragraph above should (we believe) mention that $A$ and $B$ must have inclusive scopes.
+\myquote{p.~50}{
+A global release fence $A$ global-synchronizes-with a global acquire fence $B$ if there exist atomic operations $X$ and $Y$, both operating on some global atomic object $M$, such that $A$ is sequenced-before $X$, $X$ modifies $M$, $Y$ is sequenced-before $B$, $Y$ reads the value written by $X$ or a value written by any side effect in the hypothetical release sequence $X$ would head if it were a release operation, and that the scopes of $A$, $B$ are inclusive.
+
+A global release fence $A$ global-synchronizes-with an atomic operation $B$ that performs an acquire operation on a global atomic object $M$ if there exists an atomic operation $X$ such that $A$ is sequenced-before $X$, $X$ modifies $M$, $B$ reads the value written by $X$ or a value written by any side effect in the hypothetical release sequence $X$ would head if it were a release operation, and the scopes of $A$ and $B$ are inclusive.
+
+An atomic operation $A$ that is a release operation on a global atomic object $M$ global-synchronizes-with a global acquire fence $B$ if there exists some atomic operation $X$ on $M$ such that $X$ is sequenced-before $B$ and reads the value written by $A$ or a value written by any side effect in the release sequence headed by $A$, and the scopes of $A$ and $B$ are inclusive.
+
+[Analogous paragraphs about local operations omitted.]
+}
+We define $\var{ir_sw}(F)$ (intra-region synchronizes-with) as the set of pairs of events $(A,B)$ that synchronise with each other on the same region. The events must have inclusive scopes, they must be in different work-items, and $B$ must acquire from $A$'s release sequence. 
+
 %*)}
 
-let ir_sw(F) = incl & ~wi & (rel_seq(F); rf; acq'(F))
+let ir_sw(F,region) = incl & ~wi & (rel_seq(F); [region]; rf; acq'(F))
 
 {%(* 
-We define $\var{g_sw}(F,F')$ (global synchronizes-with) as the set of pairs of events that either synchronise via global fences, or synchronise via local fences and either are both SC operations or are both global/local fences. We define $\var{l_sw}(F,F')$ (local synchronizes-with) as the set of pairs of events that either synchronise via local fences, or synchronise via global fences and either are both SC operations or are both global/local fences. \fixme{John: That last bit doesn't make much sense to me, and I suspect it might be wrong.}
+We define $\var{g_sw}(F,F')$ (global synchronizes-with) as the set of pairs of events that either synchronise via global fences, or synchronise via local fences and either are both SC operations or are both global/local fences. We define $\var{l_sw}(F,F')$ (local synchronizes-with) as the set of pairs of events that either synchronise via local fences, or synchronise via global fences and either are both SC operations or are both global/local fences. 
+\myquote{p.~48}{
+Let $X$ and $Y$ be two \code{memory_order_seq_cst} operations. If $X$ local-synchronizes-with or global-synchronizes-with $Y$ then $X$ both local-synchronizes-with $Y$ and global-synchronizes-with $Y$.
+}
+\myquote{p.~51}{
+Let $X$ and $Y$ be two work item fences that each have both the \code{CLK_GLOBAL_MEM_FENCE} and \code{CLK_LOCAL_MEM_FENCE} flags set. If $X$ either local-synchronizes-with or global-synchronizes-with $Y$, then $X$ both local-synchronizes-with $Y$ and global-synchronizes-with $Y$.
+}
 %*)}
 
-let sw(F,F') = ir_sw(F) | ((mo_sc^2 | glF^2) & ir_sw(F'))
-let g_sw = sw(gF,lF)
-let l_sw = sw(lF,gF)
+let g_sw = ir_sw(gF, global_loc) | ((mo_sc^2 | glF^2) & ir_sw(lF, local_loc))
+let l_sw = ir_sw(lF, local_loc) | ((mo_sc^2 | glF^2) & ir_sw(gF, global_loc))
+
 
 {%(*
 \paragraph{Happens before}
@@ -195,19 +215,6 @@ let g_hbl = g_hb & loc
 let l_hbl = l_hb & loc
 let hbl = g_hbl | l_hbl
 
-{%(*
-\paragraph{Coherence}
-There are four types of coherence-violating cycle, and these are all forbidden in OpenCL. These are read-read, read-write, write-read and write-write. Coherence is required on both the global and the local memory regions.
-%*)}
-let corr(hbl) = fr; rf; hbl
-let corw(hbl) = co; rf; hbl
-let cowr(hbl) = fr; hbl
-let coww(hbl) = co; hbl
-
-let coherence(r) = corr(r) | cowr(r) | corw(r) | coww(r)
-
-irreflexive coherence(g_hbl) as global_coherence
-irreflexive coherence(l_hbl) as local_coherence
 
 {%(*
 \paragraph{Visible side effects.}
@@ -239,18 +246,66 @@ let vsse(hbl) = (co & ~(vse(hbl) ; hbl))*
 \myquote{p.~47}{
 The value of $M$, as determined by evaluation $B$, shall be the value stored by some operation in the visible sequence of $M$ with respect to $B$.
 }
-Essentially: a load can only read from a store in its visible sequence of side-effects. \fixme{John: I'm not sure that it quite makes sense to talk of \emph{the} visible sequence of $M$. Doesn't it depend on which write the sequence starts?}
+Essentially: a load can only read from a store that is in its visible sequence of side-effects. \fixme{John: I'm not sure that it quite makes sense to talk of \emph{the} visible sequence of $M$. Doesn't it depend on which write the sequence starts?}
 %*)}
 
 let g_rf = rf; g_vse^-1; ~(vsse(g_hbl))
 irreflexive g_rf as g_rf_consistent
 
+{%(*
+\myquote{p.~46}{
+[...] the visible sequence of side effects for a local atomic object is defined similarly by using the local-happens-before relation.
+}
+%*)}
+
 let l_rf = rf; l_vse^-1; ~(vsse(l_hbl))
 irreflexive l_rf as l_rf_consistent
 
 {%(*
-\paragraph{Read-modify-write atomicity} 
-\fixme{John: I'm not sure what this is about yet.}
+\paragraph{Coherence}
+There are four types of coherence-violating cycle, and these are all forbidden in OpenCL. These are write-write, read-read, read-write and write-read. Coherence is required on both the global and the local memory regions.
+
+\myquote{p.~47}{
+If an operation $A$ that modifies an atomic object $M$ global-happens-before an operation $B$ that modifies $M$, then $A$ shall be earlier than $B$ in the modification order of $M$. This requirement is known as \emph{write-write coherence}.
+}
+%*)}
+
+let coww(hbl) = co; hbl
+
+{%(*
+\myquote{p.~47}{
+If a value computation $A$ of an atomic object $M$ global-happens-before a value computation $B$ of $M$, and $A$ takes its value from a side effect $X$ on $M$, then the value computed by $B$ shall either equal the value stored by $X$, or be the value stored by a side effect $Y$ on $M$, where $Y$ follows $X$ in the modification order of $M$. This requirement is known as \emph{read-read coherence}.
+}
+%*)}
+
+let corr(hbl) = fr; rf; hbl
+
+{%(*
+\myquote{p.~47}{
+If a value computation $A$ of an atomic object $M$ global-happens-before an operation $B$ on $M$, then $A$ shall take its value from a side effect $X$ on $M$, where $X$ precedes $B$ in the modification order of $M$. This requirement is known as \emph{read-write coherence}.
+}
+%*)}
+
+let corw(hbl) = co; rf; hbl
+
+{%(*
+\myquote{p.~47}{
+If a side effect $X$ on an atomic object $M$ global-happens-before a value computation $B$ of $M$, then the evaluation $B$ shall take its value from $X$ or from a side effect $Y$ that follows $X$ in the modification order of $M$. This requirement is known as \emph{write-read coherence}.
+}
+%*)}
+
+let cowr(hbl) = fr; hbl
+
+let coherence(r) = corr(r) | cowr(r) | corw(r) | coww(r)
+irreflexive coherence(g_hbl) as global_coherence
+irreflexive coherence(l_hbl) as local_coherence
+
+{%(*
+\paragraph{Read-modify-write atomicity}~
+\myquote{p.~49}{
+Atomic read-modify-write operations should always read the last value (in the modification order) stored before the write associated with the read-modify-write operation.
+}
+\fixme{John: I haven't understood the following line yet.}
 %*)}
 
 let rmwv = rf;[rmw] | (co;fr) | (co;rf)
