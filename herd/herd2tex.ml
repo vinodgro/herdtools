@@ -1,33 +1,34 @@
 open AST
 open Printf
 
-let rec fprintf_list s f chan = function
+let rec fprintf_list_infix s f c = function
   | [] -> ()
-  | [x] -> fprintf chan "%a" f x
-  | x::xs -> fprintf chan "(%s %a %a)" s f x (fprintf_list s f) xs
-
-let rec fprintf_list_infix s f chan = function
-  | [] -> ()
-  | [x] -> fprintf chan "%a" f x
+  | [x] -> fprintf c "%a" f x
   | x::xs -> 
-    fprintf chan "%a %s %a" 
+    fprintf c "%a %s %a" 
       f x s (fprintf_list_infix s f) xs
 
 let rec list_iter_alt f inbetween = function
   | [] -> ()
   | [x] -> f x
-  | x :: xs  -> f x ; inbetween () ; list_iter_alt f inbetween xs
+  | x :: xs -> f x; inbetween (); list_iter_alt f inbetween xs
 
-let tex_of_konst chan = function
-  | Empty SET -> fprintf chan "\\{\\}"
-  | Empty RLN -> fprintf chan "\\emptyset"
+let paren b c f = 
+  if b then begin 
+    fprintf c "("; f (); fprintf c ")"
+  end else f ()
 
-let rec tex_of_op2 chan es = function
-  | Union -> fprintf_list_infix "\\cup" tex_of_exp chan es
-  | Inter -> fprintf_list_infix "\\cap" tex_of_exp chan es
-  | Diff -> fprintf_list_infix "\\setminus" tex_of_exp chan es
-  | Seq -> fprintf_list_infix ";" tex_of_exp chan es
-  | Cartesian -> fprintf_list_infix "\\times" tex_of_exp chan es
+let tex_of_konst c = function
+  | Empty SET -> fprintf c "\\{\\}"
+  | Empty RLN -> fprintf c "\\emptyset"
+
+let rec tex_of_op2 n c es op2 = 
+  paren (n >= 2) c (fun () -> match op2 with
+  | Union -> fprintf_list_infix "\\cup" (tex_of_exp 2) c es
+  | Inter -> fprintf_list_infix "\\cap" (tex_of_exp 2) c es
+  | Diff -> fprintf_list_infix "\\setminus" (tex_of_exp 2) c es
+  | Seq -> fprintf_list_infix "\\semicolon" (tex_of_exp 2) c es
+  | Cartesian -> fprintf_list_infix "\\times" (tex_of_exp 2) c es)
 
 and string_of_dir = function
   | Write -> "W" 
@@ -38,75 +39,64 @@ and string_of_dir = function
   | Unv_Set -> "\\_"
   | Bar_Set -> "B"
 
-and tex_of_op1 chan e = function
-  | Plus -> fprintf chan "(%a^+)" tex_of_exp e
-  | Star -> fprintf chan "(%a^*)" tex_of_exp e
-  | Opt -> fprintf chan "(%a^?)" tex_of_exp e
+and tex_of_op1 n c e op1 = 
+  paren (n >= 3 && op1 != Set_to_rln) c (fun () -> match op1 with
+  | Plus -> fprintf c "%a^+" (tex_of_exp 3) e
+  | Star -> fprintf c "%a^*" (tex_of_exp 3) e
+  | Opt -> fprintf c "%a^?" (tex_of_exp 3) e
   | Select (d1,d2) -> 
-    fprintf chan "\\mathrm{%s%s}(%a)"
+    fprintf c "\\mathrm{%s%s}(%a)"
       (string_of_dir d1)
       (string_of_dir d2)
-      tex_of_exp e
-  | Inv -> fprintf chan "(%a^{-1})" tex_of_exp e
-  | Square -> fprintf chan "(%a^{2})" tex_of_exp e
-  | Ext -> fprintf chan "(\\mathrm{ext}(%a))" tex_of_exp e
-  | Int -> fprintf chan "(\\mathrm{int}(%a))" tex_of_exp e
-  | NoId -> fprintf chan "(\\mathrm{noid}(%a))" tex_of_exp e
-  | Set_to_rln -> fprintf chan "[%a]" tex_of_exp e
-  | Comp SET -> fprintf chan "(%a^\\mathsf{c})" tex_of_exp e
-  | Comp RLN -> fprintf chan "(%a^\\mathsf{c})" tex_of_exp e
+      (tex_of_exp 0) e
+  | Inv -> fprintf c "%a^{-1}" (tex_of_exp 3) e
+  | Square -> fprintf c "%a^{2}" (tex_of_exp 3) e
+  | Ext -> fprintf c "\\mathrm{ext}(%a)" (tex_of_exp 0) e
+  | Int -> fprintf c "\\mathrm{int}(%a)" (tex_of_exp 0) e
+  | NoId -> fprintf c "\\mathrm{noid}(%a)" (tex_of_exp 0) e
+  | Set_to_rln -> fprintf c "[%a]" (tex_of_exp 0) e
+  | Comp _ -> fprintf c "%a^\\mathsf{c}" (tex_of_exp 3) e)
 
-and tex_of_exp chan = function
-  | Konst k -> tex_of_konst chan k
-  | Var x -> tex_of_var chan x
-  | Op1 (op1, e) -> tex_of_op1 chan e op1
-  | Op (op2, es) -> fprintf chan "("; tex_of_op2 chan es op2; fprintf chan ")"
+and comma c () = fprintf c ","
+
+and tex_of_exp n c = function
+  | Konst k -> tex_of_konst c k
+  | Var x -> tex_of_var c x
+  | Op1 (op1, e) -> tex_of_op1 n c e op1
+  | Op (op2, es) -> tex_of_op2 n c es op2
   | App (e,es) -> 
-    fprintf chan "%a(" tex_of_exp e; 
-    list_iter_alt (tex_of_exp chan) (fun () -> fprintf chan ",") es;
-    fprintf chan ")"
-  | Bind _ -> fprintf chan "\\mbox{\\color{red}[Local bindings not done yet]}"
-  | BindRec _ -> fprintf chan "\\mbox{\\color{red}[Local bindings not done yet]}"
+    paren (n > 2) c (fun () ->
+        tex_of_exp 0 c e;
+        paren true c (fun () -> 
+            list_iter_alt (tex_of_exp 0 c) (comma c) es))
+  | Bind _ -> fprintf c "\\mbox{\\color{red}[Local bindings not done yet]}"
+  | BindRec _ -> fprintf c "\\mbox{\\color{red}[Local bindings not done yet]}"
   | Fun (xs,e) -> 
-    fprintf chan "\\lambda %a \\ldotp %a" 
-      tex_of_formals xs
-      tex_of_exp e
+    paren (n > 1) c (fun () ->
+      fprintf c "\\lambda %a \\ldotp %a" 
+        (tex_of_formals false) xs
+        (tex_of_exp 1) e)
 
-and tex_of_formals chan = function
-  | [] -> fprintf chan "()"
-  | [x] -> tex_of_var chan x
-  | xs -> 
-    fprintf chan "("; 
-    list_iter_alt (tex_of_var chan) (fun () -> fprintf chan ",") xs ;
-    fprintf chan ")";
+and tex_of_formals b c = function
+  | [] -> paren true c (fun () -> ())
+  | [x] -> paren b c (fun () -> tex_of_var c x)
+  | xs -> paren true c (fun () -> list_iter_alt (tex_of_var c) (comma c) xs)
+    
+and tex_of_var c x = fprintf c "\\var{%s}" x
 
-and tex_of_var chan x =
-(*  let x = Str.global_replace (Str.regexp_string "_") "_{" x in
-    let x = if String.contains x '_' then x ^ "}" else x in 
-    let x = Str.global_replace (Str.regexp_string "-") "\\mbox{-}" x in
-    let x = Str.global_replace (Str.regexp_string "_") "\\_" x in
-*)
-    fprintf chan "\\var{%s}" x
+and tex_of_name c x = fprintf c "\\name{%s}" x
 
-and tex_of_name chan x =
-(*  let x = Str.global_replace (Str.regexp_string "_") "_{" x in
-    let x = if String.contains x '_' then x ^ "}" else x in
-    let x = Str.global_replace (Str.regexp_string "-") "\\mbox{-}" x in
-    let x = Str.global_replace (Str.regexp_string "_") "\\_" x in
-*)
-    fprintf chan "\\name{%s}" x
-
-and tex_of_binding chan (x, e) = 
+and tex_of_binding c (x, e) = 
   begin match e with
   | Fun (xs,e) ->
-    fprintf chan "$%a(%a) = %a$" 
+    fprintf c "$%a%a = %a$" 
       tex_of_var x 
-      tex_of_formals xs
-      tex_of_exp e
+      (tex_of_formals true) xs
+      (tex_of_exp 0) e
   | _ ->
-    fprintf chan "$%a = %a$" 
+    fprintf c "$%a = %a$" 
       tex_of_var x 
-      tex_of_exp e
+      (tex_of_exp 0) e
   end
 
 let tex_of_test = function
@@ -118,44 +108,44 @@ let tex_of_test_type = function
   | Provides -> ""
   | Requires -> "\\KWD{undefined\\_unless}~"
 
-let tex_of_ins chan = function
+let tex_of_ins c = function
   | Let bs -> 
-    fprintf chan "\\KWD{let}~"; 
-    list_iter_alt (tex_of_binding chan) (fun () -> fprintf chan "~\\KWD{and}~") bs
+    fprintf c "\\KWD{let}~"; 
+    list_iter_alt (tex_of_binding c) (fun () -> fprintf c "~\\KWD{and}~") bs
   | Rec bs -> 
-    fprintf chan "\\KWD{let}~\\KWD{rec}~"; 
-    list_iter_alt (tex_of_binding chan) (fun () -> fprintf chan "~\\KWD{and}~") bs 
+    fprintf c "\\KWD{let}~\\KWD{rec}~"; 
+    list_iter_alt (tex_of_binding c) (fun () -> fprintf c "~\\KWD{and}~") bs 
   | Test (_, test, exp, name, test_type) -> 
-    fprintf chan "%s%s~$%a$"
+    fprintf c "%s%s~$%a$"
       (tex_of_test_type test_type)
       (tex_of_test test)
-      tex_of_exp exp;
+      (tex_of_exp 0) exp;
     begin match name with 
     | None -> () 
-    | Some name -> fprintf chan "~\\kwd{as}~%a" tex_of_name name end;
+    | Some name -> fprintf c "~\\kwd{as}~%a" tex_of_name name end;
   | UnShow xs ->
-    fprintf chan "\\KWD{unshow}~$";
-    list_iter_alt (tex_of_var chan) (fun () -> fprintf chan ",") xs;
-    fprintf chan "$"
+    fprintf c "\\KWD{unshow}~$";
+    list_iter_alt (tex_of_var c) (fun () -> fprintf c ",") xs;
+    fprintf c "$"
   | Show xs -> 
-    fprintf chan "\\KWD{show}~$";
-    list_iter_alt (tex_of_var chan) (fun () -> fprintf chan ",") xs;
-    fprintf chan "$"
+    fprintf c "\\KWD{show}~$";
+    list_iter_alt (tex_of_var c) (fun () -> fprintf c ",") xs;
+    fprintf c "$"
   | ShowAs (exp,name) -> 
-    fprintf chan "\\KWD{show}~$%a$~\\kwd{as}~$\\mathrm{%a}$" 
-      tex_of_exp exp 
+    fprintf c "\\KWD{show}~$%a$~\\kwd{as}~$\\mathrm{%a}$" 
+      (tex_of_exp 0) exp 
       tex_of_name name
   | Latex s -> 
-    fprintf chan "\\entercomment\n";
-    fprintf chan "\\noindent %s\n" s;
-    fprintf chan "\\exitcomment\n"
+    fprintf c "\\entercomment\n";
+    fprintf c "\\noindent %s\n" s;
+    fprintf c "\\exitcomment\n"
 
-let tex_of_prog chan name prog = 
-  fprintf chan "\\documentclass[12pt]{article}\n";
-  fprintf chan "\\input{herd2tex}\n";
-  fprintf chan "\\begin{document}\n";
-  fprintf chan "\\begin{source}\n";
-  fprintf chan "\\noindent \\modelname{%s}\n\n" name;
-  List.iter (fprintf chan "\\noindent %a\n\n" tex_of_ins) prog;
-  fprintf chan "\\end{source}\n";
-  fprintf chan "\\end{document}\n"
+let tex_of_prog c name prog = 
+  fprintf c "\\documentclass[12pt]{article}\n";
+  fprintf c "\\input{herd2tex}\n";
+  fprintf c "\\begin{document}\n";
+  fprintf c "\\begin{source}\n";
+  fprintf c "\\noindent \\modelname{%s}\n\n" name;
+  List.iter (fprintf c "\\noindent %a\n\n" tex_of_ins) prog;
+  fprintf c "\\end{source}\n";
+  fprintf c "\\end{document}\n"
