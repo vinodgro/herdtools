@@ -163,6 +163,21 @@ We define $\var{ir_sw}(F)$ (intra-region synchronizes-with) as the set of pairs 
 let ir_sw(F,region) = incl & ~wi & (rel_seq(F); [region]; rf; acq'(F))
 
 {%(* 
+We define $\var{bar_sw}(F)$ (barrier synchronizes-with) as the set of pairs of events $(A,B)$ where $A$ is the entry fence of a dynamic barrier instance, and $B$ is the exit fence of the same dynamic barrier instance in a different work-item in the same work-group.
+\myquote{p.~51--52}{
+\begin{itemize}
+\item If the flags have \code{CLK_GLOBAL_MEM_FENCE} set then for each work-item the entry fence global-synchronizes-with the exit fence of all other work-items in the same work-group.
+\item If the flags have \code{CLK_LOCAL_MEM_FENCE} set then for each work-item the entry fence local-synchronizes-with the exit fence of all other work-items in the same work-group.
+\end{itemize}
+}
+%*)}
+let todo = _
+let same_B = todo * todo (* same barrier *)
+let B_entry = todo (* barrier entry fence (todo) *)
+let B_exit = todo (* barrier exit fence (todo) *)
+let bar_sw(F) = same_B & ~wi & (B_entry * B_exit) & wg & (F^2)
+
+{%(* 
 We define $\var{g_sw}(F,F')$ (global synchronizes-with) as the set of pairs of events that either synchronise via global fences, or synchronise via local fences and either are both SC operations or are both global/local fences. We define $\var{l_sw}(F,F')$ (local synchronizes-with) as the set of pairs of events that either synchronise via local fences, or synchronise via global fences and either are both SC operations or are both global/local fences. 
 \myquote{p.~48}{
 Let $X$ and $Y$ be two \code{memory_order_seq_cst} operations. If $X$ local-synchronizes-with or global-synchronizes-with $Y$ then $X$ both local-synchronizes-with $Y$ and global-synchronizes-with $Y$.
@@ -172,8 +187,8 @@ Let $X$ and $Y$ be two work item fences that each have both the \code{CLK_GLOBAL
 }
 %*)}
 
-let g_sw = ir_sw(gF, global_loc) | ((mo_sc^2 | glF^2) & ir_sw(lF, local_loc))
-let l_sw = ir_sw(lF, local_loc) | ((mo_sc^2 | glF^2) & ir_sw(gF, global_loc))
+let g_sw = ir_sw(gF, global_loc) | ((mo_sc^2 | glF^2) & ir_sw(lF, local_loc)) | bar_sw(gF)
+let l_sw = ir_sw(lF, local_loc) | ((mo_sc^2 | glF^2) & ir_sw(gF, global_loc)) | bar_sw(lF)
 
 
 {%(*
@@ -246,7 +261,7 @@ let vsse(hbl) = (co & ~(vse(hbl) ; hbl))*
 \myquote{p.~47}{
 The value of $M$, as determined by evaluation $B$, shall be the value stored by some operation in the visible sequence of $M$ with respect to $B$.
 }
-Essentially: a load can only read from a store that is in its visible sequence of side-effects. \fixme{John: I'm not sure that it quite makes sense to talk of \emph{the} visible sequence of $M$. Doesn't it depend on which write the sequence starts?}
+Essentially: a load can only read from a store that is in its visible sequence of side-effects. \fixme{John: I'm not sure that it quite makes sense to talk of \emph{the} visible sequence of $M$. Doesn't it depend on which write the sequence starts?} \fixme{John: Mark has a clever way to simplify the case when the location is non-atomic, which I've trampled all over for the time being.}
 %*)}
 
 let g_rf = rf; g_vse^-1; ~(vsse(g_hbl))
@@ -301,15 +316,15 @@ irreflexive coherence(g_hbl) as global_coherence
 irreflexive coherence(l_hbl) as local_coherence
 
 {%(*
-\paragraph{Read-modify-write atomicity}~
+\paragraph{Read-modify-write consistency}~
 \myquote{p.~49}{
 Atomic read-modify-write operations should always read the last value (in the modification order) stored before the write associated with the read-modify-write operation.
 }
-\fixme{John: I haven't understood the following line yet.}
+All we require here is that \var{fr} doesn't contradict \var{co} when the reading event is an RMW. 
 %*)}
 
-let rmwv = rf;[rmw] | (co;fr) | (co;rf)
-irreflexive rmwv as rmw_atomicity
+let rmw_consistent = co ; [rmw] ; fr
+irreflexive rmw_consistent as rmw_consistent
 
 {%(*
 \paragraph{Sequential consistency}
