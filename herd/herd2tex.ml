@@ -55,7 +55,7 @@ and tex_of_op1 n c e op1 =
   | Int -> fprintf c "\\mathrm{int}(%a)" (tex_of_exp 0) e
   | NoId -> fprintf c "\\mathrm{noid}(%a)" (tex_of_exp 0) e
   | Set_to_rln -> fprintf c "[%a]" (tex_of_exp 0) e
-  | Comp _ -> fprintf c "%a^\\mathsf{c}" (tex_of_exp 3) e)
+  | Comp _ -> fprintf c "\\neg %a" (tex_of_exp 3) e)
 
 and comma c () = fprintf c ","
 
