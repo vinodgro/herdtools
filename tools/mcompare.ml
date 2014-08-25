@@ -30,6 +30,7 @@ type runopts =
      rename:string option;
      forcekind: string option;
      kinds:string list;
+     show_kinds: bool;
      orders:string list;
      conds:string list;
      show_litmus : bool ;
@@ -65,6 +66,7 @@ let default_runopts =
    show_model = true ;
    show_fst = true ;
    show_empty_rows = true ;
+   show_kinds = false ;
    filter = None ;
    kmg = false ;
    quiet = false ;
@@ -159,6 +161,10 @@ let options =
     Arg.String
       (delay_ro (fun s ro -> { ro with kinds= ro.kinds @ [s] })),
         "<name> specify kinds of tests") ;    
+   ("-showkinds",
+    Arg.Bool
+      (delay_ro (fun s ro -> { ro with show_kinds= s })),
+        "<bool> show kinds in table") ;
    ("-conds",
     Arg.String
       (delay_ro (fun s ro -> { ro with conds= ro.conds @ [s] })),
@@ -249,6 +255,7 @@ module type Config = sig
   val show_model : bool
   val show_fst : bool
   val show_empty_rows : bool
+  val show_kinds : bool
   val filter : Str.regexp option
   val kmg : bool
   val quiet : bool
@@ -304,6 +311,7 @@ module Config = struct
   let show_model = runopts.show_model
   let show_fst = runopts.show_fst
   let show_empty_rows =  runopts.show_empty_rows
+  let show_kinds = runopts.show_kinds
   let filter = match runopts.filter with
   | None -> None
   | Some s -> Some (Str.regexp s)
@@ -925,14 +933,14 @@ let format_int_string s =
                           sprintf "%s, %s" (LS.pp_validation v) (pp_wits p n)
                     | _ -> LS.pp_validation v
                   else
-                    LS.pp_validation v in
+                    "X" ^ LS.pp_validation v in
                 (if asY then add_short_comment else add_comment (not asZ))
                   t.tname col.is_litmus unsure k v v_pp
 
               include Matrix.NoAdd
             end) in
         let m = B.build keys ts in
-        if quiet || asZ then
+        if quiet || ( asZ && not show_kinds ) then
           dump ts "WitnessesRecomputed" true
             (List.map (fun t -> 1,pp_name t.name) ts) [] keys m
         else
