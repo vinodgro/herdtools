@@ -18,9 +18,9 @@ let s_wg = memory_scope_work_group
 let s_dev = memory_scope_device
 let s_all = memory_scope_all_svm_devices
 
-let total = _ * _
-let wi = int(total)
-let neq = noid(total)
+let all_pairs = _ * _
+let wi = int(all_pairs)
+let neq = noid(all_pairs)
 
 {%(*
 We define a shorthand for the symmetric closure of a relation.
@@ -99,12 +99,25 @@ let incl' =
 A \emph{release sequence} begins with a release operation $A$ on an atomic object $M$ and is the maximal contiguous sub-sequence of side effects in the modification order of $M$, where the first operation is $A$ and every subsequent operation either is performed by the same work-item or host thread that performed the release or is an atomic read-modify-write operation.
 }
 
-We must be careful when defining the beginning of a release sequence. The specification talks of ``a release operation [...] on an atomic object'', but this neglects to consider the possibility that the release operation is a fence, and hence has no object. We therefore distinguish two cases.
-\begin{itemize}
-\item If the release operation is a release write, then the object is, of course, the object being written. 
-\item If the release operation is a fence, the object can be any object that is atomically written to by any instruction that comes \emph{after} the fence in program order. 
-\end{itemize}
-%*)}
+     In defining the release sequence, we combine the definition above,
+     with the notion of ``hypothetical release sequence invoked
+     (but not defined) in Section~3.3.6.2, \bf{Memory Ordering Rules:
+     Fence Operations}.
+
+\myquote{p.~50}{
+A global release fence $A$ global-synchronizes-with a global acquire fence $B$ if there exist atomic operations $X$ and $Y$, both operating on some global atomic object $M$, such that $A$ is sequenced-before $X$, $X$ modifies $M$, $Y$ is sequenced-before $B$, $Y$ reads the value written by $X$ or a value written by any side effect in the hypothetical release sequence $X$ would head if it were a release operation, and that the scopes of $A$, $B$ are inclusive. [C11 standard, Section 7.17.4, paragraph 2, modified.]
+}
+
+     The specification talks of ``a release operation [...]
+     on an atomic object'', in the definition of the release
+     sequence. In the passage above, a release fence followed by an
+     write to an atomic object replaces the release write in the sequence.
+     We therefore distinguish two cases.
+     \begin{itemize}
+     \item If the release operation is a release write, then the object is, of course, the object being written. 
+     \item If the release operation is a fence, the object can be any object that is atomically written to by any instruction that comes \emph{after} the fence in program order. 
+     \end{itemize}
+     %*)}
 
 let rel'(F) = [rel]; ([F]; po)?; [A & W]
 
@@ -162,6 +175,7 @@ We define $\var{ir_sw}(F)$ (intra-region synchronizes-with) as the set of pairs 
 let ir_sw(F,region) = incl & ~wi & (rel_seq(F); [region]; rf; acq'(F))
 
 {%(* 
+\fixme{Mark: we could just not handle the barriers to begin with... }
 We define $\var{bar_sw}(F)$ (barrier synchronizes-with) as the set of pairs of events $(A,B)$ where $A$ is the entry fence of a dynamic barrier instance, and $B$ is the exit fence of the same dynamic barrier instance in a different work-item in the same work-group.
 \myquote{p.~51--52}{
 \begin{itemize}
@@ -231,51 +245,6 @@ let hbl = g_hbl | l_hbl
 
 
 {%(*
-\paragraph{Visible side effects.}
-We define $\var{vse}(\var{hbl})$ as the set of pairs of events $(A,B)$ for which the write $A$ is visible to the read $B$ of the same location, which means that $B$ happens-after $A$ and there is no intervening write to the same location. There are global and local versions of this relation.
-\myquote{p.~46}{
-A \emph{visible side effect} $A$ on a global object $M$ with respect to a value computation $B$ of $M$ satisfies the conditions:
-\begin{itemize}
-\item $A$ global-happens-before $B$, and
-\item there is no other side effect $X$ to $M$ such that $A$ global-happens-before $X$ and $X$ global-happens-before $B$.
-\end{itemize}
-We define visible side effects for local objects $M$ similarly.
-}
-%*)}
-
-let vse(hbl) = [W]; (hbl & ~(hbl; [W]; hbl)); [R]
-let g_vse = [global_loc]; vse(g_hbl)
-let l_vse = [local_loc]; vse(l_hbl)
-
-{%(*
-\myquote{p.~47}{
-The visible sequence of side effects on a global atomic object $M$, with respect to a value computation $B$ of $M$, is a maximal contiguous sub-sequence of side effects in the modification order of $M$, where the first side effect is visible with respect to $B$, and for every side effect, it is not the case that $B$ global-happens-before it.
-}
-The relation \var{vsse} contains pairs of writes $(C,A)$ to a location $M$ for which (1) $A$ comes after $C$ in $M$'s modification order and (2) if $C$ is visible to a read $B$ then $B$ does not happen before $A$.
-%*)}
-
-let vsse(hbl) = (co & ~(vse(hbl) ; hbl))*
-
-{%(*
-\myquote{p.~47}{
-The value of $M$, as determined by evaluation $B$, shall be the value stored by some operation in the visible sequence of $M$ with respect to $B$.
-}
-Essentially: a load can only read from a store that is in its visible sequence of side-effects. \fixme{John: I'm not sure that it quite makes sense to talk of \emph{the} visible sequence of $M$. Doesn't it depend on which write the sequence starts?} \fixme{John: Mark has a clever way to simplify the case when the location is non-atomic, which I've trampled all over for the time being.}
-%*)}
-
-let g_rf = rf; g_vse^-1; ~(vsse(g_hbl))
-irreflexive g_rf as g_rf_consistent
-
-{%(*
-\myquote{p.~46}{
-[...] the visible sequence of side effects for a local atomic object is defined similarly by using the local-happens-before relation.
-}
-%*)}
-
-let l_rf = rf; l_vse^-1; ~(vsse(l_hbl))
-irreflexive l_rf as l_rf_consistent
-
-{%(*
 \paragraph{Coherence}
 There are four types of coherence-violating cycle, and these are all forbidden in OpenCL. These are write-write, read-read, read-write and write-read. Coherence is required on both the global and the local memory regions.
 
@@ -315,15 +284,118 @@ irreflexive coherence(g_hbl) as global_coherence
 irreflexive coherence(l_hbl) as local_coherence
 
 {%(*
+\paragraph{Visible side effects.}
+We define $\var{vse}(\var{hbl})$ as the set of pairs of events $(A,B)$ for which the write $A$ is visible to the read $B$ of the same location, which means that $B$ happens-after $A$ and there is no intervening write to the same location. There are global and local versions of this relation.
+\myquote{p.~46}{
+A \emph{visible side effect} $A$ on a global object $M$ with respect to a value computation $B$ of $M$ satisfies the conditions:
+\begin{itemize}
+\item $A$ global-happens-before $B$, and
+\item there is no other side effect $X$ to $M$ such that $A$ global-happens-before $X$ and $X$ global-happens-before $B$.
+\end{itemize}
+We define visible side effects for local objects $M$ similarly.
+}
+%*)}
+
+let vse(hbl) = [W]; (hbl & ~(hbl; [W]; hbl)); [R]
+let g_vse = [global_loc]; vse(g_hbl)
+let l_vse = [local_loc]; vse(l_hbl)
+
+  {%(* 
+       \myquote{p.~47}{ The visible sequence of side effects on a global
+       atomic object $M$, with respect to a value computation $B$ of $M$, is
+       a maximal contiguous sub-sequence of side effects in the modification
+       order of $M$, where the first side effect is visible with respect to
+       $B$, and for every side effect, it is not the case that $B$
+       global-happens-before it.}
+       Furthermore, for atomic $M$: 
+       \myquote{p.~47}{ The
+       value of $M$, as determined by evaluation $B$, shall be the value
+       stored by some operation in the visible sequence of $M$ with respect
+       to $B$.  } Together, the previous two passages define where atomic
+       loads can read from. They forbid the atomic read from reading a write
+       outside of the visible sequence of side effects of some visible side
+       effect of the read. The visible sequence of side effects is a
+       subsequence of modification order, which is total over all of the
+       writes to the same location, so this restriction can be reduced to
+       four cases:
+
+       \begin{itemize}
+       \item it prevents the load from reading
+         from a write that is modification-order-before the sequence,
+       \item it
+         prevents the load from reading from the first happens-before-later
+         write to the same location that terminates the sequence,
+       \item it
+         prevents the load from reading from a write that is
+         modification-order-after the sequence, and
+       \item it leaves the load
+         indeterminate (with no reads-from edge), if there are no visible side
+         effects.
+       \end{itemize}
+       The first case is covered by write-read
+       coherence above. The third is covered by read-write coherence. We
+       assume all atomic locations are initialised by a parent thread before
+       they are accessed, so the fourth case does not apply. The second case
+       does impose a new constraint on the execution.
+
+       The sequence ends with a write to the same location that
+       happens-after the read. The read may not read from this
+       write. We guarantee this by forbidding the following cycles:
+
+       %The relation \var{vsse} contains pairs of writes $(C,A)$ to a
+       %location $M$ for which (1) $A$ comes after $C$ in $M$'s
+       %modification order and (2) if $C$ is visible to a read $B$ then
+       %$B$ does not happen before $A$.
+%*)}
+
+let arf(hbl) = hbl;rf;[A]
+
+  irreflexive arf(g_hbl) as global_atomic_rf_constraint
+  irreflexive arf(l_hbl) as local_atomic_rf_constraint
+
+
+
+
+
+(*let vsse(hbl) = (co & ~(vse(hbl) ; hbl))* *)
+
+(*
+  {%(*
+      Essentially: a load can only read from a store that is in its visible sequence of side-effects. \fixme{John: I'm not sure that it quite makes sense to talk of \emph{the} visible sequence of $M$. Doesn't it depend on which write the sequence starts?} \fixme{John: Mark has a clever way to simplify the case when the location is non-atomic, which I've trampled all over for the time being.}
+      %*)}
+
+let g_rf = rf; g_vse^-1; ~(vsse(g_hbl))
+irreflexive g_rf as g_rf_consistent
+
+{%(*
+\myquote{p.~46}{
+[...] the visible sequence of side effects for a local atomic object is defined similarly by using the local-happens-before relation.
+}
+%*)}
+
+let l_rf = rf; l_vse^-1; ~(vsse(l_hbl))
+irreflexive l_rf as l_rf_consistent
+*)
+
+
+{%(*
 \paragraph{Read-modify-write consistency}~
 \myquote{p.~49}{
 Atomic read-modify-write operations should always read the last value (in the modification order) stored before the write associated with the read-modify-write operation.
 }
-All we require here is that \var{fr} doesn't contradict \var{co} when the reading event is an RMW. 
+All we require here is that \var{fr} doesn't contradict \var{co} when
+    the reading event is an RMW. 
+\fixme{Mark: no need for the [rmw] in your relation below: recall fr
+    is from a read. What stops the RMW from reading from its own write? What
+    stops it from reading a co later write? Do we not need the second
+    version?}
 %*)}
 
 let rmw_consistent = co ; [rmw] ; fr
 irreflexive rmw_consistent as rmw_consistent
+
+let rmw_consistent' = rf;[rmw] | co;fr | co;rf
+irreflexive rmw_consistent' as rmw_consistent'
 
 {%(*
 \paragraph{Sequential consistency}
@@ -334,13 +406,28 @@ let sc_co =
   [mo_sc]; ([F]; po)?; co; (po; [F])?; [mo_sc]
 
 {%(*
-We define \var{sc_fr} as the from-read relation (\var{fr}) restricted to SC events. \fixme{John: We should say more about this. Also, I added in the disjunct \code{[mo_sc]; fr; [mo_sc]} which wasn't previously allowed. Hopefully that's ok.}
+We define \var{sc_fr} as the from-read relation (\var{fr}) restricted
+    to SC events. \fixme{John: We should say more about this. Also, I
+    added in the disjunct \code{[mo_sc]; fr; [mo_sc]} which wasn't
+    previously allowed. Hopefully that's ok.}
+\fixme{Mark: That new disjunct is omitted intentionally. This is a bit
+    of the C11/C++11/OpenCL standard that should change for all sorts
+    of reasons, including uniformity here: disjunct 3 covers,
+    disjuncts 1 and 2. Why the neq? Is that for rmw's?}
 %*)}
 
 let sc_fr1 = [mo_sc]; rf^-1; hbl; [W & mo_sc]
 let sc_fr2 = [mo_sc]; rf^-1; [mo_sc]; co; [mo_sc]
 let sc_fr3 = [mo_sc]; ([F]; po)?; fr; (po; [F])?; [mo_sc]
 let sc_fr = sc_fr1 | sc_fr2 | (neq & sc_fr3)
+
+let sc_fr1' = [mo_sc]; rf^-1; hbl; [W & mo_sc]
+let sc_fr2' = [mo_sc]; rf^-1; [mo_sc]; co; [mo_sc]
+let sc_fr3' = [mo_sc & F]; po; fr; po; [F & mo_sc]
+let sc_fr4' = [mo_sc];         fr; po; [F & mo_sc]
+let sc_fr5' = [mo_sc & F]; po; fr;     [mo_sc]
+let sc_fr' = sc_fr1' | sc_fr2' | sc_fr3' | sc_fr4' | sc_fr5'
+
 
 {%(*
 We define \var{sc_ghb} and \var{sc_lhb} as the global and local happens-before relations restricted to SC events.
@@ -377,10 +464,17 @@ The execution of a program contains a data race if it contains two conflicting a
 \end{enumerate}
 Any such data race results in undefined behavior.
 }
+\fixme{Mark: The definition of race does not talk about atomicity or
+    not; that must be a mistake. In the adjusted definition, do I have
+    the precedence right?}
 %*)}
 
 let dr = conflict & ~symm(hb) & ~incl
 undefined_unless empty dr as data_race 
+
+let dr' = conflict & ~symm(hb) & (~(A^2) | ~incl)
+undefined_unless empty dr' as data_race'
+
 
 {%(*
 \paragraph{Unsequenced races}
