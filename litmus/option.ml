@@ -105,6 +105,7 @@ let affinity = ref Affinity.No
 let force_affinity = ref false
 let smtmode = ref Smt.No
 let smt = ref 2
+let nsockets = ref 1
 let alloc = ref Alloc.Dynamic
 let doublealloc = ref false
 let speedcheck = ref Speedcheck.NoSpeed

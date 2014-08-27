@@ -97,7 +97,7 @@ let get_gcc_opts =
 
   let opts = match O.affinity with
   | Affinity.No -> opts
-  | Affinity.Incr _|Affinity.Random|Affinity.Custom ->
+  | Affinity.Incr _|Affinity.Random|Affinity.Custom|Affinity.Scan ->
       "-D_GNU_SOURCE " ^ opts in
   opts
 

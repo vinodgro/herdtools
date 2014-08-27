@@ -159,6 +159,8 @@ rule main = parse
    P.lexfun "smtmode" smtmode arg ; main lexbuf }
 | "smt" arg
    { set_int smt arg ; main lexbuf }
+| "nsockets" arg
+   { set_int nsockets arg ; main lexbuf }
 | "speedcheck" arg
    { let module P = LexTag(Speedcheck) in
    P.lexfun "speedcheck" speedcheck arg ; main lexbuf }

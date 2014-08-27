@@ -125,9 +125,12 @@ module Make(O:Config)(A:Arch.S) =
       | 4 -> "Four"
       | _ -> "Two" in
       let pp_proc s chan p =
+        let th =
+          if O.texmacros then sprintf "\\myth{%i}" p
+          else sprintf "Thread %i" p in
         fprintf chan
-          "\\multicolumn{1}{%sc|}{\\makebox[%s][c]{\\asm{Thread %i}}}"
-          s width p in
+          "\\multicolumn{1}{%sc|}{\\makebox[%s][c]{%s}}"
+          s width th in
       begin if show_po then 
         fprintf chan "\\multicolumn{1}{|c|}{%s}" (just_name test)
       else match prog with

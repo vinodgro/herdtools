@@ -17,17 +17,19 @@ type t =
   | Incr of int
   | Random
   | Custom
+  | Scan
 
 
 let incr_pref = "incr"
 let pref_len = String.length incr_pref
-let tags = ["none"; "random"; "custom" ; sprintf "%s<n>" incr_pref;]
+let tags = ["none"; "random"; "custom" ; sprintf "%s<n>" incr_pref; "scan";]
 
 
 let parse tag = match String.lowercase tag with
 | "none" -> Some No
 | "random"|"rand" -> Some Random
 | "custom" -> Some Custom
+| "scan" -> Some Scan
 | _ ->
       try
         let len = String.length tag in
@@ -45,4 +47,5 @@ let parse tag = match String.lowercase tag with
     | Incr i -> sprintf "incr%i" i
     | Random -> "random"
     | Custom -> "custom"
+    | Scan -> "scan"
         

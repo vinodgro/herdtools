@@ -101,6 +101,7 @@ let opts =
    P.parse "-smtmode" Option.smtmode
    "how logical processors from the same core are numbered" end;
    argint "-smt" Option.smt "specify <n>-ways SMT" ;
+   argint "-nsockets" Option.nsockets "specify <n> sockets" ;
 (* Allocation *)
   begin let module P = ParseTag.Make(Alloc) in
    P.parse"-alloc" Option.alloc
@@ -236,6 +237,7 @@ let () =
       let syncmacro = if !syncmacro > 0 then Some !syncmacro else None
       let contiguous = !contiguous
       let smt = !smt
+      let nsockets = !nsockets
       let smtmode = !smtmode
       let force_affinity = !force_affinity
       let kind = !kind

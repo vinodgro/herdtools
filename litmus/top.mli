@@ -51,6 +51,7 @@ module type CommonConfig = sig
   val force_affinity : bool
   val smtmode : Smt.t
   val smt : int
+  val nsockets : int
   val contiguous : bool
   val syncmacro : int option
   val collect : Collect.t

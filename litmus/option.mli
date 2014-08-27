@@ -65,6 +65,7 @@ val affinity : Affinity.t ref
 val force_affinity : bool ref
 val smtmode : Smt.t ref
 val smt : int ref
+val nsockets : int ref
 val alloc : Alloc.t ref
 val doublealloc : bool ref
 val speedcheck : Speedcheck.t ref
