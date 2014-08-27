@@ -2139,7 +2139,7 @@ let user2_barrier_def () =
     begin match launch with
     | Fixed -> ()
     | Changing ->
-        if dca then begin
+        if dca || dsa then begin
           O.oi "prm.do_change = cmd->aff_mode != aff_custom && cmd->aff_mode != aff_scan;"
         end else begin
           O.oi "prm.do_change = 1;"
