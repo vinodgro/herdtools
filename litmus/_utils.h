@@ -93,7 +93,7 @@ int parse_prefetch(char *p, prfdirs_t *r) ;
 /************************/
 /* Command line options */
 /************************/
-typedef enum { aff_none, aff_incr, aff_random, aff_custom, } aff_mode_t ;
+typedef enum { aff_none, aff_incr, aff_random, aff_custom, aff_scan, } aff_mode_t ;
 
 typedef struct {
   int verbose ;
@@ -107,6 +107,7 @@ typedef struct {
   /* Affinity */
   aff_mode_t aff_mode ;
   int aff_custom_enabled ;
+  int aff_scan_enabled ;
   int aff_incr ;
   cpus_t *aff_cpus ;
   /* indirect mode */

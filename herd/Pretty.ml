@@ -702,6 +702,8 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
 
   let do_pp_dot_event_structure chan _test legend es rfmap vbss mark =
 
+    let vbss =
+      List.filter (fun (tag,_) -> not (StringSet.mem tag PC.unshow)) vbss in
     let pl = fprintf chan "%s\n"
     and pf fmt = fprintf chan fmt in
 
@@ -1221,7 +1223,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
       
 
 
-let dump_legend chan test legend conc vbs =
+  let dump_legend chan test legend conc vbs =
 (* SS: A decision to make. Passing conc clutters up the vo pictures.
    Should we force it to conc_zero ? doing it for now, but v unconvinced *)
   pp_dot_event_structure

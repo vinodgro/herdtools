@@ -17,6 +17,7 @@ type t =
   | Incr of int
   | Random
   | Custom
+  | Scan
 
 
 val tags : string list

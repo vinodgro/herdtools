@@ -40,6 +40,7 @@ module type Config = sig
   val affinity : Affinity.t
   val logicalprocs : int list option
   val smt : int
+  val nsockets : int
   val smtmode : Smt.t
   val force_affinity : bool
   val kind : bool
@@ -178,8 +179,9 @@ end = struct
 
   let do_affinity = match affinity with
   | Affinity.No -> false
-  | Affinity.Incr _|Affinity.Random|Affinity.Custom -> true
+  | Affinity.Incr _|Affinity.Random|Affinity.Custom|Affinity.Scan -> true
 
+(* Check is custom affinity is possible *)
   let mk_dca test =
     let f test =
       if do_affinity then
@@ -202,10 +204,15 @@ end = struct
 
   let do_cores =
     do_affinity &&
-    smt > 1 &&
+    smt >= 1 &&
     (match smtmode with
     | Smt.No -> false
     | Smt.Seq|Smt.End -> true)
+
+(* Check if scanning affinity is possible *)
+  let dsa =
+    do_cores &&
+    (match Cfg.avail with Some _ -> true | None -> false)
 
   let do_force_affinity = Cfg.force_affinity
   let do_kind = Cfg.kind
@@ -362,7 +369,7 @@ module Insert =
     O.f "#define AFF_INCR (%i)"
       (match affinity with
       | Affinity.Incr i -> i
-      | Affinity.Random|Affinity.Custom -> 0
+      | Affinity.Random|Affinity.Custom|Affinity.Scan -> 0
       | Affinity.No -> -1) ;
     if do_timebase then begin
       let delta = sprintf "%i" Cfg.delay in
@@ -392,7 +399,10 @@ module Insert =
     end ;
     if Cfg.timeloop > 0 then O.oi "int max_loop;" ;
     if Cfg.signaling then O.oi "int sig_cell, *sig_addr;" ;
-    if do_affinity then O.oi "int aff_rand, ncpus, ncpus_used;" ;
+    if do_affinity then begin
+      O.oi "aff_mode_t aff_mode;";
+      O.oi "int ncpus, ncpus_used;"
+    end ;
     if do_speedcheck then O.oi "int speedcheck, stop_now;" ;
     begin match memory with
     | Direct -> ()
@@ -464,7 +474,8 @@ let user_barrier_def fence =
   | Fence2 -> O.oii "mbar();"
   end ;
   O.oi "}" ;
-  O.o "}"
+  O.o "}" ;
+  O.o ""
 
 let user2_barrier_def () =
   O.o "/* Barriers macros, compact version */" ;
@@ -478,7 +489,8 @@ let user2_barrier_def () =
   O.oii "while (b[idx] != free);" ;
   O.oi "}" ;
   if Cfg.cautious then O.oi "mcautious();" ;
-  O.o "}"
+  O.o "}" ;
+  O.o ""
 
   let dump_read_timebase () =
     if (do_verbose_barrier || do_timebase) && have_timebase then begin
@@ -532,7 +544,9 @@ let user2_barrier_def () =
     | TimeBase -> dump_tb_barrier_vars ()
     end ;
     if do_verbose_barrier then begin
+      O.ox indent "/* extra verbosity */" ;
       if do_affinity then O.ox indent "int ecpu[N];" ;
+      if dsa then O.ox indent "char *group;" ;
       if have_timebase then begin
         if do_timebase then
           O.ox indent "int *tb_delta[N],*tb_count[N];"
@@ -623,8 +637,24 @@ let user2_barrier_def () =
     preload_def test ;
     ()
 
+(* Topology *)
 
 
+  let dump_topology test =
+    let n = T.get_nprocs test in
+    let module Topo =
+      Topology.Make
+        (struct
+          let nthreads = n
+          let avail = match Cfg.avail with
+          | None -> 0
+          | Some a -> a
+
+          let smt = Cfg.smt
+          let nsockets = Cfg.nsockets
+          let smtmode = Cfg.smtmode
+        end) (O) in
+    Topo.dump_alloc ()
 
 (*************)
 (* Variables *)
@@ -895,6 +925,11 @@ let user2_barrier_def () =
           O.oii "putc(' ',stderr); putc('{',stderr);" ;
           O.oii "pp_ints(stderr,t,N);" ;
           O.oii "putc('}',stderr);" ;
+          if dsa then begin
+            O.oii "if (_b->aff_mode == aff_scan) {" ;
+            O.oiii "fprintf(stderr,\" %s\",p->group);" ;
+            O.oii "}"
+          end
         end ;
         O.oi "}"
       end ;
@@ -1780,11 +1815,22 @@ let user2_barrier_def () =
       end in
 
     if do_affinity then begin
-      O.oii "if (_b->aff_rand) {" ;
+      O.oii "if (_b->aff_mode == aff_random) {" ;
       O.oiii "pb_wait(_a->p_barrier);" ;
       do_break indent3 ;
       O.oiii "if (_a->z_id == 0) perm_prefix_ints(&ctx.seed,_a->cpus,_b->ncpus_used,_b->ncpus);" ;
       O.oiii "pb_wait(_a->p_barrier);" ;
+      if dsa then begin
+        O.oii "} else if (_b->aff_mode == aff_scan) {" ;
+        O.oiii "pb_wait(_a->p_barrier);" ;
+        do_break indent3 ;
+        O.oiii "int idx_scan = n_run % SCANSZ;" ;
+        if do_verbose_barrier then O.oiii "ctx.group = group[idx_scan];" ;
+        O.oiii "int *from =  &cpu_scan[SCANLINE*idx_scan];" ;
+        O.oiii "from += N*_a->z_id;" ;
+        O.oiii "for (int k = 0 ; k < N ; k++) _a->cpus[k] = from[k];" ;
+        O.oiii "pb_wait(_a->p_barrier);"
+      end ;
       O.oii "} else {" ;
       do_break indent3 ;
       O.oii "}" ;
@@ -2093,8 +2139,8 @@ let user2_barrier_def () =
     begin match launch with
     | Fixed -> ()
     | Changing ->
-        if dca then begin
-          O.oi "prm.do_change = cmd->aff_mode != aff_custom;"
+        if dca || dsa then begin
+          O.oi "prm.do_change = cmd->aff_mode != aff_custom && cmd->aff_mode != aff_scan;"
         end else begin
           O.oi "prm.do_change = 1;"
         end ;
@@ -2129,7 +2175,7 @@ let user2_barrier_def () =
       O.oi "cpus_t *all_cpus = cmd->aff_cpus;" ;
       O.oi "int aff_cpus_sz = cmd->aff_mode == aff_random ? max(all_cpus->sz,N*n_exe) : N*n_exe;" ;
       O.oi "int aff_cpus[aff_cpus_sz];" ;
-      O.oi "prm.aff_rand = cmd->aff_mode == aff_random;" ;
+      O.oi "prm.aff_mode = cmd->aff_mode;" ;
       O.oi "prm.ncpus = aff_cpus_sz;" ;
       O.oi "prm.ncpus_used = N*n_exe;"
     end ;
@@ -2157,6 +2203,8 @@ let user2_barrier_def () =
       O.oiii "fprintf(stderr,\", +ra\");" ;
       O.oii "} else if (cmd->aff_mode == aff_custom) {" ;
       O.oiii "fprintf(stderr,\", +ca\");" ;
+      O.oii "} else if (cmd->aff_mode == aff_scan) {" ;
+      O.oiii "fprintf(stderr,\", +sa\");" ;
       O.oii "}" ;
       O.oii "fprintf(stderr,\", p='\");" ;
       O.oii "cpus_dump(stderr,cmd->aff_cpus);" ;
@@ -2447,12 +2495,20 @@ let user2_barrier_def () =
         with Not_found -> ()
       end
     end ;
-    O.fi "cmd_t def = { 0, NUMBER_OF_RUN, SIZE_OF_TEST, STRIDE, AVAIL, 0, %s, %s, %i, AFF_INCR, def_all_cpus, %i, %s, %s, %s, %s, %s, %s, %s, %s};"
+    O.fi "cmd_t def = { 0, NUMBER_OF_RUN, SIZE_OF_TEST, STRIDE, AVAIL, 0, %s, %s, %i, %i, AFF_INCR, def_all_cpus, %i, %s, %s, %s, %s, %s, %s, %s, %s};"
       (if do_sync_macro then "SYNC_N" else "0")
       (match affinity with
       | Affinity.No -> "aff_none"
       | Affinity.Incr _ -> "aff_incr"
       | Affinity.Random -> "aff_random"
+      | Affinity.Scan ->
+          if dsa then "aff_scan"
+          else begin
+            Warn.warn_always
+              "%s: scanning affinity degraded to random affinity"
+              doc.Name.name ;
+            "aff_random"
+          end
       | Affinity.Custom ->
           if dca then "aff_custom"
           else begin
@@ -2462,6 +2518,7 @@ let user2_barrier_def () =
             "aff_random"
           end)
       (if dca then 1 else 0)
+      (if dsa then 1 else 0)
       (match memory with | Direct -> -1 | Indirect -> 1)
       "MAX_LOOP"
       (if do_timebase && have_timebase then "&delta_tb" else "NULL")
@@ -2488,6 +2545,7 @@ let user2_barrier_def () =
     dump_header test ;
     dump_read_timebase () ;
     dump_threads test ;
+    if dsa then dump_topology test ;
     let cpys = dump_def_ctx env test in
     dump_cond_fun env test ;
     dump_defs_outs doc env test ;

@@ -417,6 +417,11 @@ static void usage(char *prog, cmd_t *d) {
     } else {
       fprintf(stderr,"  +ca alias for +ra\n") ;
     }
+    if (d->aff_scan_enabled) {
+      fprintf(stderr,"  +sa     enable scanning affinity%s\n",d->aff_mode == aff_scan ? " (default)" : "") ;
+    } else {
+      fprintf(stderr,"  +sa alias for +ra\n") ;
+    }
   }
   if (d->shuffle >= 0) {
     fprintf(stderr,"  +rm     randomise memory accesses%s\n",d->shuffle ? " (default)" : "") ;
@@ -685,6 +690,10 @@ void parse_cmd(int argc, char **argv, cmd_t *d, cmd_t *p) {
     } else if (d->aff_custom_enabled && strcmp(*argv,"+ca") == 0) {
       p->aff_mode = aff_custom ;
     } else if (d->aff_mode != aff_none && strcmp(*argv,"+ca") == 0) {
+      p->aff_mode = aff_random ;
+    } else if (d->aff_scan_enabled && strcmp(*argv,"+sa") == 0) {
+      p->aff_mode = aff_scan ;
+    } else if (d->aff_mode != aff_none && strcmp(*argv,"+sa") == 0) {
       p->aff_mode = aff_random ;
     } else if (d->shuffle >= 0 && strcmp(*argv,"+rm") == 0) {
       p->shuffle = 1 ;
