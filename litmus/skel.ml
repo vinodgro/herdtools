@@ -19,6 +19,7 @@ and indent3 = Indent.indent3
 and indent4 = Indent.indent4
 
 module type Config = sig
+  val verbose : int
   val verbose_prelude : bool
   val verbose_barrier : bool
   val hexa : bool
@@ -210,9 +211,9 @@ end = struct
     | Smt.Seq|Smt.End -> true)
 
 (* Check if scanning affinity is possible *)
-  let dsa =
+  let mk_dsa test =
     do_cores &&
-    (match Cfg.avail with Some _ -> true | None -> false)
+    (match Cfg.avail with Some a -> a >= T.get_nprocs test | None -> false)
 
   let do_force_affinity = Cfg.force_affinity
   let do_kind = Cfg.kind
@@ -535,7 +536,7 @@ let user2_barrier_def () =
 
   let dump_pthread_barrier_vars () = O.oi "barrier_t *barrier;"
 
-  let dump_barrier_vars () =
+  let dump_barrier_vars test =
     O.o "/* Barrier for litmus loop */" ;
     begin match barrier with
     | NoBarrier -> ()
@@ -546,12 +547,12 @@ let user2_barrier_def () =
     if do_verbose_barrier then begin
       O.ox indent "/* extra verbosity */" ;
       if do_affinity then O.ox indent "int ecpu[N];" ;
-      if dsa then O.ox indent "char *group;" ;
+      if mk_dsa test then O.ox indent "char *group;" ;
       if have_timebase then begin
         if do_timebase then
           O.ox indent "int *tb_delta[N],*tb_count[N];"
         else
-          O.ox indent "tb_t *tb_start[N];\n"
+          O.ox indent "tb_t *tb_start[N];"
       end
     end
 
@@ -645,6 +646,7 @@ let user2_barrier_def () =
     let module Topo =
       Topology.Make
         (struct
+          let verbose = Cfg.verbose
           let nthreads = n
           let avail = match Cfg.avail with
           | None -> 0
@@ -925,7 +927,7 @@ let user2_barrier_def () =
           O.oii "putc(' ',stderr); putc('{',stderr);" ;
           O.oii "pp_ints(stderr,t,N);" ;
           O.oii "putc('}',stderr);" ;
-          if dsa then begin
+          if mk_dsa test then begin
             O.oii "if (_b->aff_mode == aff_scan) {" ;
             O.oiii "fprintf(stderr,\" %s\",p->group);" ;
             O.oii "}"
@@ -1707,13 +1709,13 @@ let user2_barrier_def () =
                 | false -> sloc
                 | true -> sprintf "idx_addr(_a,_i,%s)" sloc))
             locs ;
-          O.fx iloop "add_outcome(hist,1,_o,%scond);"
+          O.fx iloop "int cond2 = %scond;"
             (if remark_pos test then "" else "!") ;
-          if do_verbose_barrier_local && proc = 0 then begin
-            O.fx iloop "if (_a->_p->verbose_barrier) {" ;
-            O.fx (Indent.tab iloop) "pp_tb_log(_b->p_mutex,_a,_i,%scond);"
-              (if remark_pos test then "" else "!") ;
-            O.fx iloop "}"
+          O.ox iloop "add_outcome(hist,1,_o,cond2);" ;
+           if do_verbose_barrier_local && proc = 0 then begin
+            O.ox iloop "if (_a->_p->verbose_barrier) {" ;
+            O.ox (Indent.tab iloop) "pp_tb_log(_b->p_mutex,_a,_i,cond2);" ;
+            O.ox iloop "}"
           end
         end else if do_collect_local then begin
           O.fx iloop "barrier_wait(barrier);"
@@ -1820,7 +1822,7 @@ let user2_barrier_def () =
       do_break indent3 ;
       O.oiii "if (_a->z_id == 0) perm_prefix_ints(&ctx.seed,_a->cpus,_b->ncpus_used,_b->ncpus);" ;
       O.oiii "pb_wait(_a->p_barrier);" ;
-      if dsa then begin
+      if mk_dsa test then begin
         O.oii "} else if (_b->aff_mode == aff_scan) {" ;
         O.oiii "pb_wait(_a->p_barrier);" ;
         do_break indent3 ;
@@ -1953,9 +1955,12 @@ let user2_barrier_def () =
             else
               dump_loc_copy loc))
         locs ;
-      O.fiii "add_outcome(hist,1,o,%scond);"
-        (if remark_pos test then "" else "!") ;
-
+      O.fiii "int cond2 = %scond;" (if remark_pos test then "" else "!") ;
+      O.oiii "add_outcome(hist,1,o,cond2);" ;
+      if mk_dsa test then begin
+        O.oiii
+          "if (_b->aff_mode == aff_scan && cond2) { ngroups[n_run % SCANSZ]++; }"
+      end ;
 
 (****************)
 
@@ -2032,7 +2037,8 @@ let user2_barrier_def () =
     let cpys = dump_vars test in
     dump_out_vars test ;
     dump_check_vars env test ;
-    dump_barrier_vars () ;
+    dump_barrier_vars test ;
+    O.o "/* Instance seed */" ;
     O.oi "st_t seed;" ;
     if do_sync_macro then O.oi "char *_scratch;" ;
     O.o "/* Parameters */" ;
@@ -2139,8 +2145,18 @@ let user2_barrier_def () =
     begin match launch with
     | Fixed -> ()
     | Changing ->
-        if dca || dsa then begin
-          O.oi "prm.do_change = cmd->aff_mode != aff_custom && cmd->aff_mode != aff_scan;"
+        if mk_dsa test then begin
+          O.oi "int ntopo = -1;" ;
+          O.oi "if (cmd->aff_mode == aff_topo) {" ;
+          O.oii "ntopo = find_string(group,SCANSZ,cmd->aff_topo);" ;
+          O.oii "if (ntopo < 0) {" ;
+          O.oiii "fprintf(stderr,\"Bad topology %s, reverting to scan affinity\\n\",cmd->aff_topo);" ;
+          O.oiii "cmd->aff_mode = aff_scan; cmd->aff_topo = NULL;" ;
+          O.oii "}" ;
+          O.oi "}"
+        end ;
+        if dca || mk_dsa test then begin
+          O.oi "prm.do_change = cmd->aff_mode != aff_custom && cmd->aff_mode != aff_scan && cmd->aff_mode != aff_topo;"
         end else begin
           O.oi "prm.do_change = 1;"
         end ;
@@ -2256,6 +2272,13 @@ let user2_barrier_def () =
         O.oiii"fprintf(stderr,\"thread allocation: \\n\");" ;
         O.oiii "cpus_dump_test(stderr,aff_cpus,aff_cpus_sz,prm.cm,N);" ;
         O.oii "}"
+      end ;
+      if mk_dsa test then begin
+        O.oi "} else if (cmd->aff_mode == aff_topo) {" ;
+        O.oii "int *from = &cpu_scan[ntopo * SCANLINE];" ;
+        O.oii "for (int k = 0 ; k < aff_cpus_sz ; k++) {" ;        
+        O.oiii "aff_cpus[k] = *from++;" ;
+        O.oii "}" ;
       end ;
       O.oi "}" ;
     end ;
@@ -2402,6 +2425,18 @@ let user2_barrier_def () =
         doc.Name.name  in
     let obs = "!p_true ? \"Never\" : !p_false ? \"Always\" : \"Sometimes\"" in
     O.fi "fprintf(out,\"%s\",%s,p_true,p_false) ;" fmt obs;
+(* Topologies sumaries *)
+    if mk_dsa test then begin
+      O.oi "if (cmd->aff_mode == aff_scan) {" ;
+      O.oii "for (int k = 0 ; k < SCANSZ ; k++) {" ;
+      O.oiii "count_t c = ngroups[k];" ;
+      let fmt = "\"Topology %-6\" PCTR\":> %s\\n\"" in
+      O.fiii "if (c > 0) { printf(%s,c,group[k]); }" fmt ;
+      O.oii "}" ;
+      O.oi "} else if (cmd->aff_mode == aff_topo) {"  ;
+      O.oii "printf(\"Topology %s\\n\",cmd->aff_topo);" ;
+      O.oi "}" 
+   end ;
 (* Show running time *)
     let fmt = sprintf "Time %s %%.2f\\n"  doc.Name.name in
     O.fi "fprintf(out,\"%s\",total / 1000000.0) ;" fmt ;
@@ -2495,14 +2530,14 @@ let user2_barrier_def () =
         with Not_found -> ()
       end
     end ;
-    O.fi "cmd_t def = { 0, NUMBER_OF_RUN, SIZE_OF_TEST, STRIDE, AVAIL, 0, %s, %s, %i, %i, AFF_INCR, def_all_cpus, %i, %s, %s, %s, %s, %s, %s, %s, %s};"
+    O.fi "cmd_t def = { 0, NUMBER_OF_RUN, SIZE_OF_TEST, STRIDE, AVAIL, 0, %s, %s, %i, %i, AFF_INCR, def_all_cpus, NULL, %i, %s, %s, %s, %s, %s, %s, %s, %s};"
       (if do_sync_macro then "SYNC_N" else "0")
       (match affinity with
       | Affinity.No -> "aff_none"
       | Affinity.Incr _ -> "aff_incr"
       | Affinity.Random -> "aff_random"
       | Affinity.Scan ->
-          if dsa then "aff_scan"
+          if mk_dsa test then "aff_scan"
           else begin
             Warn.warn_always
               "%s: scanning affinity degraded to random affinity"
@@ -2518,7 +2553,7 @@ let user2_barrier_def () =
             "aff_random"
           end)
       (if dca then 1 else 0)
-      (if dsa then 1 else 0)
+      (if mk_dsa test then 1 else 0)
       (match memory with | Direct -> -1 | Indirect -> 1)
       "MAX_LOOP"
       (if do_timebase && have_timebase then "&delta_tb" else "NULL")
@@ -2545,7 +2580,7 @@ let user2_barrier_def () =
     dump_header test ;
     dump_read_timebase () ;
     dump_threads test ;
-    if dsa then dump_topology test ;
+    if mk_dsa test then dump_topology test ;
     let cpys = dump_def_ctx env test in
     dump_cond_fun env test ;
     dump_defs_outs doc env test ;

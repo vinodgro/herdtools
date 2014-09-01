@@ -397,7 +397,7 @@ static void usage(char *prog, cmd_t *d) {
   fprintf(stderr,"  -fr <f> multiply run number per f\n") ;
   fprintf(stderr,"  -s <n>  outcomes per run (default %i)\n",d->size_of_test) ;
   if (d->stride > 0) {
-    fprintf(stderr,"  -st <n>  stride (default %i)\n",d->stride) ;
+    fprintf(stderr,"  -st <n> stride (default %i)\n",d->stride) ;
   }
   fprintf(stderr,"  -fs <f> multiply outcomes per f\n") ;
   fprintf(stderr,"  -f <f>  multiply outcomes per f, divide run number by f\n") ;
@@ -415,12 +415,13 @@ static void usage(char *prog, cmd_t *d) {
     if (d->aff_custom_enabled) {
       fprintf(stderr,"  +ca     enable custom affinity%s\n",d->aff_mode == aff_custom ? " (default)" : "") ;
     } else {
-      fprintf(stderr,"  +ca alias for +ra\n") ;
+      fprintf(stderr,"  +ca     alias for +ra\n") ;
     }
     if (d->aff_scan_enabled) {
       fprintf(stderr,"  +sa     enable scanning affinity%s\n",d->aff_mode == aff_scan ? " (default)" : "") ;
+      fprintf(stderr,"  +ta <topo> set topology affinity\n") ;
     } else {
-      fprintf(stderr,"  +sa alias for +ra\n") ;
+      fprintf(stderr,"  +sa     alias for +ra\n") ;
     }
   }
   if (d->shuffle >= 0) {
@@ -693,6 +694,13 @@ void parse_cmd(int argc, char **argv, cmd_t *d, cmd_t *p) {
       p->aff_mode = aff_random ;
     } else if (d->aff_scan_enabled && strcmp(*argv,"+sa") == 0) {
       p->aff_mode = aff_scan ;
+    } else if (d->aff_mode != aff_none && strcmp(*argv,"+sa") == 0) {
+      p->aff_mode = aff_random ;
+    } else if (d->aff_scan_enabled && strcmp(*argv,"+ta") == 0) {
+      p->aff_mode = aff_topo ;
+      --argc ; ++argv ;
+      if (!*argv) usage(prog,d) ;
+      p->aff_topo = argv[0] ;
     } else if (d->aff_mode != aff_none && strcmp(*argv,"+sa") == 0) {
       p->aff_mode = aff_random ;
     } else if (d->shuffle >= 0 && strcmp(*argv,"+rm") == 0) {
@@ -1109,4 +1117,15 @@ double tsc_ratio(tsc_t t1, tsc_t t2) {
 
 double tsc_millions(tsc_t t) {
   return t / 1000000.0 ;
+}
+
+/*******************/
+/* String handling */
+/*******************/
+
+int find_string(char *t[], int sz, char *s) {
+  for (int k = 0 ; k < sz ; k++) {
+    if (strcmp(t[k],s) == 0) return k ;
+  }
+  return -1 ;
 }

@@ -93,7 +93,9 @@ int parse_prefetch(char *p, prfdirs_t *r) ;
 /************************/
 /* Command line options */
 /************************/
-typedef enum { aff_none, aff_incr, aff_random, aff_custom, aff_scan, } aff_mode_t ;
+typedef enum
+  { aff_none, aff_incr, aff_random, aff_custom,
+    aff_scan, aff_topo} aff_mode_t ;
 
 typedef struct {
   int verbose ;
@@ -110,6 +112,7 @@ typedef struct {
   int aff_scan_enabled ;
   int aff_incr ;
   cpus_t *aff_cpus ;
+  char *aff_topo ;
   /* indirect mode */
   int shuffle ;
   /* loop test */
@@ -253,5 +256,6 @@ tsc_t timeofday(void) ;
 double tsc_ratio(tsc_t t1, tsc_t t2) ;
 double tsc_millions(tsc_t t) ;
 
-
+/* String utilities */
+int find_string(char *t[],int sz,char *s) ;
 #endif
