@@ -8,14 +8,14 @@
 \usepackage{framed}
 \definecolor{shadecolor}{gray}{0.9}
 
-\newcommand\var{\begingroup\catcode`\_=12 \varINNER}
+\makeatletter
+\usepackage{amsmath}
+\newcommand\var{\begingroup\catcode`\_=12 \newmcodes@ \varINNER}
 \newcommand\varINNER[1]{\ensuremath{\mathit{#1}}\endgroup}
 
-\newcommand\name{\begingroup\catcode`_=12 \nameINNER}
+\newcommand\name{\begingroup\catcode`_=12 \newmcodes@ \nameINNER}
 \newcommand\nameINNER[1]{\ensuremath{\mathrm{#1}}\endgroup}
-
-%\newcommand\code{\begingroup\catcode`_=12 \codeINNER}
-%\newcommand\codeINNER[1]{\mbox{\texttt{#1}\endgroup}}
+\makeatother
 
 \newcommand\entercomment{\end{shaded*}}
 \newcommand\exitcomment{\begin{shaded*}}
@@ -26,10 +26,9 @@
 
 \newcommand\KWD[1]{{\color{RoyalPurple}\bfseries #1}}
 \newcommand\kwd[1]{{\color{ForestGreen}#1}}
-% \newcommand\var[1]{\mbox{\lstinline[basicstyle=\itshape, columns=flexible]{#1}}}
-% \newcommand\name[1]{\mbox{\lstinline[basicstyle=\rmfamily,columns=flexible]{#1}}}
 \newcommand\code[1]{\mbox{\lstinline{#1}}}
-\newcommand\modelname[1]{{\Large\bf #1}}
+
+\newcommand\modelname[1]{\mbox{\lstinline[basicstyle=\Large\bfseries\rmfamily]{#1}}}
 
 \newcommand\fixme[1]{{\color{red}#1}}
 \newcommand\semicolon{\mathbin{;}}

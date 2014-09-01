@@ -1,5 +1,14 @@
 "OpenCL"
 
+(*
+TODO:
+
+The value of a non-atomic scalar object M, as determined by evaluation B, shall be the value stored by the visible side effect A.
+
+Make "G" refer to the set of global fences and the set of instructions accessing global locations. Same for "L".
+
+*)
+
 {%(*
 \newcommand\myquote[2]{\begingroup%
 \definecolor{shadecolor}{rgb}{0.9,0.9,1}%
@@ -22,9 +31,9 @@ let all_pairs = _ * _
 let wi = int(all_pairs)
 let neq = noid(all_pairs)
 
-{%(*
+{
 We define a shorthand for the symmetric closure of a relation.
-%*)}
+}
 
 let symm(r) = r | r^-1
 
@@ -39,8 +48,8 @@ Note that the memory orders release, sequentially consistent, and acquire\_relea
 }
 %*)}
 
-let acq = mo_acq | (mo_sc & (R | F)) | mo_acq_rel
-let rel = mo_rel | (mo_sc & (W | F)) | mo_acq_rel
+let acq = (mo_acq | mo_sc | mo_acq_rel) & (R | F | RMW)
+let rel = (mo_rel | mo_sc | mo_acq_rel) & (W | F | RMW)
 
 {%(*
 The primitive \var{asw} (additional synchronizes-with) relation relates every initialisation event to every non-initialisation event. We define \var{asw'} as a simpler version that relates initialisation events only to those non-initialisation events that come first in program-order. Then we define \var{po_asw} as the transitive closure of program-order augmented with \var{asw'}.
@@ -99,34 +108,14 @@ let incl' =
 A \emph{release sequence} begins with a release operation $A$ on an atomic object $M$ and is the maximal contiguous sub-sequence of side effects in the modification order of $M$, where the first operation is $A$ and every subsequent operation either is performed by the same work-item or host thread that performed the release or is an atomic read-modify-write operation.
 }
 
-     In defining the release sequence, we combine the definition above,
-     with the notion of ``hypothetical release sequence invoked
-     (but not defined) in Section~3.3.6.2, \bf{Memory Ordering Rules:
-     Fence Operations}.
-
-\myquote{p.~50}{
-A global release fence $A$ global-synchronizes-with a global acquire fence $B$ if there exist atomic operations $X$ and $Y$, both operating on some global atomic object $M$, such that $A$ is sequenced-before $X$, $X$ modifies $M$, $Y$ is sequenced-before $B$, $Y$ reads the value written by $X$ or a value written by any side effect in the hypothetical release sequence $X$ would head if it were a release operation, and that the scopes of $A$, $B$ are inclusive. [C11 standard, Section 7.17.4, paragraph 2, modified.]
-}
-
-     The specification talks of ``a release operation [...]
-     on an atomic object'', in the definition of the release
-     sequence. In the passage above, a release fence followed by an
-     write to an atomic object replaces the release write in the sequence.
-     We therefore distinguish two cases.
-     \begin{itemize}
-     \item If the release operation is a release write, then the object is, of course, the object being written. 
-     \item If the release operation is a fence, the object can be any object that is atomically written to by any instruction that comes \emph{after} the fence in program order. 
-     \end{itemize}
+     In defining the release sequence, we combine the definition above
+     with the notion of the ``hypothetical'' release sequence. That is, when the release operation is a write, then its release sequence begins with that write. And when the release operation is a fence, its release sequence begins with any atomic write that follows that fence in program order. In the latter case, the release sequence is `hypothetical' because the atomic write need not actually be a release write.
      %*)}
 
 let rel'(F) = [rel]; ([F]; po)?; [A & W]
 
 {%(* 
-We take this opportunity to present the symmetric case for acquire operations.
-\begin{itemize}
-\item If the acquire operation is an acquire read, then the object is, of course, the object being read. 
-\item If the acquire operation is a fence, the object can be any object that is atomically read by any instruction that comes \emph{before} the fence in program order. 
-\end{itemize}
+We take this opportunity to present the symmetric case for acquire operations. That is, an acquire read synchronises on the location being read, while an acquire fence synchronises on any location that is atomically read before that fence in program order.
 %*)}
 
 let acq'(F) = [A & R]; (po; [F])?; [acq]
@@ -172,10 +161,9 @@ We define $\var{ir_sw}(F)$ (intra-region synchronizes-with) as the set of pairs 
 
 %*)}
 
-let ir_sw(F,region) = incl & ~wi & (rel_seq(F); [region]; rf; acq'(F))
+let ir_sw(F,region) = incl & ~wi & (region^2) & (rel_seq(F); [region]; rf; acq'(F))
 
 {%(* 
-\fixme{Mark: we could just not handle the barriers to begin with... }
 We define $\var{bar_sw}(F)$ (barrier synchronizes-with) as the set of pairs of events $(A,B)$ where $A$ is the entry fence of a dynamic barrier instance, and $B$ is the exit fence of the same dynamic barrier instance in a different work-item in the same work-group.
 \myquote{p.~51--52}{
 \begin{itemize}
@@ -243,6 +231,41 @@ let g_hbl = g_hb & loc
 let l_hbl = l_hb & loc
 let hbl = g_hbl | l_hbl
 
+{%(*
+\paragraph{Data races}
+
+Two events \emph{conflict} if at least one is a write and they access the same location.
+\myquote{p.~45}{
+Two expression evaluations conflict if one of them modifies a memory location and the other one reads or modifies the same memory location. 
+}
+%*)}
+
+let conflict = ((W * _) | (_ * W)) & loc
+
+{%(*
+There is a \emph{data race} between a pair of events if they conflict, they are unrelated by happens-before, and their scopes are not inclusive.
+\myquote{p.~46}{
+The execution of a program contains a data race if it contains two conflicting actions $A$ and $B$ in different units of execution, and
+\begin{enumerate}
+\item at least one of $A$ or $B$ is not atomic, or $A$ and $B$ do not have inclusive memory scope, and 
+\item the actions are global actions unordered by the global-happens-before relation or are local actions unordered by the local-happens-before relation.
+\end{enumerate}
+Any such data race results in undefined behavior.
+}
+It is actually unnecessary to specify that one of the actions is non-atomic. If we define non-atomic actions as being annotated with work-item scope, then it suffices only to mention scope inclusion.
+%*)}
+
+let dr = conflict & ~symm(hb) & ~incl
+undefined_unless empty dr as data_race 
+
+
+{%(*
+\paragraph{Unsequenced races}
+There is an \emph{unsequenced race} between a pair of events if they are different events, they belong to the same work-item, they conflict, and they are unrelated by program-order.
+%*)}
+
+let ur = neq & wi & conflict & ~symm(po)
+undefined_unless empty ur as unsequenced_race 
 
 {%(*
 \paragraph{Coherence}
@@ -383,103 +406,46 @@ irreflexive l_rf as l_rf_consistent
 \myquote{p.~49}{
 Atomic read-modify-write operations should always read the last value (in the modification order) stored before the write associated with the read-modify-write operation.
 }
-All we require here is that \var{fr} doesn't contradict \var{co} when
-    the reading event is an RMW. 
-\fixme{Mark: no need for the [rmw] in your relation below: recall fr
-    is from a read. What stops the RMW from reading from its own write? What
-    stops it from reading a co later write? Do we not need the second
-    version?}
+The first disjunct below prevents an RMW reading from itself. The second prevents it reading from a write that is too \var{co}-early, and the third prevents it reading from a write that is \var{co}-after it.
 %*)}
-
-let rmw_consistent = co ; [rmw] ; fr
-irreflexive rmw_consistent as rmw_consistent
 
 let rmw_consistent' = rf;[rmw] | co;fr | co;rf
 irreflexive rmw_consistent' as rmw_consistent'
 
 {%(*
 \paragraph{Sequential consistency}
+There is a relation -- let us call it $S$ -- between all SC accesses. This relation must be consistent with \var{co}, \var{g_hb} and \var{l_hb}. If $B$ is an SC read, it can only read from a write that is in the visible sequence of side-effects that starts at a write $A$, where $A$ 
+\begin{itemize}
+\item is the most recent (in $S$) SC write, if such exists, and 
+\item is any side-effect that is visible to $B$, otherwise.
+\end{itemize}
+The standard postulates the existence of $S$, and requires certain properties of it. In our formalisation, we instead describe how to \emph{construct} a partial version of $S$ (which we call \var{scp}), and require it to be acyclic. This is advantageous for simulation, because we do not need our simulator to iterate over all possible total orders.
+
 We define \var{sc_co} as the per-location modification order (\var{co}) restricted to SC accesses. It contains the pair of events $(a,b)$ only if both are annotated with \code{memory_order_seq_cst}. The event $a$ is either an SC write to $x$ or an SC fence that precedes a write to $x$ in program order. The event $b$ is either a SC write to $x$ or an SC fence that follows a write to $x$ in program order. \fixme{Mark: There should be two models, with this optional. Also, there's no restriction to local or global here. Is that right?}
 %*)}
 
 let sc_co = 
-  [mo_sc]; ([F]; po)?; co; (po; [F])?; [mo_sc]
+  ([F]; po)?; co; (po; [F])?
 
 {%(*
 We define \var{sc_fr} as the from-read relation (\var{fr}) restricted
-    to SC events. \fixme{John: We should say more about this. Also, I
-    added in the disjunct \code{[mo_sc]; fr; [mo_sc]} which wasn't
-    previously allowed. Hopefully that's ok.}
-\fixme{Mark: That new disjunct is omitted intentionally. This is a bit
-    of the C11/C++11/OpenCL standard that should change for all sorts
-    of reasons, including uniformity here: disjunct 3 covers,
-    disjuncts 1 and 2. Why the neq? Is that for rmw's?}
+    to SC events. \fixme{John: We should say more about this.}
 %*)}
 
-let sc_fr1 = [mo_sc]; rf^-1; hbl; [W & mo_sc]
-let sc_fr2 = [mo_sc]; rf^-1; [mo_sc]; co; [mo_sc]
-let sc_fr3 = [mo_sc]; ([F]; po)?; fr; (po; [F])?; [mo_sc]
-let sc_fr = sc_fr1 | sc_fr2 | (neq & sc_fr3)
+let sc_fr1 = rf^-1; hbl; [W]
+let sc_fr2 = rf^-1; [mo_sc]; co
+let sc_fr3 = [F]; po; fr; po; [F]
+let sc_fr4 =          fr; po; [F]
+let sc_fr5 = [F]; po; fr
+let sc_fr = sc_fr1 | sc_fr2 | sc_fr3 | sc_fr4 | sc_fr5
 
-let sc_fr1' = [mo_sc]; rf^-1; hbl; [W & mo_sc]
-let sc_fr2' = [mo_sc]; rf^-1; [mo_sc]; co; [mo_sc]
-let sc_fr3' = [mo_sc & F]; po; fr; po; [F & mo_sc]
-let sc_fr4' = [mo_sc];         fr; po; [F & mo_sc]
-let sc_fr5' = [mo_sc & F]; po; fr;     [mo_sc]
-let sc_fr' = sc_fr1' | sc_fr2' | sc_fr3' | sc_fr4' | sc_fr5'
-
-
-{%(*
-We define \var{sc_ghb} and \var{sc_lhb} as the global and local happens-before relations restricted to SC events.
-%*)}
-
-let sc_ghb = [mo_sc]; g_hb; [mo_sc]
-let sc_lhb = [mo_sc]; l_hb; [mo_sc]
 
 {%(*
 The various sc relations must not form cycles.
 %*)}
 
-let scp = sc_ghb | sc_lhb | sc_co | sc_fr
+let scp = (mo_sc^2) & (g_hb | l_hb | sc_co | sc_fr)
+
 acyclic scp as sc_consistent
 
-{%(*
-\paragraph{Data races}
 
-Two events \emph{conflict} if at least one is a write and they access the same location.
-\myquote{p.~45}{
-Two expression evaluations conflict if one of them modifies a memory location and the other one reads or modifies the same memory location. 
-}
-%*)}
-
-let conflict = ((W * _) | (_ * W)) & loc
-
-{%(*
-There is a \emph{data race} between a pair of events if they conflict, they are unrelated by happens-before, and their scopes are not inclusive.
-\myquote{p.~46}{
-The execution of a program contains a data race if it contains two conflicting actions $A$ and $B$ in different units of execution, and
-\begin{enumerate}
-\item at least one of $A$ or $B$ is not atomic, or $A$ and $B$ do not have inclusive memory scope, and 
-\item the actions are global actions unordered by the global-happens-before relation or are local actions unordered by the local-happens-before relation.
-\end{enumerate}
-Any such data race results in undefined behavior.
-}
-\fixme{Mark: The definition of race does not talk about atomicity or
-    not; that must be a mistake. In the adjusted definition, do I have
-    the precedence right?}
-%*)}
-
-let dr = conflict & ~symm(hb) & ~incl
-undefined_unless empty dr as data_race 
-
-let dr' = conflict & ~symm(hb) & (~(A^2) | ~incl)
-undefined_unless empty dr' as data_race'
-
-
-{%(*
-\paragraph{Unsequenced races}
-There is an \emph{unsequenced race} between a pair of events if they are different events, they belong to the same work-item, they conflict, and they are unrelated by program-order.
-%*)}
-
-let ur = neq & wi & conflict & ~symm(po)
-undefined_unless empty ur as unsequenced_race 
