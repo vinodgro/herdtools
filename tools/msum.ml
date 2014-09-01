@@ -132,9 +132,6 @@ let zyva fnames  =
   
 (* Dumping of log files *)
 
-  let is_reliable k = match k with
-  | Allow|Require|Forbid -> true
-  | _ -> false in
 
   let dump_hash chan = function
   | None -> ()
@@ -171,6 +168,7 @@ let zyva fnames  =
       dump_prop chan t.condition       
     end ;
     dump_hash chan t.hash ;    
+    LS.dump_topologies chan t.topologies ;
     begin match t.time with
     | None -> ()
     | Some time -> 

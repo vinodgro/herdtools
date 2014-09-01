@@ -29,14 +29,20 @@ type parsed_sts =
    p_sts : parsed_st list ;
  }
 
+type parsed_topologies = (HashedString.t * Int64.t) list
+
 (* Abstract type for states *)
 type sts
+type topologies
 
 type kind =
   | Allow | Require | Forbid
   | NoKind (* No kind in log *)
   | ErrorKind (* Propagate Errors *)
   | Undefined (* UB (eg data races) *)
+
+val is_reliable : kind -> bool
+
 type validation = Ok | No | DontKnow | Run
 
 type test =
@@ -51,6 +57,7 @@ type test =
    witnesses : Int64.t * Int64.t ; (* witnesses pos/neg *)
    hash : string option ;  (* Hash of init state + code *)
    time : float option ; (* Time of run *)
+   topologies : topologies ; (* Summary of topologies for observing condition *)
  }
 
 type t =
@@ -92,6 +99,11 @@ val dump_states_cond : out_channel -> bool -> sts -> unit
 val no_states : sts -> bool
 val card : sts -> int
 
+(* Topologies *)
+val some_topologies : topologies -> bool
+val dump_topologies : out_channel -> topologies -> unit
+
+
 (* raise StateMismatch loc when loc is missing in  one of two sts *)
 val union_states : sts -> sts -> sts
 
@@ -116,7 +128,7 @@ val normalize : string -> bool ->
       validation *
       (Int64.t * Int64.t) *
       LogConstr.constr option * bool *
-      string option * float option)) list -> t
+      string option * parsed_topologies * float option)) list -> t
 
 (* Conditions for from logs *)
 val revalidate : LogConstr.constr option -> sts -> validation

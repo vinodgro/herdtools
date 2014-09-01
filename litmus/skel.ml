@@ -1959,7 +1959,16 @@ let user2_barrier_def () =
       O.oiii "add_outcome(hist,1,o,cond2);" ;
       if mk_dsa test then begin
         O.oiii
-          "if (_b->aff_mode == aff_scan && cond2) { ngroups[n_run % SCANSZ]++; }"
+          "if (_b->aff_mode == aff_scan && _a->cpus[0] >= 0 && cond2) {" ;
+        O.oiv "pm_lock(_a->p_mutex);" ;
+        O.oiv "ngroups[n_run % SCANSZ]++;" ;
+        O.oiv "pm_unlock(_a->p_mutex);" ;
+        O.oiii
+          "} else if (_b->aff_mode == aff_topo && _a->cpus[0] >= 0 && cond2) {" ;
+        O.oiv "pm_lock(_a->p_mutex);" ;
+        O.oiv "ngroups[0]++;" ;
+        O.oiv "pm_unlock(_a->p_mutex);" ;
+        O.oiii "}"
       end ;
 
 (****************)
@@ -2434,7 +2443,7 @@ let user2_barrier_def () =
       O.fiii "if (c > 0) { printf(%s,c,group[k]); }" fmt ;
       O.oii "}" ;
       O.oi "} else if (cmd->aff_mode == aff_topo) {"  ;
-      O.oii "printf(\"Topology %s\\n\",cmd->aff_topo);" ;
+      O.oii "printf(\"Topology %-6\" PCTR \":> %s\\n\",ngroups[0],cmd->aff_topo);" ;
       O.oi "}" 
    end ;
 (* Show running time *)
