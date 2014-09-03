@@ -241,7 +241,7 @@ module Task(O:Opt) = struct
     oname,chan
 
     let cut args =
-      let t = Array.create O.j [] in
+      let t = Array.make O.j [] in
       let rec do_rec k args =
         if k >= O.j then do_rec 0 args
         else match args with

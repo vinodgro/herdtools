@@ -777,14 +777,14 @@ let format_int_string s =
     f 0 in
   let string_of_char_list ts =
     let n = List.length ts in
-    let s = String.create n in
-    let rec f i ts = 
+    let buf = Buffer.create n in
+    let rec f ts =
       match ts with 
       | [] -> ()
-      | t::ts -> String.set s i t; f (i+1) ts
+      | t::ts -> Buffer.add_char buf t; f ts
     in 
-    f 0 ts; 
-    s in
+    f ts;
+    Buffer.contents buf in
   let string_rev s = string_of_char_list (List.rev_append (char_list_of_string s) []) in
   let rec split_in_threes cs = match cs with
   | c1::c2::c3::cs' -> (String.make 1 c1 ^ String.make 1 c2 ^ String.make 1 c3) :: split_in_threes cs'

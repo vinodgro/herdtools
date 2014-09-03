@@ -282,7 +282,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
     | Return b -> O.fx i "return %c;" (if b then '1' else '0')
     | Switch (loc,cs,d,rhs) ->
         let rhs = Array.of_list rhs in
-        let t = Array.create (Array.length rhs) [] in
+        let t = Array.make (Array.length rhs) [] in
         List.iter (fun (i,j) -> t.(j) <- i :: t.(j)) cs ;
         O.fx i "switch (%s) {" (I.Loc.dump loc) ;
         for k = 0 to Array.length t-1 do
