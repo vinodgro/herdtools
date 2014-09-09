@@ -1,3 +1,3 @@
 DIR=$(dirname $0)
-cp $DIR/_bytes.ml  $DIR/bytes.ml
-cp $DIR/_bytes.mli  $DIR/bytes.mli
+cp $DIR/bytes.mlp  $DIR/bytes.ml
+cp $DIR/bytes.mlip  $DIR/bytes.mli
