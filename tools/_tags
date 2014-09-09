@@ -1,5 +1,6 @@
 true: dtypes
 true: -traverse
+true: safe_string
 <*.cmo>: debug
 <*.byte>:debug
 <lib>:include
