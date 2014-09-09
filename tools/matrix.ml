@@ -271,7 +271,7 @@ let transpose_in col1 m =
         let rec loop k nrow =
         if nrow < 0 then k
         else begin
-          let r = Array.create w e in
+          let r = Array.make w e in
           Misc.iteri
             (fun i c -> r.(i) <- c.(nrow))
             m ;
@@ -286,8 +286,8 @@ let transpose_out m =
   | (c1,r)::_ ->
       let w = Array.length r in
       let e = r.(0) in
-      let col1 = Array.create h c1 in
-      let mout = Array.create_matrix w h e in
+      let col1 = Array.make h c1 in
+      let mout = Array.make_matrix w h e in
       Misc.iteri
         (fun k (c1,r) ->
           col1.(k) <- c1 ;

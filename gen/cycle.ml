@@ -279,7 +279,7 @@ let find_edge_prev p = find_node_prev (fun n -> p n.edge)
 module Env = Map.Make(String)
 
 let locs =
-  let t = Array.create 26 "" in
+  let t = Array.make 26 "" in
   t.(0) <- "x" ;
   t.(1) <- "y" ;
   t.(2) <- "z" ;

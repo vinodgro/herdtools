@@ -19,7 +19,7 @@ module Task(A:TArg) = struct
         oname : string ; buff : Buffer.t; }
 (* Fork utility *)
   let dir =
-    Filename.concat Filename.temp_dir_name
+    Filename.concat (Filename.get_temp_dir_name ())
       (sprintf "mapply.%i" (getpid()))
 
   let rmrf dir = ignore (Sys.command (sprintf "/bin/rm -rf %s" dir))

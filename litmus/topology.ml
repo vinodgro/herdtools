@@ -98,7 +98,7 @@ end = struct
   let compute_cpu is rs =
     let is = of_lists is and rs = of_lists rs in
     let len = Array.length is in
-    let cpu = Array.init len (fun _ -> Array.create (ninst*nthreads) (-1)) in
+    let cpu = Array.init len (fun _ -> Array.make (ninst*nthreads) (-1)) in
     for x=0 to len-1 do
       for k = 0 to avail-1 do
         let i = is.(x).(k) and r = rs.(x).(k) in
@@ -151,14 +151,14 @@ end = struct
 
 *)
   let alloc_groups (k,is,rs) gss =
-    let next = Array.create ncores 0 in
-    let inst = Array.create avail (-1) in
-    let role = Array.create avail (-1) in
+    let next = Array.make ncores 0 in
+    let inst = Array.make avail (-1) in
+    let role = Array.make avail (-1) in
     let gss = norm_gss gss in
     if verbose > 1 then eprintf "NORM: %s\n" (pp_gss gss) ;
     let socks = ref (Misc.interval 0 nsockets) in
     for i = 0 to ninst-1 do
-      let seen = Array.create ncores false in
+      let seen = Array.make ncores false in
       let undo =
         List.iter
           (fun (id,c) ->
