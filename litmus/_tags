@@ -1,5 +1,6 @@
 true:dtypes
 true:-traverse
+true: safe_string
 <lib>:include
 <PPCGenBase.ml> : pp(./pp2ml.byte)
 <PPCGenParser.mly> : pp(./pp2ml.byte)

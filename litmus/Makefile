@@ -1,7 +1,6 @@
 PREFIX=$$HOME
 BINDIR=$(PREFIX)/bin
 LIBDIR=$(PREFIX)/lib/litmus
-WITHBYTES=$(shell ocaml lib/check402.ml)
 CFG=conti.cfg saumur.cfg saumur.close.cfg doko.cfg squale.cfg hpcx.cfg \
  vargas.cfg vargas.cache.cfg vargas.close.cfg vargas16.cfg \
  abducens.cfg  abducens.big.cfg abducens.cache.cfg abducens.close.cfg \
@@ -44,9 +43,8 @@ luc: all install
 PROGS=litmus.byte
 
 byte native d.byte: config ./pp2ml.byte
-	@if [ $(WITHBYTES) = ok ] ; then \
-	sh lib/post402.sh ; $(OCB) -cflags -safe-string $(PROGS:.byte=.$@) ; else \
-	sh lib/pre402.sh ; $(OCB) $(PROGS:.byte=.$@) ; fi
+	sh lib/handle402.sh
+	$(OCB) $(PROGS:.byte=.$@)
 	@for prog in $(PROGS:.byte=.$@) ; \
 	do ln -sf $$prog `basename $$prog .$@` ; done
 
