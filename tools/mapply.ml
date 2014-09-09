@@ -98,7 +98,7 @@ module Task(A:TArg) = struct
   let to_stdout oname =
     Misc.input_protect
       (fun chan ->
-        let buff =  String.create sz in
+        let buff = Bytes.create sz in
         try
           while true do
             match input chan buff 0 sz with
@@ -126,7 +126,7 @@ module Task(A:TArg) = struct
 
 
   let to_buff fd t =
-    let buff =  String.create sz in
+    let buff = Bytes.create sz in
     let rec to_rec () =
       try
         if A.verbose > 2 then eprintf "Read %02i\n%!" t.idx ;
@@ -135,7 +135,7 @@ module Task(A:TArg) = struct
         match nread with
         | 0 -> true
         | n ->
-            Buffer.add_substring t.buff buff 0 n ;
+            Buffer.add_string t.buff (Bytes.sub_string buff 0 n) ;
             to_rec ()
       with
       | Unix_error ((EWOULDBLOCK|EAGAIN),_,_) -> false

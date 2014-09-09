@@ -1,6 +1,9 @@
 PREFIX=$$HOME
 BINDIR=$(PREFIX)/bin
+WITHBYTES=$(shell ocaml ../lib/check402.ml)
+
 OCB=ocamlbuild $(OCBOPT) -cflags -w,A-4-29-41-45 -classic-display $(J)
+
 EXTRAPROGS=
 PROGS=mcycles.byte msort.byte mapply.byte msum.byte mdiff.byte mcompare.byte mnames.byte mfind.byte mcond.byte recond.byte splitdot.byte mprog.byte mfilter.byte mlog2cond.byte moutcomes.byte mobserved.byte mproj.byte splitcond.byte ksort.byte knames.byte mtopos.byte
 
@@ -15,9 +18,10 @@ install:
 
 luc: native install
 
-
 byte native d.byte: version
-	$(OCB) $(PROGS:.byte=.$@)
+	@if [ $(WITHBYTES) = ok ] ; then \
+	sh ../lib/post402.sh ; $(OCB) -cflags -safe-string $(PROGS:.byte=.$@) ; else \
+	sh ../lib/pre402.sh ; $(OCB) $(PROGS:.byte=.$@) ; fi
 	@for prog in $(PROGS:.byte=.$@) ; \
 	do ln -sf $$prog `basename $$prog .$@` ; done
 

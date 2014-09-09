@@ -14,6 +14,8 @@ let ppo =
 (*  True Data Dependency from Load to Store creates externally visible
 order  [derives from  no visible write speculation rule] *)
   RW(data) | (* NB 'false dependcies included... *)
+(* Address dependency from load tio load, forgotten by Richarch in its mail *)
+  RR(addr) | (*  NB 'false dependcies included... *)
 (* True Control Dependency from Load to Store creates externally
    visible order [derives no visible write speculation rule] *)
   RW(ctrl) |  (* NB 'false dependcies included... *)
@@ -36,7 +38,7 @@ let fence = dsb.st | dmb.st | dsb | dmb
 (* Non-fence 'visible order' *)
 let visible = ppo | fence | rfe
 
- (* Fence effect, with A-cumulativity *)
+(* Fence effect, with A-cumulativity *)
 let F = ((fr|rf|co)*;fence)
 
 acyclic (F | visible) as order
