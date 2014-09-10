@@ -27,4 +27,9 @@ module type S = sig
   val maybev_to_location : V.v -> location
   val pp_location : location -> string
   val pp_rval : location -> string
+
+  type test =
+      ((location * V.v) list, (int * pseudo list) list,
+       (location, V.v) ConstrGen.prop ConstrGen.constr, location)
+        MiscParser.result
 end

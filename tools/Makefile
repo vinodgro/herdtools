@@ -4,7 +4,7 @@ BINDIR=$(PREFIX)/bin
 OCB=ocamlbuild $(OCBOPT) -cflags -w,A-4-29-41-45 -classic-display $(J)
 
 EXTRAPROGS=
-PROGS=mcycles.byte msort.byte mapply.byte msum.byte mdiff.byte mcompare.byte mnames.byte mfind.byte mcond.byte recond.byte splitdot.byte mprog.byte mfilter.byte mlog2cond.byte moutcomes.byte mobserved.byte mproj.byte splitcond.byte ksort.byte knames.byte mtopos.byte
+PROGS=mcycles.byte msort.byte mapply.byte msum.byte mdiff.byte mcompare.byte mnames.byte mfind.byte mcond.byte recond.byte splitdot.byte mprog.byte mfilter.byte mlog2cond.byte moutcomes.byte mobserved.byte mproj.byte splitcond.byte ksort.byte knames.byte mtopos.byte mmixer.byte
 
 
 all: native

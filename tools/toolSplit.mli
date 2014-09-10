@@ -21,3 +21,11 @@ module Top :
 sig
   val from_file : string -> T.t
 end
+
+module Tops :
+    functor (LexConf:Splitter.Config) ->
+      functor (T:sig type t end) -> (* Return type, must be abstracted *)
+        functor (B: sig val zyva : Archs.t -> string list -> T.t end) ->
+sig
+  val from_files : string list -> T.t
+end

@@ -1,5 +1,5 @@
 (*********************************************************************)
-(*                          Litmus                                   *)
+(*                          Litmus/DIY                               *)
 (*                                                                   *)
 (*        Luc Maranget, INRIA Paris-Rocquencourt, France.            *)
 (*        Susmit Sarkar, University of Cambridge, UK.                *)

@@ -11,7 +11,7 @@
 (*********************************************************************)
 
 (***********************************************)
-(* Apply a function (zyva) to one spitted test *)
+(* Apply a function (zyva) to one splitted test *)
 (***********************************************)
 
 module Top
@@ -29,4 +29,26 @@ end = struct
     B.zyva chan splitted
 
   let from_file name = Misc.input_protect (from_chan name) name
+end
+
+module Tops
+    (LexConf:Splitter.Config)
+    (T:sig type t end)
+    (B: sig val zyva : Archs.t -> string list -> T.t end) :
+sig
+  val from_files : string list -> T.t
+end = struct
+
+  module SP = Splitter.Make(LexConf)
+
+  let from_chan name chan =
+    let (splitted:Splitter.result) =  SP.split name chan in
+    splitted.Splitter.arch
+
+  let from_files names = match names with
+  | [] -> assert false
+  | n::_ ->
+      let arch = Misc.input_protect (from_chan n) n in
+      B.zyva arch names
+
 end

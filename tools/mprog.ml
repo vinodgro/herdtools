@@ -199,6 +199,11 @@ module Top
         let pp_rval = function
           | Location_global c -> sprintf "*%s" (V.pp O.hexa c)
           | Location_reg (i,r) -> sprintf "%i:%s" i (pp_reg r)
+
+        type test =
+            ((location * V.v) list, (int * pseudo list) list,
+             (location, V.v) ConstrGen.prop ConstrGen.constr, location)
+              MiscParser.result
       end
       module M = PrettyProg.Make(O)(Arch)
       module Alloc = SymbReg.Make(Arch)
