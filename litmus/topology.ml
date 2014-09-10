@@ -27,6 +27,8 @@ end = struct
   open Cfg
   open Printf
 
+  let linear_scan = false
+
   let ncores = avail / smt
   let cores_in_sock = ncores / nsockets
   let ninst =  avail / nthreads
@@ -110,7 +112,7 @@ end = struct
     done ;
     to_lists cpu
 
-(*
+
   module Int = struct
     type t = int
     let compare = Pervasives.compare
@@ -118,7 +120,6 @@ end = struct
 
   module IntMap = MyMap.Make(Int)
   module IntSet = MySet.Make(Int)
-
 
 (* Core related info *)
   type info = { sock:int ; next:int; ids:int array}
@@ -129,27 +130,138 @@ end = struct
     let core_id = ref 0 in
     for s = 0 to nsockets-1 do
       for c = 0 to cores_in_sock-1 do
-        let i = { sock = s; next=smt; ids=topo.(s).(c) } in
+        let i = { sock = s; next=0; ids=topo.(s).(c) } in
         m := IntMap.add !core_id i !m ;
         incr core_id
       done
     done ;
     !m
 
+  let find_next next k =
+    try IntMap.find k next
+    with Not_found -> assert false
+
+  let () = Random.init 0 (* Reproducible results.. *)
+
   let find_core next ok sz =
     let rec find_rec found nfound k =
-      if k >= ncores then []
+      if k >= ncores then found
       else
         let i = IntMap.find k next in
         if ok k i && i.next + sz  <= smt
-        then
+        then begin
           let nfound = nfound+1 in
           find_rec
             (if Random.int nfound = 0 then Some k else found) nfound (k+1)
-        else find_rec found nfound (k+1) in
+        end else find_rec found nfound (k+1) in
     find_rec None 0 0
 
-*)
+  let find_cores next ok0 gs = match gs with
+  | [] -> assert false
+  | g::gs ->
+      begin match find_core next (fun _ i -> ok0 i.sock) (List.length g) with
+      | None -> raise Exit
+      | Some c ->
+          let rec find_rec ok = function
+            | [] -> []
+            | g::gs ->
+                begin match find_core next ok (List.length g) with
+                | Some c ->
+                    c::find_rec (fun k i -> k <> c && ok k i) gs
+                | None -> raise Exit
+                end in
+          let sock = (find_next next c).sock in
+          sock,c::find_rec (fun k i ->  k <> c && i.sock = sock) gs
+      end
+
+  let rec find_all next ok gss = match gss with
+  | [] -> []
+  | gs::gss ->
+      let sock,cs = find_cores next ok gs in
+      List.combine gs cs @ find_all next (fun s -> s <> sock && ok s) gss
+
+  let alloc_instance next ok gss =
+    let rec alloc_rec next = function
+      | [] -> next,[]
+      | (xs,c)::rem ->
+          let i = find_next next c in          
+          let next,ys =
+            alloc_rec
+              (IntMap.add c { i with next = i.next+List.length xs} next)
+              rem in
+          let xs =
+            List.mapi
+              (fun k r -> r,i.ids.(i.next+k))
+              xs in
+          next,xs@ys in
+    alloc_rec next (find_all next ok gss)
+
+  let alloc_instance_hard next gss =
+    try alloc_instance next (fun _ -> true) gss
+    with Exit -> try
+      alloc_instance next (fun _ -> true) gss
+    with Exit ->
+      let rec do_rec s =
+        if s >= nsockets then raise Exit
+        else try
+          let r = alloc_instance next (fun sock -> s=sock) gss in
+          r
+        with Exit -> do_rec (s+1) in
+      do_rec 0
+
+  let rec cmp_length xs ys = match xs,ys with
+  | _::_,[] -> -1
+  | [],_::_ -> 1
+  | [],[] -> 0
+  | _::xs,_::ys -> cmp_length xs ys
+
+  let sort_length gss =
+    let gss = List.sort cmp_length gss in
+    List.map (List.sort cmp_length) gss
+
+  let shuffle_xs xs = match xs with
+    | []|[_] -> xs
+    | _ ->
+        let t = Array.of_list xs in
+        let len = Array.length t in
+        for k=0 to len-1 do
+          let j = k + Random.int (len-k) in
+          let x = t.(k) in
+          t.(k) <- t.(j) ; t.(j) <- x
+        done ;
+        Array.to_list t
+
+  let shuffle_gss gss =
+    List.map (List.map shuffle_xs) gss
+
+  let alloc_instances k gss =
+    let gss = norm_gss gss in
+    let rec alloc_rec next gss k =
+      if k >= ninst then []
+      else try
+        let next,inst = alloc_instance_hard next gss in
+        if verbose > 1 then eprintf "Instance: %s\n"
+          (String.concat ","
+             (List.map (fun (i,j) -> sprintf "%i-%i" i j) inst)) ;
+        inst::alloc_rec next (shuffle_gss gss) (k+1)
+      with Exit ->
+        if verbose > 1 then eprintf "Failure, instance %i\n" k ;
+        [] in
+    let r = alloc_rec (alloc_next ()) (sort_length gss) 0 in
+    let cpu = Array.make (ninst*nthreads) (-1) in
+    List.iteri
+      (fun i ps ->
+        List.iter
+          (fun (r,id) -> cpu.(i*nthreads+r) <- id) ps)
+      r ;
+    O.f "// %s" (pp_gss gss) ;
+    O.o (String.concat " " (List.map (sprintf "%i,") (Array.to_list cpu))) ;
+    gss::k
+
+
+        
+
+      
   let alloc_groups (k,is,rs) gss =
     let next = Array.make ncores 0 in
     let inst = Array.make avail (-1) in
@@ -244,7 +356,8 @@ let part pp_part maxelt maxpart k r =
     O.o "};" ;
     O.o ""
 
-  let dump_alloc () =
+
+  let dump_alloc1 () =
     O.o "/*" ;
     O.f " Topology: %s" (pp_intsss topo) ;
     O.o "*/" ;
@@ -259,7 +372,7 @@ let part pp_part maxelt maxpart k r =
 (* Actual virtual proc numbers *)
     let (gs,is,rs) =  groups ([],[],[]) procs in
 (* Dump group *)
-  O.o "char *group[] = {" ;
+  O.o "static char *group[] = {" ;
   List.iter
     (fun g -> O.f "\"%s\"," (pp_gss g))
     gs ;
@@ -282,4 +395,38 @@ let part pp_part maxelt maxpart k r =
   end ;    
   ()
 
+  let dump_alloc2 () =
+    O.o "/*" ;
+    O.f " Topology: %s" (pp_intsss topo) ;
+    O.o "*/" ;
+    O.o "" ;
+(* Partition according to sockets *)
+    let sockets =
+      part (fun x -> "SOCKET: " ^pp_gss x)
+        cores_in_sock nsockets alloc_instances in
+(* Partition according to smt *)
+    let groups =
+      part (fun x -> "SMT: " ^pp_gs x) smt ncores sockets in
+(* Actual virtual proc numbers *)
+    O.o "static int cpu_scan[] = {" ;
+    let all_gs =  groups [] procs in
+    O.o "};" ;
+    O.o "" ;
+(* Dump group *)
+    O.o "static char *group[] = {" ;
+    List.iter
+      (fun g -> O.f "\"%s\"," (pp_gss g))
+      (List.rev all_gs) ;
+    O.o "};" ;
+    O.o "" ;
+    O.f "#define SCANSZ %i" (List.length all_gs) ;
+    O.f "#define SCANLINE %i" (ninst*nthreads) ;
+    O.o "" ;
+    O.o "static count_t ngroups[SCANSZ];" ;
+    O.o "" ;
+    ()
+
+    let dump_alloc =
+      if linear_scan then dump_alloc1
+      else dump_alloc2
 end 
