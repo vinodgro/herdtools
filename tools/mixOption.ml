@@ -50,4 +50,5 @@ module type S = sig
   val action : Action.t
   val permut : Permut.t
   val name : string option
+  val hexa : bool
 end

@@ -14,7 +14,7 @@ let echo name =
   dump_line name 1 ;
   Misc.input_protect
     (fun chan ->
-      let buff = String.create sz in
+      let buff = Bytes.create sz in
       let rec do_rec () =
         let n = input chan buff 0 sz in
         if n > 0 then begin

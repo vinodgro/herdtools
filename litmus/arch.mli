@@ -29,6 +29,8 @@ module type Base = sig
   with type loc_reg = reg and
   type loc_global = string
 
+  val vToName : V.v -> loc_global
+
   val parse_reg : string -> reg option
   val reg_compare : reg -> reg -> int
 

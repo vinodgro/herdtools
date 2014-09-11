@@ -24,8 +24,8 @@ end
 
 module Tops :
     functor (T:sig type t end) -> (* Return type, must be abstracted *)
-      functor (B: functor(A:Arch.S) ->
-        (sig val zyva : ( Name.t * A.test) list -> T.t end)) ->
+      functor (B: functor(A:ArchBase.S) ->
+        (sig val zyva : ( Name.t * A.pseudo MiscParser.t) list -> T.t end)) ->
 sig
   val from_files : string list -> T.t
 end

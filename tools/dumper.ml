@@ -17,11 +17,11 @@ module Make(A:Arch.S) = struct
       (struct
         module A = A
             
-        type atom = (A.location * A.V.v)
+        type atom = (A.location * A.v)
         type state = atom list
               
         let dump_atom_state (loc,v) =
-          sprintf "%s=%s" (A.pp_location loc) (A.V.pp false v)
+          sprintf "%s=%s" (A.pp_location loc) (A.pp_v false v)
 
 
         let dump_state st =
@@ -30,7 +30,7 @@ module Make(A:Arch.S) = struct
                (fun a -> sprintf "%s;" (dump_atom_state a))
                st)
 
-        type prop = (A.location,A.V.v) ConstrGen.prop
+        type prop = (A.location,A.v) ConstrGen.prop
         type constr = prop ConstrGen.constr
 
         let dump_atom a =

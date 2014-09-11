@@ -21,10 +21,11 @@ module Top (Opt:MixOption.S) = struct
       end
 
 
-      module Make(A:Arch.S) = struct
-
-        module D = Dumper.Make(A)
-        module M = MixMerge.Make(Opt)(A)
+      module Make(A:ArchBase.S) = struct
+        module Arch=ArchExtra.Make(Opt)(A)
+        module D = Dumper.Make(Arch)
+        module M = MixMerge.Make(Opt)(Arch)
+        module Alloc = SymbReg.Make(Arch)
 
         let merge =
           let open Action in
@@ -58,6 +59,10 @@ module Top (Opt:MixOption.S) = struct
           | dt::dts -> merge2 dt (merges dts)
 
         let zyva nps =
+          let nps =
+            List.map
+              (fun (n,parsed) -> n,Alloc.allocate_regs parsed)
+              nps in
           let n,p = 
             match nps with
             | [d,_ as dt] -> 
@@ -76,7 +81,6 @@ module Top (Opt:MixOption.S) = struct
 
 
 (* Parse command line *)
-open MixOption
 let verbose = ref 0
 let what = ref Action.Mix
 let permut = ref Permut.Random
@@ -107,6 +111,7 @@ module X =
       let action = !what
       let permut = !permut
       let name = !name
+      let hexa = false
     end)
 
 

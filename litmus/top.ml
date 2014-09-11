@@ -279,9 +279,16 @@ end = struct
       module P = GenParser.Make(O)(A) (L)
       module Comp = Compile.Make (O)(A)(Utils.T)(XXXComp)
 
+      module AllocArch = struct
+        include A 
+        type v = A.V.v
+        let maybevToV = V.maybevToV
+        type global = string
+        let maybevToGlobal = A.vToName
+      end
       let compile =
         let allocate parsed =
-          let module Alloc = SymbReg.Make(A) in
+          let module Alloc = SymbReg.Make(AllocArch) in
           Alloc.allocate_regs parsed
         in
         Utils.compile P.parse List.length Comp.compile allocate
@@ -306,15 +313,16 @@ end = struct
           end
         type reg = string
 
+        let vToName = function
+            | Constant.Concrete i -> "addr_" ^ string_of_int i
+            | Constant.Symbolic s -> s
+
         module Internal = struct
           type arch_reg = reg
           let pp_reg x = x
           let reg_compare = String.compare
 
           type arch_global = string
-          let maybev_to_global = function
-            | Constant.Concrete i -> "addr_" ^ string_of_int i
-            | Constant.Symbolic s -> s
           let pp_global x = x
           let global_compare = String.compare
 

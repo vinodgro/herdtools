@@ -42,7 +42,7 @@ with type v = A.V.v and type location = A.location
   let finish_reg = get_reg
 
   let finish_location f_reg loc = match loc with
-  | Location_global m -> A.maybev_to_location m
+  | Location_global m -> A.Location_global (A.vToName m)
   | Location_reg (i,r) -> A.Location_reg (i,finish_reg r)
   | Location_sreg reg  ->
       let p,r = f_reg reg in A.Location_reg (p,r)

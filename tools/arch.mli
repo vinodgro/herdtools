@@ -14,22 +14,21 @@
 
 module type S = sig
   include ArchBase.S
-  module V :
-      sig
-        type v = Constant.v
-        include Constant.S
-        val maybevToV  : v -> v
-      end
+
+  type v = Constant.v
+  val maybevToV  : v -> v
+  val pp_v : bool -> v -> string
+
+  type global = Constant.v
+  val maybevToGlobal  : global -> v
+
   type location = 
-    | Location_global of Constant.v
+    | Location_global of global
     | Location_reg of int * reg
 
-  val maybev_to_location : V.v -> location
   val pp_location : location -> string
   val pp_rval : location -> string
 
-  type test =
-      ((location * V.v) list, (int * pseudo list) list,
-       (location, V.v) ConstrGen.prop ConstrGen.constr, location)
-        MiscParser.result
+  type test = (location,v,pseudo) MiscParser.r3
+
 end

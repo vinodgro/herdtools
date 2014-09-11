@@ -65,7 +65,6 @@ module Make(O:Config)(I:I) : S with module I = I
         include I
 
         type arch_global = string
-        let maybev_to_global m = vToName m
         let pp_global s = s
         let global_compare = String.compare
       end)

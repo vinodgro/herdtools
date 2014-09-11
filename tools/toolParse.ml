@@ -104,8 +104,8 @@ end
 
 module Tops
     (T:sig type t end) (* Return type, must be abstracted *)
-    (B: functor(A:Arch.S)->
-      (sig val zyva : (Name.t * A.test) list -> T.t end)) :
+    (B: functor(A:ArchBase.S)->
+      (sig val zyva : (Name.t * A.pseudo MiscParser.t) list -> T.t end)) :
     sig
       val from_files : string list -> T.t
     end = struct
@@ -113,18 +113,16 @@ module Tops
       module LexConf = Splitter.Default
 
       module Make
-          (A:Arch.S) 
+          (A:ArchBase.S) 
           (L:GenParser.LexParse with type instruction = A.pseudo) =
         struct
           module P = GenParser.Make(GenParser.DefaultConfig)(A)(L)
           module X = B(A)
-          module Alloc = SymbReg.Make(A)
 
           let justparse chan splitted =
             let parsed = P.parse chan splitted
             and doc = splitted.Splitter.name in
-            let allocated = Alloc.allocate_regs parsed in
-            doc,allocated
+            doc,parsed
 
           module SP = Splitter.Make(LexConf)
 
@@ -149,35 +147,6 @@ module Tops
             X.zyva dts
         end
 
-      module Extend (A:ArchBase.S) = struct
-        open Printf
-        let hexa = false
-        include A
-        module V = struct
-          include SymbConstant
-          let maybevToV c = c
-        end
-        type location = 
-          | Location_global of Constant.v
-          | Location_reg of int * A.reg
-
-        let maybev_to_location c = Location_global c
-
-        let pp_location = function
-          | Location_global c -> V.pp hexa c
-          | Location_reg (i,r) -> sprintf "%i:%s" i (pp_reg r)
-
-        let pp_rval = function
-          | Location_global c -> sprintf "*%s" (V.pp hexa c)
-          | Location_reg (i,r) -> sprintf "%i:%s" i (pp_reg r)
-
-
-        type test =
-            ((location * V.v) list, (int * pseudo list) list,
-             (location, V.v) ConstrGen.prop ConstrGen.constr, location)
-              MiscParser.result
-      end
-
       let from_arch arch = 
         match arch with
         | PPC ->
@@ -190,7 +159,7 @@ module Tops
 	      let lexer = L.token
 	      let parser = PPCParser.main
             end in
-            let module X = Make (Extend(PPC)) (PPCLexParse) in
+            let module X = Make (PPC) (PPCLexParse) in
             X.zyva 
         | X86 ->
             let module X86 = X86Base in
@@ -202,7 +171,7 @@ module Tops
 	      let lexer = L.token
 	      let parser = X86Parser.main
             end in
-            let module X = Make (Extend(X86)) (X86LexParse) in
+            let module X = Make (X86) (X86LexParse) in
             X.zyva
         | ARM ->
             let module ARM = ARMBase in
@@ -214,7 +183,7 @@ module Tops
 	      let lexer = L.token
 	      let parser = ARMParser.main
             end in
-            let module X = Make (Extend(ARM)) (ARMLexParse) in
+            let module X = Make (ARM) (ARMLexParse) in
             X.zyva
         | C -> Warn.fatal "No C arch in toolParse.ml"
 

@@ -34,8 +34,8 @@ module type S = sig
  type loc_global
 
  type location =
-    | Location_reg of int*loc_reg
     | Location_global of loc_global
+    | Location_reg of int*loc_reg
 
   val maybev_to_location : MiscParser.maybev -> location
   val dump_location : location -> string (* Just dump *)
@@ -54,8 +54,8 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
     type loc_global = A.arch_global
 
     type location =
-      | Location_reg of int*loc_reg
       | Location_global of loc_global
+      | Location_reg of int*loc_reg
 
     let maybev_to_location m = Location_global (A.maybev_to_global m)
 
