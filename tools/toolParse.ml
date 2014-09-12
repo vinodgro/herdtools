@@ -54,19 +54,6 @@ end = struct
         end in
         let module X = Make (PPC) (PPCLexParse) in
         X.zyva chan splitted
-(*
-  | PPCGen ->
-  let module PPCGen = PPCGenArch.Make(V) in
-  let module PPCGenLexParse = struct
-  type instruction = PPCGen.pseudo
-  type token = PPCGenParser.token
-
-  let lexer = PPCGenLexer.token
-  let parser = PPCGenParser.main
-  end in
-  let module X = Make (PPCGen) (PPCGenLexParse) in
-  X.zyva chan splitted
- *)
     | X86 ->
         let module X86 = X86Base in
         let module X86LexParse = struct
@@ -93,12 +80,14 @@ end = struct
         X.zyva chan splitted
     | C -> Warn.fatal "No C arch in toolParse.ml"
 
+  module SP = Splitter.Make(LexConf)
+
+
   let from_file name =
-    let module Y = ToolSplit.Top(LexConf)(T)
-        (struct
-          let zyva = from_chan
-        end) in
-    Y.from_file name
+    Misc.input_protect
+      (fun chan ->
+        let (splitted:Splitter.result) = SP.split name chan in
+        from_chan chan splitted) name
 
 end
 
@@ -111,6 +100,8 @@ module Tops
     end = struct
 
       module LexConf = Splitter.Default
+      module SP = Splitter.Make(LexConf)
+
 
       module Make
           (A:ArchBase.S) 
@@ -123,8 +114,6 @@ module Tops
             let parsed = P.parse chan splitted
             and doc = splitted.Splitter.name in
             doc,parsed
-
-          module SP = Splitter.Make(LexConf)
 
           let from_chan name chan =
             let { Splitter.arch=arch;_ } as splitted = SP.split name chan in
@@ -187,11 +176,14 @@ module Tops
             X.zyva
         | C -> Warn.fatal "No C arch in toolParse.ml"
 
-      let from_files names =
-        let module Y = ToolSplit.Tops(LexConf)(T)
-            (struct
-              let zyva = from_arch
-            end) in
-        Y.from_files names
+      let from_files names = match names with
+      | [] -> assert false
+      | n::_ ->
+          let arch =
+            Misc.input_protect
+              (fun chan ->
+                let (splitted:Splitter.result) =  SP.split n chan in
+                splitted.Splitter.arch) n in
+          from_arch arch names
 
     end
