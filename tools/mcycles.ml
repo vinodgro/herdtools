@@ -32,12 +32,12 @@ let get_cycle info =
 let from_splitted splitted =
   let name = splitted.Splitter.name
   and info = splitted.Splitter.info in
-  name.Name.name,get_cycle  info
+  name.Name.name,get_cycle info
 
 module SP = Splitter.Make(Splitter.Default)
 
 let from_file name =
-  let sp = Misc.input_protect (SP.split name) in
+  let sp = Misc.input_protect (SP.split name) name in
   from_splitted sp
 
 
@@ -62,7 +62,7 @@ let () =
   Misc.iter_argv
     (fun name ->
       try
-        let tname,cycle = X.from_file name in
+        let tname,cycle = from_file name in
         match cycle with
         | One c ->
             printf "%s: %s\n" tname c
