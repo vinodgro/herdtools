@@ -20,7 +20,7 @@ module type S = sig
 
   val mk_init_write : A.location -> A.V.v -> action
 
-  val pp_action     : bool -> action -> string
+  val pp_action : action -> string
 
 (* Some architecture-specific sets, and their definitions
    e.g. ["rmw", is_rmw; "ls", is_successful_lock]

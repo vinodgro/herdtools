@@ -45,10 +45,30 @@ module Action = struct
 
 end
 
+module Cond = struct
+  type t = Auto | Or | And | No
+
+  let tags = ["auto"; "or"; "and"; "no";]
+
+  let parse tag = match String.lowercase tag with
+  | "auto" -> Some Auto
+  | "or" -> Some Or
+  | "and" -> Some And
+  | "no" -> Some No
+  | _ -> None
+
+  let pp = function
+    | Auto -> "auto"
+    | Or -> "or"
+    | And -> "and"
+    | No -> "no"
+end
+
 module type S = sig
   val verbose : int
   val action : Action.t
   val permut : Permut.t
+  val cond : Cond.t
   val name : string option
   val hexa : bool
 end

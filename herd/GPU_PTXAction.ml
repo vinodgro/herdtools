@@ -12,7 +12,6 @@
 
 (** Implementation of the action interface for machine models *)
 
-open Printf
 
 module type S = sig
   (* Module "A_" is really the same as "A". We just 
@@ -46,17 +45,12 @@ module Make (A : Arch.S) : (S with module A_ = A) = struct
   
   let mk_init_write l v = Access(W,l,v,false,GPU_PTXBase.NCOP)
 
-(* Local pp_location that adds [..] around global locations *)        
-    let pp_location withparen loc =
-      if withparen then sprintf "[%s]" (A.pp_location loc)
-      else A.pp_location loc
-
-  let pp_action withparen a = match a with
+  let pp_action a = match a with
     | Access (d,l,v,ato,cop) ->
 	Printf.sprintf "%s%s %s%s=%s"
           (pp_dirn d)
           (GPU_PTXBase.pp_cache_op cop)
-          (pp_location withparen l)
+          (A.pp_location  l)
 	  (if ato then "*" else "")
 	  (V.pp_v v)
     | Barrier b -> A.pp_barrier b

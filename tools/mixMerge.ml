@@ -16,6 +16,46 @@ module Make(O:MixOption.S)(A:Arch.S) : sig
 end =
   struct
 
+    open MiscParser
+    module Alpha = Alpha.Make(O)(A)
+    module MixPerm = MixPerm.Make(O)(A)
+
+
+(* Merge of conditions *)
+    open ConstrGen
+
+    let or_cond c1 c2 = match c1,c2 with
+    | ExistsState e1,ExistsState e2 -> ExistsState (Or [e1;e2])
+    | ForallStates e1,ForallStates e2 -> ForallStates (Or [e1;e2])
+    | NotExistsState e1,NotExistsState e2 -> NotExistsState (And [e1;e2])
+    | _,_ ->
+        let p1 = prop_of c1
+        and p2 = prop_of c2 in
+        ExistsState (Or [p1;p2])
+
+    let and_cond c1 c2 = match c1,c2 with
+    | ExistsState e1,ExistsState e2 -> ExistsState (And [e1;e2])
+    | ForallStates e1,ForallStates e2 -> ForallStates (And [e1;e2])
+    | NotExistsState e1,NotExistsState e2 -> NotExistsState (Or [e1;e2])
+    | _,_ ->
+        let p1 = prop_of c1
+        and p2 = prop_of c2 in
+        ExistsState (And [p1;p2])
+
+    let choose_cond =
+      let open MixOption in
+      match O.cond with
+      | Cond.Or -> fun _ -> or_cond
+      | Cond.And -> fun _ -> and_cond
+      | Cond.Auto -> fun c -> c
+      | Cond.No ->  fun _ _ _ -> ForallStates (And [])
+
+(* merge of locations *)
+
+(*******)
+(* Mix *)
+(*******)
+
     let rec mix_list xs sx ys sy = match xs, ys with
     | [],[] -> []
     | x::rx, [] -> x::mix_list rx (sx-1) ys sy 
@@ -43,21 +83,8 @@ end =
     | ([],p)|(p,[]) -> p
     | (p,c1)::p1,(_,c2)::p2 -> (p,mix_code c1 c2)::mix_prog p1 p2
 
-    open ConstrGen
 
-(* Not so important, here to collect observed locations *)
-    let mix_cond c1 c2 = match c1,c2 with
-    | ExistsState e1,ExistsState e2 -> ExistsState (Or [e1;e2])
-    | ForallStates e1,ForallStates e2 -> ForallStates (Or [e1;e2])
-    | NotExistsState e1,NotExistsState e2 -> NotExistsState (And [e1;e2])
-    | _,_ ->
-        let p1 = prop_of c1
-        and p2 = prop_of c2 in
-        ExistsState (Or [p1;p2])
-
-    open MiscParser
-    module Alpha = Alpha.Make(O)(A)
-    module MixPerm = MixPerm.Make(O)(A)
+    let mix_cond = choose_cond or_cond
 
     let merge _doc1 t1 doc2 t2 =
       let t2 = MixPerm.perm doc2 t2 in
@@ -68,19 +95,13 @@ end =
         locations = t1.locations @ t2.locations ;
         condition = mix_cond t1.condition t2.condition ; }
 
-(* Not so important, here to collect observed locations *)
-    let append_cond c1 c2 = match c1,c2 with
-    | ExistsState e1,ExistsState e2 -> ExistsState (And [e1;e2])
-    | ForallStates e1,ForallStates e2 -> ForallStates (And [e1;e2])
-    | NotExistsState e1,NotExistsState e2 -> NotExistsState (Or [e1;e2])
-    | _,_ ->
-        let p1 = prop_of c1
-        and p2 = prop_of c2 in
-        ExistsState (And [p1;p2])
+(**********)
+(* Append *)
+(**********)
 
-    let append_code c1 c2 =
-      let c2 = clean_code c2 in
-      c1@c2
+    let append_cond = choose_cond and_cond
+
+    let append_code c1 c2 = c1@c2
 
     let rec append_prog p1 p2 = match p1,p2 with
     | ([],p)|(p,[]) -> p
@@ -111,8 +132,10 @@ end =
         locations = t1.locations @ t2.locations ;
         condition = append_cond t1.condition t2.condition ; }
 
-
+(********************************************)
 (* Just concatenate in horizontal direction *)
+(********************************************)
+
     let nprocs t = List.length t.prog
 
     let shift_location k loc = match loc with

@@ -11,15 +11,26 @@
 
 
 module Make (O:sig val hexa : bool end)(A:ArchBase.S) = struct
-  open Printf
   include A
+
   type v = SymbConstant.v
   let maybevToV c = c
-  let pp_v = SymbConstant.pp
+  let pp_v = SymbConstant.pp O.hexa
 
   type global = SymbConstant.v
   let maybevToGlobal c = c
 
+  include Location.Make
+      (struct
+        type arch_reg = A.reg
+        let pp_reg = A.pp_reg
+        let reg_compare = A.reg_compare
+
+        type arch_global = global
+        let pp_global = pp_v
+        let global_compare = SymbConstant.compare
+      end)
+(*
   type location = 
     | Location_global of global
     | Location_reg of int * A.reg
@@ -32,5 +43,7 @@ module Make (O:sig val hexa : bool end)(A:ArchBase.S) = struct
     | Location_global c -> sprintf "*%s" (SymbConstant.pp O.hexa c)
     | Location_reg (i,r) -> sprintf "%i:%s" i (pp_reg r)
 
-    type test = (location,v,pseudo) MiscParser.r3
+*)
+  type test = (location,v,pseudo) MiscParser.r3
+  type constr = (location,v) ConstrGen.prop ConstrGen.constr
 end

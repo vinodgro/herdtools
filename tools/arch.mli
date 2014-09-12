@@ -17,18 +17,21 @@ module type S = sig
 
   type v = Constant.v
   val maybevToV  : v -> v
-  val pp_v : bool -> v -> string
+  val pp_v : v -> string
 
   type global = Constant.v
   val maybevToGlobal  : global -> v
 
+  include Location.S with type loc_reg = reg and type loc_global = global
+(*
   type location = 
     | Location_global of global
     | Location_reg of int * reg
 
   val pp_location : location -> string
   val pp_rval : location -> string
-
+*)
   type test = (location,v,pseudo) MiscParser.r3
+  type constr = (location,v) ConstrGen.prop ConstrGen.constr
 
 end

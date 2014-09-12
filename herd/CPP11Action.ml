@@ -50,22 +50,17 @@ struct
  
   let mk_init_write l v = Access (W,l,v,CPP11Base.NA)
 
-(* Local pp_location that adds [..] around global locations *)        
-    let pp_location withparen loc =
-      if withparen then sprintf "[%s]" (A.pp_location loc)
-      else A.pp_location loc
-
-  let pp_action withparen a = match a with
+  let pp_action a = match a with
     | Access (d,l,v,CPP11Base.NA) ->
 	sprintf "%s%s=%s"
           (pp_dirn d)
-          (pp_location withparen l)
+          (A.pp_location l)
 	  (V.pp_v v)
     | Access (d,l,v,mo) ->
 	sprintf "%s(%s)%s=%s"
           (pp_dirn d)
           (CPP11Base.pp_mem_order_short mo)
-          (pp_location withparen l)
+          (A.pp_location l)
 	  (V.pp_v v)
     | Fence mo -> 
        sprintf "F(%s)"
@@ -73,18 +68,18 @@ struct
     | RMW (l,v1,v2,mo) ->
        	sprintf "RMW(%s)%s(%s>%s)"
           (CPP11Base.pp_mem_order_short mo)
-          (pp_location withparen l)
+          (A.pp_location l)
 	  (V.pp_v v1) (V.pp_v v2)
     | Blocked_RMW l ->
        sprintf "BRMW%s"
-	  (pp_location withparen l)
+	  (A.pp_location l)
     | Lock (l,o) ->
       sprintf "L%s%s"
 	(if o then "S" else "B")
-        (pp_location withparen l)
+        (A.pp_location l)
     | Unlock l ->
       sprintf "U%s"
-        (pp_location withparen l)
+        (A.pp_location l)
 
 (* Utility functions to pick out components *)
     let value_of a = match a with

@@ -52,6 +52,9 @@ module type S = sig
 
   include Location.S
   with type loc_reg = I.arch_reg and type loc_global = I.V.v
+(* Extra for locations *)
+  val maybev_to_location : MiscParser.maybev -> location
+  val dump_location : location -> string
 
   val undetermined_vars_in_loc : location -> I.V.v option
   val simplify_vars_in_loc : I.V.solution ->  location -> location
@@ -160,19 +163,38 @@ module Make(C:Config) (I:I) : S with module I = I
   | 0 -> Misc.int_compare i1.program_order_index i2.program_order_index
   | r -> r
 
+  let pp_global = I.V.pp C.hexa
+
   include
       Location.Make
-      (C)
       (struct
         type arch_reg = I.arch_reg
         let pp_reg = I.pp_reg
         let reg_compare = I.reg_compare
 
         type arch_global = I.V.v
-        let maybev_to_global =  I.V.maybevToV
-        let pp_global = I.V.pp_v
+        let pp_global = pp_global
         let global_compare = I.V.compare
       end)
+
+  let maybev_to_location v = Location_global (I.V.maybevToV v)
+
+  let do_brackets =
+    if C.brackets then Printf.sprintf "[%s]"
+    else fun s -> s
+
+  let dump_location = function
+    | Location_reg (proc,r) ->
+        string_of_int proc ^ ":" ^ I.pp_reg r
+    | Location_global a -> do_brackets (pp_global a)
+
+(* This redefines pp_location from Location.Make ... *)
+  let pp_location l = match l with
+  | Location_reg (proc,r) -> 
+      let bodytext = string_of_int proc ^ ":" ^ I.pp_reg r in
+      if C.texmacros 
+      then "\\asm{Proc " ^ bodytext ^ "}" else bodytext
+  | Location_global a -> do_brackets (pp_global a)
 
   let undetermined_vars_in_loc l =  match l with
   | Location_reg _ -> None

@@ -84,6 +84,7 @@ module Top (Opt:MixOption.S) = struct
 let verbose = ref 0
 let what = ref Action.Mix
 let permut = ref Permut.Random
+let cond = ref Cond.Auto
 let name = ref None
 let arg = ref []
 
@@ -100,6 +101,8 @@ let () =
      P.parse "-a" what "action performed" end ;
      begin let module P = ParseTag.Make(Permut) in
      P.parse "-p" permut "specify permutation" end ;
+     begin let module P = ParseTag.Make(Cond) in
+     P.parse "-c" cond "specify condition merge" end ;
    ]
     (fun s -> arg := !arg @ [s])
     usage
@@ -110,6 +113,7 @@ module X =
       let verbose = !verbose
       let action = !what
       let permut = !permut
+      let cond = !cond
       let name = !name
       let hexa = false
     end)

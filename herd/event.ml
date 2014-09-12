@@ -35,7 +35,7 @@ module type S = sig
 
 (* Only basic printing is here *)
   val pp_eiid       : event -> string
-  val pp_action     : bool -> event -> string
+  val pp_action     : event -> string
   val debug_event : out_channel -> event -> unit
 
 (***************************)
@@ -270,11 +270,11 @@ struct
         String.make 1 (Char.chr (Char.code 'a' + e.eiid))
       else "ev"^string_of_int e.eiid
                                                                       
-    let pp_action withparen e = Act.pp_action withparen e.action
+    let pp_action e = Act.pp_action e.action
 
     let debug_event chan e =
       fprintf chan
-        "(eeid=%s action=%s)" (pp_eiid e) (pp_action true e)
+        "(eeid=%s action=%s)" (pp_eiid e) (pp_action e)
 
 (* Utility functions to pick out components *)
     let value_of e = Act.value_of e.action

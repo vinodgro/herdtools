@@ -21,7 +21,7 @@ module Make(A:Arch.S) = struct
         type state = atom list
               
         let dump_atom_state (loc,v) =
-          sprintf "%s=%s" (A.pp_location loc) (A.pp_v false v)
+          sprintf "%s=%s" (A.pp_location loc) (A.pp_v v)
 
 
         let dump_state st =
