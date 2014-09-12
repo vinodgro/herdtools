@@ -29,19 +29,24 @@ module type S = sig
 
 end
 
-module Make (A : Arch.S) : (S with module A_ = A) = 
-struct
+module Make (A : Arch.S) : sig
+ type action =    
+    | Access of Dir.dirn * A.location * A.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | RMW of A.location * A.V.v * A.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | Blocked_RMW of A.location
+
+  include Action.S with module A = A and type action := action
+end = struct
   module A = A
-  module A_ = A
   module V = A.V
   open Dir
 
-  type action_ = 
+  type action = 
     | Access of dirn * A.location * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | RMW of A.location * V.v * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Blocked_RMW of A.location
-  type action = action_
  
   let mk_init_write l v = Access (W,l,v,OpenCLBase.NA,OpenCLBase.S_all_svm_devices)
 
