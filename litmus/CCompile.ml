@@ -106,33 +106,26 @@ module Make
       | A.Location_global reg -> reg
 
     let locations p final flocs =
-      let module LocMap =
-        MyMap.Make
-          (struct
-            type t = A.location
-            let compare = A.location_compare
-          end)
-      in
       let locations_atom reg acc = match reg with
         | ConstrGen.LV (loc, _) ->
             let reg = get_reg_from_loc loc in
-            LocMap.add loc (Generic.type_in_final p reg final flocs) acc
+            A.LocMap.add loc (Generic.type_in_final p reg final flocs) acc
         | ConstrGen.LL (loc1, loc2) ->
             let reg1 = get_reg_from_loc loc1 in
             let reg2 = get_reg_from_loc loc2 in
-            LocMap.add
+            A.LocMap.add
               loc1
               (Generic.type_in_final p reg1 final flocs)
-              (LocMap.add loc2 (Generic.type_in_final p reg2 final flocs) acc)
+              (A.LocMap.add loc2 (Generic.type_in_final p reg2 final flocs) acc)
       in
       let locations_flocs acc = function
-        | (x, MiscParser.Ty s) -> LocMap.add x (CType.Base s) acc
+        | (x, MiscParser.Ty s) -> A.LocMap.add x (CType.Base s) acc
         | (x, MiscParser.Pointer s) ->
-            LocMap.add x (CType.Pointer (CType.Base s)) acc
+            A.LocMap.add x (CType.Pointer (CType.Base s)) acc
       in
-      let locs = ConstrGen.fold_constr locations_atom final LocMap.empty in
+      let locs = ConstrGen.fold_constr locations_atom final A.LocMap.empty in
       let locs = List.fold_left locations_flocs locs flocs in
-      LocMap.bindings locs
+      A.LocMap.bindings locs
 
     let comp_code final init flocs procs =
       List.fold_left

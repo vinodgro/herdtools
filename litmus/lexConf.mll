@@ -123,6 +123,9 @@ rule main = parse
 | "safer" arg
    { let module P = LexTag(Safer) in
    P.lexfun "safer" safer arg ; main lexbuf }
+| "mode" arg
+   { let module P = LexTag(Mode) in
+   P.lexfun "mode" mode arg ; main lexbuf }
 | "cautious" arg
    { set_bool cautious arg ; main lexbuf }
 | "preload" arg

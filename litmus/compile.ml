@@ -17,7 +17,12 @@ module type Config = sig
   val barrier : Barrier.t
 end
 
+let get_fmt hexa = function
+  | "int" ->  if hexa then "x" else "i"
+  | t -> Warn.fatal "No format for type '%s'" t
+
 let base =  CType.Base "int"
+
 module Generic (A : Arch.Base) = struct
   open CType
 
@@ -90,6 +95,7 @@ module Make
     (T:Test.S with
      type A.reg = A.reg and
      type A.location = A.location and
+     module A.LocSet = A.LocSet and
      type A.Out.t = A.Out.t and
      type P.code = int * A.pseudo list)
     (C:XXXCompile.S with module A = A) =
@@ -312,10 +318,10 @@ let lblmap_code =
 
     let compile_init proc init code flocs final =
       let locs1 = Constr.locations final
-      and locs2 = flocs in
-      let locs = locs1 @ locs2 in
+      and locs2 = A.LocSet.of_list flocs in
+      let locs = A.LocSet.union locs1 locs2 in
       let inputs_final =
-        List.fold_right
+        A.LocSet.fold
           (fun loc k -> match loc with
           | A.Location_reg (p,reg) when p = proc -> RegSet.add reg k
           | _ -> k)
@@ -336,18 +342,14 @@ let lblmap_code =
         (fun (x,_) (y,_) -> Misc.int_compare x y)
         lst
 
-    module LocSet =
-      MySet.Make
-        (struct
-          type t = A.location
-          let compare = A.location_compare
-        end)
-
-    let uniq xs ys = LocSet.elements (LocSet.of_list (xs@ys))
+    let uniq xs ys = A.LocSet.elements (A.LocSet.of_list (xs@ys))
 
     let compile_final proc final flocs =
-      let locs = uniq (Constr.locations final) flocs in
-      List.fold_right
+      let locs =
+        A.LocSet.union
+          (Constr.locations final)
+          (A.LocSet.of_list flocs) in
+      A.LocSet.fold
         (fun loc k -> match loc with
         | A.Location_reg (p,reg) when p=proc -> reg::k
         | _ -> k)

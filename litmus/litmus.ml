@@ -81,6 +81,8 @@ let opts =
    P.parse "-collect" Option.collect "time when results are collected" end ;
    begin let module P = ParseTag.Make(Safer) in
    P.parse "-safer" Option.safer "safer mode" end ;
+   begin let module P = ParseTag.Make(Mode) in
+   P.parse "-mode" Option.mode "output style for C files" end ;
    argbool "-cautious" Option.cautious
      "insert additional memory barriers" ;
 (* Affinity *)
@@ -285,6 +287,8 @@ let () =
       let tarname = Option.get_tar ()
 (* Arch dependent *)
       let mkopt = Option.get_dependent ()
+(* Mode *)
+      let mode = !mode
     end in
     let module T = Top.Top (Config) (Tar) in
     T.from_files sources ;

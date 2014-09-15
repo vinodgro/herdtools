@@ -64,7 +64,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
       let fundef find_type cond =
         let locs = I.C.locations cond in
         let plocs =
-          List.map
+          I.C.A.LocSet.map_list
             (fun loc ->
               let t = find_type loc in
               Printf.sprintf "%s %s" t (I.Loc.dump loc))
@@ -91,7 +91,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
 
       let funcall cond dump_loc dump_val =
         let locs = I.C.locations cond in
-        let plocs = List.map dump_loc locs in
+        let plocs = I.C.A.LocSet.map_list dump_loc locs in
         let vals = I.C.location_values cond in
         let pvals = List.map dump_val vals in
         Printf.sprintf "%s(%s)" funname (String.concat "," (plocs@pvals))

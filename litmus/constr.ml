@@ -18,7 +18,7 @@ module type S = sig
   type constr = prop ConstrGen.constr
 
 (* List of read locations *)
-  val locations : constr -> A.location list
+  val locations : constr -> A.LocSet.t
 (* List locations that appears as  values *)
   val location_values : constr -> string list
 end
@@ -33,22 +33,15 @@ module Make(A : Arch.Base) : S with module A = A  =
     type prop = (A.location,Constant.v) ConstrGen.prop
     type constr = prop ConstrGen.constr
 
-    module LocSet =
-      MySet.Make
-        (struct
-          type t = A.location
-          let compare = A.location_compare
-        end)
-
     let locations_atom a r =
       let open ConstrGen in
       match a with
-      | LV (loc,_) -> LocSet.add loc r
-      | LL (loc1,loc2) -> LocSet.add loc1 (LocSet.add loc2 r)
+      | LV (loc,_) -> A.LocSet.add loc r
+      | LL (loc1,loc2) -> A.LocSet.add loc1 (A.LocSet.add loc2 r)
 
-    let locations c =
-      let locs = fold_constr locations_atom c LocSet.empty in
-      LocSet.elements locs
+    let locations (c:constr) =
+      let locs = fold_constr locations_atom c A.LocSet.empty in
+      locs
 
     module Strings = Set.Make(String)
 

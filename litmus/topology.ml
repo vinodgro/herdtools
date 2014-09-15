@@ -19,6 +19,7 @@ module type Config = sig
   val smt : int
   val nsockets : int
   val smtmode : Smt.t
+  val mode : Mode.t
 end
 
 module Make(Cfg:Config) (O:Indent.S) : sig
@@ -234,7 +235,17 @@ end = struct
   let shuffle_gss gss =
     List.map (List.map shuffle_xs) gss
 
-  let alloc_instances k gss =
+  let pp_line gs xs =
+    O.f "// %s" (pp_gss gs) ;
+    O.o (String.concat " " (List.map (sprintf "%i,") xs))
+    
+  let std_kont k gss cpu =
+    pp_line gss cpu ;
+    gss::k
+
+  let presi_kont (k1,k2) gss cpu = (gss::k1,cpu::k2)
+
+  let alloc_instances kont k gss =
     let gss = norm_gss gss in
     let rec alloc_rec next gss k =
       if k >= ninst then []
@@ -254,13 +265,7 @@ end = struct
         List.iter
           (fun (r,id) -> cpu.(i*nthreads+r) <- id) ps)
       r ;
-    O.f "// %s" (pp_gss gss) ;
-    O.o (String.concat " " (List.map (sprintf "%i,") (Array.to_list cpu))) ;
-    gss::k
-
-
-        
-
+    kont k gss (Array.to_list cpu)
       
   let alloc_groups (k,is,rs) gss =
     let next = Array.make ncores 0 in
@@ -395,28 +400,11 @@ let part pp_part maxelt maxpart k r =
   end ;    
   ()
 
-  let dump_alloc2 () =
-    O.o "/*" ;
-    O.f " Topology: %s" (pp_intsss topo) ;
-    O.o "*/" ;
-    O.o "" ;
-(* Partition according to sockets *)
-    let sockets =
-      part (fun x -> "SOCKET: " ^pp_gss x)
-        cores_in_sock nsockets alloc_instances in
-(* Partition according to smt *)
-    let groups =
-      part (fun x -> "SMT: " ^pp_gs x) smt ncores sockets in
-(* Actual virtual proc numbers *)
-    O.o "static int cpu_scan[] = {" ;
-    let all_gs =  groups [] procs in
-    O.o "};" ;
-    O.o "" ;
-(* Dump group *)
+  let handle_groups all_gs =
     O.o "static char *group[] = {" ;
     List.iter
       (fun g -> O.f "\"%s\"," (pp_gss g))
-      (List.rev all_gs) ;
+      all_gs ;
     O.o "};" ;
     O.o "" ;
     O.f "#define SCANSZ %i" (List.length all_gs) ;
@@ -426,7 +414,66 @@ let part pp_part maxelt maxpart k r =
     O.o "" ;
     ()
 
-    let dump_alloc =
-      if linear_scan then dump_alloc1
-      else dump_alloc2
+  let std_handle groups =
+(* Actual virtual proc numbers *)
+    O.o "static int cpu_scan[] = {" ;
+    let all_gs =  groups [] procs in
+    O.o "};" ;
+    O.o "" ;
+    handle_groups (List.rev all_gs)
+
+  let handle_table name mk gss cpus =
+    O.f "static int %s[] = {" name ;
+    List.iter2
+      (fun gs cpu ->
+        let xs = mk cpu in
+        pp_line gs xs)
+      gss cpus ;
+    O.o "};" ;
+    O.o "" ;
+    ()
+
+
+  let mk_t f cpu =
+    let len = ninst*nthreads in
+    let t = Array.make len (-1) in
+    List.iteri
+      (fun i c -> if c >= 0 then t.(c) <- f i)
+      cpu ;
+    Array.to_list t    
+
+  let mk_inst = mk_t (fun i -> i / nthreads)
+  and mk_role = mk_t (fun i -> i mod nthreads)
+
+  let presi_handle groups = 
+    let (gss,cpus) = groups ([],[]) procs in
+    let gss = List.rev gss and cpus = List.rev cpus in
+    handle_table "inst" mk_inst gss cpus ;
+    handle_table "role" mk_role gss cpus ;
+    handle_groups gss
+
+
+  let dump_alloc2_gen kont handle () =
+    O.o "/*" ;
+    O.f " Topology: %s" (pp_intsss topo) ;
+    O.o "*/" ;
+    O.o "" ;
+(* Partition according to sockets *)
+    let sockets =
+      part (fun x -> "SOCKET: " ^pp_gss x)
+        cores_in_sock nsockets (alloc_instances kont) in
+(* Partition according to smt *)
+    let groups =
+      part (fun x -> "SMT: " ^pp_gs x) smt ncores sockets in
+(* Handle all that *)
+    handle groups
+
+
+  let dump_alloc2 = match Cfg.mode with
+  | Mode.Std -> dump_alloc2_gen std_kont std_handle
+  | Mode.PreSi -> dump_alloc2_gen presi_kont presi_handle
+    
+  let dump_alloc =
+    if linear_scan then dump_alloc1
+    else dump_alloc2
 end 

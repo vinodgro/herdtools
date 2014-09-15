@@ -32,6 +32,7 @@ install:
 	cp _outs.c _outs.h $(LIBDIR)
 	cp _aix_affinity.c _linux_affinity.c _affinity.h $(LIBDIR)
 	cp _show.awk _showC.awk _toh.sh $(LIBDIR)
+	cp _mix.h _hash.c $(LIBDIR)
 	cp $(CFG) $(LIBDIR)
 	mkdir -p  $(LIBDIR)/_ppc && ( cd _ppc && cp $(INSERT_PPC) $(LIBDIR)/_ppc )
 	mkdir -p  $(LIBDIR)/_x86 && ( cd _x86 && cp $(INSERT_X86) $(LIBDIR)/_x86 )

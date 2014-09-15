@@ -32,7 +32,9 @@ module type S = sig
   val pp_location : location -> string
   val pp_rval : location -> string
   val location_compare : location -> location -> int
+
   module LocSet : MySet.S with type elt = location
+  module LocMap : MyMap.S with type key = location
 end
 
 module Make(A:I) : S
@@ -69,11 +71,11 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
     | Location_global _, Location_reg _ -> 1
     | Location_global a1, Location_global a2 -> A.global_compare a1 a2 
 
-    module LocSet =
-      MySet.Make
-        (struct
-          type t = location
-          let compare = location_compare
-        end)      
+    module OL = struct
+      type t = location
+      let compare = location_compare
+    end
 
+    module LocSet = MySet.Make(OL)
+    module LocMap = MyMap.Make(OL)
   end
