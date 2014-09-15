@@ -266,6 +266,39 @@ let dump_loc_tag = function
     O.o "" ;
     ()
 
+ module DC =
+    CompCond.Make(O)
+      (struct
+        open Constant
+        module C = T.C
+        module V = struct
+          type t = Constant.v
+          let compare = A.V.compare
+          let dump = function
+            | Concrete i -> sprintf "%i" i
+            | Symbolic s -> sprintf "p->%s" s
+        end
+        module Loc = struct
+          type t = A.location
+          let compare = A.location_compare
+          let dump loc = sprintf "p->%s" (dump_loc_tag loc)
+        end
+      end)
+
+
+  let dump_cond_fun env test =    
+    let cond = test.T.condition in
+    DC.fundef_onlog cond
+
+  let _dump_cond_fun_call test dump_loc dump_val =
+    DC.funcall (test.T.condition) dump_loc dump_val
+
+  let dump_cond_def env test =
+    O.o "/* Condition check */" ;
+    dump_cond_fun env test ;
+    O.o "" ;
+    ()
+
 (**************)
 (* Parameters *)
 (**************)
@@ -331,6 +364,7 @@ let dump_loc_tag = function
     dump_topology test ;
     let env = U.build_env test in
     dump_outcomes env test ;
+    dump_cond_def env test ;
     dump_parameters env test ;
     dump_hash_def env test ;
     ()

@@ -14,6 +14,9 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
       val fundef :
           (I.Loc.t -> string) -> (* For types *)
             (I.Loc.t,I.V.t) ConstrGen.cond -> unit 
+
+      val fundef_onlog : (I.Loc.t,I.V.t) ConstrGen.cond -> unit 
+
       val funcall :
           I.C.constr ->
             (I.Loc.t -> string) -> (string -> string) -> string
@@ -88,6 +91,19 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
         O.o "}" ;
         O.o ""
 
+      let fundef_onlog cond =
+        O.f "inline static int %s(log_t *p) {" funname ;
+        let p = ConstrGen.prop_of cond in
+        begin try
+          let switch_tree = S.compile p in
+          S.dump Indent.indent switch_tree
+        with Switch.Cannot ->
+          O.fprintf "%sreturn " (Indent.as_string Indent.indent) ;
+          dump p ;
+          O.output ";\n"
+        end ;
+        O.o "}" ;
+        O.o ""
 
       let funcall cond dump_loc dump_val =
         let locs = I.C.locations cond in
