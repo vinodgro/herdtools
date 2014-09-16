@@ -125,6 +125,14 @@ end = struct
     Insert.insert O.o "mbar.c" ;
     O.o ""
 
+(* Cache *)
+  let dump_cache_def () =
+    O.o "/* Cache flush/fetch instructions */" ;
+    Insert.insert O.o "cache.c" ;
+    O.o ""
+
+
+
 (* Synchronisation barrier *)
   let lab_ext = if Cfg.numeric_labels then "" else "_lab"
 
@@ -352,6 +360,17 @@ let dump_loc_tag = function
     ObjUtil.insert_lib_file O.o "_hash.c" ;
     O.o ""
 
+(*****************)
+(* Test instance *)
+(*****************)
+
+  let dump_instance_def env test =
+    O.o "/************/" ;
+    O.o "/* Instance */" ;
+    O.o "/************/" ;
+    ObjUtil.insert_lib_file O.o "_instance.c" ;
+    O.o "" ;
+    ()
 (***************)
 (* Entry point *)
 (***************)
@@ -360,6 +379,7 @@ let dump_loc_tag = function
     dump_header test ;
     dump_read_timebase () ;
     dump_mbar_def () ;
+    dump_cache_def () ;
     dump_barrier_def () ;
     dump_topology test ;
     let env = U.build_env test in
@@ -367,6 +387,7 @@ let dump_loc_tag = function
     dump_cond_def env test ;
     dump_parameters env test ;
     dump_hash_def env test ;
+    dump_instance_def env test ;
     ()
     
 end
