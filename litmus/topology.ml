@@ -393,7 +393,7 @@ let part pp_part maxelt maxpart k r =
     let cpu = compute_cpu is rs in
     dump_carray "cpu_scan" gs cpu ;
     O.f "#define SCANSZ %i" (List.length gs) ;
-    O.f "#define SCANLINE %i" (ninst*nthreads) ;
+    O.f "#define SCANLINE %i" avail ;
     O.o "" ;
     O.o "static count_t ngroups[SCANSZ];" ;
     O.o "" ;
@@ -435,7 +435,7 @@ let part pp_part maxelt maxpart k r =
 
 
   let mk_t f cpu =
-    let len = ninst*nthreads in
+    let len = avail in
     let t = Array.make len (-1) in
     List.iteri
       (fun i c -> if c >= 0 then t.(c) <- f i)
