@@ -17,6 +17,7 @@ module type Config = sig
   val hexa : bool
   val driver : Driver.t
   val word : Word.t
+  val line : int
   val logicalprocs : int list option
   val smt : int
   val nsockets : int
@@ -64,6 +65,8 @@ end = struct
     D.dump O.o ;
     let n = T.get_nprocs test in
     O.f "#define N %i" n ;
+    let nvars = List.length test.T.globals in
+    O.f "#define NVARS %i" nvars ;
     let nexe =
       match Cfg.avail  with 
       | None -> 1
@@ -87,17 +90,21 @@ end = struct
     if Cfg.c11 then O.o "#include <stdatomic.h>";
     O.o "#include \"affinity.h\"" ;
     O.o "" ;
-    O.o "/* params */" ;
-    O.o "typedef struct {" ;
-    O.oi "int verbose;" ;
-    O.oi "int size_of_test,max_run;" ;
-    if have_timebase then O.oi "int *delays;" ;
-    O.o "} param_t;" ;
-    O.o"" ;
     O.o "typedef uint64_t count_t;" ;
     O.o "#define PCTR PRIu64" ;
     O.o "" ;
     ()
+
+(**********)
+(* Delays *)
+(**********)
+
+let nsteps = 5
+
+let dump_delay_def () =
+  O.f "#define NSTEPS %i\n" nsteps ;
+  O.o "#define STEP (DELTA_TB/(2*(NSTEPS-1)))" ;
+  ()
 
 (***************************************)
 (* Various inclusions from C utilities *)
@@ -365,6 +372,13 @@ let dump_loc_tag = function
 (*****************)
 
   let dump_instance_def env test =
+    O.o "/***************/" ;
+    O.o "/* Memory size */" ;
+    O.o "/***************/" ;
+    O.o "" ;
+    O.o "/* Cache line */" ;
+    O.f "#define LINE %i" Cfg.line ;
+    O.o "" ;
     O.o "/************/" ;
     O.o "/* Instance */" ;
     O.o "/************/" ;
@@ -377,6 +391,7 @@ let dump_loc_tag = function
 
   let dump doc test =
     dump_header test ;
+    dump_delay_def () ;
     dump_read_timebase () ;
     dump_mbar_def () ;
     dump_cache_def () ;

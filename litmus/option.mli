@@ -113,6 +113,9 @@ val get_word : opt -> Word.t
 val set_gccopts : string -> unit
 val get_gccopts : opt -> string
 
+val set_line : int -> unit
+val get_line : opt -> int
+
 val set_carch : Archs.System.t -> unit
 
 (* *)

@@ -87,6 +87,9 @@ end
 module type Config = sig
   include GenParser.Config
   include Compile.Config
+(* Additions for Presi *)
+  val line : int
+(* End of additions *)
   include Skel.Config
   include Run.Config
   val limit : bool
@@ -409,6 +412,7 @@ end = struct
       let word = Option.get_word opt in
       let module ODep = struct
         let word = word
+        let line = Option.get_line opt
         let delay = Option.get_delay opt
         let gccopts = Option.get_gccopts opt
       end in

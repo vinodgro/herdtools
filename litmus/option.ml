@@ -146,18 +146,21 @@ let mode = ref Mode.Std
 (* Arch dependent options *)
 type opt =
     { delay : int; gccopts : string ;
-      word : Word.t ; }
+      word : Word.t ; line : int; }
 
 let mod_config = ref (fun cfg -> cfg)
 
 let x86opt =
-  { delay = 2048; gccopts = "-fomit-frame-pointer -O2"; word = Word.WXX; }
+  { delay = 2048; gccopts = "-fomit-frame-pointer -O2";
+    word = Word.WXX; line = 512; }
 let ppcopt =
-  { delay = 1024; gccopts = "-O2"; word = Word.WXX; }
+  { delay = 1024; gccopts = "-O2";
+    word = Word.WXX; line = 1024; }
 let armopt =
-  { delay = 1024; gccopts = "-O2"; word = Word.WXX; }
+  { delay = 1024; gccopts = "-O2";
+    word = Word.WXX; line = 512;} (* How knows?? *)
 let copt =
-  { delay = 2048; gccopts = ""; word = Word.WXX; }
+  { delay = 2048; gccopts = ""; word = Word.WXX; line = 1024}
 
 let get_default arch = match arch with
 | `X86 -> x86opt
@@ -182,6 +185,9 @@ let get_gccopts opt = opt.gccopts
 
 let set_word w = replace_config (fun o ->  { o with word = w; })
 let get_word opt = opt.word
+
+let set_line w = replace_config (fun o ->  { o with line = w; })
+let get_line opt = opt.line
 
 let set_carch x = carch := Some x
 

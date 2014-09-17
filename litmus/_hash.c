@@ -36,7 +36,7 @@ static void hash_add(hash_t *t,log_t *key, param_t *v,count_t c) {
   exit(2) ;
 }
 
-void hash_adds(hash_t *t, hash_t *f) {
+static void hash_adds(hash_t *t, hash_t *f) {
   for (int k = 0 ; k < HASHSZ ; k++) {
     entry_t *p = f->t+k ;
     if (p->c > 0) {

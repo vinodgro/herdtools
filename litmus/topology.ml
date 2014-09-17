@@ -450,7 +450,8 @@ let part pp_part maxelt maxpart k r =
     let gss = List.rev gss and cpus = List.rev cpus in
     handle_table "inst" mk_inst gss cpus ;
     handle_table "role" mk_role gss cpus ;
-    handle_groups gss
+    handle_groups gss ;
+    ()
 
 
   let dump_alloc2_gen kont handle () =
