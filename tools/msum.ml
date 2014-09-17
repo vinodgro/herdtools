@@ -132,9 +132,6 @@ let zyva fnames  =
   
 (* Dumping of log files *)
 
-  let is_reliable k = match k with
-  | Allow|Require|Forbid -> true
-  | _ -> false in
 
   let dump_hash chan = function
   | None -> ()
@@ -171,6 +168,7 @@ let zyva fnames  =
       dump_prop chan t.condition       
     end ;
     dump_hash chan t.hash ;    
+    LS.dump_topologies chan t.topologies ;
     begin match t.time with
     | None -> ()
     | Some time -> 
@@ -243,7 +241,7 @@ module Task(O:Opt) = struct
     oname,chan
 
     let cut args =
-      let t = Array.create O.j [] in
+      let t = Array.make O.j [] in
       let rec do_rec k args =
         if k >= O.j then do_rec 0 args
         else match args with

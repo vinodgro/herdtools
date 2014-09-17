@@ -14,7 +14,7 @@
 (* Latex pretty print of programs *)
 
 module type Config = sig
-  val texmacros : bool
+ val texmacros : bool
   val hexa : bool
   val outputdir : string option
 end
@@ -30,8 +30,8 @@ module Make(O:Config)(A:Arch.S) =
          arch : Archs.t ;
          name : Name.t ;
          prog : (int * A.pseudo list) list ;
-         init : (A.location * A.V.v) list ;
-         constr : (A.location, A.V.v) ConstrGen.prop ConstrGen.constr ;
+         init : (A.location * A.v) list ;
+         constr : (A.location, A.v) ConstrGen.prop ConstrGen.constr ;
        }
 
     let just_name test = test.name.Name.name
@@ -200,7 +200,7 @@ module Make(O:Config)(A:Arch.S) =
       (* Ouf *)
       output_string chan "\\end{tabular}\n"
 
-    let pp_v = A.V.pp O.hexa
+    let pp_v = SymbConstant.pp O.hexa
 
     let pp_location = A.pp_location
     let pp_rval = A.pp_rval

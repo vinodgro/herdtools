@@ -35,10 +35,16 @@ module type S = sig
 
 end
 
-module Make (A : Arch.S) : (S with module A_ = A) = 
-struct
+module Make (A : Arch.S) : sig
+ type action =    
+    | Access of Dir.dirn * A.location * A.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | RMW of A.location * A.V.v * A.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | Blocked_RMW of A.location
+
+  include Action.S with module A = A and type action := action
+end = struct
   module A = A
-  module A_ = A
   module V = A.V
   open Dir
 
@@ -52,27 +58,21 @@ struct
     | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope * fence_type
     | RMW of A.location * V.v * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Blocked_RMW of A.location
-  type action = action_
  
   let mk_init_write l v = Access (W,l,v,OpenCLBase.NA,OpenCLBase.S_all_svm_devices)
-
-(* Local pp_location that adds [..] around global locations *)        
-    let pp_location withparen loc =
-      if withparen then sprintf "[%s]" (A.pp_location loc)
-      else A.pp_location loc
 
     let pp_fence_type = function
       | Normal_fence -> ""
       | Exit_fence lbl -> ", exit " ^ lbl
       | Entry_fence lbl -> ", entry " ^ lbl
 
-  let pp_action withparen a = match a with
+  let pp_action  a = match a with
     | Access (d,l,v,mo,s) ->
 	sprintf "%s(%s,%s)%s=%s"
           (pp_dirn d)
           (OpenCLBase.pp_mem_order mo)
           (OpenCLBase.pp_mem_scope s)
-          (pp_location withparen l)
+          (A.pp_location l)
 	  (V.pp_v v)
     | Fence (mr,mo,s,ft) -> 
        sprintf "F(%s,%s,%s%s)"
@@ -84,11 +84,11 @@ struct
        	sprintf "RMW(%s,%s)%s(%s>%s)"
           (OpenCLBase.pp_mem_order mo)
           (OpenCLBase.pp_mem_scope s)
-          (pp_location withparen l)
+          (A.pp_location l)
 	  (V.pp_v v1) (V.pp_v v2)
     | Blocked_RMW l ->
        sprintf "BRMW%s"
-	  (pp_location withparen l)
+	  (A.pp_location l)
 
 (* Utility functions to pick out components *)
     let value_of a = match a with

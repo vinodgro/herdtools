@@ -16,31 +16,32 @@ open Printf
 
 type cycle = One of string | Norm of string * string
 
-module T = struct type t = string * cycle end
+let get_cycle info =
+  let orig =
+    try Some (List.assoc "Orig" info)
+    with Not_found -> None
+  and cycle =
+    try Some (List.assoc "Cycle" info)
+    with Not_found -> None in
+  match orig,cycle with
+  | Some o,Some c -> Norm (o,c)
+  | None,Some c
+  | Some c,None -> One c
+  | None,None -> raise Not_found
 
-module M =
-  struct
+let from_splitted splitted =
+  let name = splitted.Splitter.name
+  and info = splitted.Splitter.info in
+  name.Name.name,get_cycle info
 
-    let get_cycle info =
-      let orig =
-        try Some (List.assoc "Orig" info)
-        with Not_found -> None
-      and cycle = 
-        try Some (List.assoc "Cycle" info)
-        with Not_found -> None in
-      match orig,cycle with
-      | Some o,Some c -> Norm (o,c)
-      | None,Some c
-      | Some c,None -> One c
-      | None,None -> raise Not_found
+module SP = Splitter.Make(Splitter.Default)
 
-    let zyva _chan splitted =
-      let name = splitted.Splitter.name
-      and info = splitted.Splitter.info in
-      name.Name.name,get_cycle  info
-  end
+let from_file name =
+  let sp = Misc.input_protect (SP.split name) name in
+  from_splitted sp
 
-module X = ToolSplit.Top(Splitter.Default)(T)(M)
+
+(* Command line *)
 let arg = ref []
 
 let prog =
@@ -61,7 +62,7 @@ let () =
   Misc.iter_argv
     (fun name ->
       try
-        let tname,cycle = X.from_file name in
+        let tname,cycle = from_file name in
         match cycle with
         | One c ->
             printf "%s: %s\n" tname c

@@ -43,8 +43,7 @@ end = struct
           String.concat " "
             (List.map
                (fun a -> sprintf "%s;" (dump_state_atom a))
-               st
-            )
+               st)
 
         type constr = I.C.constr
         let dump_atom a =

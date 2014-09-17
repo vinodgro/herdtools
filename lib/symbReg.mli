@@ -12,13 +12,27 @@
 
 (** Operations on symbolic registers *)
 
-open ConstrGen
+module type Arch = sig
+  include ArchBase.S
 
-module Make(A:Arch.S) : sig
-  val allocate_regs : A.pseudo MiscParser.t ->
-    ((A.location * A.V.v) list,
-     (int * A.pseudo list) list,
-     (A.location, A.V.v) prop constr,
-     A.location)
-      MiscParser.result
+(* Values and global locations and their creators *)
+  type v
+  val maybevToV : MiscParser.maybev -> v
+  type global
+  val maybevToGlobal : MiscParser.maybev -> global
+
+(* Manifest location type *)
+  type location = 
+    | Location_global of global
+    | Location_reg of int * reg
+
+end
+
+module Make(A:Arch) : sig
+
+  type ('loc,'v) t = ('loc,'v, A.pseudo) MiscParser.r3
+      
+  val allocate_regs :
+    (MiscParser.location, MiscParser.maybev) t -> (A.location,A.v) t
+
 end

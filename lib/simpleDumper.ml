@@ -69,14 +69,14 @@ end = struct
 
   let do_dump withinfo chan doc t =
     fprintf chan "%s %s\n" (Archs.pp A.arch) doc.Name.name ;
+    begin match doc.Name.doc with
+    | "" -> ()
+    | doc -> fprintf chan "\"%s\"\n" doc
+    end ;
     if withinfo then begin
       List.iter
         (fun (k,i) -> fprintf chan "%s=%s\n" k i)
         t.info
-    end ;
-    begin match doc.Name.doc with
-    | "" -> ()
-    | doc -> fprintf chan "\"%s\"\n" doc
     end ;
     fprintf chan "\n{%s}\n\n" (dump_state  t.init) ;
     prog chan t.prog ;

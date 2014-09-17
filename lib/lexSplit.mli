@@ -1,5 +1,5 @@
 (*********************************************************************)
-(*                          Litmus                                   *)
+(*                          Litmus/DIY                               *)
 (*                                                                   *)
 (*        Luc Maranget, INRIA Paris-Rocquencourt, France.            *)
 (*        Susmit Sarkar, University of Cambridge, UK.                *)
@@ -10,23 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-{
 exception Error
-}
 
-let blank = [' ''\n']
-let digit = ['0'-'9']
-
-rule main = parse
-| ',' | blank+  { main lexbuf }
-| digit+ as lxm { int_of_string lxm :: main lexbuf }
-| eof { [] }
-| "" { raise Error }
-
-{
-
-let ints s = main (Lexing.from_string s)
-
-let pp_ints xs = String.concat "," (List.map string_of_int xs)
-
-}
+val ints : string -> int list
+val pp_ints : int list -> string

@@ -1,5 +1,6 @@
 true: dtypes
 true: -traverse
+true: safe_string
 <*.cmo>: debug
 <*.byte>:debug
 <lib>:include
@@ -12,3 +13,4 @@ true: -traverse
 <mcompare.{d.byte,byte,native}>:use_unix,use_str
 <mprog.{d.byte,byte,native}>:use_str
 <knames.{d.byte,byte,native}>:use_str
+<mtopos.{d.byte,byte,native}>:use_str

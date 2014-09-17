@@ -18,6 +18,7 @@ luc: native install
 
 
 byte native d.byte: version
+	sh lib/handle402.sh
 	$(OCB) $(PROGS:.byte=.$@)
 	@for prog in $(PROGS:.byte=.$@) ; \
 	do ln -sf $$prog `basename $$prog .$@` ; done

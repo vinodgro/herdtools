@@ -15,6 +15,8 @@ module type OrderedType = Set.OrderedType
 module type S = sig
   include Set.S
 
+  (* Iterate with counter *)
+  val iteri : (int -> elt -> unit) -> t -> unit
   (* Iterate over  cartesian product *)
   val iter2 : (elt -> elt -> unit) -> t -> t -> unit
   (* Exists on cartesian product *)
@@ -38,6 +40,7 @@ module type S = sig
 
   (* Should be obvious *)
   val map : (elt -> elt) -> t -> t
+  val map_list : (elt -> 'a) -> t -> 'a list
   val disjoint : t -> t -> bool
 
   (* second argument is delimiter (as in String.concat) *)  
@@ -51,6 +54,9 @@ end
 module Make(O:OrderedType) : S with type elt = O.t =
   struct
     include Set.Make(O)
+
+    let iteri f s =
+      let _ = fold (fun e i -> f i e ; i+1) s 0 in ()
 
     let iter2 f s1 s2 = iter (fun e1 -> iter (f e1) s2) s1
     let exists2 p s1 s2 = exists (fun e1 -> exists (p e1) s2) s1
@@ -92,6 +98,10 @@ module Make(O:OrderedType) : S with type elt = O.t =
 	(fun e k -> add (f e) k)
 	s empty
 
+(* Reverse to preserve set ordering *)
+    let map_list f s =
+      List.rev (fold (fun e k -> f e::k) s [])
+      
     let disjoint s1 s2 = for_all (fun e -> not (mem e s2)) s1
 
     let pp chan delim pp_elt s =

@@ -842,7 +842,7 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
             (y +. yscale *. 0.2) in
 
     let pp_action e =
-      let pp = E.pp_action PC.brackets e in
+      let pp = E.pp_action e in
       let pp =
         if E.EventSet.mem e mark then
           sprintf "*%s*" pp

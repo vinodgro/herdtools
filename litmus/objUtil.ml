@@ -20,9 +20,9 @@ let cp_lib_file src dst =
   with e -> close_in in_chan  ; raise e end ;
   close_in in_chan
 
-let insert_lib_file chan src =
+let insert_lib_file o src =
   let _,in_chan = MyName.open_lib src in
-  MySys.cat_chan in_chan (fprintf chan "%s\n") ;
+  MySys.cat_chan in_chan o ;
   close_in in_chan
 
 module type InsertConfig = sig

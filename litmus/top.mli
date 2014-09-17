@@ -73,6 +73,8 @@ module type TopConfig = sig
   val check_rename : string -> string option
 (* Arch dependent options *)
   val mkopt : Option.opt -> Option.opt
+(* Mode *)
+  val mode : Mode.t
 end
 
 (* Compile/Run tests *)

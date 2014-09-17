@@ -29,6 +29,7 @@ let c_init = 1000
 let count = ref 0
 let poolize loc v = HashedPair.as_hashed loc v
 let no_wits = Int64.zero,Int64.zero
+let no_topos = []
 let no_cond = None
 let no_loop = false
 let no_hash = None
@@ -88,7 +89,7 @@ and pstate = parse
 | "Fatal" [':'' ']  [^'\r''\n']*  nl 
     { incr_lineno lexbuf ; None }
 | [^'\r''\n']*  nl  { incr_lineno lexbuf ; pstate  lexbuf }
-| eof { Some (false,([],Run,no_wits,no_cond,no_loop,no_hash,no_time)) }
+| eof { Some (false,([],Run,no_wits,no_cond,no_loop,no_hash,no_topos,no_time)) }
 | "" { error "pstate" lexbuf }
 
 
@@ -115,9 +116,9 @@ and plines k = parse
       let wits = pwitnesses lexbuf in
       let cond = pcond lexbuf in
       skip_empty_lines lexbuf ;
-      let hash,time = phash (no_hash,no_time) lexbuf in
-      (k,ok,wits,cond,loop,hash,time) }
-| eof { (k,Run,no_wits,no_cond,no_loop,no_hash,no_time) }
+      let hash,topos,time = phash (no_hash,no_topos,no_time) lexbuf in
+      (k,ok,wits,cond,loop,hash,topos,time) }
+| eof { (k,Run,no_wits,no_cond,no_loop,no_hash,no_topos,no_time) }
 
 and skip_empty_lines = parse
 | blank*  nl  { incr_lineno lexbuf ; skip_empty_lines lexbuf }
@@ -165,9 +166,17 @@ and strip_end_cond buff = parse
 
 and phash st = parse
 | "Hash" blank* '=' blank* ([^' ''\t''\n''\r']+ as hash) blank*  nl 
-  { incr_lineno lexbuf ; phash (Some hash,snd st) lexbuf }
+  { let _,p_topos,p_time = st in
+   incr_lineno lexbuf ; phash (Some hash,p_topos,p_time) lexbuf }
 | "Time" blank+ testname blank+ (num '.' num as t) blank*  nl 
-  { incr_lineno lexbuf ; phash (fst st,Some (float_of_string t)) lexbuf }
+  { let p_hash,p_topos,_ = st in
+    incr_lineno lexbuf ; phash (p_hash,p_topos,Some (float_of_string t)) lexbuf }
+| "Topology" blank+ (num as n) blank* ":>" blank*
+  ([^' ''\t''\n''\r']+ as topo) blank* nl
+  { let p_hash,p_topo,p_time = st in
+    let n = try Int64.of_string n with _ -> assert false in
+    let topo = HashedString.as_hashed topo in
+    phash (p_hash,(topo,n)::p_topo,p_time) lexbuf  }
 | (alpha+ as key) blank* '=' [^'\r''\n']*  nl 
 | (alpha+ as key)  blank+ testname blank+ [^'\r''\n']*  nl 
   { ignore(key) ; incr_lineno lexbuf ; phash  st lexbuf }

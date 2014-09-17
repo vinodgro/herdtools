@@ -53,9 +53,18 @@ type parsed_sts = {
     p_sts : parsed_st list ;
   }
 
+type topology = HashedString.t * Int64.t
+type parsed_topologies = topology list
+
 type sts = parsed_sts (* + sorted *)
+type topologies = parsed_topologies (* + sorted *)
 
 type kind = Allow | Require | Forbid | NoKind | ErrorKind | Undefined
+
+let is_reliable k = match k with
+| Allow|Require|Forbid -> true
+| _ -> false
+
 type validation = Ok | No | DontKnow | Run
 
 
@@ -71,6 +80,7 @@ type test =
    witnesses : Int64.t * Int64.t ; (* witnesses pos/neg *)
    hash : string option ;  (* Hash of init state + code *)
    time : float option ; 
+   topologies : topologies ;
  }
 
 type t =
@@ -198,6 +208,26 @@ let pretty_states pref mode with_noccs st =
     sprintf "nstates=%i, nouts=%.2fM"
       (List.length st.p_sts) (millions st.p_nouts)::r
   else r
+
+let some_topologies = function
+  | [] -> false
+  | _::_ -> true
+
+let dump_topologies chan topos =
+(* higher count first *)
+  let topos =
+    List.sort
+      (fun (_,n1) (_,n2) ->
+        let c = Int64.compare n1 n2 in
+        if c < 0 then 1
+        else if c > 0 then -1
+        else 0) topos in
+  List.iter
+    (fun (t,n) ->
+      if Int64.compare n Int64.zero <> 0 then
+        fprintf chan "Topology %-6s:> %s\n"
+          (Int64.to_string n) (HashedString.as_t t))
+    topos
 
 let pp_kind = function
   | Allow -> "Allow"
@@ -454,6 +484,15 @@ let union_time t1 t2 = match t1,t2 with
 
 let gt0 n = Int64.compare n Int64.zero > 0
 
+let rec union_topos xs ys = match xs,ys with
+| (zs,[])|([],zs) -> zs
+| x::rx,y::ry ->
+    let (tx,nx) = x and (ty,ny) = y in
+    let c = HashedString.compare tx ty in
+    if c < 0 then x::union_topos rx ys
+    else if c > 0 then y::union_topos xs ry
+    else (tx,Int64.add nx ny)::union_topos rx ry
+
 
 let union_test_gen t1 t2 =
   assert (t1.tname = t2.tname) ;
@@ -479,6 +518,8 @@ let union_test_gen t1 t2 =
     try union_states t1.states t2.states
     with StateMismatch loc -> error (State loc) in
 
+  let topos = union_topos t1.topologies t2.topologies in
+
   let time = union_time  t1.time t2.time in
   {
    tname = t1.tname ;
@@ -490,6 +531,7 @@ let union_test_gen t1 t2 =
    loop = t1.loop || t2.loop ;
    hash = hash ;
    time = time ;
+   topologies = topos ;
  }
 
 (* pp of a list of file names *)
@@ -577,6 +619,7 @@ let do_diff_test t1 t2 =
     try diff_states t1.states t2.states
     with StateMismatch loc -> error (State loc) in
 
+  let topos = [] in
   {
    tname = t1.tname ;
    kind = k ;
@@ -587,6 +630,7 @@ let do_diff_test t1 t2 =
    loop = t1.loop || t2.loop ;
    hash = hash ;
    time = None ;
+   topologies = topos ;
  }
 
 
@@ -677,6 +721,7 @@ let do_inter_test t1 t2 =
    loop = t1.loop || t2.loop ;
    hash = hash ;
    time = None ;
+   topologies = [] ;
  }
 
 
@@ -856,7 +901,8 @@ let uniq _is_litmus name =
       witnesses=(p,n) ;
       loop = t1.loop || t2.loop ;
       hash = hash ;
-      time = None ; } in
+      time = None ;
+      topologies = union_topos t1.topologies t2.topologies; } in
 
   fun ts -> union_adjs union_test ts    
 
@@ -885,12 +931,14 @@ let union_equals name t1 t2 =
     union_litmus name t1 t2
   end
 
+let normalize_topos topos =
+  List.sort (fun (n1,_) (n2,_) -> HashedString.compare n1 n2) topos
 
 let normalize name is_litmus ts =
   let ts = Array.of_list ts in
   let ts =
     Array.map
-      (fun (n,k,(sts,ok,wits,cond,loop,hash,time)) ->
+      (fun (n,k,(sts,ok,wits,cond,loop,hash,topos,time)) ->
         { tname = n ; kind=k ; 
           states = normalize_states sts ; validation=ok ;
           witnesses = wits ;
@@ -898,6 +946,7 @@ let normalize name is_litmus ts =
           loop = loop ;
           hash = hash ;
           time = time ;
+          topologies = normalize_topos topos ;
         })
       ts in
 (* This first step on unsorted tests catches old litmus logs

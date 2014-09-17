@@ -2,4 +2,5 @@
 *.byte
 *~
 _build
-
+lib/bytes.ml
+lib/bytes.mli

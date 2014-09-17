@@ -14,58 +14,46 @@
 
 open Printf
 
-module type S = sig
-  (* Module "A_" is really the same as "A". We just 
-     need to pick a different name to pacify the 
-     OCaml module system. Same goes for types 
-     "action" and "action_" *)
-  module A_ : Arch.S
-  type action_ =    
-    | Access of Dir.dirn * A_.location * A_.V.v * CPP11Base.mem_order
+module Make (A : Arch.S) : sig
+
+  type action =    
+    | Access of Dir.dirn * A.location * A.V.v * CPP11Base.mem_order
     | Fence of CPP11Base.mem_order
 (* LM: ??? RMW (location, read, written, mo) *)
-    | RMW of A_.location * A_.V.v * A_.V.v * CPP11Base.mem_order
-    | Blocked_RMW of A_.location
-    | Lock of A_.location * bool (* true = success, false = blocked *)
-    | Unlock of A_.location
-  include Action.S with module A = A_ and type action = action_
+    | RMW of A.location * A.V.v * A.V.v * CPP11Base.mem_order
+    | Blocked_RMW of A.location
+    | Lock of A.location * bool (* true = success, false = blocked *)
+    | Unlock of A.location
 
-end
+  include Action.S with type action := action and module A = A
 
-module Make (A : Arch.S) : (S with module A_ = A) = 
-struct
+end = struct
   module A = A
-  module A_ = A
   module V = A.V
   open Dir
 
-  type action_ = 
+  type action = 
     | Access of dirn * A.location * V.v * CPP11Base.mem_order
     | Fence of CPP11Base.mem_order
     | RMW of A.location * V.v * V.v * CPP11Base.mem_order
     | Blocked_RMW of A.location
     | Lock of A.location * bool (* true = success, false = blocked *)
     | Unlock of A.location
-  type action = action_
+
  
   let mk_init_write l v = Access (W,l,v,CPP11Base.NA)
 
-(* Local pp_location that adds [..] around global locations *)        
-    let pp_location withparen loc =
-      if withparen then sprintf "[%s]" (A.pp_location loc)
-      else A.pp_location loc
-
-  let pp_action withparen a = match a with
+  let pp_action a = match a with
     | Access (d,l,v,CPP11Base.NA) ->
 	sprintf "%s%s=%s"
           (pp_dirn d)
-          (pp_location withparen l)
+          (A.pp_location l)
 	  (V.pp_v v)
     | Access (d,l,v,mo) ->
 	sprintf "%s(%s)%s=%s"
           (pp_dirn d)
           (CPP11Base.pp_mem_order_short mo)
-          (pp_location withparen l)
+          (A.pp_location l)
 	  (V.pp_v v)
     | Fence mo -> 
        sprintf "F(%s)"
@@ -73,18 +61,18 @@ struct
     | RMW (l,v1,v2,mo) ->
        	sprintf "RMW(%s)%s(%s>%s)"
           (CPP11Base.pp_mem_order_short mo)
-          (pp_location withparen l)
+          (A.pp_location l)
 	  (V.pp_v v1) (V.pp_v v2)
     | Blocked_RMW l ->
        sprintf "BRMW%s"
-	  (pp_location withparen l)
+	  (A.pp_location l)
     | Lock (l,o) ->
       sprintf "L%s%s"
 	(if o then "S" else "B")
-        (pp_location withparen l)
+        (A.pp_location l)
     | Unlock l ->
       sprintf "U%s"
-        (pp_location withparen l)
+        (A.pp_location l)
 
 (* Utility functions to pick out components *)
     let value_of a = match a with

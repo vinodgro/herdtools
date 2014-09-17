@@ -47,7 +47,18 @@ module Make(A:Arch.S) =
          A.state, A.constr, A.location, A.LocSet.t) t
 
 (* Symb register allocation is external, since litmus needs it *)
-   module Alloc = SymbReg.Make(A)
+    module ArchAlloc = struct
+      include A
+
+      (* Here values and global (addresses) are identical,
+         NB: this is not the case for litmus! *)
+      type v = A.V.v
+      let maybevToV = V.maybevToV
+      type global = A.V.v
+      let maybevToGlobal = V.maybevToV 
+    end
+        
+   module Alloc = SymbReg.Make(ArchAlloc)
 (* Code loader is external, since litmus tests need it too *)
     module Load = Loader.Make(A) 
 

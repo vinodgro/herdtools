@@ -402,7 +402,7 @@ module Make(C:AutoConf.S) = struct
 
   let litmus dir base st =
     let tar_name =
-      Filename.concat Filename.temp_dir_name
+      Filename.concat (Filename.get_temp_dir_name ())
         (sprintf "%s.%s" (mk_uniq base) tar_ext) in
     let no = Filename.concat dir "no"
     and all = Filename.concat dir "@all" in

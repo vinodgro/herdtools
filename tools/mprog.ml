@@ -180,29 +180,11 @@ module Top
     end
 
     module Latex(A:ArchBase.S) = struct
-      module Arch = struct
-        include A
-        module V = struct
-          include SymbConstant
-          let maybevToV c = c
-        end
-        type location = 
-          | Location_global of Constant.v
-          | Location_reg of int * A.reg
-
-        let maybev_to_location c = Location_global c
-
-        let pp_location = function
-          | Location_global c -> V.pp O.hexa c
-          | Location_reg (i,r) -> sprintf "%i:%s" i (pp_reg r)
-
-        let pp_rval = function
-          | Location_global c -> sprintf "*%s" (V.pp O.hexa c)
-          | Location_reg (i,r) -> sprintf "%i:%s" i (pp_reg r)
-      end
+      module Arch = ArchExtra.Make(O)(A)
       module M = PrettyProg.Make(O)(Arch)
       module Alloc = SymbReg.Make(Arch)
-      let zyva name parsed =
+
+      let zyva name (parsed : A.pseudo MiscParser.t) =
         let parsed = Alloc.allocate_regs parsed in
         M.dump_prog name parsed
 

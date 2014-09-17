@@ -10,53 +10,42 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(** Implementation of the action interface for machine models *)
+(** Implementation of the action interface for GPU_PTX *)
 
-open Printf
 
-module type S = sig
-  (* Module "A_" is really the same as "A". We just 
-     need to pick a different name to pacify the 
-     OCaml module system. Same goes for types 
-     "action" and "action_" *)
-  module A_ : Arch.S
-  type action_ =    
-    | Access of Dir.dirn * A_.location * A_.V.v * bool (* atomicity flag *) * GPU_PTXBase.cache_op
-    | Barrier of A_.barrier
+module Make (A : Arch.S) : sig
+
+  type action =    
+    | Access of
+        Dir.dirn * A.location * A.V.v *
+          bool (* atomicity flag *) * GPU_PTXBase.cache_op
+    | Barrier of A.barrier
     | Commit
-  include Action.S with module A = A_ and type action = action_
 
-end
+  include Action.S with module A = A and type action := action
 
-module Make (A : Arch.S) : (S with module A_ = A) = struct
+end = struct
 
   module A = A
-  module A_ = A
   module V = A.V
   open Dir
 
-  type action_ = 
-    | Access of dirn * A.location * V.v * bool (* atomicity flag *) * GPU_PTXBase.cache_op
+  type action = 
+    | Access of
+        dirn * A.location * V.v *
+          bool (* atomicity flag *) * GPU_PTXBase.cache_op
           
     | Barrier of A.barrier
     | Commit
  
-  type action = action_
-  
-  
   let mk_init_write l v = Access(W,l,v,false,GPU_PTXBase.NCOP)
 
-(* Local pp_location that adds [..] around global locations *)        
-    let pp_location withparen loc =
-      if withparen then sprintf "[%s]" (A.pp_location loc)
-      else A.pp_location loc
-
-  let pp_action withparen a = match a with
+  let pp_action a = match a with
     | Access (d,l,v,ato,cop) ->
 	Printf.sprintf "%s%s %s%s=%s"
           (pp_dirn d)
           (GPU_PTXBase.pp_cache_op cop)
-          (pp_location withparen l)
+          (A.pp_location  l)
 	  (if ato then "*" else "")
 	  (V.pp_v v)
     | Barrier b -> A.pp_barrier b

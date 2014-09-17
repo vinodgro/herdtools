@@ -80,6 +80,8 @@ module type TopConfig = sig
   val check_rename : string -> string option
 (* Arch dependent options *)
   val mkopt : Option.opt -> Option.opt
+(* Mode *)
+  val mode : Mode.t
 end
 
 module type Config = sig
@@ -128,7 +130,6 @@ end = struct
     struct
       module T = Test.Make(A')(Pseudo)
       module R = Run.Make(O)(Tar)(T.D)
-      module MS = Skel.Make(O)(Pseudo)(A')(T)
 
       let get_cycle t =
         let info = t.MiscParser.info in
@@ -178,8 +179,15 @@ end = struct
           (fun chan ->
             let module Out =
               Indent.Make(struct let out = chan end) in
-            let module S = MS(Out)(Lang) in
-            S.dump doc compiled)
+            let dump =
+              match OT.mode with
+              | Mode.Std ->
+                  let module S = Skel.Make(O)(Pseudo)(A')(T)(Out)(Lang) in
+                  S.dump
+              | Mode.PreSi ->
+                  let module S = PreSi.Make(O)(Pseudo)(A')(T)(Out)(Lang) in
+                  S.dump in
+            dump doc compiled)
           (Tar.outname source)
 
       let limit_ok nprocs = match O.avail with
@@ -279,9 +287,16 @@ end = struct
       module P = GenParser.Make(O)(A) (L)
       module Comp = Compile.Make (O)(A)(Utils.T)(XXXComp)
 
+      module AllocArch = struct
+        include A 
+        type v = A.V.v
+        let maybevToV = V.maybevToV
+        type global = string
+        let maybevToGlobal = A.vToName
+      end
       let compile =
         let allocate parsed =
-          let module Alloc = SymbReg.Make(A) in
+          let module Alloc = SymbReg.Make(AllocArch) in
           Alloc.allocate_regs parsed
         in
         Utils.compile P.parse List.length Comp.compile allocate
@@ -306,15 +321,16 @@ end = struct
           end
         type reg = string
 
+        let vToName = function
+            | Constant.Concrete i -> "addr_" ^ string_of_int i
+            | Constant.Symbolic s -> s
+
         module Internal = struct
           type arch_reg = reg
           let pp_reg x = x
           let reg_compare = String.compare
 
           type arch_global = string
-          let maybev_to_global = function
-            | Constant.Concrete i -> "addr_" ^ string_of_int i
-            | Constant.Symbolic s -> s
           let pp_global x = x
           let global_compare = String.compare
 

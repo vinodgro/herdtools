@@ -21,15 +21,33 @@ module type S = sig
   type ('loc,'v) t = ('loc,'v, pseudo) MiscParser.r3
       
   val allocate_regs :
-      (MiscParser.location, MiscParser.maybev) t -> (location,v) t
+    (MiscParser.location, MiscParser.maybev) t -> (location,v) t
 end
 
-module Make (A:Arch.S) : S 
-with type v = A.V.v and type location = A.location
+
+module type Arch = sig
+  include ArchBase.S
+
+(* Values and global locations and their creators *)
+  type v
+  val maybevToV : MiscParser.maybev -> v
+  type global
+  val maybevToGlobal : MiscParser.maybev -> global
+
+(* Manifest location type *)
+  type location = 
+    | Location_global of global
+    | Location_reg of int * reg
+
+end
+
+module Make (A:Arch) : S 
+with type v = A.v
+and type location = A.location
 and type pseudo = A.pseudo
  = struct
 
-   type v = A.V.v
+   type v = A.v
    type location = A.location
    type pseudo = A.pseudo
    type ('loc,'v) t = ('loc,'v, pseudo) MiscParser.r3
@@ -45,13 +63,13 @@ and type pseudo = A.pseudo
   let finish_reg = get_reg
 
   let finish_location f_reg loc = match loc with
-  | Location_global m -> A.maybev_to_location m
+  | Location_global m -> A.Location_global (A.maybevToGlobal m)
   | Location_reg (i,r) -> A.Location_reg (i,finish_reg r)
   | Location_sreg reg  ->
       let p,r = f_reg reg in A.Location_reg (p,r)
 
   let finish_state_atom f_reg (loc,v) =
-    finish_location f_reg loc, A.V.maybevToV v
+    finish_location f_reg loc, A.maybevToV v
 
   let finish_state f_reg = List.map (finish_state_atom f_reg)
 
@@ -61,7 +79,7 @@ and type pseudo = A.pseudo
   let finish_atom f_reg a =
     let open ConstrGen in
     match a with
-    | LV (loc,v) -> LV (finish_location f_reg loc, A.V.maybevToV v)
+    | LV (loc,v) -> LV (finish_location f_reg loc, A.maybevToV v)
     | LL (l1,l2) -> LL (finish_location f_reg l1,finish_location f_reg l2)
 
   let finish_constr f_reg = ConstrGen.map_constr (finish_atom f_reg)

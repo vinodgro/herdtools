@@ -43,7 +43,9 @@ module Make(O:Config) = struct
 	    let n_read = input ic buf 0 n in
             if O.debug then begin
               Printf.eprintf "** Refill: %i**\n%!" n_read ;
-              Printf.eprintf "<<%s>>\n" (String.escaped (String.sub buf 0 n_read))
+              Printf.eprintf
+                "<<%s>>\n"
+                (String.escaped (Bytes.sub_string buf 0 n_read))
             end ;
 	    next_pos := !next_pos + n_read ;
 	    (* will trigger refill as soon as end_pos is reached by lexer *)

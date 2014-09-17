@@ -21,7 +21,7 @@ module Make(O:LexUtils.Config) = struct
     from_function
       (fun s n ->
         let r = input chan s 0 n in
-        Buffer.add_substring buff s 0 r ;
+        Buffer.add_string buff (Bytes.sub_string s 0 r) ;
         r)
 
     module ML = ModelLexer.Make(O)

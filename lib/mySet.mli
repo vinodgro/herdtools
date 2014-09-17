@@ -17,6 +17,8 @@ module type OrderedType = Set.OrderedType
 module type S = sig
   include Set.S
 
+  (* Iterate with counter *)
+  val iteri : (int -> elt -> unit) -> t -> unit
   (* Iterate over  cartesian product *)
   val iter2 : (elt -> elt -> unit) -> t -> t -> unit
   (* Exists on cartesian product *)
@@ -40,6 +42,7 @@ module type S = sig
 
   (* Should be obvious *)
   val map : (elt -> elt) -> t -> t
+  val map_list : (elt -> 'a) -> t -> 'a list
   val disjoint : t -> t -> bool
 
   (* second argument is delimiter (as in String.concat) *)  

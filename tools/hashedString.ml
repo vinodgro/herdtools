@@ -28,4 +28,4 @@ let as_t h = h.Hashcons.node
 
 let as_hash h = h.Hashcons.hkey
 
-let compare  s1 s2 = String.compare (as_t s1) (as_t s2)
+let compare s1 s2 = String.compare (as_t s1) (as_t s2)
