@@ -5,8 +5,6 @@ TODO:
 
 The value of a non-atomic scalar object M, as determined by evaluation B, shall be the value stored by the visible side effect A.
 
-Make "G" refer to the set of global fences and the set of instructions accessing global locations. Same for "L".
-
 *)
 
 {%(*
@@ -48,8 +46,8 @@ Note that the memory orders release, sequentially consistent, and acquire\_relea
 }
 %*)}
 
-let acq = (mo_acq | mo_sc | mo_acq_rel) & (R | F | RMW)
-let rel = (mo_rel | mo_sc | mo_acq_rel) & (W | F | RMW)
+let acq = (mo_acq | mo_sc | mo_acq_rel) & (R | F | rmw)
+let rel = (mo_rel | mo_sc | mo_acq_rel) & (W | F | rmw)
 
 {%(*
 The primitive \var{asw} (additional synchronizes-with) relation relates every initialisation event to every non-initialisation event. We define \var{asw'} as a simpler version that relates initialisation events only to those non-initialisation events that come first in program-order. Then we define \var{po_asw} as the transitive closure of program-order augmented with \var{asw'}.
@@ -57,12 +55,6 @@ The primitive \var{asw} (additional synchronizes-with) relation relates every in
 
 let asw' = asw \ (asw;po)
 let po_asw = (po | asw')+
-
-{%(* 
-The primitives \var{gF} and \var{lF} represent the global and local fences respectively. Let \var{glF} represents fences that are \emph{both} global and local.
-%*)}
-
-let glF = gF & lF
 
 {%(*
 \paragraph{Scope inclusion}
@@ -112,13 +104,13 @@ A \emph{release sequence} begins with a release operation $A$ on an atomic objec
      with the notion of the ``hypothetical'' release sequence. That is, when the release operation is a write, then its release sequence begins with that write. And when the release operation is a fence, its release sequence begins with any atomic write that follows that fence in program order. In the latter case, the release sequence is `hypothetical' because the atomic write need not actually be a release write.
      %*)}
 
-let rel'(F) = [rel]; ([F]; po)?; [A & W]
+let rel'(r) = [rel]; ([F & r]; po)?; [A & W]
 
 {%(* 
 We take this opportunity to present the symmetric case for acquire operations. That is, an acquire read synchronises on the location being read, while an acquire fence synchronises on any location that is atomically read before that fence in program order.
 %*)}
 
-let acq'(F) = [A & R]; (po; [F])?; [acq]
+let acq'(r) = [A & R]; (po; [F & r])?; [acq]
 
 {%(*
 We define \var{rmw_or_same_wi} as the set of pairs $(a,b)$ for which $b$ either is performed by the same work-item that performed $a$ or is an atomic RMW operation. 
@@ -140,7 +132,7 @@ let max_co = co & rmw_or_same_wi & ~((co & ~rmw_or_same_wi) ; co)
 We define $\var{rel_seq}(F)$ as the set of pairs $(a,b)$ for which $b$ is in the release sequence headed by the event $a$. Note that \var{co} is transitive but not reflexive, so we use the \code{?}-operator to ensure that $a$'s release sequence contains itself.
 %*)}
 
-let rel_seq(F) = rel'(F); max_co?
+let rel_seq(r) = rel'(r); max_co?
 
 {%(* 
 \paragraph{Synchronisation}~
@@ -157,11 +149,11 @@ An atomic operation $A$ that is a release operation on a global atomic object $M
 
 [Analogous paragraphs about local operations omitted.]
 }
-We define $\var{ir_sw}(F)$ (intra-region synchronizes-with) as the set of pairs of events $(A,B)$ that synchronise with each other on the same region. The events must have inclusive scopes, they must be in different work-items, and $B$ must acquire from $A$'s release sequence. 
+We define $\var{ir_sw}(r)$ (intra-region synchronizes-with) as the set of pairs of events $(A,B)$ that synchronise with each other on the same region. The events must have inclusive scopes, they must be in different work-items, and $B$ must acquire from $A$'s release sequence. 
 
 %*)}
 
-let ir_sw(F,region) = incl & ~wi & (region^2) & (rel_seq(F); [region]; rf; acq'(F))
+let ir_sw(r) = incl & ~wi & (r^2) & (rel_seq(r); [r]; rf; acq'(r))
 
 {%(* 
 We define $\var{bar_sw}(F)$ (barrier synchronizes-with) as the set of pairs of events $(A,B)$ where $A$ is the entry fence of a dynamic barrier instance, and $B$ is the exit fence of the same dynamic barrier instance in a different work-item in the same work-group.
@@ -172,11 +164,8 @@ We define $\var{bar_sw}(F)$ (barrier synchronizes-with) as the set of pairs of e
 \end{itemize}
 }
 %*)}
-let todo = _
-let same_B = todo * todo (* same barrier *)
-let B_entry = todo (* barrier entry fence (todo) *)
-let B_exit = todo (* barrier exit fence (todo) *)
-let bar_sw(F) = same_B & ~wi & (B_entry * B_exit) & wg & (F^2)
+
+let bar_sw(r) = same_B & ~wi & (entry_fence * exit_fence) & wg & r^2
 
 {%(* 
 We define $\var{g_sw}(F,F')$ (global synchronizes-with) as the set of pairs of events that either synchronise via global fences, or synchronise via local fences and either are both SC operations or are both global/local fences. We define $\var{l_sw}(F,F')$ (local synchronizes-with) as the set of pairs of events that either synchronise via local fences, or synchronise via global fences and either are both SC operations or are both global/local fences. 
@@ -188,8 +177,8 @@ Let $X$ and $Y$ be two work item fences that each have both the \code{CLK_GLOBAL
 }
 %*)}
 
-let g_sw = ir_sw(gF, global_loc) | ((mo_sc^2 | glF^2) & ir_sw(lF, local_loc)) | bar_sw(gF)
-let l_sw = ir_sw(lF, local_loc) | ((mo_sc^2 | glF^2) & ir_sw(gF, global_loc)) | bar_sw(lF)
+let g_sw = ir_sw(G) | ((mo_sc^2 | (G & L & F)^2) & ir_sw(L)) | bar_sw(G)
+let l_sw = ir_sw(L) | ((mo_sc^2 | (G & L & F)^2) & ir_sw(G)) | bar_sw(L)
 
 
 {%(*
@@ -210,8 +199,8 @@ A local memory action $A$ local-happens-before a local memory action $B$ if
 \end{itemize}}
 %*)}
 
-let g_hb = (((global_loc^2) & po_asw) | g_sw)+
-let l_hb = (((local_loc^2) & po_asw) | l_sw)+
+let g_hb = (((G^2) & po_asw) | g_sw)+
+let l_hb = (((L^2) & po_asw) | l_sw)+
 let hb = g_hb | l_hb
 
 {%(*
@@ -230,42 +219,6 @@ We restrict global and local happens-before to events on the same location.
 let g_hbl = g_hb & loc
 let l_hbl = l_hb & loc
 let hbl = g_hbl | l_hbl
-
-{%(*
-\paragraph{Data races}
-
-Two events \emph{conflict} if at least one is a write and they access the same location.
-\myquote{p.~45}{
-Two expression evaluations conflict if one of them modifies a memory location and the other one reads or modifies the same memory location. 
-}
-%*)}
-
-let conflict = ((W * _) | (_ * W)) & loc
-
-{%(*
-There is a \emph{data race} between a pair of events if they conflict, they are unrelated by happens-before, and their scopes are not inclusive.
-\myquote{p.~46}{
-The execution of a program contains a data race if it contains two conflicting actions $A$ and $B$ in different units of execution, and
-\begin{enumerate}
-\item at least one of $A$ or $B$ is not atomic, or $A$ and $B$ do not have inclusive memory scope, and 
-\item the actions are global actions unordered by the global-happens-before relation or are local actions unordered by the local-happens-before relation.
-\end{enumerate}
-Any such data race results in undefined behavior.
-}
-It is actually unnecessary to specify that one of the actions is non-atomic. If we define non-atomic actions as being annotated with work-item scope, then it suffices only to mention scope inclusion.
-%*)}
-
-let dr = conflict & ~symm(hb) & ~incl
-undefined_unless empty dr as data_race 
-
-
-{%(*
-\paragraph{Unsequenced races}
-There is an \emph{unsequenced race} between a pair of events if they are different events, they belong to the same work-item, they conflict, and they are unrelated by program-order.
-%*)}
-
-let ur = neq & wi & conflict & ~symm(po)
-undefined_unless empty ur as unsequenced_race 
 
 {%(*
 \paragraph{Coherence}
@@ -320,8 +273,8 @@ We define visible side effects for local objects $M$ similarly.
 %*)}
 
 let vse(hbl) = [W]; (hbl & ~(hbl; [W]; hbl)); [R]
-let g_vse = [global_loc]; vse(g_hbl)
-let l_vse = [local_loc]; vse(l_hbl)
+let g_vse = [G]; vse(g_hbl)
+let l_vse = [L]; vse(l_hbl)
 
   {%(* 
        \myquote{p.~47}{ The visible sequence of side effects on a global
@@ -448,4 +401,38 @@ let scp = (mo_sc^2) & (g_hb | l_hb | sc_co | sc_fr)
 
 acyclic scp as sc_consistent
 
+{%(*
+\paragraph{Data races}
 
+Two events \emph{conflict} if at least one is a write and they access the same location.
+\myquote{p.~45}{
+Two expression evaluations conflict if one of them modifies a memory location and the other one reads or modifies the same memory location. 
+}
+%*)}
+
+let conflict = ((W * _) | (_ * W)) & loc
+
+{%(*
+There is a \emph{data race} between a pair of events if they conflict, they are unrelated by happens-before, and their scopes are not inclusive.
+\myquote{p.~46}{
+The execution of a program contains a data race if it contains two conflicting actions $A$ and $B$ in different units of execution, and
+\begin{enumerate}
+\item at least one of $A$ or $B$ is not atomic, or $A$ and $B$ do not have inclusive memory scope, and 
+\item the actions are global actions unordered by the global-happens-before relation or are local actions unordered by the local-happens-before relation.
+\end{enumerate}
+Any such data race results in undefined behavior.
+}
+It is actually unnecessary to specify that one of the actions is non-atomic. If we define non-atomic actions as being annotated with work-item scope, then it suffices only to mention scope inclusion.
+%*)}
+
+let dr = conflict & ~symm(hb) & ~incl
+undefined_unless empty dr as data_race 
+
+
+{%(*
+\paragraph{Unsequenced races}
+There is an \emph{unsequenced race} between a pair of events if they are different events, they belong to the same work-item, they conflict, and they are unrelated by program-order.
+%*)}
+
+let ur = neq & wi & conflict & ~symm(po)
+undefined_unless empty ur as unsequenced_race 

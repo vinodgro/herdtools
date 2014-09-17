@@ -112,10 +112,11 @@ type expression =
 | Eparen of expression
 
 type instruction = 
-| Pif     of expression * instruction * instruction
-| Pwhile  of expression * instruction
-| Pblock  of instruction list
-| Pexpr   of expression
+| Pif      of expression * instruction * instruction
+| Pwhile   of expression * instruction
+| Pblock   of instruction list
+| Pexpr    of expression
+| Pbarrier of string * gpu_memory_space * mem_scope
 
 include Pseudo.Make
     (struct
@@ -202,6 +203,7 @@ let rec dump_expression e = match e with
   | Ecomma (e1,e2) -> sprintf "%s, %s" (dump_expression e1) (dump_expression e2)
   | Eparen e -> sprintf "(%s)" (dump_expression e)
 
+
 and pp_addr e = dump_expression e
 
 let rec dump_instruction i = match i with
@@ -214,6 +216,7 @@ let rec dump_instruction i = match i with
   | Pblock insts ->
     sprintf ("{%s}") (List.fold_left (fun z i -> z ^ dump_instruction i) "" insts)
   | Pexpr e -> sprintf "%s;" (dump_expression e)
+  | Pbarrier (lbl,space,ms) -> sprintf("work_group_barrier(%s,%s,%s)") lbl (pp_gpu_memory_space space) (pp_mem_scope ms)
    
 (* We don't have symbolic registers. This should be enough *)
 let fold_regs (f_reg,_f_sreg) = 

@@ -65,9 +65,14 @@ module type S = sig
 (* Barriers *)
   val is_barrier : action -> bool
   val barrier_of : action -> A.barrier option
+  val same_barrier_id : action -> action -> bool
 
 (* Commits *)
   val is_commit : action -> bool
+
+(* Local/Global Fences *)
+  val is_local_fence : action -> bool
+  val is_global_fence : action -> bool
 
 (* Mutex operations *)
   val is_mutex_action : action -> bool

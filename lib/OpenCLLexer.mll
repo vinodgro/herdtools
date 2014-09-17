@@ -137,7 +137,8 @@ rule token deep = parse
 | "memory_order_acq_rel" {MEMORDER (OpenCLBase.Acq_Rel)}
 | "memory_order_seq_cst" {MEMORDER (OpenCLBase.SC)}
 | "memory_order_relaxed" {MEMORDER (OpenCLBase.Rlx)}
-
+| "barrier" { BARRIER }
+| "work_group_barrier" { BARRIER }
 | "atomic_work_item_fence" { FENCE }
 | "atomic_load"  { LD }
 | "atomic_store" { ST }

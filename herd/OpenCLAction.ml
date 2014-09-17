@@ -20,9 +20,15 @@ module type S = sig
      OCaml module system. Same goes for types 
      "action" and "action_" *)
   module A_ : Arch.S
+
+  type fence_type = 
+    | Normal_fence
+    | Entry_fence of string
+    | Exit_fence of string
+
   type action_ =    
     | Access of Dir.dirn * A_.location * A_.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
-    | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope * fence_type
     | RMW of A_.location * A_.V.v * A_.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Blocked_RMW of A_.location
   include Action.S with module A = A_ and type action = action_
@@ -36,9 +42,14 @@ struct
   module V = A.V
   open Dir
 
+  type fence_type = 
+    | Normal_fence
+    | Entry_fence of string
+    | Exit_fence of string
+
   type action_ = 
     | Access of dirn * A.location * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
-    | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope * fence_type
     | RMW of A.location * V.v * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Blocked_RMW of A.location
   type action = action_
@@ -50,6 +61,11 @@ struct
       if withparen then sprintf "[%s]" (A.pp_location loc)
       else A.pp_location loc
 
+    let pp_fence_type = function
+      | Normal_fence -> ""
+      | Exit_fence lbl -> ", exit " ^ lbl
+      | Entry_fence lbl -> ", entry " ^ lbl
+
   let pp_action withparen a = match a with
     | Access (d,l,v,mo,s) ->
 	sprintf "%s(%s,%s)%s=%s"
@@ -58,11 +74,12 @@ struct
           (OpenCLBase.pp_mem_scope s)
           (pp_location withparen l)
 	  (V.pp_v v)
-    | Fence (mr,mo,s) -> 
-       sprintf "F(%s,%s,%s)"
+    | Fence (mr,mo,s,ft) -> 
+       sprintf "F(%s,%s,%s%s)"
          (OpenCLBase.pp_gpu_memory_space mr)
          (OpenCLBase.pp_mem_order mo)
          (OpenCLBase.pp_mem_scope s)
+         (pp_fence_type ft)
     | RMW (l,v1,v2,mo,s) ->
        	sprintf "RMW(%s,%s)%s(%s>%s)"
           (OpenCLBase.pp_mem_order mo)
@@ -168,6 +185,17 @@ struct
     let is_barrier _ = false
     let barrier_of _ = None
 
+    let same_barrier_id a1 a2 = 
+      let lbl_of = function
+        | Normal_fence -> None
+        | Entry_fence lbl -> Some lbl
+        | Exit_fence lbl -> Some lbl
+      in
+      match a1, a2 with
+      | Fence (_,_,_,ft1), Fence (_,_,_,ft2) ->
+        (ft1 != Normal_fence) && (lbl_of ft1 = lbl_of ft2)
+      | _ -> false
+
 (* Commits *)
    let is_commit _ = false
 
@@ -177,11 +205,19 @@ struct
      | _ -> false
 
    let is_global_fence a = match a with
-     | Fence (OpenCLBase.GlobalMem,_,_) -> true
+     | Fence (OpenCLBase.GlobalMem,_,_,_) -> true
      | _ -> false
 
    let is_local_fence a = match a with
-     | Fence (OpenCLBase.LocalMem,_,_) -> true
+     | Fence (OpenCLBase.LocalMem,_,_,_) -> true
+     | _ -> false
+
+   let is_entry_fence a = match a with
+     | Fence (_,_,_,Entry_fence _) -> true
+     | _ -> false
+   
+   let is_exit_fence a = match a with
+     | Fence (_,_,_,Exit_fence _) -> true
      | _ -> false
 
 (* RMWs *)
@@ -200,13 +236,13 @@ struct
    let mo_matches target a = match a with
      | Access(_,_,_,mo,_)
      | RMW (_,_,_,mo,_) 
-     | Fence (_,mo,_) -> mo=target
+     | Fence (_,mo,_,_) -> mo=target
      | _ -> false
 
    let scope_matches target a = match a with
      | Access(_,_,_,_,s)
      | RMW (_,_,_,_,s) 
-     | Fence (_,_,s) -> s=target
+     | Fence (_,_,s,_) -> s=target
      | _ -> false
 
 (* Architecture-specific sets *)
@@ -214,8 +250,10 @@ struct
      "rmw", is_rmw; 
      "brmw", is_blocked_rmw;
      "F", is_fence;
-     "gF", is_global_fence;
-     "lF", is_local_fence;
+(*   "gF", is_global_fence;
+     "lF", is_local_fence; *)
+     "exit_fence", is_exit_fence;
+     "entry_fence", is_entry_fence;
    ] @ List.map (fun (k,v) -> (k,mo_matches v)) [
      "memory_order_acquire", OpenCLBase.Acq;
      "memory_order_seq_cst", OpenCLBase.SC;

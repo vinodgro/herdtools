@@ -139,10 +139,16 @@ module Make (A : Arch.S) : (S with module A_ = A) = struct
     | Barrier b -> Some b
     | _ -> None
 
+    let same_barrier_id _ _ = false
+
 (* Commits *)
    let is_commit a = match a with
    | Commit -> true
    | _ -> false
+
+(* Local/Global Fences *)
+   let is_local_fence _ = false
+   let is_global_fence _ = false
 
 (* Mutex operations *)
    let is_mutex_action _ = false

@@ -77,6 +77,7 @@ module Make
            "rf", pr.S.rf;
            "rfe", U.ext pr.S.rf;
            "rfi", U.internal pr.S.rf;
+           "same_B", E.EventRel.restrict_rel E.same_barrier_id unv;
          ] @ 
          (match test.Test.scope_tree with
            | None -> []
@@ -107,30 +108,24 @@ module Make
            "A", E.is_atomic;
 	   "I", E.is_mem_store_init;
          ] @ 
-         ["global_loc", (fun e -> 
-              match E.location_of e with
+         ["G", (fun e -> 
+              E.is_global_fence e || 
+              (match E.location_of e with
               | Some (E.A.Location_global a) ->
                 Misc.exists_exists (fun p -> 
                     p.CAst.param_name = E.A.V.pp_v a && 
                     CType.is_ptr_to_global p.CAst.param_ty) 
                   test.Test.param_map
-              | _ -> false);
-          "local_loc", (fun e -> 
-              match E.location_of e with
+              | _ -> false));
+          "L", (fun e -> 
+              E.is_local_fence e || 
+              (match E.location_of e with
               | Some (E.A.Location_global a) ->
                 Misc.exists_exists (fun p -> 
                     p.CAst.param_name = E.A.V.pp_v a && 
                     CType.is_ptr_to_local p.CAst.param_ty) 
                   test.Test.param_map
-              | _ -> false);
-          "private_loc", (fun e -> 
-              match E.location_of e with
-              | Some (E.A.Location_global a) ->
-                Misc.exists_exists (fun p -> 
-                    p.CAst.param_name = E.A.V.pp_v a && 
-                    CType.is_ptr_to_private p.CAst.param_ty) 
-                  test.Test.param_map
-              | _ -> false);
+              | _ -> false));
           "atomicloc", (fun e -> 
               match E.location_of e with
               | Some (E.A.Location_global a) ->

@@ -108,7 +108,7 @@ module Make (C:Sem.Config)(V:Value.S)
            V.intToV 1)
 
       | OpenCL.Efence(r,mo,ms) ->
-	M.mk_singleton_es (Act.Fence (r,mo,ms)) ii >>! V.intToV 0
+	M.mk_singleton_es (Act.Fence (r,mo,ms,Act.Normal_fence)) ii >>! V.intToV 0
 
       | OpenCL.Ecomma(e1,e2) ->
         build_semantics_expr e1 ii >>= fun _v ->
@@ -125,6 +125,18 @@ module Make (C:Sem.Config)(V:Value.S)
       | OpenCL.Pexpr e ->
         build_semantics_expr e ii >>!
         (A.next_po_index ii.A.program_order_index, B.Next)
+
+      | OpenCL.Pbarrier(lbl,r,ms) ->
+        M.mk_singleton_es 
+          (Act.Fence (r,OpenCL.Rel,ms,Act.Entry_fence lbl)) ii 
+        >>> fun _ ->
+	let ii' = 
+          {ii with A.program_order_index = A.next_po_index ii.A.program_order_index;} 
+        in 
+        M.mk_singleton_es 
+          (Act.Fence (r,OpenCL.Acq,ms,Act.Exit_fence lbl)) ii' 
+        >>> fun _ ->
+        M.unitT (A.next_po_index ii'.A.program_order_index, B.Next)
       
       | OpenCL.Pif (e,i1,i2) ->
         build_semantics_expr e ii >>> fun ret ->

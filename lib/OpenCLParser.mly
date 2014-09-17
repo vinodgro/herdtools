@@ -46,7 +46,7 @@ open CType
 %token <MemSpaceMap.gpu_memory_space> MEMREGION
 %token GLOBAL LOCAL
 %token SCOPETREE DEVICE KERNEL CTA WARP THREAD
-%token LD LD_EXPLICIT ST ST_EXPLICIT EXC EXC_EXPLICIT FENCE LOCK UNLOCK SCAS WCAS
+%token LD LD_EXPLICIT ST ST_EXPLICIT EXC EXC_EXPLICIT FENCE LOCK UNLOCK SCAS WCAS BARRIER
 %token <Op.op> ATOMIC_FETCH
 %token <Op.op> ATOMIC_FETCH_EXPLICIT
 %type <(int * OpenCLBase.pseudo list) list * MiscParser.gpu_data option> deep_main 
@@ -236,6 +236,10 @@ initialiser:
 statement:
 | declaration /* (* Added to allow mid-block declarations *) */
   { $1 }
+| IDENTIFIER COLON BARRIER LPAR MEMREGION RPAR SEMI
+  { Pbarrier ($1,$5,OpenCLBase.S_workgroup) }
+| IDENTIFIER COLON BARRIER LPAR MEMREGION COMMA MEMSCOPE RPAR SEMI
+  { Pbarrier ($1,$5,$7) }
 | compound_statement
   { Pblock $1 }
 | expression_statement

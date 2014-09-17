@@ -182,9 +182,14 @@ struct
 (* Barriers *)
     let is_barrier _ = false
     let barrier_of _ = None
+    let same_barrier_id _ _ = false
 
 (* Commits *)
    let is_commit _ = false
+
+(* Local/Global Fences *)
+   let is_local_fence _ = false
+   let is_global_fence _ = false
 
 (* Fences *)
    let is_fence a = match a with

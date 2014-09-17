@@ -79,9 +79,14 @@ module type S = sig
 (* Barriers *)
   val is_barrier : event -> bool
   val barrier_of : event -> A.barrier option
+  val same_barrier_id : event -> event -> bool
 
 (* Commit *)
   val is_commit : event -> bool
+
+(* Local/Global Fences *)
+  val is_local_fence : event -> bool
+  val is_global_fence : event -> bool
 
 (* Mutex operations *)
   val is_mutex_action : event -> bool
@@ -378,9 +383,15 @@ struct
 (* Barriers *)
     let is_barrier e = Act.is_barrier e.action 
     let barrier_of e = Act.barrier_of e.action
+    let same_barrier_id e1 e2 = 
+      Act.same_barrier_id e1.action e2.action
 
 (* Commits *)
    let is_commit e = Act.is_commit e.action
+
+(* Local/Global Fences *)
+   let is_local_fence e = Act.is_local_fence e.action
+   let is_global_fence e = Act.is_global_fence e.action
 
 (* Mutex operations *)
    let is_mutex_action e = Act.is_mutex_action e.action
