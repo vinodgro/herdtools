@@ -14,31 +14,16 @@
 
 open Printf
 
-module type S = sig
-  (* Module "A_" is really the same as "A". We just 
-     need to pick a different name to pacify the 
-     OCaml module system. Same goes for types 
-     "action" and "action_" *)
-  module A_ : Arch.S
+module Make (A : Arch.S) : sig
 
   type fence_type = 
     | Normal_fence
     | Entry_fence of string
     | Exit_fence of string
 
-  type action_ =    
-    | Access of Dir.dirn * A_.location * A_.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
-    | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope * fence_type
-    | RMW of A_.location * A_.V.v * A_.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
-    | Blocked_RMW of A_.location
-  include Action.S with module A = A_ and type action = action_
-
-end
-
-module Make (A : Arch.S) : sig
  type action =    
     | Access of Dir.dirn * A.location * A.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
-    | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope * fence_type
     | RMW of A.location * A.V.v * A.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Blocked_RMW of A.location
 
@@ -53,7 +38,7 @@ end = struct
     | Entry_fence of string
     | Exit_fence of string
 
-  type action_ = 
+  type action = 
     | Access of dirn * A.location * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope * fence_type
     | RMW of A.location * V.v * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
