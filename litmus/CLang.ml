@@ -12,6 +12,7 @@
 module type Config = sig
   val comment : char
   val memory : Memory.t
+  val mode : Mode.t
 end
 
 module Make(C:Config) = struct
@@ -76,7 +77,7 @@ module Make(C:Config) = struct
       t.CTarget.finals ;
     out "}\n\n"
 
-      
+
   let dump_call chan indent env globEnv envVolatile proc t =
     let global_args =
       List.map
@@ -102,16 +103,26 @@ module Make(C:Config) = struct
       let dump_input x =
         let ty,x = dump_global_def globEnv x in
         match C.memory with
-        | Memory.Direct ->
-            out "%s%s %s = (%s)&_a->%s[_i];\n" indent ty x ty x
+        | Memory.Direct -> begin match C.mode with
+          | Mode.Std ->
+              out "%s%s %s = (%s)&_a->%s[_i];\n" indent ty x ty x
+          |  Mode.PreSi -> ()
+        end
         | Memory.Indirect ->
             out "%s%s %s = (%s)_a->%s[_i];\n" indent ty x ty x
       in
       let dump_output x =
         let ty = out_type env x in
-        let outname = CTarget.compile_out_reg proc x in
-        out "%s%s = (%s)%s;\n"
-          indent outname (CType.dump ty) (CTarget.fmt_reg x)
+        match C.mode with
+        | Mode.Std ->
+            let outname = CTarget.compile_out_reg proc x in
+            out "%s%s = (%s)%s;\n"
+              indent outname (CType.dump ty) (CTarget.fmt_reg x)
+        | Mode.PreSi ->
+            let outname = CTarget.compile_presi_out_reg proc x in
+            out "%s%s = (%s)%s;\n"
+              indent outname (CType.dump ty) (CTarget.fmt_reg x)
+
       in
       let print_start = dump_start chan in
       let print_end = dump_end chan in

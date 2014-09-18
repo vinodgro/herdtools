@@ -369,6 +369,7 @@ end = struct
           (struct
             let comment = A.comment
             let memory = O.memory
+            let mode = O.mode
           end)
       module Utils = Utils(O)(A')(Lang)(Pseudo)
       module P = CGenParser.Make(O)(Pseudo)(A')(L)

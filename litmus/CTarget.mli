@@ -22,5 +22,6 @@ type t =
 val fmt_reg : arch_reg -> string
 val dump_out_reg : int -> arch_reg -> string
 val compile_out_reg : int -> arch_reg -> string
+val compile_presi_out_reg : int -> arch_reg -> string
 val get_addrs : t -> string list
 
