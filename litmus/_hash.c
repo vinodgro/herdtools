@@ -4,15 +4,40 @@ typedef struct {
   count_t c ;
 } entry_t ;
 
+static void pp_entry(FILE *fp,entry_t *p, char **group) {
+  fprintf(fp,"%-6" PCTR ">%c",p->c,final_cond(&p->key) ? '*' : ' ') ;
+  pp_log(fp,&p->key) ;
+  fprintf(fp," -> ") ;
+  pp_param(fp,&p->p) ;
+  if (group) fprintf(fp," %s",group[p->p.part]);
+  fprintf(fp,"\n") ;
+}
+
 typedef struct {
   int nhash ;
   entry_t t[HASHSZ] ;
 } hash_t ;
 
+static void pp_hash(FILE *fp,hash_t *t,char **group) {
+  fprintf(fp,"n=%i\n",t->nhash) ;
+  for (int k = 0 ; k < HASHSZ ; k++) {
+    entry_t *p = t->t+k ;
+    if (p->c > 0) pp_entry(fp,p,group) ;
+  }
+}
+
+static void pp_hash_ok(FILE *fp,hash_t *t,char **group) {
+  for (int k = 0 ; k < HASHSZ ; k++) {
+    entry_t *p = t->t+k ;
+    if (p->c > 0 && final_cond(&p->key)) pp_entry(fp,p,group) ;
+  }
+}
+
 static void hash_init(hash_t *t) {
   t->nhash = 0 ;
   for (int k = 0 ; k < HASHSZ ; k++) t->t[k].c = 0 ;
 }
+
 
 static void hash_add(hash_t *t,log_t *key, param_t *v,count_t c) {
   uint32_t h = hash_log(key) ;

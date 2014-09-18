@@ -1011,18 +1011,7 @@ let user2_barrier_def () =
         locs
     end
 
-  let do_store t loc v =
-    if CType.is_atomic t then
-      sprintf "atomic_store_explicit(&%s,%s,memory_order_relaxed)" loc v
-    else
-      sprintf "%s = %s" loc v
-
-  let do_load t loc =
-    if CType.is_atomic t then
-      sprintf "atomic_load_explicit(&%s,memory_order_relaxed)" loc
-    else loc
-
-  let do_copy t loc1 loc2 = do_store t loc1 (do_load t loc2)
+  let do_copy t loc1 loc2 = U.do_store t loc1 (U.do_load t loc2)
 
   let dump_check_globals env test =
     if do_check_globals then begin
@@ -1052,14 +1041,14 @@ let user2_barrier_def () =
         let v = find_global_init a test in
         match memory,t with
         | (Indirect,CType.Pointer _) ->
-            let load = do_load t (dump_a_leftval a) in
+            let load = U.do_load t (dump_a_leftval a) in
             sprintf "%s != %s"
               load (dump_a_v_casted v)
         | Indirect,_ ->
-            let load = do_load t (sprintf "mem_%s[_i]" a) in
+            let load = U.do_load t (sprintf "mem_%s[_i]" a) in
             sprintf "%s != %s" load (A.Out.dump_v v)
         | (Direct,_) ->
-            let load = do_load t (dump_leftval a) in
+            let load = U.do_load t (dump_leftval a) in
             sprintf "%s != %s"
               load (dump_a_v_casted v) in
       List.iter
@@ -1128,9 +1117,9 @@ let user2_barrier_def () =
               let a = dump_loc_name loc in
               let t = U.find_type loc env in
               let load1 =
-                do_load t (sprintf "cpy_%s[_id][_i]" a)
+                U.do_load t (sprintf "cpy_%s[_id][_i]" a)
               and load2 =
-                do_load t (sprintf "cpy_%s[_nxt_id][_i]" a) in
+                U.do_load t (sprintf "cpy_%s[_nxt_id][_i]" a) in
               O.fiii "if (%s != %s) { _found = 1; break; }" load1 load2)
             locs ;
           O.oii "}" ;
@@ -1371,10 +1360,10 @@ let user2_barrier_def () =
         let ins =
           match is_ptr t,memory with
           | false,Indirect ->
-              do_store t
+              U.do_store t
                 (sprintf "_a->mem_%s[_i]" a) (dump_a_v v)
           | _,_ ->
-              do_store t
+              U.do_store t
                 (dump_a_leftval a) (dump_a_v_casted v) in
         O.fii "%s;" ins)
       test.T.globals ;
@@ -1428,19 +1417,8 @@ let user2_barrier_def () =
     O.f "\n\n%s\n\n" (String.concat "\n" test.T.global_code);
     List.iter
       (fun (proc,(out,(outregs,envVolatile))) ->
-        let myenv =
-          U.select_types
-            (function
-              | A.Location_reg (p,reg) when proc = p ->
-                  Some reg
-              | A.Location_global _ | A.Location_reg _ -> None)
-            env
-        and global_env =
-          U.select_types
-            (function
-              | A.Location_reg _ -> None
-              | A.Location_global loc -> Some loc)
-            env in
+        let myenv = U.select_proc proc env
+        and global_env = U.select_global env in
         if Cfg.ascall then
           Lang.dump_fun
             O.out myenv global_env envVolatile proc out ;
@@ -1871,7 +1849,7 @@ let user2_barrier_def () =
           O.fiii "%s %s = %s;"
             (CType.dump (CType.strip_atomic t))
             (dump_loc_copy loc)
-            (do_load t (dump_ctx_loc "ctx." loc)) ;
+            (U.do_load t (dump_ctx_loc "ctx." loc)) ;
           if Cfg.cautious then O.oiii "mcautious();")
         locs ;
       O.oiii "outcome_t o;" ;
@@ -1887,7 +1865,7 @@ let user2_barrier_def () =
             O.fiv
               "if (%s != %s) fatal(\"%s: global %s unstabilized\") ;"
               (dump_loc_copy loc)
-              (do_load t
+              (U.do_load t
                  (sprintf "ctx.cpy_%s[_p][_i]" (dump_loc_name loc)))
               (doc.Name.name)  (dump_loc_name loc) ;
             loop_proc_postlude indent3)

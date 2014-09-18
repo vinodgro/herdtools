@@ -16,6 +16,7 @@ open Printf
 
 let fmt_out_reg proc str = sprintf "out_%i_%s" proc str
 let fmt_index name = sprintf "%s[_i]" name
+let fmt_presi_index name = sprintf "_log->%s" name
 
 (* Value (address) output *)
 module type Config = sig

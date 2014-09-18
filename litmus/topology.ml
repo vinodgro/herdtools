@@ -400,7 +400,7 @@ let part pp_part maxelt maxpart k r =
   end ;    
   ()
 
-  let handle_groups all_gs =
+  let handle_groups sz all_gs =
     O.o "static char *group[] = {" ;
     List.iter
       (fun g -> O.f "\"%s\"," (pp_gss g))
@@ -408,7 +408,7 @@ let part pp_part maxelt maxpart k r =
     O.o "};" ;
     O.o "" ;
     O.f "#define SCANSZ %i" (List.length all_gs) ;
-    O.f "#define SCANLINE %i" (ninst*nthreads) ;
+    O.f "#define SCANLINE %i" sz ;
     O.o "" ;
     O.o "static count_t ngroups[SCANSZ];" ;
     O.o "" ;
@@ -420,7 +420,7 @@ let part pp_part maxelt maxpart k r =
     let all_gs =  groups [] procs in
     O.o "};" ;
     O.o "" ;
-    handle_groups (List.rev all_gs)
+    handle_groups (nthreads*ninst) (List.rev all_gs)
 
   let handle_table name mk gss cpus =
     O.f "static int %s[] = {" name ;
@@ -450,7 +450,7 @@ let part pp_part maxelt maxpart k r =
     let gss = List.rev gss and cpus = List.rev cpus in
     handle_table "inst" mk_inst gss cpus ;
     handle_table "role" mk_role gss cpus ;
-    handle_groups gss ;
+    handle_groups avail gss ;
     ()
 
 

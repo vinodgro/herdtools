@@ -3,6 +3,7 @@
 /************/
 
 typedef struct {
+  int id ;
   int *mem;
   log_t out;
   tb_t next_tb;
@@ -11,7 +12,8 @@ typedef struct {
 } ctx_t ;
 
 
-static void instance_init (ctx_t *p, int *mem) {
+static void instance_init (ctx_t *p, int id, int *mem) {
+  p->id = id ;
   p->mem = mem ;
   hash_init(&p->t) ;
   barrier_init(&p->b,N) ;
@@ -45,23 +47,28 @@ typedef struct {
 
 static global_t global  = { inst, role, group, ngroups, mem, } ;
 
-static void init_global(global_t *g) {
-  /* Global barrier */
-  barrier_init(&g->gb,AVAIL) ;
-  /* Align  to cache line */
-  uintptr_t x = (uintptr_t)(g->mem) ;
-  x += LINE-1 ; x /=  LINE ; x *= LINE ;
-  int *m = (int *)x ;
+static void init_global(global_t *g,int id) {
+  if (id == 0) {
+    /* Global barrier */
+    barrier_init(&g->gb,AVAIL) ;
+    /* Align  to cache line */
+    uintptr_t x = (uintptr_t)(g->mem) ;
+    x += LINE-1 ; x /=  LINE ; x *= LINE ;
+    int *m = (int *)x ;
+    
+    /* Instance contexts */
+    for (int k = 0 ; k < NEXE ; k++) {
+      instance_init(&g->ctx[k],k,m) ;
+      m += NVARS*LINESZ ;
+    }
 
-  /* Instance contexts */
-  for (int k = 0 ; k < NEXE ; k++) {
-    instance_init(&g->ctx[k],m) ;
-    m += NVARS*LINESZ ;
+    /* Topology */
+    g->inst = inst ;
+    g->role = role ;
+    g->go = 1 ;
+  } else {
+    while (g->go == 0) ;
   }
-
-  /* Topology */
-  g->inst = inst ;
-  g->role = role ;
 }
 
 /******************/
@@ -74,3 +81,17 @@ typedef struct {
   ctx_t *ctx ;
 } thread_ctx_t ;
 
+
+static void set_role(global_t *g,thread_ctx_t *c,int part) {
+  barrier_wait(&g->gb) ;
+  int idx = SCANLINE*part+c->id ;
+  int inst = g->inst[idx] ;
+  if (inst < g->ninst) {
+    c->ctx = &g->ctx[inst] ;
+    c->role = g->role[idx] ;
+  } else {
+    c->ctx = NULL ;
+    c->role = -1 ;
+  }
+  barrier_wait(&g->gb) ;
+}

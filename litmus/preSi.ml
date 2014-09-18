@@ -66,7 +66,7 @@ end = struct
     let n = T.get_nprocs test in
     O.f "#define N %i" n ;
     let nvars = List.length test.T.globals in
-    O.f "#define NVARS %i" nvars ;
+    O.f "#define NVARS %i" nvars ;    
     let nexe =
       match Cfg.avail  with 
       | None -> 1
@@ -102,7 +102,7 @@ end = struct
 let nsteps = 5
 
 let dump_delay_def () =
-  O.f "#define NSTEPS %i\n" nsteps ;
+  O.f "#define NSTEPS %i" nsteps ;
   O.o "#define STEP (DELTA_TB/(2*(NSTEPS-1)))" ;
   ()
 
@@ -317,12 +317,27 @@ let dump_loc_tag = function
 (**************)
 (* Parameters *)
 (**************)
-  let dump_param_tag s = s ^"p"
 
-  let dump_parameters env test =
-    let v_tags = List.map (fun (s,_) -> dump_param_tag s)  test.T.globals
-    and d_tags =
-      List.map (sprintf "d%i") (Misc.interval 0 (T.get_nprocs test)) in
+  let pvtag s = s ^"p"
+  let pdtag i = sprintf "d%i" i
+
+  let get_param_vars test = match  test.T.globals with
+  | [] -> []
+  | _::xs -> xs
+
+  let get_param_delays test  = Misc.interval 1 (T.get_nprocs test)
+
+  let mk_get_param_pos test =
+    let xs =  get_param_vars test in
+    let _,m =
+      List.fold_left
+        (fun (i,m) (a,_) -> i+1,StringMap.add a (i+1) m)
+        (0,StringMap.empty) xs in
+    fun x -> StringMap.find x m
+
+  let dump_parameters env test =    
+    let v_tags = List.map (fun (s,_) -> pvtag s) (get_param_vars test)
+    and d_tags = List.map pdtag (get_param_delays test) in
       
     O.o "/**************/" ;
     O.o "/* Parameters */" ;
@@ -385,6 +400,164 @@ let dump_loc_tag = function
     ObjUtil.insert_lib_file O.o "_instance.c" ;
     O.o "" ;
     ()
+
+(*****************)
+(* Run test code *)
+(*****************)
+
+let find_addr_type a env = U.find_type (A.Location_global a) env
+
+let dump_run_thread
+    env test get_param_pos global_env (proc,(out,(outregs,envVolatile))) =
+  let my_regs = U.select_proc proc env in
+  let addrs = A.Out.get_addrs out in
+  O.fi "case %i: {" proc ;
+  (* Delays *)
+  O.oii "int _delay = DELTA_TB;" ;
+  if proc <> 0 then
+    O.fii "_delay += (_p->d%i - (NSTEPS-1)/2)*STEP;" proc ;
+  (* Define locations *)
+  let addrs0 =  List.map fst test.T.globals in
+  List.iter
+    (fun addr ->
+      let t =  CType.dump (find_addr_type addr env) in
+      try
+        let pos = get_param_pos addr in
+        O.fii "volatile %s *%s = _mem + LINESZ*_p->%s + %i;"
+          t addr (pvtag addr) pos
+      with Not_found ->
+        O.fii "volatile %s *%s = _mem;" t addr)
+    (if proc = 0 then addrs0 else addrs) ;
+  (* Initialize them, if role is zero *)
+  if proc = 0 then begin
+    List.iter
+      (fun (a,t) ->
+        let v = A.find_in_state (A.Location_global a) test.T.init in
+        let ins =
+          U.do_store t (sprintf "*%s" a)
+            (let open Constant in
+            match v with
+            | Concrete i -> sprintf "%i" i
+            | Symbolic s ->
+                let t2 = find_addr_type s env in
+                if t=t2 then s else
+                sprintf "(%s)%s" (CType.dump t) s) in
+        O.fii "%s;" ins)
+      test.T.globals
+  end ;
+  (* And cache-flush them *)
+  List.iter (fun addr -> O.fii "cache_flush((void *)%s);" addr)
+    (if proc = 0 then addrs0 else addrs) ;
+  (* Synchronise *)
+  if have_timebase then O.oii "_ctx->next_tb = read_timebase();" ;
+  O.oii "barrier_wait(_b);" ;
+  if have_timebase then begin
+    O.oii "tb_t _tb0 = _ctx->next_tb;" ;
+    O.oii "int _delta;" ;
+    O.oii "do { _delta = read_timebase() - _tb0; } while (_delta < _delay);"
+  end ;
+  (* Dump code *)
+  Lang.dump 
+    O.out (Indent.as_string Indent.indent2)
+    my_regs global_env envVolatile proc out ;
+  let locs = U.get_final_globals test in
+  O.oii "barrier_wait(_b);" ;
+  if proc = 0 then begin
+    A.LocSet.iter
+      (fun loc ->
+        let tag = dump_loc_tag loc in
+        O.fii "%s = *%s;" (OutUtils.fmt_presi_index tag) tag)
+      locs ;
+    O.oii "hash_add(&_ctx->t,_log,_p,1);"      
+  end ;
+  O.oii "break; }" ;
+  O.o "" ;
+  ()
+  
+let dump_run_def env test =
+  O.o "/*************/" ;
+  O.o "/* Test code */" ;
+  O.o "/*************/" ;
+  O.o "" ;
+  O.o "inline static void do_run(thread_ctx_t *_c, param_t *_p) {" ;  
+  O.oi "int _role = _c->role;" ;
+  O.oi "if (_role < 0) return;" ;
+  O.oi "ctx_t *_ctx = _c->ctx;" ;
+  O.oi "int *_mem = _ctx->mem;" ;
+  O.oi "sense_t *_b = &_ctx->b;" ;
+  O.oi "log_t *_log = &_ctx->out;" ;
+  O.o "" ;
+  O.oi "barrier_wait(_b);" ;
+  O.oi "switch (_role) {" ;
+  let global_env = U.select_global env in
+  List.iter
+    (dump_run_thread env test (mk_get_param_pos test) global_env)
+    test.T.code ;
+(* Collect *)
+  O.oi "}" ;  
+  O.o "}" ;
+  O.o ""
+
+(********)
+(* zyva *)
+(********)
+
+let dump_scan_def tname env test =
+  O.o "/*******************/" ;
+  O.o "/* Forked function */" ;
+  O.o "/*******************/" ;
+  O.o "" ;
+  O.o "typedef struct {" ;
+  O.oi "int id;" ;
+  O.oi "global_t *g;" ;
+  O.o "} scan_t;" ;
+  O.o "" ;
+  O.o "static void *scan(void *_a) {" ;
+  O.oi "scan_t *a = (scan_t*)_a;" ;
+  O.oi "int id = a->id;" ;
+  O.oi "global_t *g = a->g;" ;
+  O.oi "param_t p; " ;
+  O.oi "thread_ctx_t c;" ;
+  O.o "" ;
+  O.oi "c.id = id;" ;
+  O.oi
+    (if Cfg.force_affinity then
+      sprintf
+      "force_one_affinity(id,AVAIL,g->verbose,\"%s\");"
+        tname
+    else
+      "write_one_affinity(id);") ;
+  O.oi "init_global(g,id);" ;
+  O.oi "for (p.part = 0 ; p.part < SCANSZ ; p.part++) {" ;
+  O.oii "set_role(g,&c,p.part);" ;
+  let rec loop_delay i = function
+    | [] ->
+        O.ox i "do_run(&c,&p);"
+    | d::ds ->
+        let tag = pdtag d in
+        O.fx i "for (p.%s = 0 ; p.%s < NSTEPS ; p.%s++)" tag tag tag ;
+        loop_delay (Indent.tab i) ds in
+  let rec loop_vars i = function
+    | [] -> loop_delay i (get_param_delays test)
+    | (x,_)::xs ->
+        let tag = pvtag x in
+        O.fx i "for (p.%s = 0 ; p.%s < NVARS ; p.%s++)" tag tag tag ;
+        loop_vars (Indent.tab i) xs in
+  loop_vars Indent.indent2 (get_param_vars test) ;
+  O.oi "}" ;
+
+  O.oi "return NULL;" ;
+  O.o "}" ;
+  O.o ""
+
+(********)
+(* Main *)
+(********)
+
+let dump_main_def env test =
+  ObjUtil.insert_lib_file O.o "_main.c" ;
+  ()
+
 (***************)
 (* Entry point *)
 (***************)
@@ -403,6 +576,9 @@ let dump_loc_tag = function
     dump_parameters env test ;
     dump_hash_def env test ;
     dump_instance_def env test ;
+    dump_run_def env test ;
+    dump_scan_def doc.Name.name env test ;
+    dump_main_def env test ;
     ()
     
 end

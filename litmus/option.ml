@@ -158,10 +158,9 @@ let ppcopt =
     word = Word.WXX; line = 1024; }
 let armopt =
   { delay = 1024; gccopts = "-O2";
-    word = Word.WXX; line = 512;} (* How knows?? *)
+    word = Word.WXX; line = 64;} (* cortexa9 -> 32, cortex-a15 -> 64 *)
 let copt =
-  { delay = 2048; gccopts = ""; word = Word.WXX; line = 1024}
-
+  { delay = 2048; gccopts = ""; word = Word.WXX; line = 1024} (* maximal *)
 let get_default arch = match arch with
 | `X86 -> x86opt
 | `PPCGen
