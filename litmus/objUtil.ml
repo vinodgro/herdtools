@@ -74,6 +74,7 @@ module type Config = sig
   val driver : Driver.t
   val affinity : Affinity.t
   val arch : Archs.t
+  val mode : Mode.t
 end
 
 module Make(O:Config)(Tar:Tar.S) =
@@ -115,8 +116,14 @@ module Make(O:Config)(Tar:Tar.S) =
       in
       let fnames = cpy fnames "utils" ".c" in
       let fnames = cpy fnames "utils" ".h" in
-      let fnames = cpy fnames "outs" ".c" in
-      let fnames = cpy fnames "outs" ".h" in
+      let fnames =
+        match O.mode with
+        | Mode.Std ->
+            let fnames = cpy fnames "outs" ".c" in
+            let fnames = cpy fnames "outs" ".h" in
+            fnames
+        | Mode.PreSi ->
+            fnames in
       let fnames =
         match O.affinity with
         | Affinity.No -> fnames

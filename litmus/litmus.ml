@@ -278,6 +278,7 @@ let () =
       let isync = !isync
       let size = !size
       let runs = !runs
+      let noccs = !noccs
       let avail = !avail
       let stride = if !stride > 0 then Some !stride else None
       let timeloop = !timeloop

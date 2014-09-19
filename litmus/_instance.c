@@ -37,10 +37,12 @@ typedef struct {
   int *mem ;
   /* Runtime control */
   int verbose ;
-  int size,ninst ;
+  int size,nruns,nexe,noccs ;
   /* Synchronisation for all threads */
   volatile int go ; /* First synchronisation */
   sense_t gb ;    /* All following synchronisation */
+  /* Count 'interesting' outcomes */
+  volatile int ok ;
   /* Att instance contexts */
   ctx_t ctx[NEXE] ; /* All test instance contexts */
 } global_t ;
@@ -65,9 +67,11 @@ static void init_global(global_t *g,int id) {
     /* Topology */
     g->inst = inst ;
     g->role = role ;
+    mbar() ;
     g->go = 1 ;
   } else {
     while (g->go == 0) ;
+    mbar() ;
   }
 }
 
@@ -86,7 +90,7 @@ static void set_role(global_t *g,thread_ctx_t *c,int part) {
   barrier_wait(&g->gb) ;
   int idx = SCANLINE*part+c->id ;
   int inst = g->inst[idx] ;
-  if (inst < g->ninst) {
+  if (0 <= inst && inst < g->nexe) {
     c->ctx = &g->ctx[inst] ;
     c->role = g->role[idx] ;
   } else {

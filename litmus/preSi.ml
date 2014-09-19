@@ -18,6 +18,7 @@ module type Config = sig
   val driver : Driver.t
   val word : Word.t
   val line : int
+  val noccs : int
   val logicalprocs : int list option
   val smt : int
   val nsockets : int
@@ -52,8 +53,13 @@ end = struct
 
   let have_timebase = have_timebase Cfg.sysarch
 
+(*************)
 (* Utilities *)
+(*************)
+
   module U = SkelUtil.Make(P)(A)(T)
+
+  let find_addr_type a env = U.find_type (A.Location_global a) env
 
 (***************)
 (* File header *)
@@ -73,6 +79,7 @@ end = struct
       | Some a -> if a < n then 1 else a / n in
     O.f "#define NEXE %i" nexe ;
     O.f "#define NTHREADS %i" (nexe*n) ;
+    O.f "#define NOCCS %i" Cfg.noccs ;
     if have_timebase then begin
       let delta = sprintf "%i" Cfg.delay in
       if have_timebase then O.f "#define DELTA_TB %s" delta
@@ -211,6 +218,8 @@ let dump_loc_tag = function
       locs ^
     "\""
 
+  let dump_addr_idx s = sprintf "_idx_%s" s
+
   let dump_outcomes env test =
     let locs = U.get_final_locs test in
     O.o "/************/" ;
@@ -221,16 +230,52 @@ let dump_loc_tag = function
     A.LocSet.iter
       (fun loc ->
         let t = U.find_type loc env in
-        O.fi "%s %s;" (CType.dump t) (dump_loc_tag loc))
+        O.fi "%s %s;"
+          (if CType.is_ptr t then "int" else CType.dump t)
+          (dump_loc_tag loc))
       locs ;
     O.o "} log_t;" ;
     O.o "" ;
+    if U.ptr_in_outs env test then begin
+      List.iteri
+        (fun k (a,_) ->
+          O.f "static const int %s = %i;"
+            (dump_addr_idx a) (k+1))
+        test.T.globals ;
+      O.o "" ;
+    (*  Translation to indices *)
+      let dump_test (s,_) =
+        O.fi "else if (v_addr == %s) return %s;"
+          s (dump_addr_idx s) in
+      O.f "static int idx_addr(void *v_addr%s) {"
+        (String.concat ""
+           (List.map
+              (fun (a,_) -> sprintf ",void *%s" a)
+              test.T.globals)) ;      
+      O.oi "if (v_addr == NULL) { return 0;}" ;
+      List.iter dump_test test.T.globals ;
+      O.oi "else { fatal(\"???\"); return -1;}" ;
+      O.o "}" ;
+      O.o "" ;
+(* Pretty-print indices *)
+      let naddrs = List.length test.T.globals in
+      O.f "static char *pretty_addr[%i] = {\"0\",%s};"
+        (naddrs+1)
+        (String.concat ""
+           (List.map (fun (s,_) -> sprintf "\"%s\"," s) test.T.globals)) ;
+      O.o "" ;
+    end ;
 
     O.o "/* Dump of outcome */" ;
     O.o "static void pp_log(FILE *chan,log_t *p) {" ;
     let fmt = fmt_outcome env locs
     and args =
-      A.LocSet.map_list (fun loc -> sprintf "p->%s" (dump_loc_tag loc)) locs in
+      A.LocSet.map_list
+        (fun loc ->
+          if U.is_ptr loc env then
+            sprintf "pretty_addr[p->%s]" (dump_loc_tag loc)
+          else
+            sprintf "p->%s" (dump_loc_tag loc)) locs in
     O.fi "fprintf(chan,%s);" (String.concat "," (fmt::args)) ;            
     O.o "}" ;
     O.o "" ;
@@ -291,7 +336,7 @@ let dump_loc_tag = function
           let compare = A.V.compare
           let dump = function
             | Concrete i -> sprintf "%i" i
-            | Symbolic s -> sprintf "p->%s" s
+            | Symbolic s -> dump_addr_idx s
         end
         module Loc = struct
           type t = A.location
@@ -303,7 +348,16 @@ let dump_loc_tag = function
 
   let dump_cond_fun env test =    
     let cond = test.T.condition in
-    DC.fundef_onlog cond
+    DC.fundef_onlog cond ;
+    O.o "inline static int final_ok(log_t *p) {" ;
+    O.fi
+      "return %sfinal_cond(p);"
+      (let open ConstrGen in
+      match cond with
+      | ExistsState _|NotExistsState _ -> ""
+      | ForallStates _ -> "!") ;
+    O.o "}" ;
+    O.o ""
 
   let _dump_cond_fun_call test dump_loc dump_val =
     DC.funcall (test.T.condition) dump_loc dump_val
@@ -320,6 +374,7 @@ let dump_loc_tag = function
 
   let pvtag s = s ^"p"
   let pdtag i = sprintf "d%i" i
+  let pctag (i,s) = sprintf "c_%i_%s" i s
 
   let get_param_vars test = match  test.T.globals with
   | [] -> []
@@ -335,21 +390,33 @@ let dump_loc_tag = function
         (0,StringMap.empty) xs in
     fun x -> StringMap.find x m
 
+  let get_param_caches test =
+    let r =
+      List.map
+        (fun (proc,(out,_)) ->
+          List.map (fun a -> proc,a) (A.Out.get_addrs out))
+        test.T.code in
+    List.flatten r
+
   let dump_parameters env test =    
     let v_tags = List.map (fun (s,_) -> pvtag s) (get_param_vars test)
-    and d_tags = List.map pdtag (get_param_delays test) in
+    and d_tags = List.map pdtag (get_param_delays test)
+    and c_tags = List.map pctag (get_param_caches test) in
       
     O.o "/**************/" ;
     O.o "/* Parameters */" ;
     O.o "/**************/" ;
     O.o "" ;
+    O.o "typedef enum { cflush, ctouch, cmax, } dir_t;" ;
+    O.o "" ;
     O.o "typedef struct {" ;
     O.oi "int part;" ;
     O.fi "int %s;" (String.concat "," v_tags) ;
     O.fi "int %s;" (String.concat "," d_tags) ;
+    O.fi "dir_t %s;" (String.concat "," c_tags) ;
     O.o "} param_t;" ;
     O.o "" ;
-    let all_tags = "part"::v_tags@d_tags in
+    let all_tags = "part"::v_tags@d_tags@c_tags in
     O.o "static void pp_param(FILE *fp,param_t *p) {" ;
     let fmt =
       "\"{" ^
@@ -394,9 +461,6 @@ let dump_loc_tag = function
     O.o "/* Cache line */" ;
     O.f "#define LINE %i" Cfg.line ;
     O.o "" ;
-    O.o "/************/" ;
-    O.o "/* Instance */" ;
-    O.o "/************/" ;
     ObjUtil.insert_lib_file O.o "_instance.c" ;
     O.o "" ;
     ()
@@ -404,8 +468,6 @@ let dump_loc_tag = function
 (*****************)
 (* Run test code *)
 (*****************)
-
-let find_addr_type a env = U.find_type (A.Location_global a) env
 
 let dump_run_thread
     env test get_param_pos global_env (proc,(out,(outregs,envVolatile))) =
@@ -442,12 +504,16 @@ let dump_run_thread
                 let t2 = find_addr_type s env in
                 if t=t2 then s else
                 sprintf "(%s)%s" (CType.dump t) s) in
-        O.fii "%s;" ins)
+        O.fii "%s; cache_flush((void *)%s);" ins a)
       test.T.globals
   end ;
-  (* And cache-flush them *)
-  List.iter (fun addr -> O.fii "cache_flush((void *)%s);" addr)
-    (if proc = 0 then addrs0 else addrs) ;
+  (* And cache-instruct them *)
+  O.oii "barrier_wait(_b);" ;
+  List.iter (fun addr ->
+    O.fii "if (_p->%s == ctouch) cache_touch((void *)%s);"
+      (pctag (proc,addr)) addr ;
+    O.fii "else cache_flush((void *)%s);" addr)
+    addrs ;
   (* Synchronise *)
   if have_timebase then O.oii "_ctx->next_tb = read_timebase();" ;
   O.oii "barrier_wait(_b);" ;
@@ -468,10 +534,10 @@ let dump_run_thread
         let tag = dump_loc_tag loc in
         O.fii "%s = *%s;" (OutUtils.fmt_presi_index tag) tag)
       locs ;
-    O.oii "hash_add(&_ctx->t,_log,_p,1);"      
+    O.oii "hash_add(&_ctx->t,_log,_p,1);" ;
+    O.oii "if (final_ok(_log)) ok = 1;"
   end ;
   O.oii "break; }" ;
-  O.o "" ;
   ()
   
 let dump_run_def env test =
@@ -479,9 +545,10 @@ let dump_run_def env test =
   O.o "/* Test code */" ;
   O.o "/*************/" ;
   O.o "" ;
-  O.o "inline static void do_run(thread_ctx_t *_c, param_t *_p) {" ;  
+  O.o "inline static int do_run(thread_ctx_t *_c, param_t *_p) {" ;
+  O.oi "int ok = 0;" ;
   O.oi "int _role = _c->role;" ;
-  O.oi "if (_role < 0) return;" ;
+  O.oi "if (_role < 0) return ok;" ;
   O.oi "ctx_t *_ctx = _c->ctx;" ;
   O.oi "int *_mem = _ctx->mem;" ;
   O.oi "sense_t *_b = &_ctx->b;" ;
@@ -493,8 +560,8 @@ let dump_run_def env test =
   List.iter
     (dump_run_thread env test (mk_get_param_pos test) global_env)
     test.T.code ;
-(* Collect *)
   O.oi "}" ;  
+  O.oi "return ok;" ;
   O.o "}" ;
   O.o ""
 
@@ -528,24 +595,37 @@ let dump_scan_def tname env test =
     else
       "write_one_affinity(id);") ;
   O.oi "init_global(g,id);" ;
-  O.oi "for (p.part = 0 ; p.part < SCANSZ ; p.part++) {" ;
-  O.oii "set_role(g,&c,p.part);" ;
-  let rec loop_delay i = function
+  O.oi "int nrun = 0;" ;
+  O.oi "g->ok = 0;" ;
+  O.oi "do {" ;
+  O.oii "for (p.part = 0 ; p.part < SCANSZ ; p.part++) {" ;
+  O.oiii "set_role(g,&c,p.part);" ;
+  (* Enumerate parameters *)
+  let rec loop_delays i = function
     | [] ->
-        O.ox i "do_run(&c,&p);"
+        O.ox i "if (do_run(&c,&p)) (void)__sync_add_and_fetch(&g->ok,1);" ;
+        ()
     | d::ds ->
         let tag = pdtag d in
         O.fx i "for (p.%s = 0 ; p.%s < NSTEPS ; p.%s++)" tag tag tag ;
-        loop_delay (Indent.tab i) ds in
+        loop_delays (Indent.tab i) ds in
+  let rec loop_caches i = function
+    | [] -> loop_delays i (get_param_delays test)
+    | c::cs ->
+        let tag = pctag c in
+        O.fx i "for (p.%s = 0 ; p.%s < cmax ; p.%s++)" tag tag tag ;
+        loop_caches (Indent.tab i) cs in
   let rec loop_vars i = function
-    | [] -> loop_delay i (get_param_delays test)
+    | [] -> loop_caches i (get_param_caches test)
     | (x,_)::xs ->
         let tag = pvtag x in
         O.fx i "for (p.%s = 0 ; p.%s < NVARS ; p.%s++)" tag tag tag ;
         loop_vars (Indent.tab i) xs in
-  loop_vars Indent.indent2 (get_param_vars test) ;
-  O.oi "}" ;
-
+  loop_vars Indent.indent3 (get_param_vars test) ;
+  O.oii "}" ;
+  O.oii "barrier_wait(&g->gb);" ;
+  O.oii "if (++nrun >= g->nruns) break;" ;
+  O.oi "} while (g->ok < g->noccs);" ;
   O.oi "return NULL;" ;
   O.o "}" ;
   O.o ""

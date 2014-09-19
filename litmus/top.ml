@@ -25,6 +25,7 @@ module type CommonConfig = sig
   val avail : int option
   val runs : int
   val size : int
+  val noccs : int
   val isync : bool
   val speedcheck : Speedcheck.t
   val safer : Safer.t
@@ -89,6 +90,7 @@ module type Config = sig
   include Compile.Config
 (* Additions for Presi *)
   val line : int
+  val noccs : int
 (* End of additions *)
   include Skel.Config
   include Run.Config

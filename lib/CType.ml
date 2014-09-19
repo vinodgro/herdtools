@@ -32,6 +32,11 @@ let rec  dump = function
   | Global t -> sprintf "__global %s" (dump t)
   | Local t -> sprintf "__local %s" (dump t)
 
+let rec is_ptr =  function
+  | Pointer _ -> true
+  | Atomic t|Volatile t -> is_ptr t
+  | _ -> false
+
 let rec is_global = function
   | Volatile t | Atomic t | Pointer t -> is_global t
   | Global _ -> true
@@ -46,7 +51,6 @@ let rec is_private = function
   | Volatile t | Atomic t | Pointer t -> is_private t
   | Local _ | Global _ -> false
   | Base _ -> true
-
 let rec is_atomic = function
   | Volatile t | Local t | Global t -> is_atomic t
   | Atomic _ -> true

@@ -49,6 +49,7 @@ val hint : string option ref
 val avail : int option ref
 val size : int ref
 val runs : int ref
+val noccs : int ref
 val barrier : Barrier.t ref
 val verbose_barrier : bool ref
 val verbose_prelude : bool option ref

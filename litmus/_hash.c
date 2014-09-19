@@ -5,7 +5,7 @@ typedef struct {
 } entry_t ;
 
 static void pp_entry(FILE *fp,entry_t *p, char **group) {
-  fprintf(fp,"%-6" PCTR ">%c",p->c,final_cond(&p->key) ? '*' : ' ') ;
+  fprintf(fp,"%-6" PCTR ">%c",p->c,final_ok(&p->key) ? '*' : ' ') ;
   pp_log(fp,&p->key) ;
   fprintf(fp," -> ") ;
   pp_param(fp,&p->p) ;
@@ -29,7 +29,7 @@ static void pp_hash(FILE *fp,hash_t *t,char **group) {
 static void pp_hash_ok(FILE *fp,hash_t *t,char **group) {
   for (int k = 0 ; k < HASHSZ ; k++) {
     entry_t *p = t->t+k ;
-    if (p->c > 0 && final_cond(&p->key)) pp_entry(fp,p,group) ;
+    if (p->c > 0 && final_ok(&p->key)) pp_entry(fp,p,group) ;
   }
 }
 

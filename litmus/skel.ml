@@ -691,15 +691,6 @@ let user2_barrier_def () =
     ()
 
 
-  let rec is_ptr = function
-    | CType.Pointer _ -> true
-    | CType.Atomic t|CType.Volatile t -> is_ptr t
-    | _ -> false
-
-  let ptr_in_outs env test =
-    let locs = U.get_final_locs test in
-    A.LocSet.exists (fun loc -> is_ptr (U.find_type loc env)) locs
-
   let iter_outs f proc = List.iter (f proc)
 
   let iter_all_outs f test =
@@ -782,7 +773,7 @@ let user2_barrier_def () =
   let dump_defs_outs doc env test =
     (* If some of the output registers is of pointer type,
        we need a special function to print addresses *)
-    if ptr_in_outs env test then begin
+    if U.ptr_in_outs env test then begin
 (*  Translation to indices *)
       let dump_test k = match memory with
       | Direct ->
@@ -1067,7 +1058,7 @@ let user2_barrier_def () =
                   (if do_randompl then "rand_bit(&(_a->seed)) && " else "")
                   (sprintf "_a->%s[_i] != %s"
                      (A.Out.dump_out_reg proc reg)
-                     (match is_ptr t with
+                     (match CType.is_ptr t with
                      | false -> sentinel
                      | true -> "NULL")))
               outs)
@@ -1358,7 +1349,7 @@ let user2_barrier_def () =
         let v = A.find_in_state (A.Location_global a) test.T.init in
         if Cfg.cautious then O.oii "mcautious();" ;
         let ins =
-          match is_ptr t,memory with
+          match CType.is_ptr t,memory with
           | false,Indirect ->
               U.do_store t
                 (sprintf "_a->mem_%s[_i]" a) (dump_a_v v)
@@ -1375,7 +1366,7 @@ let user2_barrier_def () =
               if Cfg.cautious then O.oii "mcautious();" ;
               O.fii "_a->%s[_i] = %s;"
                 (A.Out.dump_out_reg proc reg)
-                (match is_ptr t with
+                (match CType.is_ptr t with
                 | false -> sentinel
                 | true -> "NULL"))
             outs)
@@ -1645,7 +1636,7 @@ let user2_barrier_def () =
               O.fx iloop "_o[%s_f] = %s;"
                 (dump_loc_name loc)
                 (let sloc =  dump_ctx_loc "_a->" loc in
-                match is_ptr (U.find_type loc env) with
+                match U.is_ptr loc env with
                 | false -> sloc
                 | true -> sprintf "idx_addr(_a,_i,%s)" sloc))
             locs ;
@@ -1886,7 +1877,7 @@ let user2_barrier_def () =
         (fun loc ->
           O.fiii "o[%s_f] = %s;"
             (dump_loc_name loc)
-            (if is_ptr (U.find_type loc env) then
+            (if U.is_ptr loc env then
               sprintf "idx_addr(&ctx,_i,%s)" (dump_loc_copy loc)
             else
               dump_loc_copy loc))

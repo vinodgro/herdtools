@@ -26,6 +26,9 @@ module Make
 (* Locations *)
       val get_final_locs : T.t -> A.LocSet.t
       val get_final_globals : T.t -> A.LocSet.t
+      val is_ptr : A.location -> env -> bool
+      val ptr_in_outs : env -> T.t -> bool
+
 (* Instructions *)
       val do_store : CType.t -> string -> string -> string
       val do_load : CType.t -> string -> string
@@ -88,6 +91,12 @@ end = struct
         | A.Location_global _ -> true
         | A.Location_reg _ -> false)
       (get_final_locs t)
+
+  let is_ptr loc env = CType.is_ptr (find_type loc env)
+
+  let ptr_in_outs env test =
+    let locs = get_final_locs test in
+    A.LocSet.exists (fun loc ->is_ptr loc env ) locs
 
 (* Instructions *)
   let do_store t loc v =

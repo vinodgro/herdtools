@@ -89,6 +89,7 @@ let hint = ref None
 let avail = ref None
 let size = ref 100000
 let runs = ref 10
+let noccs = ref 1
 let barrier = ref Barrier.User
 let verbose_barrier = ref false
 let verbose_prelude = ref None

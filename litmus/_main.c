@@ -7,7 +7,9 @@ static pthread_t th[AVAIL];
 static hash_t hash ;
 
 int main(int argc,char **argv) {
-  global.ninst = NEXE ;
+  global.nexe = NEXE ;
+  global.noccs = NOCCS ;
+  global.nruns = NUMBER_OF_RUN ;
   for (int id=0; id < AVAIL ; id++) {
     arg[id].id = id;
     arg[id].g = &global;

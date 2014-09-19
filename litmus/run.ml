@@ -48,10 +48,13 @@ module Make(O:Config)(Tar:Tar.S)(D:Test) =
         let sX = Tar.outname sX in
         let source = Tar.outname source in
         let utils =
+          let k = match O.mode with
+          | Mode.Std -> ["outs.c";]
+          | Mode.PreSi -> [] in
           let utils =
             match O.affinity with
-            | Affinity.No -> ["utils.c"; "outs.c"]
-            | _ -> ["utils.c"; "outs.c"; "affinity.c"] in
+            | Affinity.No -> "utils.c"::k
+            | _ ->  "utils.c"::"affinity.c"::k in
           String.concat " " (List.map Tar.outname utils) in
         let com = sprintf "%s -o %s %s %s" gcc sX utils source in
         exec_stdout com
