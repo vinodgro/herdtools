@@ -67,7 +67,7 @@ module Make
 	     unv ;
            "po", (* S.restrict E.is_mem E.is_mem *) conc.S.po;
            "pos", conc.S.pos;
-           "po-loc", conc.S.pos;
+           "po-loc", conc.S.pos; (* JW: This looks dodgy... *)
 	   "loc", E.EventRel.restrict_rel E.same_location unv;
            "addr", pr.S.addr;
            "data", pr.S.data;

@@ -127,6 +127,7 @@ module Make (C:Sem.Config)(V:Value.S)
         (A.next_po_index ii.A.program_order_index, B.Next)
 
       | OpenCL.Pbarrier(lbl,r,ms) ->
+        let lbl = Printf.sprintf "%s-%i" lbl ii.A.unroll_count in
         M.mk_singleton_es 
           (Act.Fence (r,OpenCL.Rel,ms,Act.Entry_fence lbl)) ii 
         >>> fun _ ->

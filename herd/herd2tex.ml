@@ -19,8 +19,7 @@ let paren b c f =
   end else f ()
 
 let tex_of_konst c = function
-  | Empty SET -> fprintf c "\\{\\}"
-  | Empty RLN -> fprintf c "\\emptyset"
+  | Empty _ -> fprintf c "\\emptyset"
 
 let rec tex_of_op2 n c es op2 = 
   paren (n >= 2) c (fun () -> match op2 with
