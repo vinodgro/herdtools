@@ -26,6 +26,12 @@ int main(int argc,char **argv) {
   for (int k=0 ; k < NEXE ; k++) {
     pp_hash_ok(stdout,&global.ctx[k].t,group);
   }
-
+  fprintf(stdout,"** topologies **\n") ;
+  for (int k = 0 ; k < SCANSZ ; k++) {
+    count_t c = ngroups[k] ;
+    if (c > 0) {
+      fprintf(stdout,"%-6" PCTR "> %s\n",c,group[k]);
+    }
+  }
   return 0;
 }

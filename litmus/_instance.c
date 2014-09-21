@@ -4,7 +4,7 @@
 
 typedef struct {
   int id ;
-  int *mem;
+  intmax_t *mem;
   log_t out;
   tb_t next_tb;
   hash_t t;
@@ -12,7 +12,7 @@ typedef struct {
 } ctx_t ;
 
 
-static void instance_init (ctx_t *p, int id, int *mem) {
+static void instance_init (ctx_t *p, int id, intmax_t *mem) {
   p->id = id ;
   p->mem = mem ;
   hash_init(&p->t) ;
@@ -23,18 +23,18 @@ static void instance_init (ctx_t *p, int id, int *mem) {
 /* Global context */
 /******************/
 
-#define LINESZ (LINE/sizeof(int))
+#define LINESZ (LINE/sizeof(intmax_t))
 #define MEMSZ ((NVARS*NEXE+1)*LINESZ)
 
-static int mem[MEMSZ] ;
+static intmax_t mem[MEMSZ] ;
 
-typedef struct {
+typedef struct global_t {
   /* Topology */
   int *inst, *role ;
   char **group ;
   count_t *ngroups ;
   /* memory */
-  int *mem ;
+  intmax_t *mem ;
   /* Runtime control */
   int verbose ;
   int size,nruns,nexe,noccs ;
@@ -56,7 +56,7 @@ static void init_global(global_t *g,int id) {
     /* Align  to cache line */
     uintptr_t x = (uintptr_t)(g->mem) ;
     x += LINE-1 ; x /=  LINE ; x *= LINE ;
-    int *m = (int *)x ;
+    intmax_t *m = (intmax_t *)x ;
     
     /* Instance contexts */
     for (int k = 0 ; k < NEXE ; k++) {

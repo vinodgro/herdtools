@@ -195,6 +195,12 @@ let dump_loc_tag = function
   | A.Location_reg (proc,reg) -> A.Out.dump_out_reg proc reg
   | A.Location_global s -> s
 
+let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
+
+let choose_dump_loc_tag loc env =
+  if U.is_ptr loc env then  dump_loc_tag_coded loc
+  else  dump_loc_tag loc
+
 (* Collected locations *)
 
   let fmt_outcome env locs =
@@ -230,9 +236,11 @@ let dump_loc_tag = function
     A.LocSet.iter
       (fun loc ->
         let t = U.find_type loc env in
-        O.fi "%s %s;"
-          (if CType.is_ptr t then "int" else CType.dump t)
-          (dump_loc_tag loc))
+        let decl = sprintf "%s %s;"  (CType.dump t) (dump_loc_tag loc) in
+        if CType.is_ptr t then
+          O.fi "%s int %s;" decl (dump_loc_tag_coded loc)
+        else
+          O.oi decl)
       locs ;
     O.o "} log_t;" ;
     O.o "" ;
@@ -273,7 +281,7 @@ let dump_loc_tag = function
       A.LocSet.map_list
         (fun loc ->
           if U.is_ptr loc env then
-            sprintf "pretty_addr[p->%s]" (dump_loc_tag loc)
+            sprintf "pretty_addr[p->%s]" (dump_loc_tag_coded loc)
           else
             sprintf "p->%s" (dump_loc_tag loc)) locs in
     O.fi "fprintf(chan,%s);" (String.concat "," (fmt::args)) ;            
@@ -284,7 +292,7 @@ let dump_loc_tag = function
     O.o "static int eq_log(log_t *p,log_t *q) {" ;
     O.oi "return" ;
     let do_eq loc suf =
-      let loc = dump_loc_tag loc in
+      let loc = choose_dump_loc_tag loc env in
       O.fii "p->%s == q->%s%s" loc loc suf in
     let rec do_rec = function
       | [] -> O.oii "1;" ;
@@ -300,6 +308,8 @@ let dump_loc_tag = function
     O.o "static uint32_t hash_log(log_t *p) {" ;
     O.oi "uint32_t a,b,c; ";
     O.oi "a = b = c = 0xdeadbeef;" ;
+
+    let dump_loc_tag loc = choose_dump_loc_tag loc env in
     let rec do_rec = function
       | [] -> ()
       | [x] ->
@@ -326,28 +336,29 @@ let dump_loc_tag = function
     O.o "" ;
     ()
 
- module DC =
-    CompCond.Make(O)
-      (struct
-        open Constant
-        module C = T.C
-        module V = struct
-          type t = Constant.v
-          let compare = A.V.compare
-          let dump = function
-            | Concrete i -> sprintf "%i" i
-            | Symbolic s -> dump_addr_idx s
-        end
-        module Loc = struct
-          type t = A.location
-          let compare = A.location_compare
-          let dump loc = sprintf "p->%s" (dump_loc_tag loc)
-        end
-      end)
-
 
   let dump_cond_fun env test =    
+    let module DC =
+      CompCond.Make(O)
+        (struct
+          open Constant
+          module C = T.C
+          module V = struct
+            type t = Constant.v
+          let compare = A.V.compare
+            let dump = function
+              | Concrete i -> sprintf "%i" i
+              | Symbolic s -> dump_addr_idx s
+        end
+          module Loc = struct
+            type t = A.location
+            let compare = A.location_compare
+            let dump loc = sprintf "p->%s" (choose_dump_loc_tag loc env)
+          end
+        end) in
+
     let cond = test.T.condition in
+
     DC.fundef_onlog cond ;
     O.o "inline static int final_ok(log_t *p) {" ;
     O.fi
@@ -358,9 +369,6 @@ let dump_loc_tag = function
       | ForallStates _ -> "!") ;
     O.o "}" ;
     O.o ""
-
-  let _dump_cond_fun_call test dump_loc dump_val =
-    DC.funcall (test.T.condition) dump_loc dump_val
 
   let dump_cond_def env test =
     O.o "/* Condition check */" ;
@@ -485,10 +493,10 @@ let dump_run_thread
       let t =  CType.dump (find_addr_type addr env) in
       try
         let pos = get_param_pos addr in
-        O.fii "volatile %s *%s = _mem + LINESZ*_p->%s + %i;"
-          t addr (pvtag addr) pos
+        O.fii "%s volatile *%s = (%s *)(_mem + LINESZ*_p->%s + %i);"
+          t addr t (pvtag addr) pos
       with Not_found ->
-        O.fii "volatile %s *%s = _mem;" t addr)
+        O.fii "%s volatile *%s = (%s *)_mem;" t addr t)
     (if proc = 0 then addrs0 else addrs) ;
   (* Initialize them, if role is zero *)
   if proc = 0 then begin
@@ -526,16 +534,28 @@ let dump_run_thread
   Lang.dump 
     O.out (Indent.as_string Indent.indent2)
     my_regs global_env envVolatile proc out ;
-  let locs = U.get_final_globals test in
   O.oii "barrier_wait(_b);" ;
   if proc = 0 then begin
     A.LocSet.iter
       (fun loc ->
         let tag = dump_loc_tag loc in
         O.fii "%s = *%s;" (OutUtils.fmt_presi_index tag) tag)
-      locs ;
+      (U.get_final_globals test) ;
+    A.LocSet.iter
+      (fun loc ->
+        if U.is_ptr loc env then
+          O.fii "%s = idx_addr((void *)%s,%s);"
+            (OutUtils.fmt_presi_index (dump_loc_tag_coded loc))
+            (OutUtils.fmt_presi_index (dump_loc_tag loc))
+            (String.concat ","
+               (List.map (fun (a,_) -> sprintf "(void *)%s" a) test.T.globals)))
+      (U.get_final_locs test) ;
+
     O.oii "hash_add(&_ctx->t,_log,_p,1);" ;
-    O.oii "if (final_ok(_log)) ok = 1;"
+    O.oii "if (final_ok(_log)) {" ;
+    O.oiii "ok = 1;" ;
+    O.oiii "(void)__sync_add_and_fetch(&_g->ngroups[_p->part],1);" ;
+    O.oii "}" ;
   end ;
   O.oii "break; }" ;
   ()
@@ -545,12 +565,12 @@ let dump_run_def env test =
   O.o "/* Test code */" ;
   O.o "/*************/" ;
   O.o "" ;
-  O.o "inline static int do_run(thread_ctx_t *_c, param_t *_p) {" ;
+  O.o "inline static int do_run(thread_ctx_t *_c, param_t *_p,global_t *_g) {" ;
   O.oi "int ok = 0;" ;
   O.oi "int _role = _c->role;" ;
   O.oi "if (_role < 0) return ok;" ;
   O.oi "ctx_t *_ctx = _c->ctx;" ;
-  O.oi "int *_mem = _ctx->mem;" ;
+  O.oi "intmax_t *_mem = _ctx->mem;" ;
   O.oi "sense_t *_b = &_ctx->b;" ;
   O.oi "log_t *_log = &_ctx->out;" ;
   O.o "" ;
@@ -603,7 +623,7 @@ let dump_scan_def tname env test =
   (* Enumerate parameters *)
   let rec loop_delays i = function
     | [] ->
-        O.ox i "if (do_run(&c,&p)) (void)__sync_add_and_fetch(&g->ok,1);" ;
+        O.ox i "if (do_run(&c,&p,g)) (void)__sync_add_and_fetch(&g->ok,1);" ;
         ()
     | d::ds ->
         let tag = pdtag d in
