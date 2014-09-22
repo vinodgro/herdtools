@@ -19,13 +19,6 @@ module type S = sig
       (Label.t -> string) ->
         A.instruction ->  A.Out.ins list -> A.Out.ins list
 
-(* For signaling final condition *)
-  val branch_neq :
-      A.reg -> int ->  Label.t -> A.Out.ins list ->  A.Out.ins list
-  val branch_eq :
-      A.reg -> int ->  Label.t -> A.Out.ins list ->  A.Out.ins list
-  val signaling_write : int -> A.Out.ins list -> A.Out.ins list
-
 (* For time base barrier *)
   val emit_tb_wait :  A.Out.ins list ->  A.Out.ins list
 end

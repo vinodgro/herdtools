@@ -47,7 +47,6 @@ module type Config = sig
   val kind : bool
   val numeric_labels : bool
   val delay : int
-  val signaling : bool
   val syncconst : int
   val morearch : MoreArch.t
   val xy : bool
@@ -72,10 +71,6 @@ end = struct
   module A = T.A
   module C = T.C
   open Constant
-
-(* Final Conditions *)
-
-  open ConstrGen
 
 (* Options *)
   open Speedcheck
@@ -210,12 +205,12 @@ end = struct
     (match Cfg.avail with Some a -> a >= T.get_nprocs test | None -> false)
 
   let do_force_affinity = Cfg.force_affinity
-  let do_kind = Cfg.kind
   let do_numeric_labels = Cfg.numeric_labels
 
 
 (* Utilities *)
   module U = SkelUtil.Make(P)(A)(T)
+  module UD = U.Dump(Cfg)(O)
 
 (* Inserted source *)
 
@@ -306,18 +301,6 @@ module Insert =
 
 (* Test condition *)
 
-  let remark_pos test = match test.T.condition with
-  | ForallStates _ -> false
-  | ExistsState _
-  | NotExistsState _
-    -> true
-
-  let test_witness test v = match test.T.condition with
-  | ForallStates _
-  | ExistsState _ -> v
-  | NotExistsState _ -> "!" ^ v
-
-
   let dump_header test =
     O.o "/* Parameters */" ;
     let module D = DumpParams.Make(Cfg) in
@@ -364,7 +347,6 @@ module Insert =
     | Some _ -> O.oi "int stride;"
     end ;
     if Cfg.timeloop > 0 then O.oi "int max_loop;" ;
-    if Cfg.signaling then O.oi "int sig_cell, *sig_addr;" ;
     if do_affinity then begin
       O.oi "aff_mode_t aff_mode;";
       O.oi "int ncpus, ncpus_used;"
@@ -561,11 +543,6 @@ let user2_barrier_def () =
     O.o "/* cache flush and touch */" ;
     O.o "/*************************/" ;
     Insert.insert O.o "cache.c"
-
-
-  let get_prefetch_info test =
-    try List.assoc "Prefetch" test.T.info
-    with Not_found -> ""
 
 
   let preload_def = match Cfg.preload with
@@ -917,45 +894,6 @@ let user2_barrier_def () =
     O.o "static void just_dump_outcomes(FILE *fhist, hist_t *h) {" ;
     O.oi "outcome_t buff ;" ;
     O.oi "dump_outs(fhist,do_dump_outcome,h->outcomes,buff,NOUTS) ;" ;
-    O.o "}" ;
-    O.o "" ;
-    O.o "static void dump_hist(FILE *fhist,hist_t *h) {" ;
-    let c = test.T.condition in
-    if do_kind then
-      O.fi "fprintf(fhist,\"Test %s %s\\n\") ;"
-        doc.Name.name (pp_kind (kind_of c))
-    else
-      O.fi "fprintf(fhist,\"Test %s\\n\") ;"
-        doc.Name.name ;
-    O.fi "fprintf(fhist,\"%s\",finals_outs(h->outcomes)) ;"
-      "Histogram (%\"PCTR\" states)\\n" ;
-    O.oi "just_dump_outcomes(fhist,h) ;" ;
-
-    let pp_atom a =
-      let open ConstrGen in
-      match a with
-      | LV (loc,v) ->
-          sprintf "%s=%s" (A.pp_location loc) (A.V.pp_v v)
-      | LL (loc1,loc2) ->
-          sprintf "%s=%s" (A.pp_location loc1) (A.pp_rval loc2) in
-    let pp_cond =
-      String.escaped
-        (ConstrGen.constraints_to_string pp_atom c) in
-    if do_kind then begin
-      let to_check =
-        if ConstrGen.is_existential c then "h->n_pos > 0"
-        else "h->n_neg == 0" in
-      O.fi "int cond = %s;" to_check ;
-      O.fi "fprintf(fhist,\"%%s\\n\",%s);" "cond?\"Ok\":\"No\"" ;
-      O.oi "fprintf(fhist,\"\\nWitnesses\\n\");" ;
-      O.oi "fprintf(fhist,\"Positive: %\"PCTR\", Negative: %\"PCTR\"\\n\",h->n_pos,h->n_neg);" ;
-      O.fi "fprintf(fhist,\"Condition %s is %%svalidated\\n\",%s);"
-        pp_cond
-        (sprintf "%s ? \"\" : \"NOT \"" to_check)
-    end else begin
-      O.fi "fprintf(fhist,\"\\nCondition %s\\n\");"
-        pp_cond
-    end ;
     O.o "}" ;
     O.o "" ;
     ()
@@ -1446,7 +1384,7 @@ let user2_barrier_def () =
         let prf =
           List.filter
             (fun (xproc,_,_) -> proc=xproc)
-            (Prefetch.parse (get_prefetch_info test)) in
+            (Prefetch.parse (U.get_prefetch_info test)) in
         if do_custom then
           O.fi "prfone_t *_prft = _a->_p->prefetch->t[%i].t;" proc ;
         if do_staticpl then begin match prf with
@@ -1622,12 +1560,10 @@ let user2_barrier_def () =
         if do_collect then begin
           let locs = U.get_final_locs test in
           O.fx iloop "barrier_wait(barrier);" ;
-          O.fx iloop "int cond = %s;"
+          O.fx iloop "int cond = final_ok(%s);"
             (dump_cond_fun_call test
                (dump_ctx_loc "_a->") dump_a_addr) ;
-(*          dump_condition chan iloop (dump_ctx_loc "_a->") test.T.condition ; *)
-          O.fx iloop "if (%s) { hist->n_pos++; } else { hist->n_neg++; }"
-            (test_witness test "cond") ;
+          O.ox iloop "if (cond) { hist->n_pos++; } else { hist->n_neg++; }" ;
 
 (* My own private outcome collection *)
           O.fx iloop "outcome_t _o;" ;
@@ -1640,12 +1576,10 @@ let user2_barrier_def () =
                 | false -> sloc
                 | true -> sprintf "idx_addr(_a,_i,%s)" sloc))
             locs ;
-          O.fx iloop "int cond2 = %scond;"
-            (if remark_pos test then "" else "!") ;
-          O.ox iloop "add_outcome(hist,1,_o,cond2);" ;
+          O.ox iloop "add_outcome(hist,1,_o,cond);" ;
            if do_verbose_barrier_local && proc = 0 then begin
             O.ox iloop "if (_a->_p->verbose_barrier) {" ;
-            O.ox (Indent.tab iloop) "pp_tb_log(_b->p_mutex,_a,_i,cond2);" ;
+            O.ox (Indent.tab iloop) "pp_tb_log(_b->p_mutex,_a,_i,cond);" ;
             O.ox iloop "}"
           end
         end else if do_collect_local then begin
@@ -1870,7 +1804,7 @@ let user2_barrier_def () =
             cpy loc doc.Name.name cpy)
         cpys ;
 (* Compute final condition *)
-      O.fiii "cond = %s;"
+      O.fiii "cond = final_ok(%s);"
         (dump_cond_fun_call test dump_loc_copy dump_ctx_addr) ;
 (* Save outcome *)
       A.LocSet.iter
@@ -1882,16 +1816,15 @@ let user2_barrier_def () =
             else
               dump_loc_copy loc))
         locs ;
-      O.fiii "int cond2 = %scond;" (if remark_pos test then "" else "!") ;
-      O.oiii "add_outcome(hist,1,o,cond2);" ;
+      O.oiii "add_outcome(hist,1,o,cond);" ;
       if mk_dsa test then begin
         O.oiii
-          "if (_b->aff_mode == aff_scan && _a->cpus[0] >= 0 && cond2) {" ;
+          "if (_b->aff_mode == aff_scan && _a->cpus[0] >= 0 && cond) {" ;
         O.oiv "pm_lock(_a->p_mutex);" ;
         O.oiv "ngroups[n_run % SCANSZ]++;" ;
         O.oiv "pm_unlock(_a->p_mutex);" ;
         O.oiii
-          "} else if (_b->aff_mode == aff_topo && _a->cpus[0] >= 0 && cond2) {" ;
+          "} else if (_b->aff_mode == aff_topo && _a->cpus[0] >= 0 && cond) {" ;
         O.oiv "pm_lock(_a->p_mutex);" ;
         O.oiv "ngroups[0]++;" ;
         O.oiv "pm_unlock(_a->p_mutex);" ;
@@ -1900,12 +1833,10 @@ let user2_barrier_def () =
 
 (****************)
 
-      O.fiii "if (%s) { hist->n_pos++; } else { hist->n_neg++; }"
-        (test_witness test "cond") ;
+      O.oiii "if (cond) { hist->n_pos++; } else { hist->n_neg++; }" ;
       if (do_verbose_barrier) then begin
         O.oiii "if (_b->verbose_barrier) {" ;
-        O.fiv "pp_tb_log(_a->p_mutex,&ctx,_i,%scond);"
-          (if remark_pos test then "" else "!") ;
+        O.oiv "pp_tb_log(_a->p_mutex,&ctx,_i,cond);" ;
         O.oiii "}"
       end ;
       loop_test_postlude indent2 ;
@@ -1991,34 +1922,6 @@ let user2_barrier_def () =
     end ;
     cpys
 
-  let dump_report doc _env test =
-    O.o "#ifdef ASS" ;
-    O.o "static void ass(FILE *out) { }" ;
-    O.o "#else" ;
-    O.f "#include \"%s\"" (MyName.outname doc.Name.file ".h") ;
-    O.o "#endif" ;
-    O.o "" ;
-    let dstring s = O.fi "fprintf(out,\"%%s\\n\",\"%s\");" (String.escaped s) in
-(* Static information *)
-    O.o "static void report(FILE *out) {" ;
-    let title = sprintf "%% Results for %s %%" doc.Name.file in
-    let nice = String.make (String.length title) '%' in
-    dstring nice ;
-    dstring title ;
-    dstring nice ;
-    let xs = T.D.lines doc test.T.src in
-    List.iter dstring xs ;
-    O.oi "fprintf(out,\"Generated assembler\\n\");" ;
-    O.oi "ass(out);" ;
-(*
-  O.fi "cat_file(\"%s\",\"%s\",out);"
-  (MyName.outname doc.Name.file ".t")
-  "Generated assembler" ;
- *)
-    O.o "}" ;
-    O.o "" ;
-    ()
-
   let check_speedcheck i f =
     if do_speedcheck then begin
       O.fx i "%s" "if (!prm.speedcheck) {" ;
@@ -2055,9 +1958,11 @@ let user2_barrier_def () =
         Some (cs,ne)
       end else
         None in
-    O.o "static int run(cmd_t *cmd,cpus_t *def_all_cpus,FILE *out) {" ;
+    UD.postlude doc test affi (mk_dsa test) ;
+
+    O.o "static void run(cmd_t *cmd,cpus_t *def_all_cpus,FILE *out) {" ;
 (* Prelude *)
-    if do_vp then O.oi "if (cmd->prelude) report(out);" ;
+    if do_vp then O.oi "if (cmd->prelude) prelude(out);" ;
 (* Starting time *)
     O.oi "tsc_t start = timeofday();" ;
 (* Parameters recorded in param_t structure *)
@@ -2219,12 +2124,6 @@ let user2_barrier_def () =
       O.oi "}" ;
     end ;
 
-(* Signaling writes *)
-    if Cfg.signaling then begin
-      O.oi "prm.sig_addr = &prm.sig_cell;" ;
-      let fmt = "Signaling to %p\\n" in
-      O.fi "fprintf(out,\"%s\",prm.sig_addr); fflush(out);" fmt
-    end ;
 (*********************)
 (* Spawn experiments *)
 (*********************)
@@ -2309,81 +2208,13 @@ let user2_barrier_def () =
           "if (sum_hist(hist) != n_outs || hist->n_pos + hist->n_neg != n_outs) {"  ;
         O.oy i "fatal(\"sum_hist\") ;" ;
         O.ox i "}") ;
-    O.oi "dump_hist(out,hist);" ;
-    begin match test.T.condition with
-    | ForallStates _
-    | ExistsState _ ->
-        O.oi "count_t p_true = hist->n_pos, p_false = hist->n_neg;"
-    | NotExistsState _ ->
-        O.oi "count_t p_false = hist->n_pos, p_true = hist->n_neg;"
-    end ;
+    O.oi "count_t p_true = hist->n_pos, p_false = hist->n_neg;" ;
+(* Print results *)
+    O.oi "postlude(out,cmd,hist,p_true,p_false,total);" ;
     O.oi "free_hist(hist);" ;
     if do_cores then  O.oi "cpus_free(prm.cm);" ;
-
-(* Print meta-information *)
-    List.iter
-      (fun (k,vs) ->
-        if k = "Relax" then
-          let fmt = sprintf "Relax %s %%s %%s\\n" doc.Name.name in
-          O.fi "fprintf(out,\"%s\",p_true > 0 ? \"Ok\" : \"No\",\"%s\");"
-            fmt (String.escaped vs) ;
-        else if k = "Prefetch" then begin
-        end else
-          let fmt = "%s=%s\\n" in
-          O.fi "fprintf(out,\"%s\",\"%s\",\"%s\");"
-            fmt (String.escaped k) (String.escaped vs))
-      test.T.info ;
-(* Prefetch shown whenever activated *)
-    begin match Cfg.preload with
-    | CustomPL ->
-        let fmt = "%s=" in
-        O.fi "fprintf(out,\"%s\",\"%s\");" fmt "Prefetch" ;
-        O.oi "prefetch_dump(out,cmd->prefetch);" ;
-        O.oi "putc('\\n',out);"
-    | StaticPL|StaticNPL _ ->
-        let fmt = "%s=%s\\n" in
-        let prf = get_prefetch_info test in
-        O.fi "fprintf(out,\"%s\",\"%s\",\"%s\");" fmt "Prefetch" prf
-    | NoPL|RandomPL -> ()
-    end ;
-(* Affinity info, as computed *)
-    if dca then begin
-      O.oi "if (cmd->aff_mode == aff_custom) {" ;
-      let fmt = "%s=%s\\n" in
-      O.fii "fprintf(out,\"%s\",\"%s\",\"%s\");"
-        fmt "Affinity" (Affi.pp (Misc.as_some affi)) ;
-      O.oi "}"
-    end ;
-(* Observation summary *)
-    let fmt =
-      sprintf
-        "Observation %s %%s %%\"PCTR\" %%\"PCTR\"\\n"
-        doc.Name.name  in
-    let obs = "!p_true ? \"Never\" : !p_false ? \"Always\" : \"Sometimes\"" in
-    O.fi "fprintf(out,\"%s\",%s,p_true,p_false) ;" fmt obs;
-(* Topologies sumaries *)
-    if mk_dsa test then begin
-      O.oi "if (cmd->aff_mode == aff_scan) {" ;
-      O.oii "for (int k = 0 ; k < SCANSZ ; k++) {" ;
-      O.oiii "count_t c = ngroups[k];" ;
-      let fmt = "\"Topology %-6\" PCTR\":> %s\\n\"" in
-      O.fiii "if (c > 0) { printf(%s,c,group[k]); }" fmt ;
-      O.oii "}" ;
-      O.oi "} else if (cmd->aff_mode == aff_topo) {"  ;
-      O.oii "printf(\"Topology %-6\" PCTR \":> %s\\n\",ngroups[0],cmd->aff_topo);" ;
-      O.oi "}" 
-   end ;
-(* Show running time *)
-    let fmt = sprintf "Time %s %%.2f\\n"  doc.Name.name in
-    O.fi "fprintf(out,\"%s\",total / 1000000.0) ;" fmt ;
-    if Cfg.signaling then begin
-      let fmt = "Signaled %s\\n" in
-      let arg = "prm.sig_cell ? \"Yes\" : \"No\"" in
-      O.fi "fprintf(out,\"%s\",%s);" fmt arg
-    end ;
-    O.oi "fflush(out);" ;
-    O.oi "return(p_true && p_false);" ;
     O.o "}" ;
+    O.o "" ;
     ()
 
 (* Main *)
@@ -2524,7 +2355,7 @@ let user2_barrier_def () =
     dump_check_globals env test ;
     dump_templates env doc.Name.name test ;
     dump_zyva doc cpys env test ;
-    if do_vp then dump_report doc env test ;
+    if do_vp then UD.prelude doc test ;
     dump_run doc env test ;
     dump_main doc env test
 end

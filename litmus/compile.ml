@@ -12,7 +12,6 @@
 
 module type Config = sig
   val numeric_labels : bool
-  val signaling : bool
   val timeloop : int
   val barrier : Barrier.t
 end
@@ -151,7 +150,6 @@ let lblmap_code =
 (* Compile code *)
 (****************)
 
-    open ConstrGen
     exception CannotIntern
 
     let tr_label_fail m lbl =  sprintf "%i" (StringMap.find lbl m)
@@ -171,21 +169,6 @@ let lblmap_code =
       | Concrete i -> i
       | Symbolic _ -> raise CannotIntern
 
-    let rec tr_cond p = function
-      | Atom (LV (A.Location_reg (q,r),v)) when p = q ->
-          let i = as_int v in
-          Atom (LV (r,i))
-      | Atom _ -> raise CannotIntern
-      | And cs -> And (List.map (tr_cond p) cs)
-      | Or _ | Implies _ | Not _ -> raise CannotIntern
-
-    let rec compile_cond c labf kt = match c with
-      | Atom (LV (r,i)) -> C.branch_neq r i labf kt
-      | Atom _ -> assert false
-      | And [] -> kt
-      | And (c::cs) ->
-          compile_cond c labf (compile_cond (And cs) labf kt)
-      | _ -> raise CannotIntern
 
     let compile_pseudo_code code k =
       let m =
@@ -219,32 +202,16 @@ let lblmap_code =
 
 
 
-    let compile_cond p final =
-      try
-        let c = tr_cond p (ConstrGen.prop_of final) in
-        let lab = Label.next_label "C" in
-        let k = C.signaling_write 1 [emit_label StringMap.empty lab] in
-        compile_cond c lab k,true
-      with
-      CannotIntern -> [],false
-
     let compile_code proc code final =
-      let k,cond =
-        if O.signaling then
-          compile_cond proc final
-        else [],false in
-
-      let code = compile_pseudo_code code k in
-
+      let code = compile_pseudo_code code [] in
       let code =
         if O.timeloop > 0 then C.emit_loop code
         else code in
-
       let code = match O.barrier with
       | Barrier.TimeBase -> (* C.emit_tb_wait *) code
       | _ -> code  in
 
-      code,cond
+      code
 
 
     module RegSet =
@@ -360,16 +327,11 @@ let lblmap_code =
         List.map
           (fun (proc,code) ->
             let addrs = extract_addrs code in
-            let code,cond = compile_code proc code final in
-            proc,addrs,code,cond)
+            let code = compile_code proc code final in
+            proc,addrs,code)
           code in
       let flocs = List.map fst flocs in
-      let pecs = List.map (fun (p,e,c,_) -> p,e,c) outs
-      and conds =
-        List.fold_left (fun r (_,_,_,b) -> r || b)
-          false outs in
-      if O.signaling && not conds then
-        Warn.fatal "could not signal write" ;
+      let pecs = outs in
       List.map
         (fun (proc,addrs,code) ->
           proc,

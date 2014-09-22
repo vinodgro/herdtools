@@ -63,6 +63,19 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
         dump_prop
 
       let funname = "final_cond"
+      let funname_ok = "final_ok"
+
+      let dump_ok cond =
+        O.f "inline static int %s(int cond) {"  funname_ok ;
+        O.fi
+          "return %scond;"
+          (let open ConstrGen in
+          match cond with
+          | ExistsState _|NotExistsState _ -> ""
+          | ForallStates _ -> "!") ;
+        O.o "}" ;
+        O.o "" ;
+        ()
 
       let fundef find_type cond =
         let locs = I.C.locations cond in
@@ -89,7 +102,9 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
           O.output ";\n"
         end ;
         O.o "}" ;
-        O.o ""
+        O.o "" ;
+        dump_ok cond ;
+        ()
 
       let fundef_onlog cond =
         O.f "inline static int %s(log_t *p) {" funname ;
@@ -103,7 +118,9 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
           O.output ";\n"
         end ;
         O.o "}" ;
-        O.o ""
+        O.o "" ;
+        dump_ok cond ;
+        ()
 
       let funcall cond dump_loc dump_val =
         let locs = I.C.locations cond in

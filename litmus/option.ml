@@ -138,7 +138,6 @@ let sleep = ref 0
 let isync = ref false
 let syncconst = 128
 let syncmacro = ref (-1)
-let signaling = ref false
 let xy = ref false
 let morearch = ref MoreArch.No
 let carch = ref None

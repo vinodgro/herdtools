@@ -15,6 +15,7 @@ open Printf
 module type Config = sig
   val verbose : int
   val hexa : bool
+  val preload : Preload.t
   val driver : Driver.t
   val word : Word.t
   val line : int
@@ -24,6 +25,7 @@ module type Config = sig
   val nsockets : int
   val smtmode : Smt.t
   val force_affinity : bool
+  val kind : bool
   val numeric_labels : bool
   val delay : int
   val c11 : bool
@@ -31,76 +33,78 @@ module type Config = sig
 end
 
 module Make
-         (Cfg:sig include Config val sysarch : Archs.System.t end)
-         (P:sig type code end)
-         (A:Arch.Base)
-         (T:Test.S with type P.code = P.code and module A = A)
-         (O:Indent.S)
-         (Lang:Language.S with type arch_reg = T.A.reg and type t = A.Out.t) : sig
-  val dump : Name.t -> T.t -> unit
-end = struct
+    (Cfg:sig include Config val sysarch : Archs.System.t end)
+    (P:sig type code end)
+    (A:Arch.Base)
+    (T:Test.S with type P.code = P.code and module A = A)
+    (O:Indent.S)
+    (Lang:Language.S with type arch_reg = T.A.reg and type t = A.Out.t) : sig
+      val dump : Name.t -> T.t -> unit
+    end = struct
 
 
 (*******************************************)
 (* Set compile time parameters from config *)
 (*******************************************)
 
- let have_timebase = function
-  | `ARM -> false
-  | `PPCGen
-  | `PPC|`X86 -> true
-  | _ -> false
+      let have_timebase = function
+        | `ARM -> false
+        | `PPCGen
+        | `PPC|`X86 -> true
+        | _ -> false
 
-  let have_timebase = have_timebase Cfg.sysarch
+      let have_timebase = have_timebase Cfg.sysarch
 
 (*************)
 (* Utilities *)
 (*************)
 
-  module U = SkelUtil.Make(P)(A)(T)
+      module U = SkelUtil.Make(P)(A)(T)
+      module UD = U.Dump(Cfg)(O)
 
-  let find_addr_type a env = U.find_type (A.Location_global a) env
+      let find_addr_type a env = U.find_type (A.Location_global a) env
 
 (***************)
 (* File header *)
 (***************)
 
- let dump_header test =
-    O.o "/* Parameters */" ;
-    let module D = DumpParams.Make(Cfg) in
-    D.dump O.o ;
-    let n = T.get_nprocs test in
-    O.f "#define N %i" n ;
-    let nvars = List.length test.T.globals in
-    O.f "#define NVARS %i" nvars ;    
-    let nexe =
-      match Cfg.avail  with 
-      | None -> 1
-      | Some a -> if a < n then 1 else a / n in
-    O.f "#define NEXE %i" nexe ;
-    O.f "#define NTHREADS %i" (nexe*n) ;
-    O.f "#define NOCCS %i" Cfg.noccs ;
-    if have_timebase then begin
-      let delta = sprintf "%i" Cfg.delay in
-      if have_timebase then O.f "#define DELTA_TB %s" delta
-    end ;
-    O.o "/* Includes */" ;
-    O.o "#include <stdio.h>" ;
-    O.o "#include <stdlib.h>" ;
-    O.o "#include <inttypes.h>" ;
-    O.o "#include <unistd.h>" ;
-    O.o "#include <errno.h>" ;
-    O.o "#include <assert.h>" ;
-    O.o "#include <time.h>" ;
-    O.o "#include <limits.h>" ;
-    O.o "#include \"utils.h\"" ;
-    if Cfg.c11 then O.o "#include <stdatomic.h>";
-    O.o "#include \"affinity.h\"" ;
-    O.o "" ;
-    O.o "typedef uint64_t count_t;" ;
-    O.o "#define PCTR PRIu64" ;
-    O.o "" ;
-    ()
+      let dump_header test =
+        O.o "/* Parameters */" ;
+        O.o "#define OUT 1" ;
+        let module D = DumpParams.Make(Cfg) in
+        D.dump O.o ;
+        let n = T.get_nprocs test in
+        O.f "#define N %i" n ;
+        let nvars = List.length test.T.globals in
+        O.f "#define NVARS %i" nvars ;    
+        let nexe =
+          match Cfg.avail  with 
+          | None -> 1
+          | Some a -> if a < n then 1 else a / n in
+        O.f "#define NEXE %i" nexe ;
+        O.f "#define NTHREADS %i" (nexe*n) ;
+        O.f "#define NOCCS %i" Cfg.noccs ;
+        if have_timebase then begin
+          let delta = sprintf "%i" Cfg.delay in
+          if have_timebase then O.f "#define DELTA_TB %s" delta
+        end ;
+        O.o "/* Includes */" ;
+        O.o "#include <stdio.h>" ;
+        O.o "#include <stdlib.h>" ;
+        O.o "#include <inttypes.h>" ;
+        O.o "#include <unistd.h>" ;
+        O.o "#include <errno.h>" ;
+        O.o "#include <assert.h>" ;
+        O.o "#include <time.h>" ;
+        O.o "#include <limits.h>" ;
+        O.o "#include \"utils.h\"" ;
+        if Cfg.c11 then O.o "#include <stdatomic.h>";
+        O.o "#include \"affinity.h\"" ;
+        O.o "" ;
+        O.o "typedef uint64_t count_t;" ;
+        O.o "#define PCTR PRIu64" ;
+        O.o "" ;
+        ()
 
 (**********)
 (* Delays *)
@@ -358,17 +362,8 @@ let choose_dump_loc_tag loc env =
         end) in
 
     let cond = test.T.condition in
-
     DC.fundef_onlog cond ;
-    O.o "inline static int final_ok(log_t *p) {" ;
-    O.fi
-      "return %sfinal_cond(p);"
-      (let open ConstrGen in
-      match cond with
-      | ExistsState _|NotExistsState _ -> ""
-      | ForallStates _ -> "!") ;
-    O.o "}" ;
-    O.o ""
+    ()
 
   let dump_cond_def env test =
     O.o "/* Condition check */" ;
@@ -419,9 +414,12 @@ let choose_dump_loc_tag loc env =
     O.o "" ;
     O.o "typedef struct {" ;
     O.oi "int part;" ;
-    O.fi "int %s;" (String.concat "," v_tags) ;
-    O.fi "int %s;" (String.concat "," d_tags) ;
-    O.fi "dir_t %s;" (String.concat "," c_tags) ;
+    let pp_tags t = function
+      | [] -> ()
+      | tags -> O.fi "%s %s;" t (String.concat "," tags) in
+    pp_tags "int" v_tags ;
+    pp_tags "int" d_tags ;
+    pp_tags "dir_t" c_tags ;
     O.o "} param_t;" ;
     O.o "" ;
     let all_tags = "part"::v_tags@d_tags@c_tags in
@@ -551,8 +549,9 @@ let dump_run_thread
                (List.map (fun (a,_) -> sprintf "(void *)%s" a) test.T.globals)))
       (U.get_final_locs test) ;
 
-    O.oii "hash_add(&_ctx->t,_log,_p,1);" ;
-    O.oii "if (final_ok(_log)) {" ;
+    O.oii "int _cond = final_ok(final_cond(_log));" ;
+    O.oii "hash_add(&_ctx->t,_log,_p,1,_cond);" ;
+    O.oii "if (_cond) {" ;
     O.oiii "ok = 1;" ;
     O.oiii "(void)__sync_add_and_fetch(&_g->ngroups[_p->part],1);" ;
     O.oii "}" ;
@@ -589,72 +588,90 @@ let dump_run_def env test =
 (* zyva *)
 (********)
 
-let dump_scan_def tname env test =
-  O.o "/*******************/" ;
-  O.o "/* Forked function */" ;
-  O.o "/*******************/" ;
-  O.o "" ;
-  O.o "typedef struct {" ;
-  O.oi "int id;" ;
-  O.oi "global_t *g;" ;
-  O.o "} scan_t;" ;
-  O.o "" ;
-  O.o "static void *scan(void *_a) {" ;
-  O.oi "scan_t *a = (scan_t*)_a;" ;
-  O.oi "int id = a->id;" ;
-  O.oi "global_t *g = a->g;" ;
-  O.oi "param_t p; " ;
-  O.oi "thread_ctx_t c;" ;
-  O.o "" ;
-  O.oi "c.id = id;" ;
-  O.oi
-    (if Cfg.force_affinity then
-      sprintf
-      "force_one_affinity(id,AVAIL,g->verbose,\"%s\");"
-        tname
-    else
-      "write_one_affinity(id);") ;
-  O.oi "init_global(g,id);" ;
-  O.oi "int nrun = 0;" ;
-  O.oi "g->ok = 0;" ;
-  O.oi "do {" ;
-  O.oii "for (p.part = 0 ; p.part < SCANSZ ; p.part++) {" ;
-  O.oiii "set_role(g,&c,p.part);" ;
-  (* Enumerate parameters *)
-  let rec loop_delays i = function
-    | [] ->
-        O.ox i "if (do_run(&c,&p,g)) (void)__sync_add_and_fetch(&g->ok,1);" ;
-        ()
-    | d::ds ->
-        let tag = pdtag d in
-        O.fx i "for (p.%s = 0 ; p.%s < NSTEPS ; p.%s++)" tag tag tag ;
-        loop_delays (Indent.tab i) ds in
-  let rec loop_caches i = function
-    | [] -> loop_delays i (get_param_delays test)
-    | c::cs ->
-        let tag = pctag c in
-        O.fx i "for (p.%s = 0 ; p.%s < cmax ; p.%s++)" tag tag tag ;
-        loop_caches (Indent.tab i) cs in
-  let rec loop_vars i = function
-    | [] -> loop_caches i (get_param_caches test)
-    | (x,_)::xs ->
-        let tag = pvtag x in
-        O.fx i "for (p.%s = 0 ; p.%s < NVARS ; p.%s++)" tag tag tag ;
-        loop_vars (Indent.tab i) xs in
-  loop_vars Indent.indent3 (get_param_vars test) ;
-  O.oii "}" ;
-  O.oii "barrier_wait(&g->gb);" ;
-  O.oii "if (++nrun >= g->nruns) break;" ;
-  O.oi "} while (g->ok < g->noccs);" ;
-  O.oi "return NULL;" ;
-  O.o "}" ;
-  O.o ""
+      let dump_scan_def tname env test =
+        O.o "/*******************/" ;
+        O.o "/* Forked function */" ;
+        O.o "/*******************/" ;
+        O.o "" ;
+        O.o "typedef struct {" ;
+        O.oi "int id;" ;
+        O.oi "global_t *g;" ;
+        O.o "} scan_t;" ;
+        O.o "" ;
+        O.o "static void *scan(void *_a) {" ;
+        O.oi "scan_t *a = (scan_t*)_a;" ;
+        O.oi "int id = a->id;" ;
+        O.oi "global_t *g = a->g;" ;
+        O.oi "param_t p; " ;
+        O.oi "thread_ctx_t c;" ;
+        O.o "" ;
+        O.oi "c.id = id;" ;
+        O.oi
+          (if Cfg.force_affinity then
+            sprintf
+              "force_one_affinity(id,AVAIL,g->verbose,\"%s\");"
+              tname
+          else
+            "write_one_affinity(id);") ;
+        O.oi "init_global(g,id);" ;
+        O.oi "int nrun = 0;" ;
+        O.oi "g->ok = 0;" ;
+        O.oi "do {" ;
+        O.oii "for (p.part = 0 ; p.part < SCANSZ ; p.part++) {" ;
+        O.oiii "set_role(g,&c,p.part);" ;
+        (* Enumerate parameters *)
+        let rec loop_delays i = function
+          | [] ->
+              O.ox i "if (do_run(&c,&p,g)) (void)__sync_add_and_fetch(&g->ok,1);" ;
+              ()
+          | d::ds ->
+              let tag = pdtag d in
+              O.fx i "for (p.%s = 0 ; p.%s < NSTEPS ; p.%s++)" tag tag tag ;
+              loop_delays (Indent.tab i) ds in
+        let rec loop_caches i = function
+          | [] -> loop_delays i (get_param_delays test)
+          | c::cs ->
+              let tag = pctag c in
+              O.fx i "for (p.%s = 0 ; p.%s < cmax ; p.%s++)" tag tag tag ;
+              loop_caches (Indent.tab i) cs in
+        let rec loop_vars i = function
+          | [] -> loop_caches i (get_param_caches test)
+          | (x,_)::xs ->
+              let tag = pvtag x in
+              O.fx i "for (p.%s = 0 ; p.%s < NVARS ; p.%s++)" tag tag tag ;
+              loop_vars (Indent.tab i) xs in
+        loop_vars Indent.indent3 (get_param_vars test) ;
+        O.oii "}" ;
+        O.oii "barrier_wait(&g->gb);" ;
+        O.oii "if (++nrun >= g->nruns) break;" ;
+        O.oi "} while (g->ok < g->noccs);" ;
+        O.oi "return NULL;" ;
+        O.o "}" ;
+        O.o ""
+
+(* Prelude *)
+      let dump_prelude_def = match Cfg.driver with
+      | Driver.Shell -> fun _ _ -> ()
+      | Driver.C|Driver.XCode -> UD.prelude
 
 (********)
 (* Main *)
 (********)
 
-let dump_main_def env test =
+let dump_main_def doc env test =
+  begin match Cfg.driver with
+  | Driver.Shell ->
+      O.o "#define RUN run" ;
+      O.o "#define MAIN 1" ;
+      O.o "" ;
+      UD.postlude doc test None true ;
+      ()
+  | Driver.C|Driver.XCode ->
+      O.f "#define RUN %s" (MyName.as_symbol doc) ;
+      O.f "#define PRELUDE 1" ;
+     ()
+  end ;
+  O.o "" ;
   ObjUtil.insert_lib_file O.o "_main.c" ;
   ()
 
@@ -678,7 +695,8 @@ let dump_main_def env test =
     dump_instance_def env test ;
     dump_run_def env test ;
     dump_scan_def doc.Name.name env test ;
-    dump_main_def env test ;
+    dump_prelude_def doc test ;
+    dump_main_def doc env test ;
     ()
     
 end

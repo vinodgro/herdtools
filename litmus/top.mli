@@ -46,7 +46,6 @@ module type CommonConfig = sig
   val morearch : MoreArch.t
   val carch : Archs.System.t option
   val syncconst : int
-  val signaling : bool
   val numeric_labels : bool
   val kind : bool
   val force_affinity : bool

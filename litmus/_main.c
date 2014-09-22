@@ -4,9 +4,14 @@
 
 static scan_t arg[AVAIL];
 static pthread_t th[AVAIL];
-static hash_t hash ;
 
-int main(int argc,char **argv) {
+int RUN(int argc,char **argv,FILE *out) {
+#ifdef OUT
+#ifdef PRELUDE
+  prelude(out) ;
+#endif
+  tsc_t start = timeofday();
+#endif
   global.nexe = NEXE ;
   global.noccs = NOCCS ;
   global.nruns = NUMBER_OF_RUN ;
@@ -17,21 +22,31 @@ int main(int argc,char **argv) {
   for (int id=0; id < AVAIL ; id++) launch(&th[id],scan,&arg[id]);
   for (int id=0; id < AVAIL ; id++) join(&th[id]);
 
-  hash_init(&hash) ;  
-  for (int k=0 ; k < NEXE ; k++) {
-    hash_adds(&hash,&global.ctx[k].t) ;
+  int nexe = global.nexe ;
+  hash_init(&global.hash) ;  
+  for (int k=0 ; k < nexe ; k++) {
+    hash_adds(&global.hash,&global.ctx[k].t) ;
   }
-  pp_hash(stdout,&hash,group);
-  fprintf(stdout,"** condition **\n") ;
-  for (int k=0 ; k < NEXE ; k++) {
-    pp_hash_ok(stdout,&global.ctx[k].t,group);
-  }
-  fprintf(stdout,"** topologies **\n") ;
-  for (int k = 0 ; k < SCANSZ ; k++) {
-    count_t c = ngroups[k] ;
-    if (c > 0) {
-      fprintf(stdout,"%-6" PCTR "> %s\n",c,group[k]);
+#ifdef OUT
+  tsc_t total = timeofday()-start;
+  count_t p_true = 0, p_false = 0;
+  for (int k = 0 ; k < HASHSZ ; k++) {
+    entry_t *e = &global.hash.t[k];
+    if (e->c > 0) {
+      if (e->ok) {
+        p_true += e->c ;
+      } else {
+        p_false += e->c;
+      }
     }
   }
-  return 0;
+  postlude(out,&global,p_true,p_false,total);
+#endif
+  return EXIT_SUCCESS;
 }
+
+#ifdef MAIN
+int main (int argc,char **argv) {
+  return RUN(argc,argv,stdout) ;
+}
+#endif

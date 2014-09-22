@@ -92,7 +92,6 @@ val sleep : int ref
 val isync : bool ref
 val syncconst : int
 val syncmacro : int ref
-val signaling : bool ref
 val xy : bool ref
 val morearch : MoreArch.t ref
 val pldw : bool ref

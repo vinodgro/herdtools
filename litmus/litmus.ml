@@ -176,7 +176,6 @@ let opts =
 (* Bizarre *)
    argbool "-isync" Option.isync "undocumented" ;
    argint "-syncmacro" Option.syncmacro "undocumented" ;
-   argbool "-signaling" Option.signaling "undocumented" ;
    argbool "-xy" Option.xy "undocumented";
   ]
 
@@ -244,7 +243,6 @@ let () =
       let force_affinity = !force_affinity
       let kind = !kind
       let numeric_labels = get_numeric_labels ()
-      let signaling = !signaling
       let syncconst = syncconst
       let morearch = !morearch
       let carch = !carch
@@ -263,7 +261,9 @@ let () =
       let sleep = !sleep
       let is_out = is_out ()
       let targetos = !targetos
-      let affinity = !affinity
+      let affinity = match !mode with
+      | Mode.Std -> !affinity
+      | Mode.PreSi -> Affinity.Scan
       let logicalprocs = !logicalprocs
       let linkopt = !linkopt
       let barrier = !barrier

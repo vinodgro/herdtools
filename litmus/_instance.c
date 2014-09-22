@@ -43,8 +43,9 @@ typedef struct global_t {
   sense_t gb ;    /* All following synchronisation */
   /* Count 'interesting' outcomes */
   volatile int ok ;
-  /* Att instance contexts */
+  /* All instance contexts */
   ctx_t ctx[NEXE] ; /* All test instance contexts */
+  hash_t hash ;     /* Sum of outcomes */
 } global_t ;
 
 static global_t global  = { inst, role, group, ngroups, mem, } ;
