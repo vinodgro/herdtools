@@ -16,6 +16,7 @@ let pgm = if Array.length Sys.argv > 0 then Sys.argv.(0) else "litmus"
 
 (* Local options are in Option module *)
 let sources = ref []
+
 open Option
 
 let opts =
@@ -50,7 +51,8 @@ let opts =
    argkm "-size_of_test" Option.size  "alias for -s";
    argkm "-r" Option.runs "number of runs" ;
    argkm "-number_of_run" Option.runs "alias for -r" ;
-
+   argkm "-noccs" Option.noccs "upper bound on numbers of target outcomes (presi only)" ;
+   argfloato "-timelimit" Option.timelimit "bound on runtime (presi only)" ;
 (* Modes *)
    begin let module P = ParseTag.Make(Barrier) in
    P.parse "-barrier" Option.barrier "set type of barriers" end ;
@@ -279,6 +281,7 @@ let () =
       let size = !size
       let runs = !runs
       let noccs = !noccs
+      let timelimit = !timelimit
       let avail = !avail
       let stride = if !stride > 0 then Some !stride else None
       let timeloop = !timeloop

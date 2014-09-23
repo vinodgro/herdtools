@@ -1958,8 +1958,7 @@ let user2_barrier_def () =
         Some (cs,ne)
       end else
         None in
-    UD.postlude doc test affi (mk_dsa test) ;
-
+    UD.postlude doc test affi (mk_dsa test) [] ;
     O.o "static void run(cmd_t *cmd,cpus_t *def_all_cpus,FILE *out) {" ;
 (* Prelude *)
     if do_vp then O.oi "if (cmd->prelude) prelude(out);" ;

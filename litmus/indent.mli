@@ -15,6 +15,7 @@
 type t
 val as_string : t -> string
 val tab : t -> t
+val indent0 : t
 val indent : t
 val indent2 : t
 val indent3 : t

@@ -26,6 +26,7 @@ module type CommonConfig = sig
   val runs : int
   val size : int
   val noccs : int
+  val timelimit : float option
   val isync : bool
   val speedcheck : Speedcheck.t
   val safer : Safer.t
@@ -90,6 +91,7 @@ module type Config = sig
 (* Additions for Presi *)
   val line : int
   val noccs : int
+  val timelimit : float option
 (* End of additions *)
   include Skel.Config
   include Run.Config

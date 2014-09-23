@@ -7,6 +7,7 @@ static pthread_t th[AVAIL];
 
 int RUN(int argc,char **argv,FILE *out) {
 #ifdef OUT
+  parse_param(*argv,global.parse,PARSESZ,argv+1) ;
 #ifdef PRELUDE
   prelude(out) ;
 #endif

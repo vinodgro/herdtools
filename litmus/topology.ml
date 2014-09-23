@@ -409,8 +409,12 @@ let part pp_part maxelt maxpart k r =
     O.o "" ;
     O.f "#define SCANSZ %i" (List.length all_gs) ;
     O.f "#define SCANLINE %i" sz ;
-    O.o "" ;
-    O.o "static count_t ngroups[SCANSZ];" ;
+    begin match Cfg.mode with
+    | Mode.Std ->
+        O.o "" ;
+        O.o "static count_t ngroups[SCANSZ];"
+    | Mode.PreSi -> ()
+    end ;
     O.o "" ;
     ()
 

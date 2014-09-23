@@ -14,6 +14,12 @@ module type Config = sig
   val mode : Mode.t
   val kind : bool
 end
+
+type stat =
+    { tags : string list ; name : string ;
+      max : string; tag : string;
+      process : string -> string; }
+
 (* Skeleton utilities, useful for Skel and PreSi *)
 
 module Make
@@ -48,7 +54,9 @@ module Make
         val prelude : Name.t -> T.t -> unit
 
         (* Dump results *)
-        val postlude : Name.t -> T.t -> Affi.t option -> bool -> unit
+        val postlude :
+            Name.t -> T.t -> Affi.t option -> bool ->
+              stat list -> unit
       end
     end = struct
 
@@ -185,7 +193,7 @@ module Make
         let pp_nstates nstates =
           O.fi "fprintf(out,\"Histogram (%%i states)\\n\",%s);" nstates
 
-        let postlude doc test affi show_topos =
+        let postlude doc test affi show_topos stats =
           begin match Cfg.mode with
           | Mode.Std ->
               O.o "static void postlude(FILE *out,cmd_t *cmd,hist_t *hist,count_t p_true,count_t p_false,tsc_t total) {"
@@ -311,12 +319,44 @@ module Make
                 O.oi "}" 
               end
           | Mode.PreSi ->
+              O.oi "count_t *ngroups = &g->stats.groups[0];" ;
               O.oi "for (int k = 0 ; k < SCANSZ ; k++) {" ;
-              O.oii "count_t c = g->ngroups[k];" ;
-              let fmt = "\"Topology %-6\" PCTR\":> %s\\n\"" in
-              O.fii "if (c > 0) { printf(%s,c,g->group[k]); }" fmt ;
+              O.oii "count_t c = ngroups[k];" ;
+              let fmt = "\"Topology %-6\" PCTR\":> part=%i %s \\n\"" in
+              O.fii "if (c > 0) printf(%s,c,k,g->group[k]);" fmt ;
               O.oi "}"
           end ;
+(* Other stats *)
+          List.iter
+            (fun {tags; name; max; tag; process; } ->
+              let ks = Misc.interval 0 (List.length tags) in
+              let rec loop_rec i = function
+                | [] ->
+                    O.fx i "{" ;
+                    let j = Indent.tab i in
+                    O.fx j "count_t c = g->stats.%s%s;" name
+                      (String.concat ""
+                         (List.map (sprintf "[k%i]") ks))  ;
+                    let fmt =
+                      sprintf "%s %%-6\"PCTR\":> {%s}\\n"
+                        tag
+                        (String.concat ", "
+                           (List.map (sprintf "%s=%%i") tags))
+                    and args =
+                      String.concat ","
+                        (List.map
+                           (fun k -> process (sprintf "k%i" k))
+                           ks) in
+                    O.fx j "if ((c*100)/p_true >= 20) fprintf(out,\"%s\",c,%s);"
+                      fmt args ;
+                    O.fx i "}"
+                | k::ks ->
+                    let i = Indent.tab i in
+                    O.fx i "for (int k%i = 0 ; k%i < %s; k%i++)"
+                      k k max k ;
+                    loop_rec i ks in
+              loop_rec Indent.indent0 ks)
+            stats ;
 (* Show running time *)
           let fmt = sprintf "Time %s %%.2f\\n"  doc.Name.name in
           O.fi "fprintf(out,\"%s\",total / 1000000.0) ;" fmt ;

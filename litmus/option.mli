@@ -25,7 +25,7 @@ val argstring_withfun :
 val argint : string -> int ref -> string -> string * Arg.spec * string
 val argbool : string -> bool ref -> string -> string * Arg.spec * string
 val argboolo : string -> bool option ref -> string -> string * Arg.spec * string
-
+val argfloato : string -> float option ref -> string -> string * Arg.spec * string
 (* Verbose *)
 val verbose : int ref
 
@@ -50,6 +50,7 @@ val avail : int option ref
 val size : int ref
 val runs : int ref
 val noccs : int ref
+val timelimit : float option ref
 val barrier : Barrier.t ref
 val verbose_barrier : bool ref
 val verbose_prelude : bool option ref

@@ -258,4 +258,18 @@ double tsc_millions(tsc_t t) ;
 
 /* String utilities */
 int find_string(char *t[],int sz,char *s) ;
+
+
+/**********/
+/* Pre-Si */
+/**********/
+typedef struct {
+  char* tag;
+  int *dst;
+  int (*f)(int);
+  int max;
+} parse_param_t;
+
+void parse_param(char *prog,parse_param_t *p,int sz,char **argv) ;
+
 #endif

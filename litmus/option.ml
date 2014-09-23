@@ -55,6 +55,10 @@ let argboolo opt  r msg =
   opt,Arg.Bool (fun b -> r := Some b),
   sprintf "<bool> %s" msg
 
+let argfloato opt r msg =
+  opt,Arg.Float (fun f -> r := Some f),
+  sprintf "<float> %s" msg
+
 (* verbose *)
 let verbose = ref 0
 
@@ -90,6 +94,7 @@ let avail = ref None
 let size = ref 100000
 let runs = ref 10
 let noccs = ref 1
+let timelimit = ref None
 let barrier = ref Barrier.User
 let verbose_barrier = ref false
 let verbose_prelude = ref None

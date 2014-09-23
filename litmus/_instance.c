@@ -29,10 +29,12 @@ static void instance_init (ctx_t *p, int id, intmax_t *mem) {
 static intmax_t mem[MEMSZ] ;
 
 typedef struct global_t {
+  /* Command-line parameter */
+  param_t *param ;
+  parse_param_t *parse ;
   /* Topology */
   int *inst, *role ;
   char **group ;
-  count_t *ngroups ;
   /* memory */
   intmax_t *mem ;
   /* Runtime control */
@@ -43,31 +45,34 @@ typedef struct global_t {
   sense_t gb ;    /* All following synchronisation */
   /* Count 'interesting' outcomes */
   volatile int ok ;
+  /* Times for timeout */
+  tsc_t start,now ;
   /* All instance contexts */
   ctx_t ctx[NEXE] ; /* All test instance contexts */
   hash_t hash ;     /* Sum of outcomes */
+  /* statistics */
+  stats_t stats ;
 } global_t ;
 
-static global_t global  = { inst, role, group, ngroups, mem, } ;
+static global_t global  = { &param, &parse[0], inst, role, group, mem, } ;
 
 static void init_global(global_t *g,int id) {
   if (id == 0) {
+#ifdef TIMELIMIT
+    /* Starting time */
+    g->start = timeofday() ;
+#endif
     /* Global barrier */
     barrier_init(&g->gb,AVAIL) ;
     /* Align  to cache line */
     uintptr_t x = (uintptr_t)(g->mem) ;
     x += LINE-1 ; x /=  LINE ; x *= LINE ;
     intmax_t *m = (intmax_t *)x ;
-    
     /* Instance contexts */
     for (int k = 0 ; k < NEXE ; k++) {
       instance_init(&g->ctx[k],k,m) ;
       m += NVARS*LINESZ ;
     }
-
-    /* Topology */
-    g->inst = inst ;
-    g->role = role ;
     mbar() ;
     g->go = 1 ;
   } else {

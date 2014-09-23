@@ -567,6 +567,7 @@ static void argoneprefetch(char *prog,cmd_t *d, char *p, prfdirs_t *r) {
   }
   set_prefetch(r,dir) ;
 }
+
 int parse_prefetch(char *p, prfdirs_t *r) {
   if (!*p) return 1 ;
   for ( ;; ) {
@@ -1128,4 +1129,39 @@ int find_string(char *t[], int sz, char *s) {
     if (strcmp(t[k],s) == 0) return k ;
   }
   return -1 ;
+}
+
+/**********/
+/* Pre-Si */
+/**********/
+
+static char *check_key(char *key, char *arg) {
+  while (*key) {
+    if (*key != *arg) return NULL ;
+    key++ ; arg++ ;
+  }
+  if (*arg == '=') return arg+1 ;
+  return NULL ;
+}
+
+static void do_parse(char *prog,parse_param_t *p,int sz, char *arg) {
+  for (int k = 0 ; k < sz; k++, p++) {
+    char *rem = check_key(p->tag,arg) ;
+    if (rem != NULL) {
+      long i = strtol(rem,NULL,0) ;
+      *p->dst = p->f(i) ;
+      if (i >= p->max) {
+        fprintf(stderr,"%s: parameter %s is out of range\n",prog,p->tag) ;
+        exit(2) ;
+      }
+      return ;
+    }
+  }
+}
+
+void parse_param(char *prog,parse_param_t *p,int sz,char **argv) {
+  while (*argv) {
+    do_parse(prog,p,sz,*argv) ;
+    argv++ ;
+  }
 }
