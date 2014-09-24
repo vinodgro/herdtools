@@ -263,6 +263,21 @@ int find_string(char *t[],int sz,char *s) ;
 /**********/
 /* Pre-Si */
 /**********/
+
+typedef enum {
+  mode_scan,mode_random,
+} param_mode_t ;
+
+typedef struct {
+  int verbose;
+  int max_run;
+  int size_of_test;
+  int n_exe ;
+  param_mode_t mode;
+} opt_t ;
+
+char **parse_opt(int argc,char **argv,opt_t *def, opt_t *p) ;
+
 typedef struct {
   char* tag;
   int *dst;

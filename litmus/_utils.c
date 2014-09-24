@@ -1135,6 +1135,56 @@ int find_string(char *t[], int sz, char *s) {
 /* Pre-Si */
 /**********/
 
+static void usage_opt(char *prog,opt_t *d) {
+  fprintf(stderr,"usage: %s (options)* (parameters)*\n",prog) ;
+  fprintf(stderr,"  -v      be verbose\n") ;
+  fprintf(stderr,"  -q      be quiet\n") ;
+  fprintf(stderr,"  -n <n>  run n tests concurrently (default %i)\n",d->n_exe) ;
+  fprintf(stderr,"  -r <n>  perform n internal runs (default %i)\n",d->max_run) ;
+  fprintf(stderr,"  -s <n>  perform n external runs (default %i)\n",d->size_of_test) ;
+  fprintf(stderr,"  +rp     random parameter%s\n",d->mode == mode_random ? " (default)" : "") ;
+  fprintf(stderr,"  +sa     scan parameter%s\n",d->mode == mode_scan ? " (default)" : "") ;
+}
+
+static int argint_opt(char *prog,char *p,opt_t *d) {
+  char *q ;
+  long r = do_argint(p,&q) ;
+  if (*p == '\0' || *q != '\0') {
+    usage_opt(prog,d) ;
+  }
+  return r ;
+}
+
+char **parse_opt(int argc,char **argv,opt_t *d, opt_t *p) {
+  char *prog = argv[0] ;
+  for ( ; ; ) {
+    --argc ; ++argv ;
+    if (!*argv) return argv ;
+    char fst = **argv;
+    if (fst != '-' && fst != '+') return argv ;
+    if (strcmp(*argv,"-q") == 0) p->verbose=0 ;
+    else if (strcmp(*argv,"-v") == 0) p->verbose++ ;
+    else if (strcmp(*argv,"-r") == 0) {
+      --argc ; ++argv ;
+      if (!*argv) usage_opt(prog,d) ;
+      p->max_run = argint_opt(prog,argv[0],d) ;
+    } else if (strcmp(*argv,"-s") == 0) {
+      --argc ; ++argv ;
+      if (!*argv) usage_opt(prog,d) ;
+      p->size_of_test = argint_opt(prog,argv[0],d) ;
+    } else if (strcmp(*argv,"-n") == 0) {
+      --argc ; ++argv ;
+      if (!*argv) usage_opt(prog,d) ;
+      p->n_exe = argint_opt(prog,argv[0],d) ;
+      if (p->n_exe < 1) p->n_exe = 1 ;
+    } else if (strcmp(*argv,"+rp") == 0) {
+      p->mode = mode_random;
+    } else if (strcmp(*argv,"+sp") == 0) {
+      p->mode = mode_scan;
+    } else usage_opt(prog,d);
+  }
+}
+
 static char *check_key(char *key, char *arg) {
   while (*key) {
     if (*key != *arg) return NULL ;

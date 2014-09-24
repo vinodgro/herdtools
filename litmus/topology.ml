@@ -181,6 +181,14 @@ end = struct
       let sock,cs = find_cores next ok gs in
       List.combine gs cs @ find_all next (fun s -> s <> sock && ok s) gss
 
+(*
+  let add_next = match Cfg.mode with
+  | Mode.Std -> fun n xs  -> n+List.length xs
+  | Mode.PreSi -> fun _ _ ->  Cfg.smt
+*)
+
+  let add_next n xs =  n+List.length xs
+
   let alloc_instance next ok gss =
     let rec alloc_rec next = function
       | [] -> next,[]
@@ -188,7 +196,7 @@ end = struct
           let i = find_next next c in          
           let next,ys =
             alloc_rec
-              (IntMap.add c { i with next = i.next+List.length xs} next)
+              (IntMap.add c { i with next = add_next i.next xs} next)
               rem in
           let xs =
             List.mapi

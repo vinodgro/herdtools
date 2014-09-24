@@ -9,6 +9,7 @@ typedef struct {
   tb_t next_tb;
   hash_t t;
   sense_t b;
+  param_t p; // For random scan
 } ctx_t ;
 
 
@@ -40,6 +41,7 @@ typedef struct global_t {
   /* Runtime control */
   int verbose ;
   int size,nruns,nexe,noccs ;
+  int do_scan ;
   /* Synchronisation for all threads */
   volatile int go ; /* First synchronisation */
   sense_t gb ;    /* All following synchronisation */
@@ -87,6 +89,7 @@ static void init_global(global_t *g,int id) {
 
 typedef struct {
   int id ;
+  st_t seed ;
   int role ;
   ctx_t *ctx ;
 } thread_ctx_t ;

@@ -194,6 +194,8 @@ module Make
           O.fi "fprintf(out,\"Histogram (%%i states)\\n\",%s);" nstates
 
         let postlude doc test affi show_topos stats =
+          O.o "#define ENOUGH 10" ;
+          O.o "" ;
           begin match Cfg.mode with
           | Mode.Std ->
               O.o "static void postlude(FILE *out,cmd_t *cmd,hist_t *hist,count_t p_true,count_t p_false,tsc_t total) {"
@@ -216,7 +218,7 @@ module Make
               O.oi "just_dump_outcomes(out,hist);"
           | Mode.PreSi ->
               pp_nstates "hash->nhash" ;
-              O.oi "pp_hash(out,hash,g->group);"
+              O.oi "pp_hash(out,hash,g->verbose > 1,g->group);"
           end ;
 (* Print condition and witnesses *)
           if Cfg.kind then begin
@@ -302,29 +304,33 @@ module Make
               "Observation %s %%s %%\"PCTR\" %%\"PCTR\"\\n"
               doc.Name.name  in
           let obs = 
-            "!cond_true ? \"Never\" : !cond_false ? \"Always\" : \"Sometimes\"" in
+            "!cond_true ? \"Never\" : !cond_false ? \"Always\" : \"Sometimes\""
+          in
           O.fi "fprintf(out,\"%s\",%s,cond_true,cond_false) ;" fmt obs;
+(* Parameter sumaries,
+   meaningful only when 'remarkable outcomes are present *)
+          O.oi "if (p_true > 0) {" ;
 (* Topologies sumaries *)
           begin match Cfg.mode with
           | Mode.Std ->
               if show_topos then begin
-                O.oi "if (cmd->aff_mode == aff_scan) {" ;
-                O.oii "for (int k = 0 ; k < SCANSZ ; k++) {" ;
-                O.oiii "count_t c = ngroups[k];" ;
+                O.oii "if (cmd->aff_mode == aff_scan) {" ;
+                O.oiii "for (int k = 0 ; k < SCANSZ ; k++) {" ;
+                O.oiv "count_t c = ngroups[k];" ;
                 let fmt = "\"Topology %-6\" PCTR\":> %s\\n\"" in
-                O.fiii "if (c > 0) { printf(%s,c,group[k]); }" fmt ;
-                O.oii "}" ;
-                O.oi "} else if (cmd->aff_mode == aff_topo) {"  ;
-                O.oii "printf(\"Topology %-6\" PCTR \":> %s\\n\",ngroups[0],cmd->aff_topo);" ;
-                O.oi "}" 
+                O.fiv "if ((c*100)/p_true > ENOUGH) { printf(%s,c,group[k]); }" fmt ;
+                O.oiii "}" ;
+                O.oii "} else if (cmd->aff_mode == aff_topo) {"  ;
+                O.oiii "printf(\"Topology %-6\" PCTR \":> %s\\n\",ngroups[0],cmd->aff_topo);" ;
+                O.oii "}"
               end
           | Mode.PreSi ->
-              O.oi "count_t *ngroups = &g->stats.groups[0];" ;
-              O.oi "for (int k = 0 ; k < SCANSZ ; k++) {" ;
-              O.oii "count_t c = ngroups[k];" ;
+              O.oii "count_t *ngroups = &g->stats.groups[0];" ;
+              O.oii "for (int k = 0 ; k < SCANSZ ; k++) {" ;
+              O.oiii "count_t c = ngroups[k];" ;
               let fmt = "\"Topology %-6\" PCTR\":> part=%i %s \\n\"" in
-              O.fii "if (c > 0) printf(%s,c,k,g->group[k]);" fmt ;
-              O.oi "}"
+              O.fiii "if ((c*100)/p_true > ENOUGH) printf(%s,c,k,g->group[k]);" fmt ;
+              O.oii "}"
           end ;
 (* Other stats *)
           List.iter
@@ -347,7 +353,7 @@ module Make
                         (List.map
                            (fun k -> process (sprintf "k%i" k))
                            ks) in
-                    O.fx j "if ((c*100)/p_true >= 20) fprintf(out,\"%s\",c,%s);"
+                    O.fx j "if (c > 0 && (c*100)/p_true >= ENOUGH) fprintf(out,\"%s\",c,%s);"
                       fmt args ;
                     O.fx i "}"
                 | k::ks ->
@@ -355,8 +361,9 @@ module Make
                     O.fx i "for (int k%i = 0 ; k%i < %s; k%i++)"
                       k k max k ;
                     loop_rec i ks in
-              loop_rec Indent.indent0 ks)
+              loop_rec Indent.indent ks)
             stats ;
+          O.oi "}" ;
 (* Show running time *)
           let fmt = sprintf "Time %s %%.2f\\n"  doc.Name.name in
           O.fi "fprintf(out,\"%s\",total / 1000000.0) ;" fmt ;

@@ -550,145 +550,292 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
 (* Run test code *)
 (*****************)
 
-let dump_run_thread
-    env test stats get_param_pos global_env (proc,(out,(outregs,envVolatile))) =
-  let my_regs = U.select_proc proc env in
-  let addrs = A.Out.get_addrs out in
-  O.fi "case %i: {" proc ;
-  (* Delays *)
-  O.oii "int _delay = DELTA_TB;" ;
-  if proc <> 0 then
-    O.fii "_delay += (_p->d%i - (NSTEPS-1)/2)*STEP;" proc ;
-  (* Define locations *)
-  let addrs0 =  List.map fst test.T.globals in
-  List.iter
-    (fun addr ->
-      let t =  CType.dump (find_addr_type addr env) in
-      try
-        let pos = get_param_pos addr in
-        O.fii "%s volatile *%s = (%s *)(_mem + LINESZ*_p->%s + %i);"
-          t addr t (pvtag addr) pos
-      with Not_found ->
-        O.fii "%s volatile *%s = (%s *)_mem;" t addr t)
-    (if proc = 0 then addrs0 else addrs) ;
-  (* Initialize them, if role is zero *)
-  if proc = 0 then begin
-    List.iter
-      (fun (a,t) ->
-        let v = A.find_in_state (A.Location_global a) test.T.init in
-        let ins =
-          U.do_store t (sprintf "*%s" a)
-            (let open Constant in
-            match v with
-            | Concrete i -> sprintf "%i" i
-            | Symbolic s ->
-                let t2 = find_addr_type s env in
-                if t=t2 then s else
-                sprintf "(%s)%s" (CType.dump t) s) in
-        O.fii "%s; cache_flush((void *)%s);" ins a)
-      test.T.globals
-  end ;
-  (* And cache-instruct them *)
-  O.oii "barrier_wait(_b);" ;
-  List.iter (fun addr ->
-    O.fii "if (_p->%s == ctouch) cache_touch((void *)%s);"
-      (pctag (proc,addr)) addr ;
-    O.fii "else cache_flush((void *)%s);" addr)
-    addrs ;
-  (* Synchronise *)
-  if have_timebase then O.oii "_ctx->next_tb = read_timebase();" ;
-  O.oii "barrier_wait(_b);" ;
-  if have_timebase then begin
-    O.oii "tb_t _tb0 = _ctx->next_tb;" ;
-    O.oii "int _delta;" ;
-    O.oii "do { _delta = read_timebase() - _tb0; } while (_delta < _delay);"
-  end ;
-  (* Dump code *)
-  Lang.dump 
-    O.out (Indent.as_string Indent.indent2)
-    my_regs global_env envVolatile proc out ;
-  O.oii "barrier_wait(_b);" ;
-  if proc = 0 then begin
-    A.LocSet.iter
-      (fun loc ->
-        let tag = dump_loc_tag loc in
-        O.fii "%s = *%s;" (OutUtils.fmt_presi_index tag) tag)
-      (U.get_final_globals test) ;
-    A.LocSet.iter
-      (fun loc ->
-        if U.is_ptr loc env then
-          O.fii "%s = idx_addr((void *)%s,%s);"
-            (OutUtils.fmt_presi_index (dump_loc_tag_coded loc))
-            (OutUtils.fmt_presi_index (dump_loc_tag loc))
-            (String.concat ","
-               (List.map (fun (a,_) -> sprintf "(void *)%s" a) test.T.globals)))
-      (U.get_final_locs test) ;
+      let dump_run_thread
+          env test stats get_param_pos global_env (proc,(out,(outregs,envVolatile))) =
+        let my_regs = U.select_proc proc env in
+        let addrs = A.Out.get_addrs out in
+        O.fi "case %i: {" proc ;
+        (* Delays *)
+        O.oii "int _delay = DELTA_TB;" ;
+        if proc <> 0 then
+          O.fii "_delay += (_p->d%i - (NSTEPS-1)/2)*STEP;" proc ;
+        (* Define locations *)
+        let addrs0 =  List.map fst test.T.globals in
+        List.iter
+          (fun addr ->
+            let t =  CType.dump (find_addr_type addr env) in
+            try
+              let pos = get_param_pos addr in
+              O.fii "%s volatile *%s = (%s *)(_mem + LINESZ*_p->%s + %i);"
+                t addr t (pvtag addr) pos
+            with Not_found ->
+              O.fii "%s volatile *%s = (%s *)_mem;" t addr t)
+          (if proc = 0 then addrs0 else addrs) ;
+        (* Initialize them, if role is zero *)
+        if proc = 0 then begin
+          List.iter
+            (fun (a,t) ->
+              let v = A.find_in_state (A.Location_global a) test.T.init in
+              let ins =
+                U.do_store t (sprintf "*%s" a)
+                  (let open Constant in
+                  match v with
+                  | Concrete i -> sprintf "%i" i
+                  | Symbolic s ->
+                      let t2 = find_addr_type s env in
+                      if t=t2 then s else
+                      sprintf "(%s)%s" (CType.dump t) s) in
+              O.fii "%s; cache_flush((void *)%s);" ins a)
+            test.T.globals
+        end ;
+        (* And cache-instruct them *)
+        O.oii "barrier_wait(_b);" ;
+        List.iter (fun addr ->
+          O.fii "if (_p->%s == ctouch) cache_touch((void *)%s);"
+            (pctag (proc,addr)) addr ;
+          O.fii "else cache_flush((void *)%s);" addr)
+          addrs ;
+        (* Synchronise *)
+        if have_timebase then O.oii "_ctx->next_tb = read_timebase();" ;
+        O.oii "barrier_wait(_b);" ;
+        if have_timebase then begin
+          O.oii "tb_t _tb0 = _ctx->next_tb;" ;
+          O.oii "int _delta;" ;
+          O.oii "do { _delta = read_timebase() - _tb0; } while (_delta < _delay);"
+        end ;
+        (* Dump code *)
+        Lang.dump 
+          O.out (Indent.as_string Indent.indent2)
+          my_regs global_env envVolatile proc out ;
+        O.oii "barrier_wait(_b);" ;
+        if proc = 0 then begin
+          A.LocSet.iter
+            (fun loc ->
+              let tag = dump_loc_tag loc in
+              O.fii "%s = *%s;" (OutUtils.fmt_presi_index tag) tag)
+            (U.get_final_globals test) ;
+          A.LocSet.iter
+            (fun loc ->
+              if U.is_ptr loc env then
+                O.fii "%s = idx_addr((void *)%s,%s);"
+                  (OutUtils.fmt_presi_index (dump_loc_tag_coded loc))
+                  (OutUtils.fmt_presi_index (dump_loc_tag loc))
+                  (String.concat ","
+                     (List.map (fun (a,_) -> sprintf "(void *)%s" a) test.T.globals)))
+            (U.get_final_locs test) ;
 
-    O.oii "int _cond = final_ok(final_cond(_log));" ;
-    O.oii "hash_add(&_ctx->t,_log,_p,1,_cond);" ;
-    O.oii "if (_cond) {" ;
-    O.oiii "ok = 1;" ;
-    O.oiii "(void)__sync_add_and_fetch(&_g->stats.groups[_p->part],1);" ;
-    let open SkelUtil in
-    List.iter
-      (fun {tags; name; _} ->
-        let idx =
-          String.concat ""
-            (List.map (sprintf "[_p->%s]") tags) in
-        O.fiii "(void)__sync_add_and_fetch(&_g->stats.%s%s,1);" name idx)
-      stats ;
-    O.oii "}" ;
-  end ;
-  O.oii "break; }" ;
-  ()
-  
-let dump_run_def env test stats  =
-  O.o "/*************/" ;
-  O.o "/* Test code */" ;
-  O.o "/*************/" ;
-  O.o "" ;
-  O.o "inline static int do_run(thread_ctx_t *_c, param_t *_p,global_t *_g) {" ;
-  O.oi "int ok = 0;" ;
-  O.oi "int _role = _c->role;" ;
-  O.oi "if (_role < 0) return ok;" ;
-  O.oi "ctx_t *_ctx = _c->ctx;" ;
-  O.oi "intmax_t *_mem = _ctx->mem;" ;
-  O.oi "sense_t *_b = &_ctx->b;" ;
-  O.oi "log_t *_log = &_ctx->out;" ;
-  O.o "" ;
-  O.oi "barrier_wait(_b);" ;
-  O.oi "switch (_role) {" ;
-  let global_env = U.select_global env in
-  List.iter
-    (dump_run_thread env test stats (mk_get_param_pos test) global_env)
-    test.T.code ;
-  O.oi "}" ;  
-  O.oi "return ok;" ;
-  O.o "}" ;
-  O.o ""
+          O.oii "int _cond = final_ok(final_cond(_log));" ;
+          O.oii "hash_add(&_ctx->t,_log,_p,1,_cond);" ;
+          O.oii "if (_cond) {" ;
+          O.oiii "ok = 1;" ;
+          O.oiii "(void)__sync_add_and_fetch(&_g->stats.groups[_p->part],1);" ;
+          let open SkelUtil in
+          List.iter
+            (fun {tags; name; _} ->
+              let idx =
+                String.concat ""
+                  (List.map (sprintf "[_p->%s]") tags) in
+              O.fiii "(void)__sync_add_and_fetch(&_g->stats.%s%s,1);" name idx)
+            stats ;
+          O.oii "}" ;
+        end ;
+        O.oii "break; }" ;
+        ()
+          
+      let dump_run_def env test stats  =
+        O.o "/*************/" ;
+        O.o "/* Test code */" ;
+        O.o "/*************/" ;
+        O.o "" ;
+        O.o "inline static int do_run(thread_ctx_t *_c, param_t *_p,global_t *_g) {" ;
+        O.oi "int ok = 0;" ;
+        O.oi "int _role = _c->role;" ;
+        O.oi "if (_role < 0) return ok;" ;
+        O.oi "ctx_t *_ctx = _c->ctx;" ;
+        O.oi "intmax_t *_mem = _ctx->mem;" ;
+        O.oi "sense_t *_b = &_ctx->b;" ;
+        O.oi "log_t *_log = &_ctx->out;" ;
+        O.o "" ;
+        O.oi "barrier_wait(_b);" ;
+        O.oi "switch (_role) {" ;
+        let global_env = U.select_global env in
+        List.iter
+          (dump_run_thread env test stats (mk_get_param_pos test) global_env)
+          test.T.code ;
+        O.oi "}" ;  
+        O.oi "return ok;" ;
+        O.o "}" ;
+        O.o ""
 
 (********)
 (* zyva *)
 (********)
+      let split n xs =
+        let rec combine xs yss = match yss with
+        | [] -> xs,yss
+        | ys::ry-> match xs with
+          | [] -> xs,yss
+          | x::xs ->
+              let xs,ry = combine xs ry in
+              xs,(x::ys)::ry in
+        let rec do_rec xs yss = match xs with
+        | [] -> yss
+        | _::_ ->
+            let xs,yss = combine xs yss in
+            do_rec xs yss in
+        let yss = do_rec xs (Misc.replicate n []) in
+        List.map List.rev yss
 
-      let dump_scan_def tname env test =
+
+      let dump_choose_params_def env test stats =
+        O.o "inline static int comp_param (st_t *seed,int *g,int max) {" ;
+        O.oi "int tmp = *g;" ;
+        O.o "" ;
+        O.oi "return tmp >= 0 ? tmp : rand_k(seed,max);" ;
+        O.o "}";
+        O.o "" ;
+        O.o
+          "static void choose_params(global_t *g,thread_ctx_t *c,int part) {" ;
+        O.oi "int _role = c->role;" ;
+        O.oi "if (_role < 0) return;" ;
+        O.oi "ctx_t *ctx = c->ctx;" ;
+        O.oi "param_t *q = g->param;" ;
+        O.o "" ;
+        O.oi "for (int nrun=0 ; nrun < g->nruns ; nrun++) {" ;
+        let n = T.get_nprocs test in                
+        let ps =
+          let open SkelUtil in
+          List.fold_right
+            (fun st ->
+              List.fold_right
+                (fun tag k -> (tag,st.max)::k)
+                st.tags)
+            stats [] in
+        let pss = split n ps in
+        O.oii "barrier_wait(&ctx->b);";
+        O.oii "switch (_role) {" ;
+        List.iteri
+          (fun i ps ->
+            O.fii "case %i:" i ;
+            if i=n-1 then O.oiii "ctx->p.part = part;" ;
+            List.iter
+              (fun (tag,max) ->
+                O.fiii
+                  "ctx->p.%s = comp_param(&c->seed,&q->%s,%s);" tag tag max ;)
+              ps ;
+            O.oiii "break;")
+          pss ;
+        O.oii "}" ;
+        O.oii "(void)do_run(c,&ctx->p,g);" ;
+        O.oi "}" ;
+        O.o "}" ;
+        O.o ""
+
+      let dump_choose_def env test stats =
+        dump_choose_params_def env test stats ;
+        O.o "static void choose(int id,global_t *g) {" ;
+        O.oi "param_t *q = g->param;" ;
+        O.oi "thread_ctx_t c; c.id = c.seed = id;" ;
+        O.o "" ;
+        O.oi "if (q->part >=0) {" ;
+        O.oii "set_role(g,&c,q->part);";
+        O.oii "for (int size = 0; size < g->size ; size++) {" ;          
+        O.oiii
+          "if (g->verbose>1) fprintf(stderr, \"Run %i of %i\\r\", size, g->size);" ;
+        O.oiii "choose_params(g,&c,q->part);" ;
+        O.oii "}" ;
+        O.oi "} else {" ;
+        O.oii "st_t seed = 0;" ;
+        O.oii "for (int size = 0; size < g->size ; size++) {" ;          
+        O.oiii
+          "if (g->verbose>1) fprintf(stderr, \"Run %i of %i\\r\", size, g->size);" ;
+        O.oiii "int part = rand_k(&seed,SCANSZ);" ;
+        O.oiii "set_role(g,&c,part);";
+        O.oiii "choose_params(g,&c,part);" ;
+        O.oii "}" ;        
+        O.oi "}" ;
+        O.o "}" ;
+        O.o ""
+
+
+        let dump_scan_def env test =
+          O.o "static void scan(int id,global_t *g) {" ;
+          O.oi "param_t p,*q = g->param;" ;
+          O.oi "thread_ctx_t c; c.id = id;" ;
+          O.oi "int nrun = 0;" ;
+          O.o "" ;
+          O.oi "g->ok = 0;" ;
+          O.oi "do {" ;
+          O.oii "for (int part = 0 ; part < SCANSZ ; part++) {" ;
+          O.oiii "if (q->part >= 0) p.part = q->part; else p.part = part;" ;
+          O.oiii "set_role(g,&c,p.part);" ;
+          (* Enumerate parameters *)
+          let rec loop_delays i = function
+            | [] ->
+                O.ox i "if (do_run(&c,&p,g)) (void)__sync_add_and_fetch(&g->ok,1);" ;
+                ()
+            | d::ds ->
+                let tag = pdtag d in
+                O.fx i "for (int %s = 0 ; %s < NSTEPS ; %s++) {" tag tag tag ;
+                O.fx (Indent.tab i)
+                  "if (q->%s >= 0) p.%s = q->%s; else p.%s = %s;"
+                  tag tag tag tag tag ;
+                loop_delays (Indent.tab i) ds ;
+                O.fx i "}" in
+          let rec loop_caches i = function
+            | [] -> loop_delays i (get_param_delays test)
+            | c::cs ->
+                let tag = pctag c in
+                O.fx i "for (int %s = 0 ; %s < cmax ; %s++) {" tag tag tag ;
+                O.fx (Indent.tab i)
+                  "if (q->%s >= 0) p.%s = q->%s; else p.%s = %s;"
+                  tag tag tag tag tag ;
+                loop_caches (Indent.tab i) cs ;
+                O.fx i "}" in                
+          let rec loop_vars i = function
+            | [] -> loop_caches i (get_param_caches test)
+            | (x,_)::xs ->
+                let tag = pvtag x in
+                O.fx i "for (int %s = 0 ; %s < NVARS ; %s++) {" tag tag tag ;
+                O.fx (Indent.tab i)
+                  "if (q->%s >= 0) p.%s = q->%s; else p.%s = %s;"
+                  tag tag tag tag tag ;
+                loop_vars (Indent.tab i) xs ;
+                O.fx i "}" in
+          loop_vars Indent.indent3 (get_param_vars test) ;
+          O.oii "}" ;
+          begin match Cfg.timelimit with
+          | None -> ()
+          | Some _ ->
+              O.oii "if (id == 0) g->now = timeofday();"
+          end ;
+          O.oii "barrier_wait(&g->gb);" ;
+          O.oii "if (++nrun >= g->nruns) break;" ;
+          begin match Cfg.timelimit with
+          | None -> ()
+          | Some _ ->
+              O.oiii "if ((g->now - g->start)/ 1000000.0 > TIMELIMIT) break;"
+          end ;
+          O.oi "} while (g->ok < g->noccs);" ;
+          O.o "}" ;
+          O.o ""
+
+      let dump_zyva_def tname env test stats =
         O.o "/*******************/" ;
         O.o "/* Forked function */" ;
         O.o "/*******************/" ;
         O.o "" ;
+        dump_scan_def env test ;
+        dump_choose_def env test stats ;
         O.o "typedef struct {" ;
         O.oi "int id;" ;
         O.oi "global_t *g;" ;
-        O.o "} scan_t;" ;
+        O.o "} zyva_t;" ;
         O.o "" ;
-        O.o "static void *scan(void *_a) {" ;
-        O.oi "scan_t *a = (scan_t*)_a;" ;
+        O.o "static void *zyva(void *_a) {" ;
+        O.oi "zyva_t *a = (zyva_t*)_a;" ;
         O.oi "int id = a->id;" ;
         O.oi "global_t *g = a->g;" ;
-        O.oi "param_t p; " ;
-        O.oi "thread_ctx_t c;" ;
-        O.o "" ;
-        O.oi "c.id = id;" ;
         O.oi
           (if Cfg.force_affinity then
             sprintf
@@ -697,61 +844,7 @@ let dump_run_def env test stats  =
           else
             "write_one_affinity(id);") ;
         O.oi "init_global(g,id);" ;
-        O.oi "int nrun = 0;" ;
-        O.oi "param_t *param = g->param;" ;
-        O.oi "g->ok = 0;" ;
-        O.oi "do {" ;
-        O.oii "for (int part = 0 ; part < SCANSZ ; part++) {" ;
-        O.oiii "if (param->part >= 0) p.part = param->part; else p.part = part;" ;
-        O.oiii "set_role(g,&c,p.part);" ;
-        (* Enumerate parameters *)
-        let rec loop_delays i = function
-          | [] ->
-              O.ox i "if (do_run(&c,&p,g)) (void)__sync_add_and_fetch(&g->ok,1);" ;
-              ()
-          | d::ds ->
-              let tag = pdtag d in
-              O.fx i "for (int %s = 0 ; %s < NSTEPS ; %s++) {" tag tag tag ;
-              O.fx (Indent.tab i)
-                "if (param->%s >= 0) p.%s = param->%s; else p.%s = %s;"
-                tag tag tag tag tag ;
-              loop_delays (Indent.tab i) ds ;
-              O.fx i "}" in
-        let rec loop_caches i = function
-          | [] -> loop_delays i (get_param_delays test)
-          | c::cs ->
-              let tag = pctag c in
-              O.fx i "for (int %s = 0 ; %s < cmax ; %s++) {" tag tag tag ;
-              O.fx (Indent.tab i)
-                "if (param->%s >= 0) p.%s = param->%s; else p.%s = %s;"
-                tag tag tag tag tag ;
-              loop_caches (Indent.tab i) cs ;
-              O.fx i "}" in    
-        let rec loop_vars i = function
-          | [] -> loop_caches i (get_param_caches test)
-          | (x,_)::xs ->
-              let tag = pvtag x in
-              O.fx i "for (int %s = 0 ; %s < NVARS ; %s++) {" tag tag tag ;
-              O.fx (Indent.tab i)
-                "if (param->%s >= 0) p.%s = param->%s; else p.%s = %s;"
-                tag tag tag tag tag ;
-             loop_vars (Indent.tab i) xs ;
-              O.fx i "}" in
-        loop_vars Indent.indent3 (get_param_vars test) ;
-        O.oii "}" ;
-        begin match Cfg.timelimit with
-        | None -> ()
-        | Some _ ->
-            O.oii "if (id == 0) g->now = timeofday();"
-        end ;
-        O.oii "barrier_wait(&g->gb);" ;
-        O.oii "if (++nrun >= g->nruns) break;" ;
-        begin match Cfg.timelimit with
-        | None -> ()
-        | Some _ ->
-            O.oiii "if ((g->now - g->start)/ 1000000.0 > TIMELIMIT) break;"
-        end ;
-        O.oi "} while (g->ok < g->noccs);" ;
+        O.oi "if (g->do_scan) scan(id,g); else choose(id,g);" ;
         O.oi "return NULL;" ;
         O.o "}" ;
         O.o ""
@@ -802,7 +895,7 @@ let dump_main_def doc env test stats =
     dump_hash_def env test ;
     dump_instance_def env test ;
     dump_run_def env test stats ;
-    dump_scan_def doc.Name.name env test ;
+    dump_zyva_def doc.Name.name env test stats ;
     dump_prelude_def doc test ;
     dump_main_def doc env test stats ;
     ()

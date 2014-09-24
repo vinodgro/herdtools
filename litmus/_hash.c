@@ -5,12 +5,14 @@ typedef struct {
   int ok ;
 } entry_t ;
 
-static void pp_entry(FILE *fp,entry_t *p, char **group) {
+static void pp_entry(FILE *fp,entry_t *p, int verbose, char **group) {
   fprintf(fp,"%-6" PCTR "%c>",p->c,p->ok ? '*' : ':') ;
   pp_log(fp,&p->key) ;
-  fprintf(fp," # ") ;
-  pp_param(fp,&p->p) ;
-  if (group) fprintf(fp," %s",group[p->p.part]);
+  if (verbose) {
+    fprintf(fp," # ") ;
+    pp_param(fp,&p->p) ;
+    if (group) fprintf(fp," %s",group[p->p.part]);
+  }
   fprintf(fp,"\n") ;
 }
 
@@ -19,10 +21,10 @@ typedef struct {
   entry_t t[HASHSZ] ;
 } hash_t ;
 
-static void pp_hash(FILE *fp,hash_t *t,char **group) {
+static void pp_hash(FILE *fp,hash_t *t,int verbose,char **group) {
   for (int k = 0 ; k < HASHSZ ; k++) {
     entry_t *p = t->t+k ;
-    if (p->c > 0) pp_entry(fp,p,group) ;
+    if (p->c > 0) pp_entry(fp,p,verbose,group) ;
   }
 }
 
@@ -30,7 +32,7 @@ static void pp_hash(FILE *fp,hash_t *t,char **group) {
 static void pp_hash_ok(FILE *fp,hash_t *t,char **group) {
   for (int k = 0 ; k < HASHSZ ; k++) {
     entry_t *p = t->t+k ;
-    if (p->c > 0 && p->ok) pp_entry(fp,p,group) ;
+    if (p->c > 0 && p->ok) pp_entry(fp,p,1,group) ;
   }
 }
 #endif
