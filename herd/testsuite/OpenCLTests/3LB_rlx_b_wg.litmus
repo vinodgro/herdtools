@@ -12,19 +12,19 @@ Orig=PodWW Rfe PodRR Fre
 
 P0 (volatile atomic_int* y, volatile atomic_int* x) {
  int r0 = atomic_load_explicit(x,memory_order_relaxed,memory_scope_work_group);
- work_group_barrier(CLK_GLOBAL_MEM_FENCE,memory_scope_work_group);
+ one: work_group_barrier(CLK_GLOBAL_MEM_FENCE,memory_scope_work_group);
  atomic_store_explicit(y,1,memory_order_relaxed,memory_scope_work_group);
 }
 
 P1 (volatile atomic_int* y, volatile atomic_int* z) {
  int r1 = atomic_load_explicit(y,memory_order_relaxed,memory_scope_work_group);
- work_group_barrier(CLK_GLOBAL_MEM_FENCE,memory_scope_work_group);
+ one: work_group_barrier(CLK_GLOBAL_MEM_FENCE,memory_scope_work_group);
  atomic_store_explicit(z,1,memory_order_relaxed,memory_scope_work_group);
 }
 
 P2 (volatile atomic_int* z, volatile atomic_int* x) {
  int r2 = atomic_load_explicit(z,memory_order_relaxed,memory_scope_work_group);
- work_group_barrier(CLK_GLOBAL_MEM_FENCE,memory_scope_work_group);
+ one: work_group_barrier(CLK_GLOBAL_MEM_FENCE,memory_scope_work_group);
  atomic_store_explicit(x,1,memory_order_relaxed,memory_scope_work_group);
 }
 
