@@ -1,0 +1,33 @@
+OpenCL IRIW
+"PodWW Rfe PodRR Fre"
+Prefetch=0:x=F,0:y=W,1:y=F,1:x=T
+Com=Rf Fr
+Orig=PodWW Rfe PodRR Fre
+
+{
+[x] = 0;
+[y] = 0; 
+}
+
+P0 (volatile int* x, volatile int* y) {
+ *x = 1;
+}
+
+P1 (volatile int* x, volatile int* y) {
+ *y = 1;
+}
+
+P2 (volatile int* x, volatile int* y) {
+ int r0 = *x;
+ int r1 = *y;
+}
+
+P3 (volatile int* x, volatile int* y) {
+ int r2 = *y;
+ int r3 = *x;
+}
+
+scopeTree
+(device (work_group P0) (work_group P1) (work_group P2) (work_group P3))
+
+exists (2:r0=1 /\ 2:r1=0 /\ 3:r2=1 /\ 3:r3=0)
