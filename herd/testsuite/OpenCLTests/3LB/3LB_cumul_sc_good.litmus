@@ -1,0 +1,31 @@
+OpenCL 3LB
+"PodWW Rfe PodRR Fre"
+Prefetch=0:x=F,0:y=W,1:y=F,1:x=T
+Com=Rf Fr
+Orig=PodWW Rfe PodRR Fre
+
+{
+[x] = 0;
+[y] = 0;
+[z] = 0;
+}
+
+P0 (volatile atomic_int* y, volatile atomic_int* x) {
+ int r0 = *x;
+ atomic_store_explicit(y,1,memory_order_seq_cst,memory_scope_device);
+}
+
+P1 (volatile atomic_int* y, volatile atomic_int* z) {
+ int r1 = atomic_load_explicit(y,memory_order_seq_cst,memory_scope_device);
+ atomic_store_explicit(z,1,memory_order_seq_cst,memory_scope_device);
+}
+
+P2 (volatile atomic_int* z, volatile atomic_int* x) {
+ int r2 = atomic_load_explicit(z,memory_order_seq_cst,memory_scope_device);
+ *x = 1;
+}
+
+scopeTree
+(device (work_group P0) (work_group P1) (work_group P2))
+
+exists (0:r0=1 /\ 1:r1=1 /\ 2:r2=1)
