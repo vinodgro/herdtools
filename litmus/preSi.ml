@@ -424,8 +424,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         List.flatten r
 
       let get_stats test =
-        let open SkelUtil in        
-
+        let open SkelUtil in
          begin let tags = get_param_vars test in
          if tags = [] then [] else
          [{tags=List.map (fun (s,_) -> pvtag s) tags;
@@ -455,7 +454,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.o "/**************/" ;
         O.o "" ;
 (* Define *)   
-        O.o "typedef enum { cflush, ctouch, cmax, } dir_t;" ;
+        O.o "typedef enum { cignore, cflush, ctouch, cmax, } dir_t;" ;
         O.o "" ;
         O.o "typedef struct {" ;
         O.oi "int part;" ;
@@ -621,11 +620,10 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.oii "barrier_wait(_b);" ;
         List.iter
           (fun addr ->
-            O.fii "if (_act->%s) {" (Topology.active_tag addr) ;
-            O.fiii "if (_p->%s == ctouch) cache_touch((void *)%s);"
+            O.fii "if (_p->%s == ctouch) cache_touch((void *)%s);"
               (pctag (proc,addr)) addr ;
-            O.fiii "else cache_flush((void *)%s);" addr ;
-            O.oii "}")
+            O.fii "else if (_p->%s == cflush) cache_flush((void *)%s);"
+              (pctag (proc,addr)) addr)
           addrs ;
         (* Synchronise *)
         if have_timebase then O.oii "_ctx->next_tb = read_timebase();" ;
@@ -835,7 +833,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
             | [] -> loop_delays i (get_param_delays test)
             | c::cs ->
                 let tag = pctag c in
-                O.fx i "for (int %s = 0 ; %s < cmax ; %s++) {" tag tag tag ;
+                O.fx i "for (int %s = cflush ; %s < cmax ; %s++) {" tag tag tag ;
                 O.fx (Indent.tab i)
                   "if (q->%s >= 0) p.%s = q->%s; else p.%s = %s;"
                   tag tag tag tag tag ;
