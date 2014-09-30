@@ -36,7 +36,7 @@ module Make
       val select_global : env -> (A.loc_global * CType.t) list
 (* Locations *)
       val get_final_locs : T.t -> A.LocSet.t
-      val get_final_globals : T.t -> A.LocSet.t
+      val get_final_globals : T.t -> StringSet.t
       val is_ptr : A.location -> env -> bool
       val ptr_in_outs : env -> T.t -> bool
 
@@ -112,11 +112,11 @@ module Make
           (A.LocSet.of_list t.T.flocs)
 
       let get_final_globals t =
-        A.LocSet.filter
-          (function
-            | A.Location_global _ -> true
-            | A.Location_reg _ -> false)
-          (get_final_locs t)
+        A.LocSet.fold
+          (fun a k -> match a with
+          | A.Location_global a -> StringSet.add a k
+          | A.Location_reg _ -> k)
+          (get_final_locs t) StringSet.empty
 
       let is_ptr loc env = CType.is_ptr (find_type loc env)
 
@@ -329,7 +329,7 @@ module Make
               O.oii "for (int k = 0 ; k < SCANSZ ; k++) {" ;
               O.oiii "count_t c = ngroups[k];" ;
               let fmt = "\"Topology %-6\" PCTR\":> part=%i %s \\n\"" in
-              O.fiii "if ((c*100)/p_true > ENOUGH) printf(%s,c,k,g->group[k]);" fmt ;
+              O.fiii "if ((g->verbose > 1 && c > 0) || (c*100)/p_true > ENOUGH) printf(%s,c,k,g->group[k]);" fmt ;
               O.oii "}"
           end ;
 (* Other stats *)
@@ -353,7 +353,7 @@ module Make
                         (List.map
                            (fun k -> process (sprintf "k%i" k))
                            ks) in
-                    O.fx j "if (c > 0 && (c*100)/p_true >= ENOUGH) fprintf(out,\"%s\",c,%s);"
+                    O.fx j "if ((g->verbose > 1 && c > 0) || (c*100)/p_true >= ENOUGH) fprintf(out,\"%s\",c,%s);"
                       fmt args ;
                     O.fx i "}"
                 | k::ks ->

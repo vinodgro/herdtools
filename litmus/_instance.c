@@ -6,6 +6,9 @@ typedef struct {
   int id ;
   intmax_t *mem;
   log_t out;
+#ifdef SOME_VARS
+  vars_t v;
+#endif
   tb_t next_tb;
   hash_t t;
   sense_t b;
@@ -34,10 +37,14 @@ typedef struct global_t {
   param_t *param ;
   parse_param_t *parse ;
   /* Topology */
-  int *inst, *role ;
+  int *inst, *role ;  
   char **group ;
   /* memory */
   intmax_t *mem ;
+  /* Cache control */
+#ifdef ACTIVE
+  active_t *active;
+#endif  
   /* Runtime control */
   int verbose ;
   int size,nruns,nexe,noccs ;
@@ -56,7 +63,12 @@ typedef struct global_t {
   stats_t stats ;
 } global_t ;
 
-static global_t global  = { &param, &parse[0], inst, role, group, mem, } ;
+static global_t global  =
+  { &param, &parse[0], inst, role, group, mem,
+#ifdef ACTIVE
+    active,
+#endif
+  };
 
 static void init_global(global_t *g,int id) {
   if (id == 0) {
@@ -92,6 +104,9 @@ typedef struct {
   st_t seed ;
   int role ;
   ctx_t *ctx ;
+#ifdef ACTIVE
+  active_t *act;
+#endif
 } thread_ctx_t ;
 
 
@@ -102,6 +117,9 @@ static void set_role(global_t *g,thread_ctx_t *c,int part) {
   if (0 <= inst && inst < g->nexe) {
     c->ctx = &g->ctx[inst] ;
     c->role = g->role[idx] ;
+#ifdef ACTIVE
+    c->act = &g->active[part*N+c->role] ;
+#endif
   } else {
     c->ctx = NULL ;
     c->role = -1 ;

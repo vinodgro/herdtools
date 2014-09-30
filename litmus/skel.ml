@@ -236,7 +236,7 @@ module Insert =
     A.find_in_state (A.Location_global a) t.T.init
 
   let have_finals_globals t =
-    not (A.LocSet.is_empty (U.get_final_globals t))
+    not (StringSet.is_empty (U.get_final_globals t))
 
 
   let dump_loc_name loc =  match loc with
@@ -599,7 +599,7 @@ let user2_barrier_def () =
           let smtmode = Cfg.smtmode
           let mode = Mode.Std
         end) (O) in
-    Topo.dump_alloc ()
+    Topo.dump_alloc []
 
 (*************)
 (* Variables *)
@@ -919,10 +919,11 @@ let user2_barrier_def () =
       O.oi "pb_t *fst_barrier;" ;
       if do_safer_write then begin
         let locs = U.get_final_globals test in
-        if not (A.LocSet.is_empty locs) then begin
+        if not (StringSet.is_empty locs) then begin
           O.oi "po_t *s_or;" ;
-          A.LocSet.iter
+          StringSet.iter
             (fun loc ->
+              let loc = A.Location_global loc in
               O.fi "%s* cpy_%s[N] ;"
                 (CType.dump (U.find_type loc env)) (dump_loc_name loc))
             locs
@@ -933,8 +934,9 @@ let user2_barrier_def () =
   let dump_static_check_vars env test =
     if do_check_globals && do_safer_write then begin
       let locs = U.get_final_globals test in
-      A.LocSet.iter
+      StringSet.iter
         (fun loc ->
+          let loc = A.Location_global loc in
           O.f "static %s cpy_%s[N*SIZE_OF_MEM];"
             (CType.dump (U.find_type loc env)) (dump_loc_name loc))
         locs
@@ -1010,13 +1012,14 @@ let user2_barrier_def () =
 (* STABILIZE *)
       if  do_safer_write then begin
         let locs = U.get_final_globals test in
-        if not (A.LocSet.is_empty locs) then begin
+        if not (StringSet.is_empty locs) then begin
           O.f "" ;
           O.f "static void stabilize_globals(int _id, ctx_t *_a) {" ;
           O.fi "int size_of_test = _a->_p->size_of_test;" ;
           O.f "" ;
-          A.LocSet.iter
+          StringSet.iter
             (fun loc ->
+              let loc = A.Location_global loc in
               let a = dump_loc_name loc
               and t = U.find_type loc env in
               O.fi "%s *%s = _a->%s;" (dump_global_type t) a a ;
@@ -1026,8 +1029,9 @@ let user2_barrier_def () =
           O.fi "pb_wait(_a->fst_barrier); " ;
           O.fi "for ( ; ; ) {" ;
           loop_test_prelude indent2 "" ;
-          A.LocSet.iter
+          StringSet.iter
             (fun loc ->
+              let loc = A.Location_global loc in
               let t = U.find_type loc env in
               let ins =
                 do_copy t
@@ -1041,8 +1045,9 @@ let user2_barrier_def () =
           O.fii "%s" "int _nxt_id = (_id+1) % N;" ;
           O.fii "_found = 0;" ;
           O.fii "for (int _i = size_of_test-1 ; _i >= 0 && !_found ; _i--) {" ;
-          A.LocSet.iter
+          StringSet.iter
             (fun loc ->
+              let loc = A.Location_global loc in
               let a = dump_loc_name loc in
               let t = U.find_type loc env in
               let load1 =
@@ -1173,11 +1178,12 @@ let user2_barrier_def () =
     end ;
     if do_safer && do_collect_after then begin
       let locs = U.get_final_globals test in
-      if not (A.LocSet.is_empty locs) then begin
+      if not (StringSet.is_empty locs) then begin
         O.oi "_a->s_or = po_create(N);" ;
         loop_proc_prelude indent ;
-        A.LocSet.iter
+        StringSet.iter
           (fun loc ->
+            let loc = A.Location_global loc in
             if do_staticalloc then
               let loc = dump_loc_name loc in
               O.fx indent2
@@ -1242,12 +1248,13 @@ let user2_barrier_def () =
     if do_safer && do_collect_after then  begin
       pb_free "fst_barrier" ;
       let locs = U.get_final_globals test in
-      if not (A.LocSet.is_empty locs) then begin
+      if not (StringSet.is_empty locs) then begin
           po_free "s_or" ;
           if do_dynamicalloc  then begin
             loop_proc_prelude indent ;
-            A.LocSet.iter
+            StringSet.iter
               (fun loc ->
+                let loc = A.Location_global loc in
                 nop_or_free indent2 (sprintf "cpy_%s[_p]" (dump_loc_name loc)))
               locs ;
             loop_proc_postlude indent
@@ -1783,8 +1790,9 @@ let user2_barrier_def () =
 (* check globals against stabilized value *)
       if do_safer && do_collect_after then begin
         let locs =  U.get_final_globals test in
-        A.LocSet.iter
+        StringSet.iter
           (fun loc ->
+            let loc = A.Location_global loc in
             let t = U.find_type loc env in
             loop_proc_prelude indent3 ;
             O.fiv

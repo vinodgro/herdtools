@@ -119,85 +119,92 @@ module Make
 
 let nsteps = 5
 
-let dump_delay_def () =
-  O.f "#define NSTEPS %i" nsteps ;
-  O.f "#define NSTEPS2 ((NSTEPS-1)/2)" ;
-  O.o "#define STEP (DELTA_TB/(2*(NSTEPS-1)))" ;
-  ()
+      let dump_delay_def () =
+        O.f "#define NSTEPS %i" nsteps ;
+        O.f "#define NSTEPS2 ((NSTEPS-1)/2)" ;
+        O.o "#define STEP (DELTA_TB/(2*(NSTEPS-1)))" ;
+        ()
 
 (***************************************)
 (* Various inclusions from C utilities *)
 (***************************************)
 
-  module Insert =
-    ObjUtil.Insert
-      (struct
-        let sysarch = Cfg.sysarch
-        let word = Cfg.word
-      end)
+      module Insert =
+        ObjUtil.Insert
+          (struct
+            let sysarch = Cfg.sysarch
+            let word = Cfg.word
+          end)
 
 (* Time base *)
-  let dump_read_timebase () =
-    if have_timebase then begin
-      O.o "/* Read timebase */" ;
-      O.o "typedef uint64_t tb_t ;" ;
-      O.o "#define PTB PRIu64" ;
-      Insert.insert O.o "timebase.c"
-    end
+      let dump_read_timebase () =
+        if have_timebase then begin
+          O.o "/* Read timebase */" ;
+          O.o "typedef uint64_t tb_t ;" ;
+          O.o "#define PTB PRIu64" ;
+          Insert.insert O.o "timebase.c"
+        end
 
 (* Memory barrier *)
-  let dump_mbar_def () =
-    O.o "/* Full memory barrier */" ;
-    Insert.insert O.o "mbar.c" ;
-    O.o ""
+      let dump_mbar_def () =
+        O.o "/* Full memory barrier */" ;
+        Insert.insert O.o "mbar.c" ;
+        O.o ""
 
 (* Cache *)
-  let dump_cache_def () =
-    O.o "/* Cache flush/fetch instructions */" ;
-    Insert.insert O.o "cache.c" ;
-    O.o ""
+      let dump_cache_def () =
+        O.o "/* Cache flush/fetch instructions */" ;
+        Insert.insert O.o "cache.c" ;
+        O.o ""
 
 
 
 (* Synchronisation barrier *)
-  let lab_ext = if Cfg.numeric_labels then "" else "_lab"
+      let lab_ext = if Cfg.numeric_labels then "" else "_lab"
 
-  let dump_barrier_def () =
-    let fname =
-      function
-        | `PPCGen
-        | `PPC
-        | `X86
-        | `ARM ->
-            sprintf "barrier%s.c" lab_ext 
-        | _ -> assert false in
-    Insert.insert O.o (fname Cfg.sysarch)
+      let dump_barrier_def () =
+        let fname =
+          function
+            | `PPCGen
+            | `PPC
+            | `X86
+            | `ARM ->
+                sprintf "barrier%s.c" lab_ext 
+            | _ -> assert false in
+        Insert.insert O.o (fname Cfg.sysarch)
 
 (**************)
 (* Topologies *)
 (**************)
+      let get_all_vars test =
+        let all = List.map fst test.T.globals in
+        let vs =
+          List.map
+            (fun (_,(out,_)) -> A.Out.get_addrs out)
+            test.T.code in
+        all,vs
 
-  let dump_topology test =
-    let n = T.get_nprocs test in
-    let module Topo =
-      Topology.Make
-        (struct
-          let verbose = Cfg.verbose
-          let nthreads = n
-          let avail = match Cfg.avail with
-          | None -> 0
-          | Some a -> a
+      let dump_topology test =
+        let n = T.get_nprocs test in
+        let module Topo =
+          Topology.Make
+            (struct
+              let verbose = Cfg.verbose
+              let nthreads = n
+              let avail = match Cfg.avail with
+              | None -> 0
+              | Some a -> a
 
-          let smt = Cfg.smt
-          let nsockets = Cfg.nsockets
-          let smtmode = Cfg.smtmode
-          let mode = Mode.PreSi
-        end) (O) in
-    O.o "/************/" ;
-    O.o "/* Topology */" ;
-    O.o "/************/" ;
-    O.o "" ;
-    Topo.dump_alloc ()
+              let smt = Cfg.smt
+              let nsockets = Cfg.nsockets
+              let smtmode = Cfg.smtmode
+              let mode = Mode.PreSi
+            end) (O) in
+        O.o "/************/" ;
+        O.o "/* Topology */" ;
+        O.o "/************/" ;
+        O.o "" ;
+        Topo.dump_alloc (let _,vss = get_all_vars test in vss)
 
 (************)
 (* Outcomes *)
@@ -243,6 +250,17 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.o "/************/" ;
         O.o "/* Outcomes */" ;
         O.o "/************/" ;
+        begin match test.T.globals with
+        | [] -> ()
+        | locs ->
+            O.o "" ;
+            O.o "#define SOME_VARS 1" ;
+            O.o "typedef struct {" ;
+            O.fi "intmax_t %s;"
+              (String.concat ","
+                 (List.map (fun (a,_) -> (sprintf "*%s") a) locs)) ;
+            O.o "} vars_t;"
+        end ;
         O.o "" ;
         O.o "typedef struct {" ;
         A.LocSet.iter
@@ -265,13 +283,9 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
           O.o "" ;
           (*  Translation to indices *)
           let dump_test (s,_) =
-            O.fi "else if (v_addr == %s) return %s;"
+            O.fi "else if (v_addr == p->%s) return %s;"
               s (dump_addr_idx s) in
-          O.f "static int idx_addr(void *v_addr%s) {"
-            (String.concat ""
-               (List.map
-                  (fun (a,_) -> sprintf ",void *%s" a)
-                  test.T.globals)) ;      
+          O.o "static int idx_addr(intmax_t *v_addr,vars_t *p) {" ;
           O.oi "if (v_addr == NULL) { return 0;}" ;
           List.iter dump_test test.T.globals ;
           O.oi "else { fatal(\"???\"); return -1;}" ;
@@ -550,50 +564,68 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
 (* Run test code *)
 (*****************)
 
+
+(* Responsability for initialising or collecting, per thread *)
+      let responsible =
+        let rec do_rec seen = function
+          | [] -> []
+          | vs::vss ->
+              let vs = 
+                List.filter (fun v -> not (StringSet.mem v seen)) vs in
+              vs::do_rec (StringSet.union (StringSet.of_list vs) seen) vss in
+        do_rec StringSet.empty
+        
+(* Untouched variables, per thread + responsability *)
+      let part_vars test =
+        let all,vs = get_all_vars test in
+        let touched_set = StringSet.unions (List.map StringSet.of_list vs)
+        and all_set = StringSet.of_list all in
+        let rem = StringSet.elements (StringSet.diff all_set touched_set) in
+        let rems = Misc.nsplit (T.get_nprocs test) rem in
+        let vss = List.map2 (@) rems vs in
+        List.combine rems (responsible vss)          
+
+
       let dump_run_thread
-          env test stats get_param_pos global_env (proc,(out,(outregs,envVolatile))) =
+          env test stats global_env
+          (vars,inits) (proc,(out,(outregs,envVolatile)))  =
         let my_regs = U.select_proc proc env in
-        let addrs = A.Out.get_addrs out in
+        let addrs = A.Out.get_addrs out in (* accessed in code *)
         O.fi "case %i: {" proc ;
         (* Delays *)
         O.oii "int _delay = DELTA_TB;" ;
         if proc <> 0 then
           O.fii "_delay += (_p->d%i - (NSTEPS-1)/2)*STEP;" proc ;
         (* Define locations *)
-        let addrs0 =  List.map fst test.T.globals in
         List.iter
-          (fun addr ->
-            let t =  CType.dump (find_addr_type addr env) in
-            try
-              let pos = get_param_pos addr in
-              O.fii "%s volatile *%s = (%s *)(_mem + LINESZ*_p->%s + %i);"
-                t addr t (pvtag addr) pos
-            with Not_found ->
-              O.fii "%s volatile *%s = (%s *)_mem;" t addr t)
-          (if proc = 0 then addrs0 else addrs) ;
-        (* Initialize them, if role is zero *)
-        if proc = 0 then begin
-          List.iter
-            (fun (a,t) ->
-              let v = A.find_in_state (A.Location_global a) test.T.init in
-              let ins =
-                U.do_store t (sprintf "*%s" a)
-                  (let open Constant in
-                  match v with
-                  | Concrete i -> sprintf "%i" i
-                  | Symbolic s ->
-                      let t2 = find_addr_type s env in
-                      if t=t2 then s else
-                      sprintf "(%s)%s" (CType.dump t) s) in
-              O.fii "%s; cache_flush((void *)%s);" ins a)
-            test.T.globals
-        end ;
+          (fun a ->
+            let t =  CType.dump (find_addr_type a env) in
+            O.fii "%s volatile *%s = (%s *)_vars->%s;" t a t a)
+          (vars@addrs) ;
+        (* Initialize them*)
+        List.iter
+          (fun a ->
+            let at =  find_addr_type a env in
+            let v = A.find_in_state (A.Location_global a) test.T.init in
+            let ins =
+              U.do_store at (sprintf "*%s" a)
+                (let open Constant in
+                match v with
+                | Concrete i -> sprintf "%i" i
+                | Symbolic s ->
+                    sprintf "(%s)_vars->%s" (CType.dump at) s) in
+            O.fii "%s; cache_flush((void *)%s);" ins a)
+          inits ;
+        eprintf "%i: INIT {%s}\n" proc (String.concat "," inits) ;
         (* And cache-instruct them *)
         O.oii "barrier_wait(_b);" ;
-        List.iter (fun addr ->
-          O.fii "if (_p->%s == ctouch) cache_touch((void *)%s);"
-            (pctag (proc,addr)) addr ;
-          O.fii "else cache_flush((void *)%s);" addr)
+        List.iter
+          (fun addr ->
+            O.fii "if (_act->%s) {" (Topology.active_tag addr) ;
+            O.fiii "if (_p->%s == ctouch) cache_touch((void *)%s);"
+              (pctag (proc,addr)) addr ;
+            O.fiii "else cache_flush((void *)%s);" addr ;
+            O.oii "}")
           addrs ;
         (* Synchronise *)
         if have_timebase then O.oii "_ctx->next_tb = read_timebase();" ;
@@ -608,24 +640,36 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
           O.out (Indent.as_string Indent.indent2)
           my_regs global_env envVolatile proc out ;
         O.oii "barrier_wait(_b);" ;
-        if proc = 0 then begin
-          A.LocSet.iter
-            (fun loc ->
-              let tag = dump_loc_tag loc in
+(* Collect shared locations final values, if appropriate *)
+        let globs = U.get_final_globals test in
+        if not (StringSet.is_empty globs) then begin
+          let to_collect =
+            StringSet.inter
+              (U.get_final_globals test)
+              (StringSet.of_list inits) in
+          StringSet.iter
+            (fun a ->
+              let loc = A.Location_global a in
+              let tag = dump_loc_tag loc in            
               O.fii "%s = *%s;" (OutUtils.fmt_presi_index tag) tag)
-            (U.get_final_globals test) ;
+            to_collect ;
+          O.oii "barrier_wait(_b);"
+        end ;
+        if proc = 0 then begin
+          (* addresse -> code *)
           A.LocSet.iter
             (fun loc ->
               if U.is_ptr loc env then
-                O.fii "%s = idx_addr((void *)%s,%s);"
+                O.fii "%s = idx_addr((intmax_t *)%s,_vars);"
                   (OutUtils.fmt_presi_index (dump_loc_tag_coded loc))
-                  (OutUtils.fmt_presi_index (dump_loc_tag loc))
-                  (String.concat ","
-                     (List.map (fun (a,_) -> sprintf "(void *)%s" a) test.T.globals)))
-            (U.get_final_locs test) ;
+                  (OutUtils.fmt_presi_index (dump_loc_tag loc)))
 
+            (U.get_final_locs test) ;
+          (* condition *)
           O.oii "int _cond = final_ok(final_cond(_log));" ;
+          (* recored outcome *)
           O.oii "hash_add(&_ctx->t,_log,_p,1,_cond);" ;
+          (* Result and stats *)
           O.oii "if (_cond) {" ;
           O.oiii "ok = 1;" ;
           O.oiii "(void)__sync_add_and_fetch(&_g->stats.groups[_p->part],1);" ;
@@ -637,7 +681,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
                   (List.map (sprintf "[_p->%s]") tags) in
               O.fiii "(void)__sync_add_and_fetch(&_g->stats.%s%s,1);" name idx)
             stats ;
-          O.oii "}" ;
+          O.oii "}"
         end ;
         O.oii "break; }" ;
         ()
@@ -651,16 +695,37 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.oi "int ok = 0;" ;
         O.oi "int _role = _c->role;" ;
         O.oi "if (_role < 0) return ok;" ;
+        O.o "#ifdef ACTIVE" ;
+        O.oi "active_t *_act = _c->act;" ;
+        O.o "#endif" ;
         O.oi "ctx_t *_ctx = _c->ctx;" ;
         O.oi "intmax_t *_mem = _ctx->mem;" ;
         O.oi "sense_t *_b = &_ctx->b;" ;
         O.oi "log_t *_log = &_ctx->out;" ;
+        begin match test.T.globals with
+        | [] -> ()
+        | locs ->
+            O.oi "vars_t *_vars = &_ctx->v;" ;
+            let get_param_pos = mk_get_param_pos test in
+            O.oi "if (_role == 0) {" ;
+            List.iter
+              (fun (a,_) ->
+                try
+                  let pos = get_param_pos a in
+                  O.fii "_vars->%s = _mem + LINESZ*_p->%s + %i;"
+                    a (pvtag a) pos
+                with Not_found ->
+                  O.fii "_vars->%s = _mem;" a)
+              locs ;
+            O.oi "}"
+        end ;
         O.o "" ;
         O.oi "barrier_wait(_b);" ;
         O.oi "switch (_role) {" ;
         let global_env = U.select_global env in
-        List.iter
-          (dump_run_thread env test stats (mk_get_param_pos test) global_env)
+        List.iter2
+          (dump_run_thread env test stats global_env)
+          (part_vars test)
           test.T.code ;
         O.oi "}" ;  
         O.oi "return ok;" ;
@@ -670,22 +735,6 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
 (********)
 (* zyva *)
 (********)
-      let split n xs =
-        let rec combine xs yss = match yss with
-        | [] -> xs,yss
-        | ys::ry-> match xs with
-          | [] -> xs,yss
-          | x::xs ->
-              let xs,ry = combine xs ry in
-              xs,(x::ys)::ry in
-        let rec do_rec xs yss = match xs with
-        | [] -> yss
-        | _::_ ->
-            let xs,yss = combine xs yss in
-            do_rec xs yss in
-        let yss = do_rec xs (Misc.replicate n []) in
-        List.map List.rev yss
-
 
       let dump_choose_params_def env test stats =
         O.o "inline static int comp_param (st_t *seed,int *g,int max) {" ;
@@ -711,7 +760,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
                 (fun tag k -> (tag,st.max)::k)
                 st.tags)
             stats [] in
-        let pss = split n ps in
+        let pss = Misc.nsplit n ps in
         O.oii "barrier_wait(&ctx->b);";
         O.oii "switch (_role) {" ;
         List.iteri

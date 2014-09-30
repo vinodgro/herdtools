@@ -22,13 +22,13 @@ module type Config = sig
   val mode : Mode.t
 end
 
+let active_tag = Printf.sprintf "%s_act"
+
 module Make(Cfg:Config) (O:Indent.S) : sig
-  val dump_alloc : unit -> unit
+  val dump_alloc : string list list -> unit
 end = struct
   open Cfg
   open Printf
-
-  let linear_scan = false
 
   let ncores = avail / smt
   let cores_in_sock = ncores / nsockets
@@ -54,11 +54,6 @@ end = struct
   let pp_intss = pp_t pp_ints
   let pp_intsss = pp_t pp_intss
 
-
-
-  let circu = function
-    | x::xs -> xs @ [x]
-    | [] -> []
 
   let procs = Misc.interval 0 nthreads
 
@@ -94,25 +89,6 @@ end = struct
     let gss = List.map sort_gs gss in
     let gss = sort_gs gss in
     gss
-
-  let of_lists xss =  Array.of_list (List.map Array.of_list xss)
-  let to_lists xss =  Array.to_list (Array.map Array.to_list xss)
-
-  let compute_cpu is rs =
-    let is = of_lists is and rs = of_lists rs in
-    let len = Array.length is in
-    let cpu = Array.init len (fun _ -> Array.make (ninst*nthreads) (-1)) in
-    for x=0 to len-1 do
-      for k = 0 to avail-1 do
-        let i = is.(x).(k) and r = rs.(x).(k) in
-        if i >= 0 then begin
-          let idx = i*nthreads + r in
-          cpu.(x).(idx) <- k
-        end
-      done
-    done ;
-    to_lists cpu
-
 
   module Int = struct
     type t = int
@@ -275,61 +251,6 @@ end = struct
       r ;
     kont k gss (Array.to_list cpu)
       
-  let alloc_groups (k,is,rs) gss =
-    let next = Array.make ncores 0 in
-    let inst = Array.make avail (-1) in
-    let role = Array.make avail (-1) in
-    let gss = norm_gss gss in
-    if verbose > 1 then eprintf "NORM: %s\n" (pp_gss gss) ;
-    let socks = ref (Misc.interval 0 nsockets) in
-    for i = 0 to ninst-1 do
-      let seen = Array.make ncores false in
-      let undo =
-        List.iter
-          (fun (id,c) ->
-            seen.(c) <- false ; next.(c) <- next.(c)-1 ;
-            role.(id) <- -1 ; inst.(id) <- -1) in
-      let alloc_group sock ids g =
-        let fst = cores_in_sock * sock in
-        let sz = List.length g in
-        let rec do_rec core =
-          if core < cores_in_sock then
-            let idx = fst+core in
-            if not seen.(fst+core) && sz + next.(idx) <= smt then begin
-              let ids =
-                List.fold_left
-                  (fun ids r ->
-                    let id = topo.(sock).(core).(next.(idx)) in
-(*                  eprintf "id=%i -> i=%i, r=%i\n" id i r ; *)
-                    inst.(id) <- i ;
-                    role.(id) <- r ;
-                    next.(idx) <- next.(idx)+1 ;
-                    (id,idx)::ids)
-                  ids g in
-              seen.(idx) <- true ;
-              ids
-            end else do_rec (core+1)
-          else ids in
-        do_rec 0 in
-      let rec alloc_socks rem socks ids xss ss = match xss,ss with
-      | [],_ ->
-          if List.length ids < nthreads then begin
-            undo ids ;
-            if rem > 0 then begin
-              let socks = circu socks in
-              alloc_socks (rem-1) socks [] gss socks  
-            end
-          end
-      | _::_,[] -> assert false
-      | xs::xss,s::ss ->          
-          let ids =
-            List.fold_left (alloc_group s) ids xs in
-          alloc_socks rem socks ids xss ss in
-      alloc_socks (nsockets-1) !socks [] gss !socks ;
-      socks := circu !socks
-    done ;
-    (gss::k,Array.to_list inst::is,Array.to_list role::rs)
-
 
 (* maxelt  : maximum cardinal of an subset in partition
    maxpart : maximum cardinal of a partition *)
@@ -358,55 +279,6 @@ let part pp_part maxelt maxpart k r =
     | [] -> assert false
     | x::xs -> p_rec r 1 [[x]] xs
               
-
-  let dump_carray name gs t =
-    O.f "static int %s[] ={" name ;
-    List.iter2
-      (fun g e ->
-        O.f "// %s" (pp_gss g) ;
-        O.o (String.concat " " (List.map (sprintf "%i,") e)))
-      gs t ;
-    O.o "};" ;
-    O.o ""
-
-
-  let dump_alloc1 () =
-    O.o "/*" ;
-    O.f " Topology: %s" (pp_intsss topo) ;
-    O.o "*/" ;
-    O.o "" ;
-(* Partition according to sockets *)
-    let sockets =
-      part (fun x -> "SOCKET: " ^pp_gss x)
-        cores_in_sock nsockets alloc_groups in
-(* Partition according to smt *)
-    let groups =
-      part (fun x -> "SMT: " ^pp_gs x) smt ncores sockets in
-(* Actual virtual proc numbers *)
-    let (gs,is,rs) =  groups ([],[],[]) procs in
-(* Dump group *)
-  O.o "static char *group[] = {" ;
-  List.iter
-    (fun g -> O.f "\"%s\"," (pp_gss g))
-    gs ;
-  O.o "};" ;
-  O.o "" ;
-  if false then begin
-(* Dump instances *)
-    dump_carray "inst" gs is ;
-(* Dump role *)
-    dump_carray "role" gs rs ;
-(* Dump cpu allocation *)
-  end else begin
-    let cpu = compute_cpu is rs in
-    dump_carray "cpu_scan" gs cpu ;
-    O.f "#define SCANSZ %i" (List.length gs) ;
-    O.f "#define SCANLINE %i" avail ;
-    O.o "" ;
-    O.o "static count_t ngroups[SCANSZ];" ;
-    O.o "" ;
-  end ;    
-  ()
 
   let handle_groups sz all_gs =
     O.o "static char *group[] = {" ;
@@ -457,16 +329,84 @@ let part pp_part maxelt maxpart k r =
   let mk_inst = mk_t (fun i -> i / nthreads)
   and mk_role = mk_t (fun i -> i mod nthreads)
 
-  let presi_handle groups = 
+  let handle_vars vss gss =
+    let role_map =
+      let r = ref StringMap.empty in
+      List.iteri
+        (fun i vs ->
+          List.iter
+            (fun v ->
+              let old =
+                try StringMap.find v !r
+                with Not_found -> IntSet.empty in
+              r := StringMap.add v (IntSet.add i old) !r)
+            vs)
+        vss ;
+      !r in
+
+    let vss = List.map StringSet.of_list vss in
+    let all_vars = StringSet.elements (StringSet.unions vss) in
+    if all_vars <> [] then begin
+      O.o "#define ACTIVE 1" ;
+      O.o "typedef struct {" ;
+      O.fi "int %s;"
+        (String.concat "," (List.map active_tag all_vars)) ;
+      O.o "} active_t;" ;
+      O.o "" ;
+      O.o "static active_t active[] = {" ;
+      List.iter
+        (fun gs ->
+          O.f "// %s" (pp_gss gs) ;
+          let smt =
+            List.fold_right
+              (fun gs k ->
+                List.fold_right
+                  (fun gs k -> IntSet.of_list gs::k)
+                  gs k)
+              gs [] in
+          let smt_map =
+            List.fold_right
+              (fun gs m ->
+                IntSet.fold
+                  (fun g m -> IntMap.add g gs m)
+                  gs m)
+              smt IntMap.empty in
+          List.iteri
+            (fun i _vs ->
+              let smt =
+                try IntMap.find i smt_map
+                with Not_found -> assert false in
+              let acts =
+                List.map
+                  (fun v ->
+                    try
+                      let roles = StringMap.find v role_map in
+                      i = IntSet.min_elt (IntSet.inter roles smt)
+                    with Not_found -> false)
+                  all_vars in
+              O.fi "{%s},"
+                (String.concat ","
+                   (List.map
+                      (fun b -> if b then "1" else "0")
+                      acts)))
+            vss)
+        gss ;
+      O.o "};" ;
+      O.o ""
+    end
+
+
+  let presi_handle vss groups = 
     let (gss,cpus) = groups ([],[]) procs in
     let gss = List.rev gss and cpus = List.rev cpus in
     handle_table "inst" mk_inst gss cpus ;
     handle_table "role" mk_role gss cpus ;
+    handle_vars vss gss ;
     handle_groups avail gss ;
     ()
 
 
-  let dump_alloc2_gen kont handle () =
+  let dump_alloc_gen kont handle =
     O.o "/*" ;
     O.f " Topology: %s" (pp_intsss topo) ;
     O.o "*/" ;
@@ -482,11 +422,8 @@ let part pp_part maxelt maxpart k r =
     handle groups
 
 
-  let dump_alloc2 = match Cfg.mode with
-  | Mode.Std -> dump_alloc2_gen std_kont std_handle
-  | Mode.PreSi -> dump_alloc2_gen presi_kont presi_handle
+  let dump_alloc vss = match Cfg.mode with
+  | Mode.Std -> dump_alloc_gen std_kont std_handle
+  | Mode.PreSi -> dump_alloc_gen presi_kont (presi_handle vss)
     
-  let dump_alloc =
-    if linear_scan then dump_alloc1
-    else dump_alloc2
 end 
