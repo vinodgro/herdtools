@@ -16,6 +16,7 @@ let pgm = if Array.length Sys.argv > 0 then Sys.argv.(0) else "litmus"
 
 (* Local options are in Option module *)
 let sources = ref []
+
 open Option
 
 let opts =
@@ -50,7 +51,8 @@ let opts =
    argkm "-size_of_test" Option.size  "alias for -s";
    argkm "-r" Option.runs "number of runs" ;
    argkm "-number_of_run" Option.runs "alias for -r" ;
-
+   argkm "-noccs" Option.noccs "upper bound on numbers of target outcomes (presi only)" ;
+   argfloato "-timelimit" Option.timelimit "bound on runtime (presi only)" ;
 (* Modes *)
    begin let module P = ParseTag.Make(Barrier) in
    P.parse "-barrier" Option.barrier "set type of barriers" end ;
@@ -176,7 +178,6 @@ let opts =
 (* Bizarre *)
    argbool "-isync" Option.isync "undocumented" ;
    argint "-syncmacro" Option.syncmacro "undocumented" ;
-   argbool "-signaling" Option.signaling "undocumented" ;
    argbool "-xy" Option.xy "undocumented";
   ]
 
@@ -244,7 +245,6 @@ let () =
       let force_affinity = !force_affinity
       let kind = !kind
       let numeric_labels = get_numeric_labels ()
-      let signaling = !signaling
       let syncconst = syncconst
       let morearch = !morearch
       let carch = !carch
@@ -263,7 +263,9 @@ let () =
       let sleep = !sleep
       let is_out = is_out ()
       let targetos = !targetos
-      let affinity = !affinity
+      let affinity = match !mode with
+      | Mode.Std -> !affinity
+      | Mode.PreSi -> Affinity.Scan
       let logicalprocs = !logicalprocs
       let linkopt = !linkopt
       let barrier = !barrier
@@ -278,6 +280,8 @@ let () =
       let isync = !isync
       let size = !size
       let runs = !runs
+      let noccs = !noccs
+      let timelimit = !timelimit
       let avail = !avail
       let stride = if !stride > 0 then Some !stride else None
       let timeloop = !timeloop

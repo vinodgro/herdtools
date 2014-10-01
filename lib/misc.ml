@@ -186,6 +186,22 @@ let rec for_all_strict p = function
 let exists_exists p xss =
   List.exists (fun xs -> List.exists p xs) xss
 
+let nsplit n xs =
+  let rec combine xs yss = match yss with
+  | [] -> xs,yss
+  | ys::ry-> match xs with
+    | [] -> xs,yss
+    | x::xs ->
+        let xs,ry = combine xs ry in
+        xs,(x::ys)::ry in
+  let rec do_rec xs yss = match xs with
+  | [] -> yss
+  | _::_ ->
+      let xs,yss = combine xs yss in
+      do_rec xs yss in
+  let yss = do_rec xs (replicate n []) in
+  List.map List.rev yss
+
 (* Connectors for predicates *)
 
 let (|||) p1 p2 = fun e -> p1 e || p2 e

@@ -89,8 +89,8 @@ count_t sum_outs(outs_t *p) {
   return r ;
 }
 
-count_t finals_outs(outs_t *p) {
-  count_t r = 0 ;
+int finals_outs(outs_t *p) {
+  int r = 0 ;
   for ( ; p ; p = p->next) {
     if (p->c > 0) r++ ;
     r += finals_outs(p->down) ;

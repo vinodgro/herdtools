@@ -25,7 +25,7 @@ val argstring_withfun :
 val argint : string -> int ref -> string -> string * Arg.spec * string
 val argbool : string -> bool ref -> string -> string * Arg.spec * string
 val argboolo : string -> bool option ref -> string -> string * Arg.spec * string
-
+val argfloato : string -> float option ref -> string -> string * Arg.spec * string
 (* Verbose *)
 val verbose : int ref
 
@@ -49,6 +49,8 @@ val hint : string option ref
 val avail : int option ref
 val size : int ref
 val runs : int ref
+val noccs : int ref
+val timelimit : float option ref
 val barrier : Barrier.t ref
 val verbose_barrier : bool ref
 val verbose_prelude : bool option ref
@@ -91,7 +93,6 @@ val sleep : int ref
 val isync : bool ref
 val syncconst : int
 val syncmacro : int ref
-val signaling : bool ref
 val xy : bool ref
 val morearch : MoreArch.t ref
 val pldw : bool ref
@@ -112,6 +113,9 @@ val get_word : opt -> Word.t
 
 val set_gccopts : string -> unit
 val get_gccopts : opt -> string
+
+val set_line : int -> unit
+val get_line : opt -> int
 
 val set_carch : Archs.System.t -> unit
 

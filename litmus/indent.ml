@@ -17,6 +17,7 @@ type t = string
 
 let as_string s = s
 
+let indent0 = ""
 let indent = "  "
 let tab s = s ^ indent
 let indent2 = tab indent

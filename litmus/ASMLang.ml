@@ -12,6 +12,7 @@
 module type Config = sig
   val memory : Memory.t
   val cautious : bool
+  val mode : Mode.t
 end
 
 module type I = sig
@@ -25,12 +26,28 @@ module type I = sig
 end
 
 module Make
-    (O:Config)(A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg) = struct
+    (O:Config)
+    (A:I)(Tmpl:Template.S with type arch_reg = A.arch_reg)
+    = struct
 
   type arch_reg = Tmpl.arch_reg
   type t = Tmpl.t
 
   open Printf
+
+  let compile_addr_inline = match O.mode with
+  | Mode.Std -> sprintf "_a->%s[_i]"
+  | Mode.PreSi -> sprintf "*%s"
+
+  and compile_addr_fun x = sprintf "*%s" x 
+
+  and compile_out_reg = match O.mode with
+  | Mode.Std -> Tmpl.compile_out_reg
+  | Mode.PreSi -> Tmpl.compile_presi_out_reg
+
+  and compile_val_inline = match O.mode with
+  | Mode.Std -> Tmpl.dump_v
+  | Mode.PreSi -> SymbConstant.pp_v
 
   module RegSet =
     MySet.Make
@@ -111,9 +128,6 @@ module Make
   let dump_trashed_reg reg =
     sprintf "trashed_%s"
       (Tmpl.clean_reg (A.reg_to_string reg))
-
-  let compile_addr_inline x = sprintf "_a->%s[_i]" x
-  and compile_addr_fun x = sprintf "*%s" x 
 
   let dump_outputs compile_addr compile_out_reg chan proc t trashed =
     let outs =
@@ -259,9 +273,9 @@ module Make
 
   let dump chan indent env globEnv volatileEnv proc t =
     do_dump 
-      Tmpl.dump_v compile_addr_inline 
+      compile_val_inline compile_addr_inline 
       (fun x -> sprintf "_a->%s[_i]" (Tmpl.addr_cpy_name x proc))
-      Tmpl.compile_out_reg
+      compile_out_reg
       chan indent env proc t
 
   let compile_val_fun = match O.memory with

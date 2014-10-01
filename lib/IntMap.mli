@@ -1,7 +1,8 @@
 (*********************************************************************)
-(*                          Litmus                                   *)
+(*                        Herd                                       *)
 (*                                                                   *)
-(*        Luc Maranget, INRIA Paris-Rocquencourt, France.            *)
+(* Luc Maranget, INRIA Paris-Rocquencourt, France.                   *)
+(* Jade Alglave, University College London, UK.                      *)
 (*                                                                   *)
 (*  Copyright 2014 Institut National de Recherche en Informatique et *)
 (*  en Automatique and the authors. All rights reserved.             *)
@@ -9,19 +10,6 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* C target, a simplified template *)
+(** A map, whose keys are ints *)
 
-type arch_reg = string
-
-type t =
-  { inputs : (string * CType.t) list ;
-    finals : arch_reg list ;
-    code : string ; }
-
-   
-val fmt_reg : arch_reg -> string
-val dump_out_reg : int -> arch_reg -> string
-val compile_out_reg : int -> arch_reg -> string
-val compile_presi_out_reg : int -> arch_reg -> string
-val get_addrs : t -> string list
-
+include MyMap.S with type key = int

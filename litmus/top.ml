@@ -25,6 +25,8 @@ module type CommonConfig = sig
   val avail : int option
   val runs : int
   val size : int
+  val noccs : int
+  val timelimit : float option
   val isync : bool
   val speedcheck : Speedcheck.t
   val safer : Safer.t
@@ -52,7 +54,6 @@ module type CommonConfig = sig
   val morearch : MoreArch.t
   val carch : Archs.System.t option
   val syncconst : int
-  val signaling : bool
   val numeric_labels : bool
   val kind : bool
   val force_affinity : bool
@@ -87,6 +88,11 @@ end
 module type Config = sig
   include GenParser.Config
   include Compile.Config
+(* Additions for Presi *)
+  val line : int
+  val noccs : int
+  val timelimit : float option
+(* End of additions *)
   include Skel.Config
   include Run.Config
   val limit : bool
@@ -366,6 +372,7 @@ end = struct
           (struct
             let comment = A.comment
             let memory = O.memory
+            let mode = O.mode
           end)
       module Utils = Utils(O)(A')(Lang)(Pseudo)
       module P = CGenParser.Make(O)(Pseudo)(A')(L)
@@ -409,6 +416,7 @@ end = struct
       let word = Option.get_word opt in
       let module ODep = struct
         let word = word
+        let line = Option.get_line opt
         let delay = Option.get_delay opt
         let gccopts = Option.get_gccopts opt
       end in
