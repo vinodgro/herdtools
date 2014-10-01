@@ -433,14 +433,14 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
          begin let tags = get_param_delays test in
          if tags = [] then []
          else
-         [{tags = List.map pdtag tags;
+         [{tags = List.map pdtag tags ;
           name = "delays"; max="NSTEPS"; tag="Delays";
           process = (sprintf "%s-NSTEPS2")};] end @
          begin let tags = get_param_caches test in
          if tags = [] then []
          else
          [{tags = List.map pctag tags;
-          name = "dirs"; max="cmax"; tag="Cache";
+           name = "dirs"; max="cmax"; tag="Cache";
            process=(fun s -> s);};] end
 
       let dump_parameters env test =    
@@ -613,7 +613,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
                 | Concrete i -> sprintf "%i" i
                 | Symbolic s ->
                     sprintf "(%s)_vars->%s" (CType.dump at) s) in
-            O.fii "%s; cache_flush((void *)%s);" ins a)
+            O.fii "%s;" ins)
           inits ;
         eprintf "%i: INIT {%s}\n" proc (String.concat "," inits) ;
         (* And cache-instruct them *)
@@ -693,9 +693,6 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.oi "int ok = 0;" ;
         O.oi "int _role = _c->role;" ;
         O.oi "if (_role < 0) return ok;" ;
-        O.o "#ifdef ACTIVE" ;
-        O.oi "active_t *_act = _c->act;" ;
-        O.o "#endif" ;
         O.oi "ctx_t *_ctx = _c->ctx;" ;
         O.oi "intmax_t *_mem = _ctx->mem;" ;
         O.oi "sense_t *_b = &_ctx->b;" ;
@@ -735,10 +732,9 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
 (********)
 
       let dump_choose_params_def env test stats =
-        O.o "inline static int comp_param (st_t *seed,int *g,int max) {" ;
+        O.o "inline static int comp_param (st_t *seed,int *g,int max,int delta) {" ;
         O.oi "int tmp = *g;" ;
-        O.o "" ;
-        O.oi "return tmp >= 0 ? tmp : rand_k(seed,max);" ;
+        O.oi "return tmp >= 0 ? tmp : delta+rand_k(seed,max-delta);" ;
         O.o "}";
         O.o "" ;
         O.o
@@ -753,25 +749,39 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         let ps =
           let open SkelUtil in
           List.fold_right
-            (fun st ->
-              List.fold_right
-                (fun tag k -> (tag,st.max)::k)
-                st.tags)
+            (fun st k ->
+              if st.name = "dirs" then k
+              else
+                List.fold_right
+                  (fun tag k -> (tag,st.max)::k)
+                  st.tags k)
             stats [] in
         let pss = Misc.nsplit n ps in
+        let cs = get_param_caches test in
+        let css = Misc.nsplit n cs in
         O.oii "barrier_wait(&ctx->b);";
         O.oii "switch (_role) {" ;
         List.iteri
-          (fun i ps ->
+          (fun i (ps,cs) ->
             O.fii "case %i:" i ;
             if i=n-1 then O.oiii "ctx->p.part = part;" ;
             List.iter
               (fun (tag,max) ->
                 O.fiii
-                  "ctx->p.%s = comp_param(&c->seed,&q->%s,%s);" tag tag max ;)
+                  "ctx->p.%s = comp_param(&c->seed,&q->%s,%s,0);" tag tag max ;)
               ps ;
+            List.iter
+              (fun (proc,v as p) ->
+                O.fiii "if (c->act->%s) {" (Topology.active_tag p) ;
+                let tag = pctag p in
+                O.fiv "ctx->p.%s = comp_param(&c->seed,&q->%s,cmax,1);"
+                  tag tag ;
+                O.oiii "} else {" ;
+                O.fiv "ctx->p.%s = cignore;" tag ;
+                O.oiii "}" ;)
+              cs ;
             O.oiii "break;")
-          pss ;
+          (List.combine pss css) ;
         O.oii "}" ;
         O.oii "(void)do_run(c,&ctx->p,g);" ;
         O.oi "}" ;

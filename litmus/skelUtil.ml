@@ -16,7 +16,8 @@ module type Config = sig
 end
 
 type stat =
-    { tags : string list ; name : string ;
+    { tags : string list ;
+      name : string ;
       max : string; tag : string;
       process : string -> string; }
 

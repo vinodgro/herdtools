@@ -22,7 +22,7 @@ module type Config = sig
   val mode : Mode.t
 end
 
-let active_tag = Printf.sprintf "%s_act"
+let active_tag (proc,a) = Printf.sprintf "act_%i_%s"  proc a
 
 module Make(Cfg:Config) (O:Indent.S) : sig
   val dump_alloc : string list list -> unit
@@ -344,13 +344,16 @@ let part pp_part maxelt maxpart k r =
         vss ;
       !r in
 
-    let vss = List.map StringSet.of_list vss in
-    let all_vars = StringSet.elements (StringSet.unions vss) in
-    if all_vars <> [] then begin
+    if List.exists (fun vs -> vs <> []) vss then begin
       O.o "#define ACTIVE 1" ;
       O.o "typedef struct {" ;
       O.fi "int %s;"
-        (String.concat "," (List.map active_tag all_vars)) ;
+        (String.concat ","
+           (List.flatten
+              (List.mapi
+                 (fun i vs ->
+                   (List.map (fun v -> active_tag (i,v)) vs))
+                 vss))) ;
       O.o "} active_t;" ;
       O.o "" ;
       O.o "static active_t active[] = {" ;
@@ -371,25 +374,26 @@ let part pp_part maxelt maxpart k r =
                   (fun g m -> IntMap.add g gs m)
                   gs m)
               smt IntMap.empty in
-          List.iteri
-            (fun i _vs ->
-              let smt =
-                try IntMap.find i smt_map
-                with Not_found -> assert false in
-              let acts =
-                List.map
-                  (fun v ->
-                    try
-                      let roles = StringMap.find v role_map in
-                      i = IntSet.min_elt (IntSet.inter roles smt)
-                    with Not_found -> false)
-                  all_vars in
-              O.fi "{%s},"
+          let acts =
+            List.flatten
+              (List.mapi
+                 (fun i vs ->
+                   let smt =
+                     try IntMap.find i smt_map
+                     with Not_found -> assert false in
+                   List.map
+                     (fun v ->
+                       try
+                         let roles = StringMap.find v role_map in
+                         i = IntSet.min_elt (IntSet.inter roles smt)
+                       with Not_found -> false)
+                     vs)
+                 vss) in
+          O.fi "{%s},"
                 (String.concat ","
                    (List.map
                       (fun b -> if b then "1" else "0")
                       acts)))
-            vss)
         gss ;
       O.o "};" ;
       O.o ""

@@ -118,7 +118,7 @@ static void set_role(global_t *g,thread_ctx_t *c,int part) {
     c->ctx = &g->ctx[inst] ;
     c->role = g->role[idx] ;
 #ifdef ACTIVE
-    c->act = &g->active[part*N+c->role] ;
+    c->act = &g->active[part] ;
 #endif
   } else {
     c->ctx = NULL ;
