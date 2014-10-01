@@ -61,7 +61,7 @@ module type S = sig
 
 
 (* Return coherence orders *)
-  val coherence : node -> (loc * (node * Ints.t) list list) list
+  val coherence : node -> (loc * (node * IntSet.t) list list) list
 
 (* Get all detour events *)
   val get_detours : node -> node list
@@ -753,11 +753,11 @@ let rec group_rec x ns = function
   let get_observers n =
     let e = n.evt in
     assert (e.dir = W) ;
-    let k = Ints.empty in
-    let k = if e.proc >= 0 then Ints.add e.proc k else k in
+    let k = IntSet.empty in
+    let k = if e.proc >= 0 then IntSet.add e.proc k else k in
     let k = match n.edge.E.edge with
-    | E.Rf _ -> Ints.add n.next.evt.proc k
-    | E.Detour (Dir _) when n.detour == nil ->   Ints.add n.next.evt.proc k
+    | E.Rf _ -> IntSet.add n.next.evt.proc k
+    | E.Detour (Dir _) when n.detour == nil ->   IntSet.add n.next.evt.proc k
     | _ -> k in
     k
 

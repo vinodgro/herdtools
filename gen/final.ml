@@ -16,12 +16,12 @@ end
 
 module Make : functor (O:Config) -> functor (C:ArchRun.S) ->
   sig
-    type fenv = (C.A.location * Ints.t) list
+    type fenv = (C.A.location * IntSet.t) list
     type eventmap = C.A.location C.C.EventMap.t
 
 (* Add an observation to fenv *)
     val add_final_v :
-        Code.proc -> C.A.arch_reg -> Ints.t -> fenv -> fenv
+        Code.proc -> C.A.arch_reg -> IntSet.t -> fenv -> fenv
     val add_final :
         Code.proc -> C.A.arch_reg option -> C.C.node ->
           eventmap * fenv -> eventmap * fenv
@@ -36,7 +36,7 @@ module Make : functor (O:Config) -> functor (C:ArchRun.S) ->
 
   end = functor (O:Config) -> functor (C:ArchRun.S) ->
   struct
-    type fenv = (C.A.location * Ints.t) list
+    type fenv = (C.A.location * IntSet.t) list
     type eventmap = C.A.location C.C.EventMap.t
 
   let show_in_cond =
@@ -59,7 +59,7 @@ module Make : functor (O:Config) -> functor (C:ArchRun.S) ->
       let m,fs = finals in
       if show_in_cond n then
         C.C.EventMap.add n.C.C.evt (C.A.of_reg p r) m,
-        add_final_v p r (Ints.singleton n.C.C.evt.C.C.v) fs
+        add_final_v p r (IntSet.singleton n.C.C.evt.C.C.v) fs
       else finals
   | None -> finals
 
@@ -82,12 +82,12 @@ module Make : functor (O:Config) -> functor (C:ArchRun.S) ->
     String.concat " /\\ " 
       (List.map
          (fun (r,vs) ->
-           match Ints.as_singleton vs with
+           match IntSet.as_singleton vs with
            | Some v ->
                sprintf "%s=%i" (C.A.pp_location r) v
            | None ->
                let pp =
-                 Ints.pp_str " \\/ "
+                 IntSet.pp_str " \\/ "
                    (fun v -> sprintf "%s=%i" (C.A.pp_location r) v)
                    vs in
                sprintf "(%s)" pp)             

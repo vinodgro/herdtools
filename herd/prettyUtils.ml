@@ -15,13 +15,6 @@ module Make(S : SemExtra.S) = struct
   module A = S.A
   module E = S.E
 
-  module IntMap =
-    Map.Make
-      (struct
-        type t = int
-        let compare = Misc.int_compare
-      end)
-
   let int_map_find k m =
     try IntMap.find k m
     with Not_found -> []

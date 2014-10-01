@@ -90,14 +90,6 @@ end = struct
     let gss = sort_gs gss in
     gss
 
-  module Int = struct
-    type t = int
-    let compare = Pervasives.compare
-  end
-
-  module IntMap = MyMap.Make(Int)
-  module IntSet = MySet.Make(Int)
-
 (* Core related info *)
   type info = { sock:int ; next:int; ids:int array}
 

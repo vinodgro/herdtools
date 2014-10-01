@@ -126,17 +126,11 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
     open Constant
 
     module M = MyMap.Make(I.Loc)
-    module Ints =
-      MySet.Make
-        (struct
-          type t = int
-          let compare i1 i2 = Misc.int_compare i1 i2
-        end)
 
     let add loc v m = match v with
     | Concrete v ->
-        let vs = try M.find loc m with Not_found -> Ints.empty in
-        M.add loc (Ints.add v vs) m
+        let vs = try M.find loc m with Not_found -> IntSet.empty in
+        M.add loc (IntSet.add v vs) m
     | Symbolic _ -> raise Cannot
 
     let rec collect m = function
@@ -149,7 +143,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
 
     let choose_loc m =
       let locs =
-        M.fold (fun loc vs k -> ((loc,vs),Ints.cardinal vs)::k) m [] in
+        M.fold (fun loc vs k -> ((loc,vs),IntSet.cardinal vs)::k) m [] in
       match locs with
       | [] -> assert false
       | p0::rem ->
@@ -192,7 +186,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
 
         let atom_neg loc vs loc0 v0 =
           if  I.Loc.compare loc loc0 = 0 then
-            Some (not (Ints.mem v0 vs))
+            Some (not (IntSet.mem v0 vs))
           else None
 
 
@@ -231,7 +225,7 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
           else
             let loc,vs = choose_loc m in
             let cls =
-              Ints.fold
+              IntSet.fold
                 (fun v k -> (v,comp (eval_pos loc v p))::k)
                 vs [] in
             let d = comp (eval_neg loc vs p) in
