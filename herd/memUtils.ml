@@ -85,7 +85,10 @@ module Make(S : SemExtra.S) = struct
       | Some x -> x
       | _ -> -1
     in
-    if (e1_int = -1 || e2_int = -1) then true 
+    if (e1_int = -1 && e2_int = -1) (* both are init writes *) then 
+      true
+    else if (e1_int = -1 || e2_int = -1) (* one is an init write *) then 
+      false 
     else
       begin
 	let d1,k1,wg1,sg1,t1 = get_proc_loc_tuple scope_tree e1_int

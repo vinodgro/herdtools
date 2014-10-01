@@ -137,7 +137,7 @@ postfix_expression:
   { Eload ($3, $5, OpenCLBase.S_all_svm_devices) }
 | LD_EXPLICIT LPAR assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Eload ($3, $5, $7) }
-| FENCE LPAR MEMREGION COMMA MEMORDER COMMA MEMSCOPE RPAR
+| FENCE LPAR fence_flags COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Efence ($3,$5,$7) }
 | WCAS LPAR  assignment_expression COMMA assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Ecas ($3,$5,$7,$9,$11,$13,false) }
@@ -148,7 +148,7 @@ unary_expression:
 | postfix_expression 
   { $1 }
 | STAR unary_expression
-  { Eload ($2, OpenCLBase.NA, OpenCLBase.S_all_svm_devices) }
+  { Eload ($2, OpenCLBase.NA, OpenCLBase.S_workitem) }
 
 cast_expression:
 | unary_expression { $1 }
@@ -211,7 +211,7 @@ assignment_expression:
 | IDENTIFIER assignment_operator assignment_expression
   { Eassign ($1, $3) }
 | STAR IDENTIFIER assignment_operator assignment_expression
-  { Estore (Eregister $2, $4, OpenCLBase.NA, OpenCLBase.S_all_svm_devices) }
+  { Estore (Eregister $2, $4, OpenCLBase.NA, OpenCLBase.S_workitem) }
 
 assignment_operator:
 | EQ { () }
@@ -236,9 +236,9 @@ initialiser:
 statement:
 | declaration /* (* Added to allow mid-block declarations *) */
   { $1 }
-| IDENTIFIER COLON BARRIER LPAR MEMREGION RPAR SEMI
+| IDENTIFIER COLON BARRIER LPAR fence_flags RPAR SEMI
   { Pbarrier ($1,$5,OpenCLBase.S_workgroup) }
-| IDENTIFIER COLON BARRIER LPAR MEMREGION COMMA MEMSCOPE RPAR SEMI
+| IDENTIFIER COLON BARRIER LPAR fence_flags COMMA MEMSCOPE RPAR SEMI
   { Pbarrier ($1,$5,$7) }
 | compound_statement
   { Pblock $1 }
@@ -248,6 +248,10 @@ statement:
   { $1 }
 | iteration_statement
   { $1 }
+
+fence_flags:
+| MEMREGION { [$1] }
+| MEMREGION PIPE fence_flags { $1 :: $3 }
 
 compound_statement:
 | LBRACE RBRACE

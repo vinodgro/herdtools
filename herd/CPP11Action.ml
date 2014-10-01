@@ -113,9 +113,8 @@ end = struct
     | _ -> false
 
     let is_mem a = match a with
-    | Access (_,A.Location_global _,_,_)
-    | RMW (A.Location_global _,_,_,_)
-      -> true
+    | Access (_,A.Location_global _,_,_) -> true
+    | RMW _ | Fence _ | Blocked_RMW _ -> true
     | _ -> false
 
     (* The following definition of is_atomic

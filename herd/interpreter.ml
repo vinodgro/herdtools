@@ -77,6 +77,22 @@ module Make
 (*  Model interpret *)
     let (pp,(_,_,prog)) = O.m
 
+(*
+    let debug_proc chan p = fprintf chan "%i" p
+    let debug_event chan e = fprintf chan "%s" (E.pp_eiid e)
+    let debug_set chan s =
+      output_char chan '{' ;
+      E.EventSet.pp chan "," debug_event s ;
+      output_char chan '}'
+
+    let debug_events = debug_set
+
+    let debug_rel chan r =
+      E.EventRel.pp chan ","
+        (fun chan (e1,e2) -> fprintf chan "%a -> %a"
+            debug_event e1 debug_event e2)
+        r
+*)
     type v =
       | Rel of S.event_rel
       | Set of S.event_set
@@ -244,7 +260,7 @@ module Make
 		  | Cartesian -> 
                      begin match vs with
 		     | [v1;v2] -> 
-			Rel (E.EventRel.cartesian v1 v2)
+                        Rel (E.EventRel.cartesian v1 v2)
                      | _ -> assert false
 		     end
 	      end else 
@@ -279,6 +295,13 @@ module Make
       | [] -> env
       | (k,e)::bds ->
           let v = eval env e in
+          (*
+          begin match v with
+          | Rel r -> printf "Defining relation %s = {%a}.\n" k debug_rel r
+          | Set s -> printf "Defining set %s = %a.\n" k debug_set s
+          | Clo _ -> printf "Defining function %s.\n" k
+          end;
+          *)
           StringMap.add k (lazy v) (eval_bds env bds)
 
 (* For let rec *)
@@ -287,7 +310,7 @@ module Make
           if O.debug && O.verbose > 1 then begin
             let vb_pp =
               List.map2
-                (fun (x,_) v -> x,rt_loc x v)
+                (fun (x,_) v -> x, rt_loc x v)
                 bds vs in
             let vb_pp = pp vb_pp in
             MU.pp_failure test conc

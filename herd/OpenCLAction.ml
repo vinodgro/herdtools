@@ -23,7 +23,7 @@ module Make (A : Arch.S) : sig
 
  type action =    
     | Access of Dir.dirn * A.location * A.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
-    | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope * fence_type
+    | Fence of OpenCLBase.gpu_memory_space list * OpenCLBase.mem_order * OpenCLBase.mem_scope * fence_type
     | RMW of A.location * A.V.v * A.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Blocked_RMW of A.location
 
@@ -40,11 +40,11 @@ end = struct
 
   type action = 
     | Access of dirn * A.location * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
-    | Fence of OpenCLBase.gpu_memory_space * OpenCLBase.mem_order * OpenCLBase.mem_scope * fence_type
+    | Fence of OpenCLBase.gpu_memory_space list * OpenCLBase.mem_order * OpenCLBase.mem_scope * fence_type
     | RMW of A.location * V.v * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Blocked_RMW of A.location
  
-  let mk_init_write l v = Access (W,l,v,OpenCLBase.NA,OpenCLBase.S_all_svm_devices)
+  let mk_init_write l v = Access (W,l,v,OpenCLBase.NA,OpenCLBase.S_workitem)
 
     let pp_fence_type = function
       | Normal_fence -> ""
@@ -55,19 +55,19 @@ end = struct
     | Access (d,l,v,mo,s) ->
 	sprintf "%s(%s,%s)%s=%s"
           (pp_dirn d)
-          (OpenCLBase.pp_mem_order mo)
+          (OpenCLBase.pp_mem_order_short mo)
           (OpenCLBase.pp_mem_scope s)
           (A.pp_location l)
 	  (V.pp_v v)
     | Fence (mr,mo,s,ft) -> 
-       sprintf "F(%s,%s,%s%s)"
-         (OpenCLBase.pp_gpu_memory_space mr)
-         (OpenCLBase.pp_mem_order mo)
+       sprintf "%sF(%s,%s%s)"
+         (OpenCLBase.pp_gpu_memory_spaces_short mr)
+         (OpenCLBase.pp_mem_order_short mo)
          (OpenCLBase.pp_mem_scope s)
          (pp_fence_type ft)
     | RMW (l,v1,v2,mo,s) ->
        	sprintf "RMW(%s,%s)%s(%s>%s)"
-          (OpenCLBase.pp_mem_order mo)
+          (OpenCLBase.pp_mem_order_short mo)
           (OpenCLBase.pp_mem_scope s)
           (A.pp_location l)
 	  (V.pp_v v1) (V.pp_v v2)
@@ -114,6 +114,7 @@ end = struct
 
     let is_mem a = match a with
     | Access (_,A.Location_global _,_,_,_) -> true
+    | RMW _ | Fence _ | Blocked_RMW _ -> true
     | _ -> false
 
     (* The following definition of is_atomic
@@ -190,11 +191,11 @@ end = struct
      | _ -> false
 
    let is_global_fence a = match a with
-     | Fence (OpenCLBase.GlobalMem,_,_,_) -> true
+     | Fence (rs,_,_,_) -> List.mem OpenCLBase.GlobalMem rs
      | _ -> false
 
    let is_local_fence a = match a with
-     | Fence (OpenCLBase.LocalMem,_,_,_) -> true
+     | Fence (rs,_,_,_) -> List.mem OpenCLBase.LocalMem rs
      | _ -> false
 
    let is_entry_fence a = match a with

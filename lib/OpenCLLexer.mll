@@ -117,33 +117,37 @@ rule token deep = parse
 | "==" {EQ_OP}
 | "!=" {NEQ_OP}
 | '.' {DOT}
-| "memory_scope_work_item"       {MEMSCOPE (OpenCLBase.S_workitem)}
-| "memory_scope_sub_group"       {MEMSCOPE (OpenCLBase.S_subgroup)}
-| "memory_scope_work_group"      {MEMSCOPE (OpenCLBase.S_workgroup)}
-| "memory_scope_device"          {MEMSCOPE (OpenCLBase.S_device)}
-| "memory_scope_all_svm_devices" {MEMSCOPE (OpenCLBase.S_all_svm_devices)}
+| "memory_scope_work_item" | "s_wi" 
+  {MEMSCOPE (OpenCLBase.S_workitem)}
+| "memory_scope_sub_group" | "s_sg" 
+  {MEMSCOPE (OpenCLBase.S_subgroup)}
+| "memory_scope_work_group" | "s_wg" 
+  {MEMSCOPE (OpenCLBase.S_workgroup)}
+| "memory_scope_device" | "s_dev" 
+  {MEMSCOPE (OpenCLBase.S_device)}
+| "memory_scope_all_svm_devices" | "s_all" 
+  {MEMSCOPE (OpenCLBase.S_all_svm_devices)}
 | "CLK_GLOBAL_MEM_FENCE" { MEMREGION (OpenCLBase.GlobalMem) }
 | "CLK_LOCAL_MEM_FENCE"  { MEMREGION (OpenCLBase.LocalMem) }
-| "__global"       { GLOBAL }
-| "__local"        { LOCAL }
+| "__global" | "global"  { GLOBAL }
+| "__local" | "local"    { LOCAL }
 | "scopeTree" | "ScopeTree" { SCOPETREE }
 | "kernel"                  { KERNEL }
 | "device"                  { DEVICE }
 | "cta" | "block" | "work_group" { CTA }
 | "warp" | "sub_group"      { WARP }
 | "thread"                  { THREAD }
-| "memory_order_acquire" {MEMORDER (OpenCLBase.Acq)}
-| "memory_order_release" {MEMORDER (OpenCLBase.Rel)}
-| "memory_order_acq_rel" {MEMORDER (OpenCLBase.Acq_Rel)}
-| "memory_order_seq_cst" {MEMORDER (OpenCLBase.SC)}
-| "memory_order_relaxed" {MEMORDER (OpenCLBase.Rlx)}
-| "barrier" { BARRIER }
-| "work_group_barrier" { BARRIER }
-| "atomic_work_item_fence" { FENCE }
-| "atomic_load"  { LD }
-| "atomic_store" { ST }
-| "atomic_load_explicit"  { LD_EXPLICIT }
-| "atomic_store_explicit" { ST_EXPLICIT }
+| "memory_order_acquire" | "mo_acq" {MEMORDER (OpenCLBase.Acq)}
+| "memory_order_release" | "mo_rel" {MEMORDER (OpenCLBase.Rel)}
+| "memory_order_acq_rel" | "mo_ar"  {MEMORDER (OpenCLBase.Acq_Rel)}
+| "memory_order_seq_cst" | "mo_sc"  {MEMORDER (OpenCLBase.SC)}
+| "memory_order_relaxed" | "mo_rlx" {MEMORDER (OpenCLBase.Rlx)}
+| "barrier" | "work_group_barrier" { BARRIER }
+| "fence" | "atomic_work_item_fence" { FENCE }
+| "atomic_load" | "load" { LD }
+| "atomic_store" | "store" { ST }
+| "atomic_load_explicit" | "load_exp" { LD_EXPLICIT }
+| "atomic_store_explicit" | "store_exp" { ST_EXPLICIT }
 | "atomic_exchange" { EXC }
 | "atomic_exchange_explicit" { EXC_EXPLICIT }
 | "lock"  { LOCK }

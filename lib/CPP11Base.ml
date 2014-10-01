@@ -226,7 +226,7 @@ let map_addrs _f _ins = Warn.fatal "C++11 map_addrs has not been implemented"
 let fold_addrs _f c _i = c
 
 
-let pp_instruction _m _ins = dump_instruction _ins
+let pp_instruction _m ins = dump_instruction ins
 
 let get_next _ins = Warn.fatal "C++11 get_next not implemented"
 
