@@ -18,6 +18,8 @@ module type CommonConfig = sig
   val avail : int option
   val runs : int
   val size : int
+  val noccs : int
+  val timelimit : float option
   val isync : bool
   val speedcheck : Speedcheck.t
   val safer : Safer.t
@@ -45,7 +47,6 @@ module type CommonConfig = sig
   val morearch : MoreArch.t
   val carch : Archs.System.t option
   val syncconst : int
-  val signaling : bool
   val numeric_labels : bool
   val kind : bool
   val force_affinity : bool

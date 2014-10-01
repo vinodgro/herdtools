@@ -343,13 +343,6 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
 
   module PU = PrettyUtils.Make(S)
 
-  module IntMap =
-    Map.Make
-      (struct
-        type t = int
-        let compare = Misc.int_compare
-      end)
-
   let rec order_one_proc = function
     | []|[_] -> []
     | i1::(i2::_ as rem) ->

@@ -18,8 +18,8 @@ end
 module Make : functor (O:Config) -> functor (C:ArchRun.S) ->
   sig
 (* Coherence utilities *)
-    type cos0 =  (Code.loc * (C.C.node * Ints.t) list list) list
-    type cos = (Code.loc * (Code.v * Ints.t) list list) list
+    type cos0 =  (Code.loc * (C.C.node * IntSet.t) list list) list
+    type cos = (Code.loc * (Code.v * IntSet.t) list list) list
     val pp_coherence : cos0 -> unit
     val last_map : cos0 -> C.C.event StringMap.t
     val compute_cos : cos0 ->  cos
@@ -38,8 +38,8 @@ module Make : functor (O:Config) -> functor (C:ArchRun.S) ->
   functor (O:Config) -> functor (C:ArchRun.S) ->
   struct
 
-    type cos0 =  (Code.loc * (C.C.node * Ints.t) list list) list
-    type cos = (Code.loc * (Code.v * Ints.t) list list) list
+    type cos0 =  (Code.loc * (C.C.node * IntSet.t) list list) list
+    type cos = (Code.loc * (Code.v * IntSet.t) list list) list
 
     open Printf
     open Code
@@ -55,7 +55,7 @@ module Make : functor (O:Config) -> functor (C:ArchRun.S) ->
                   Misc.pp_list chan ","
                     (fun chan (n,obs) ->
                       fprintf chan "%i{%s}" n.C.C.evt.C.C.v
-                        (Ints.pp_str "," (sprintf "%i") obs)
+                        (IntSet.pp_str "," (sprintf "%i") obs)
                     )))
             vs)
         cos0 ;

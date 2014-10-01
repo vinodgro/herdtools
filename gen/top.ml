@@ -276,25 +276,25 @@ let rec split_last = function
 let rec do_opt_coherence k obs = function
   | [] -> [k]
   | (v,vobs)::co ->
-      let i = Ints.inter obs vobs in
-      if Ints.is_empty i then begin
+      let i = IntSet.inter obs vobs in
+      if IntSet.is_empty i then begin
         k::
-        do_opt_coherence (Ints.singleton v) vobs co
+        do_opt_coherence (IntSet.singleton v) vobs co
       end else
-        do_opt_coherence (Ints.add v k) vobs co
+        do_opt_coherence (IntSet.add v k) vobs co
 
 let opt_coherence = function
   | [] -> assert false
   | (v,obs)::co ->
-      do_opt_coherence (Ints.singleton v) obs co
+      do_opt_coherence (IntSet.singleton v) obs co
 
 let min_set =
-  if O.coherence_decreasing then Ints.max_elt
-  else Ints.min_elt
+  if O.coherence_decreasing then IntSet.max_elt
+  else IntSet.min_elt
 
 let max_set =
-  if O.coherence_decreasing then Ints.min_elt
-  else Ints.max_elt
+  if O.coherence_decreasing then IntSet.min_elt
+  else IntSet.max_elt
 
 let min_max xs =
   let ps = List.map (fun x -> min_set x, max_set x) xs in
@@ -307,7 +307,7 @@ let min_max xs =
         | (x,y)::rem ->
             if x=y then x::remove_last rem
             else x::y::remove_last rem in
-      List.map Ints.singleton (x::remove_last rem)
+      List.map IntSet.singleton (x::remove_last rem)
 
   
 
@@ -321,7 +321,7 @@ let min_max xs =
           eprintf "OPT:" ;
           List.iter
             (fun vs ->
-              eprintf " {%s}" (Ints.pp_str "," (sprintf "%i") vs))        
+              eprintf " {%s}" (IntSet.pp_str "," (sprintf "%i") vs))
             vs ;
           eprintf "\n%!"
         end ;
@@ -331,7 +331,7 @@ let min_max xs =
             if
               List.for_all
                 (fun x ->
-                  match Ints.as_singleton x with
+                  match IntSet.as_singleton x with
                   | Some _ -> true | None -> false)
                 vs then
               let ws,w = split_last vs in
@@ -339,7 +339,7 @@ let min_max xs =
             else
               min_max vs,[]
       else
-        let vs = List.map (fun (v,_obs) -> Ints.singleton v) vs in      
+        let vs = List.map (fun (v,_obs) -> IntSet.singleton v) vs in
         vs,[] in
     let i,cs,fs =
       let open Config in
@@ -375,7 +375,7 @@ let min_max xs =
             
   let rec check_rec p i =
     let add_look_loc loc v k =
-      if O.optcond then k else (A.Loc loc,Ints.singleton v)::k in
+      if O.optcond then k else (A.Loc loc,IntSet.singleton v)::k in
     let open Config in
     function
       | [] -> i,[],[]
@@ -387,7 +387,7 @@ let min_max xs =
               | [] -> i,[],[]
               | _::_ ->
                   let v,_ = Misc.last vs in
-                  i,[],[A.Loc x,Ints.singleton v]
+                  i,[],[A.Loc x,IntSet.singleton v]
               end
           | Unicond -> assert false
           | Cycle -> begin
@@ -396,7 +396,7 @@ let min_max xs =
               | [[_;(v,_)]] ->
                   begin match O.do_observers with
                   | Local -> i,[],add_look_loc x v []
-                  | Avoid|Accept -> i,[],[A.Loc x,Ints.singleton v]
+                  | Avoid|Accept -> i,[],[A.Loc x,IntSet.singleton v]
               | Enforce ->  
                   let i,c,f = build_observers p i x vs in
                   i,c,add_look_loc x v f
@@ -423,11 +423,11 @@ let min_max xs =
 
   let do_add_load st p i f x v =
     let r,i,c,st = Comp.emit_load st p i x in
-    i,c,F.add_final_v p r (Ints.singleton v) f,st
+    i,c,F.add_final_v p r (IntSet.singleton v) f,st
 
   let do_add_loop st p i f x v w =
     let r,i,c,st = Comp.emit_load_not_value st p i x v in
-    i,c,F.add_final_v p r (Ints.singleton w) f,st
+    i,c,F.add_final_v p r (IntSet.singleton w) f,st
 
 
 
@@ -456,7 +456,7 @@ let min_max xs =
         with Not_found -> C.evt_null in
       if C.OrderedEvent.compare all_lst lst.C.next.C.evt = 0
       then
-        i,code,(A.Loc x,Ints.singleton v)::f,st
+        i,code,(A.Loc x,IntSet.singleton v)::f,st
       else
         do_observe_local st p i code f x prev_v v
     else i,code,f,st
@@ -565,7 +565,7 @@ let min_max xs =
                   i
               then
                 (A.Loc Code.ok,"1")::i,obsc@cs,
-                (m,(A.Loc Code.ok,Ints.singleton 1)::f@fs),ios
+                (m,(A.Loc Code.ok,IntSet.singleton 1)::f@fs),ios
               else
                 i,obsc@cs,(m,f@fs),ios
             else Warn.fatal "Last minute check"

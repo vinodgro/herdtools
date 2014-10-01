@@ -55,6 +55,10 @@ let argboolo opt  r msg =
   opt,Arg.Bool (fun b -> r := Some b),
   sprintf "<bool> %s" msg
 
+let argfloato opt r msg =
+  opt,Arg.Float (fun f -> r := Some f),
+  sprintf "<float> %s" msg
+
 (* verbose *)
 let verbose = ref 0
 
@@ -89,6 +93,8 @@ let hint = ref None
 let avail = ref None
 let size = ref 100000
 let runs = ref 10
+let noccs = ref 1
+let timelimit = ref None
 let barrier = ref Barrier.User
 let verbose_barrier = ref false
 let verbose_prelude = ref None
@@ -137,7 +143,6 @@ let sleep = ref 0
 let isync = ref false
 let syncconst = 128
 let syncmacro = ref (-1)
-let signaling = ref false
 let xy = ref false
 let morearch = ref MoreArch.No
 let carch = ref None
@@ -146,19 +151,21 @@ let mode = ref Mode.Std
 (* Arch dependent options *)
 type opt =
     { delay : int; gccopts : string ;
-      word : Word.t ; }
+      word : Word.t ; line : int; }
 
 let mod_config = ref (fun cfg -> cfg)
 
 let x86opt =
-  { delay = 2048; gccopts = "-fomit-frame-pointer -O2"; word = Word.WXX; }
+  { delay = 2048; gccopts = "-fomit-frame-pointer -O2";
+    word = Word.WXX; line = 512; }
 let ppcopt =
-  { delay = 1024; gccopts = "-O2"; word = Word.WXX; }
+  { delay = 1024; gccopts = "-O2";
+    word = Word.WXX; line = 1024; }
 let armopt =
-  { delay = 1024; gccopts = "-O2"; word = Word.WXX; }
+  { delay = 1024; gccopts = "-O2";
+    word = Word.WXX; line = 64;} (* cortexa9 -> 32, cortex-a15 -> 64 *)
 let copt =
-  { delay = 2048; gccopts = ""; word = Word.WXX; }
-
+  { delay = 2048; gccopts = ""; word = Word.WXX; line = 1024} (* maximal *)
 let get_default arch = match arch with
 | `X86 -> x86opt
 | `PPCGen
@@ -182,6 +189,9 @@ let get_gccopts opt = opt.gccopts
 
 let set_word w = replace_config (fun o ->  { o with word = w; })
 let get_word opt = opt.word
+
+let set_line w = replace_config (fun o ->  { o with line = w; })
+let get_line opt = opt.line
 
 let set_carch x = carch := Some x
 

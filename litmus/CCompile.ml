@@ -11,7 +11,6 @@
 
 module type Config = sig
   val numeric_labels : bool
-  val signaling : bool
   val timeloop : int
   val barrier : Barrier.t
 end

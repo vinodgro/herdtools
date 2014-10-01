@@ -78,6 +78,9 @@ val for_all_strict : ('a -> bool) -> 'a list -> bool
 (* List.exists on list of list *)
 val exists_exists : ('a -> bool) -> 'a list list -> bool
 
+(* split a list into n list of as much as possible equal length *)
+val nsplit : int -> 'a list -> 'a list list
+
 (* Remove duplicates, according to equality function,
    WARNING, correct only when duplicates are in sequence *)
 val rem_dups : ('a -> 'a -> bool) -> 'a list -> 'a list

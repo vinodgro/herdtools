@@ -258,4 +258,33 @@ double tsc_millions(tsc_t t) ;
 
 /* String utilities */
 int find_string(char *t[],int sz,char *s) ;
+
+
+/**********/
+/* Pre-Si */
+/**********/
+
+typedef enum {
+  mode_scan,mode_random,
+} param_mode_t ;
+
+typedef struct {
+  int verbose;
+  int max_run;
+  int size_of_test;
+  int n_exe ;
+  param_mode_t mode;
+} opt_t ;
+
+char **parse_opt(int argc,char **argv,opt_t *def, opt_t *p) ;
+
+typedef struct {
+  char* tag;
+  int *dst;
+  int (*f)(int);
+  int max;
+} parse_param_t;
+
+void parse_param(char *prog,parse_param_t *p,int sz,char **argv) ;
+
 #endif

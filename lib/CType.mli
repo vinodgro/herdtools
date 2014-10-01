@@ -24,6 +24,7 @@ type t =
 
 val dump : t -> string
 
+val is_ptr : t -> bool
 val is_atomic : t -> bool
 val is_global : t -> bool
 val is_local : t -> bool

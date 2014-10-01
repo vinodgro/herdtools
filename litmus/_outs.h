@@ -37,7 +37,7 @@ typedef struct outs_t {
 
 void free_outs(outs_t *p) ;
 outs_t *add_outcome_outs(outs_t *p, intmax_t *o, int sz, count_t v, int show) ;
-count_t finals_outs(outs_t *p) ;
+int finals_outs(outs_t *p) ;
 count_t sum_outs(outs_t *p) ;
 typedef void dump_outcome(FILE *chan, intmax_t *o, count_t c, int show) ;
 void dump_outs (FILE *chan, dump_outcome *dout,outs_t *p, intmax_t *buff, int sz) ;

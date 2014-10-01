@@ -133,7 +133,7 @@ and pline k = parse
      let v = to_dec v in
      let p = poolize loc v in
      pline (p::k) lexbuf }
-| blank*  nl  { incr_lineno lexbuf ; k }
+| blank* ('#' [^'\n']*)?  nl  { incr_lineno lexbuf ; k }
 | "" { error "pline" lexbuf }
 
 and pwitnesses = parse
