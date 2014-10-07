@@ -107,8 +107,8 @@ module Make (C:Sem.Config)(V:Value.S)
              (Act.RMW (A.Location_global loc_obj,v_exp,v_des,success,ms)) ii >>!
            V.intToV 1)
 
-      | OpenCL.Efence(r,mo,ms) ->
-	M.mk_singleton_es (Act.Fence (r,mo,ms,Act.Normal_fence)) ii >>! V.intToV 0
+      | OpenCL.Efence(rs,mo,ms) ->
+	M.mk_singleton_es (Act.Fence (rs,mo,ms,Act.Normal_fence)) ii >>! V.intToV 0
 
       | OpenCL.Ecomma(e1,e2) ->
         build_semantics_expr e1 ii >>= fun _v ->

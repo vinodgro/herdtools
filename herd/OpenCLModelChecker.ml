@@ -12,6 +12,8 @@
 
 (** Check an event structure against an OpenCL model *)
 
+open Printf
+
 module type Config = sig
   val m : AST.pp_t
   include Model.Config
@@ -29,6 +31,21 @@ module Make
     module JU = JadeUtils.Make(O)(S)(B)
 
     let (pp,(opts,_,prog)) = O.m
+
+    let debug_proc chan p = fprintf chan "%i" p
+    let debug_event chan e = fprintf chan "%s" (E.pp_eiid e)
+    let debug_set chan s =
+      output_char chan '{' ;
+      E.EventSet.pp chan "," debug_event s ;
+      output_char chan '}'
+
+    let debug_events = debug_set
+
+    let debug_rel chan r =
+      E.EventRel.pp chan ","
+        (fun chan (e1,e2) -> fprintf chan "%a -> %a"
+            debug_event e1 debug_event e2)
+        r
 
     let withco = opts.ModelOption.co
 
@@ -54,6 +71,7 @@ module Make
              (fun e -> e,e)
              (E.EventSet.elements evts)) in
       let unv = E.EventRel.cartesian evts evts in
+      (* printf "po = {\n%a\n}\n" debug_rel conc.S.po; *)
 (* Initial env *)
       let m =
         List.fold_left
@@ -65,9 +83,9 @@ module Make
            "asw", S.restrict E.is_mem_store_init
 	     (fun x -> not (E.is_mem_store_init x)) 
 	     unv ;
-           "po", (* S.restrict E.is_mem E.is_mem *) conc.S.po;
+           "po", S.restrict E.is_mem E.is_mem conc.S.po;
            "pos", conc.S.pos;
-           "po-loc", conc.S.pos; (* JW: This looks dodgy... *)
+           "po-loc", conc.S.pos;
 	   "loc", E.EventRel.restrict_rel E.same_location unv;
            "addr", pr.S.addr;
            "data", pr.S.data;

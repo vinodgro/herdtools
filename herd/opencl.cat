@@ -1,12 +1,5 @@
 "OpenCL"
 
-(* TODO:
-
-The value of a non-atomic scalar object M, as determined by evaluation
-B, shall be the value stored by the visible side effect A.
-
-*)
-
 {%(* 
 \newcommand\myquote[2]{\begingroup%
 \definecolor{shadecolor}{rgb}{0.9,0.9,1}%
@@ -68,7 +61,7 @@ program-order. Then we define \var{po_asw} as the transitive closure
 of program-order augmented with \var{asw'}. 
 %*)}
 
-let asw' = asw \ (asw;po) 
+let asw' = asw \ (asw;po)
 let po_asw = (po | asw')+
 
 {%(* 
@@ -92,8 +85,7 @@ let incl_wg(s) = wg & (s^2)
 let incl_dev(s) = dev & (s^2) 
 let incl_all(s) = s^2
 
-let incl = incl_wi(s_wi) | incl_wg(s_wg) | incl_dev(s_dev) |
-incl_all(s_all)
+let incl = incl_wi(s_wi) | incl_wg(s_wg) | incl_dev(s_dev) | incl_all(s_all) 
 
 {%(* 
 The relation \var{incl'} is a more liberal (but unused) version
@@ -145,7 +137,9 @@ which $b$ either is performed by the same work-item that performed $a$
 or is an atomic RMW operation.
 %*)} 
 
+
 let rmw_or_same_wi = (_ * rmw) | wi
+
 
 {%(*
 We then define \var{max_co} as the set of pairs $(a,b)$ for which
@@ -228,7 +222,9 @@ local-synchronizes-with the exit fence of all other work-items in the
 same work-group. \end{itemize} } 
 %*)}
 
+
 let bar_sw(r) = same_B & ~wi & (entry_fence * exit_fence) & wg & r^2
+
 
 {%(*
 We define $\var{g_sw}(F,F')$ (global synchronizes-with) as the
@@ -276,8 +272,12 @@ memory action $C$, $A$ local-happens-before $C$ and $C$
 local-happens-before $B$. \end{itemize}} 
 %*)}
 
-let g_hb = (((G^2) & po_asw) | g_sw)+ let l_hb = (((L^2) & po_asw) |
-l_sw)+ let hb = g_hb | l_hb
+let g_hb = (((G^2) & po_asw) | g_sw)+ 
+let l_hb = (((L^2) & po_asw) | l_sw)+ 
+show g_hb
+show l_hb
+let hb = g_hb | l_hb
+
 
 {%(* 
 \myquote{p.~46}{ An OpenCL implementation shall ensure that no
@@ -408,8 +408,6 @@ guarantee this by forbidding the following cycles:
 
 %*)}
 
-
-
 {%(*
 A non-atomic load can only read from a store that is visible.
 %*)}
@@ -488,7 +486,7 @@ let sc_fr = sc_fr1 | sc_fr2 | sc_fr3 | sc_fr4 | sc_fr5
 {%(* The various sc relations must not form cycles. %*)}
 
 let scp = (mo_sc^2) & (g_hb | l_hb | sc_co | sc_fr)
-
+show scp
 acyclic scp as sc_consistent
 
 {%(* 
@@ -522,8 +520,10 @@ as being annotated with work-item scope, then it suffices only to
 mention scope inclusion. 
 %*)}
 
-let dr = conflict & ~symm(hb) & ~incl 
+let dr = conflict & ~symm(hb) & ~incl
 undefined_unless empty dr as data_race
+show dr
+
 
 {%(* 
 \paragraph{Unsequenced races} There is an \emph{unsequenced race}
@@ -534,3 +534,4 @@ program-order, and they are different events.
 
 let ur = (wi & conflict & ~symm(po)) \ id 
 undefined_unless empty ur as unsequenced_race
+show ur

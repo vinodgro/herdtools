@@ -58,7 +58,7 @@ let pp_mem_order_short = function
   | Acq_Rel -> "AR"
   | SC -> "Sc"
   | Rlx -> "Rlx"
-  | NA -> ""
+  | NA -> "NA"
 
 (*********************)
 (* Scope annotations *)
@@ -73,11 +73,11 @@ type mem_scope =
 
 let pp_mem_scope s = 
   match s with 
-  | S_workitem -> "memory_scope_work_item"
-  | S_subgroup -> "memory_scope_sub_group"
-  | S_workgroup -> "memory_scope_work_group"
-  | S_device -> "memory_scope_device"
-  | S_all_svm_devices -> "memory_scope_all_svm_devices"
+  | S_workitem -> "wi" (* "memory_scope_work_item" *)
+  | S_subgroup -> "sg" (* "memory_scope_sub_group" *)
+  | S_workgroup -> "wg" (* "memory_scope_work_group" *)
+  | S_device -> "dev" (* "memory_scope_device" *)
+  | S_all_svm_devices -> "all" (* "memory_scope_all_svm_devices" *)
 
 (****************)
 (* Barriers     *)
@@ -107,7 +107,7 @@ type expression =
 | Efetch  of Op.op * expression * expression * mem_order * mem_scope
 | Eload   of expression * mem_order * mem_scope
 | Ecas    of expression * expression * expression * mem_order * mem_order *  mem_scope * bool
-| Efence  of gpu_memory_space * mem_order * mem_scope
+| Efence  of gpu_memory_space list * mem_order * mem_scope
 | Ecomma of expression * expression
 | Eparen of expression
 
@@ -116,7 +116,7 @@ type instruction =
 | Pwhile   of expression * instruction
 | Pblock   of instruction list
 | Pexpr    of expression
-| Pbarrier of string * gpu_memory_space * mem_scope
+| Pbarrier of string * gpu_memory_space list * mem_scope
 
 include Pseudo.Make
     (struct
@@ -159,7 +159,7 @@ let rec dump_expression e = match e with
 		  (dump_expression loc) (dump_expression e)
     | _ -> sprintf("atomic_store_explicit(%s,%s,%s,%s)") 
 		  (dump_expression loc) (dump_expression e)
-                  (pp_mem_order mo) (pp_mem_scope ms))
+                  (pp_mem_order_short mo) (pp_mem_scope ms))
   | Eexchange(loc,e,mo,ms) ->
     (match mo with 
     | NA -> assert false
@@ -167,7 +167,7 @@ let rec dump_expression e = match e with
 		  (dump_expression loc) (dump_expression e)
     | _ -> sprintf("atomic_exchange_explicit(%s,%s,%s,%s)") 
 		  (dump_expression loc) (dump_expression e)
-                  (pp_mem_order mo) (pp_mem_scope ms))
+                  (pp_mem_order_short mo) (pp_mem_scope ms))
   | Efetch(op,loc,e,mo,ms) ->
     (match mo with 
     | NA -> assert false
@@ -177,7 +177,7 @@ let rec dump_expression e = match e with
     | _ ->
         sprintf("atomic_fetch_%s_explicit(%s,%s,%s,%s)") 
 	  (dump_key op) (dump_expression loc)
-          (dump_expression e) (pp_mem_order mo)
+          (dump_expression e) (pp_mem_order_short mo)
           (pp_mem_scope ms))  
   | Eload(loc,mo,ms) ->
     (match mo with 
@@ -186,15 +186,15 @@ let rec dump_expression e = match e with
     | SC -> sprintf("atomic_load(%s)") 
 		  (dump_expression loc)
     | _ -> sprintf("atomic_load_explicit(%s,%s,%s)") 
-		  (dump_expression loc) (pp_mem_order mo)
+		  (dump_expression loc) (pp_mem_order_short mo)
                   (pp_mem_scope ms))
   | Ecas(obj,exp,des,mo_success,mo_failure,ms,strong) ->
     sprintf("%sCAS(%s,%s,%s,%s,%s,%s)") 
       (if strong then "S" else "W")
       (dump_expression obj) (dump_expression exp) (dump_expression des) 
-      (pp_mem_order mo_success) (pp_mem_order mo_failure)
+      (pp_mem_order_short mo_success) (pp_mem_order_short mo_failure)
       (pp_mem_scope ms)
-  | Efence (space, mo, ms) -> sprintf("atomic_work_item_fence(%s,%s,%s)") (pp_gpu_memory_space space) (pp_mem_order mo) (pp_mem_scope ms)
+  | Efence (spaces, mo, ms) -> sprintf("atomic_work_item_fence(%s,%s,%s)") (pp_gpu_memory_spaces spaces) (pp_mem_order_short mo) (pp_mem_scope ms)
   | Econstant i -> pp_sop i
   | Eregister reg -> pp_reg reg
   | Eassign(reg,e) -> sprintf "%s = %s" (pp_reg reg) (dump_expression e)
@@ -216,7 +216,7 @@ let rec dump_instruction i = match i with
   | Pblock insts ->
     sprintf ("{%s}") (List.fold_left (fun z i -> z ^ dump_instruction i) "" insts)
   | Pexpr e -> sprintf "%s;" (dump_expression e)
-  | Pbarrier (lbl,space,ms) -> sprintf("work_group_barrier(%s,%s,%s)") lbl (pp_gpu_memory_space space) (pp_mem_scope ms)
+  | Pbarrier (lbl,spaces,ms) -> sprintf("work_group_barrier(%s,%s,%s)") lbl (pp_gpu_memory_spaces spaces) (pp_mem_scope ms)
    
 (* We don't have symbolic registers. This should be enough *)
 let fold_regs (f_reg,_f_sreg) = 
@@ -245,7 +245,7 @@ let map_addrs _f _ins = Warn.fatal "OpenCL map_addrs has not been implemented"
 (* No address in code, addresses are declared parameters *)
 let fold_addrs _f c _i = c
 
-let pp_instruction _m _ins = Warn.fatal "OpenCL pp_instruction has not been implemented"
+let pp_instruction _m ins = dump_instruction ins
 
 let get_next _ins = Warn.fatal "OpenCL get_next not implemented"
 
