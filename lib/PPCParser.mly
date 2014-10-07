@@ -31,7 +31,7 @@ open PPC
 %token ADD ADDDOT SUB SUBF SUBFDOT SUBDOT XOR XORDOT OR ORDOT  AND ANDDOT
 %token MULL MULLDOT DIV DIVDOT
 %token ADDI SUBI ORI XORI ANDIDOT MULLI
-%token LWZ LWZX MR STW STWX LWARX STWCX CMPWI CMPW
+%token LWZ LWZU LWZX MR STW STWU STWX LWARX STWCX CMPWI CMPW
 %token LD STD LDX STDX
 %token SYNC EIEIO ISYNC LWSYNC DCBF B BEQ BNE BLT BGT BLE BGE BNL BNG
 %token NOR NORDOT NEG NEGDOT SLW SRAWI SRAW BL BLR MTLR MFLR
@@ -141,6 +141,10 @@ instr:
     { Plwz ($2,$4,$6)}
   | LWZ reg COMMA idx LPAR reg RPAR
     { Plwz ($2,$4,$6)}
+  | LWZU reg COMMA idx COMMA reg
+    { Plwzu ($2,$4,$6)}
+  | LWZU reg COMMA idx LPAR reg RPAR
+    { Plwzu ($2,$4,$6)}
   | LD reg COMMA idx COMMA reg
     { Pld ($2,$4,$6)}
   | LD reg COMMA idx LPAR reg RPAR
@@ -155,6 +159,10 @@ instr:
     { Pstw ($2,$4,$6) }
   | STW reg COMMA idx LPAR reg RPAR
     { Pstw ($2,$4,$6) }
+  | STWU reg COMMA idx COMMA reg
+    { Pstwu ($2,$4,$6) }
+  | STWU reg COMMA idx LPAR reg RPAR
+    { Pstwu ($2,$4,$6) }
   | STD reg COMMA idx COMMA reg
     { Pstd ($2,$4,$6) }
   | STD reg COMMA idx LPAR reg RPAR

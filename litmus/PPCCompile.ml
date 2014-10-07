@@ -150,11 +150,11 @@ module Make(V:Constant.S)(C:Config) =
         inputs=[rS;rA;rB];
         outputs=[]; }
 
-    let stw rS d rA =
+    let stw update rS d rA =
       { empty_ins with
-        memo = sprintf "stw ^i0,%i(^i1)" d;
+        memo = sprintf "%s ^i0,%i(^i1)" (if update then "stwu" else "stw") d;
         inputs=[rS;rA];
-        outputs=[]; }
+        outputs=(if update && rA <> r0 then [rA;] else []); }
 
     let mftb r =
       { empty_ins with
@@ -238,6 +238,13 @@ module Make(V:Constant.S)(C:Config) =
           memo = sprintf "lwz ^o0,%i(^i0)"  d;
           inputs = [rA];
           outputs= [rD]; }::k
+    | Plwzu (rD,d,rA) ->
+        let outs =
+          if rA <> r0 && rA <> rD then [rD;rA;] else [rD;] in
+        { empty_ins with
+          memo = sprintf "lwzu ^o0,%i(^i0)"  d;
+          inputs = [rA];
+          outputs= outs; }::k
     | Pld (rD,d,rA) ->ld rD d rA::k
     | Plwzx (rD,rA,rB) ->
         begin match rA with
@@ -265,7 +272,8 @@ module Make(V:Constant.S)(C:Config) =
               inputs = [rA;rB];
               outputs= [rD]; }
         end::k
-    | Pstw(rS,d,rA) -> stw rS d rA::k
+    | Pstw(rS,d,rA) -> stw false rS d rA::k
+    | Pstwu(rS,d,rA) -> stw true rS d rA::k
     | Pstd(rS,d,rA) -> std rS d rA::k
     | Pstwx (rS,rA,rB) ->
         begin match rA with
@@ -364,7 +372,7 @@ module Make(V:Constant.S)(C:Config) =
     let branch_diffw r1 r2 lab k = cmpw r1 r2::bcc tr_nolab Ne lab::k
     let branch_neq r i lab k = cmpwi r i::bcc tr_nolab Ne lab::k
     let branch_eq r i lab k = cmpwi r i::bcc tr_nolab Eq lab::k
-    let signaling_write i k = li ephemeral i::stw ephemeral 0 A.signal::k
+    let signaling_write i k = li ephemeral i::stw false ephemeral 0 A.signal::k
 
 
 (*

@@ -223,8 +223,10 @@ type instruction =
   | Pcmpw of crfindex * reg*reg
   | Plwz of reg*idx*reg (* load 32-bit int; lwzx: same, with 2 index regs, hidden in addressing mode *)
   | Plwzx of reg*reg*reg
+  | Plwzu of reg * idx * reg
   | Pmr of reg * reg
   | Pstw of reg*idx*reg (* store 32-bit int; stwx: same, with 2 index regs, hidden in addressing mode *)
+  | Pstwu of reg * idx * reg
   | Pstwx of reg*reg*reg
   | Plwarx of reg*reg*reg (* load word and reserve indexed *)
   | Pstwcx of reg*reg*reg (* store word conditional indexed *)
@@ -321,9 +323,11 @@ type instruction =
       | Pcmpw(crf,rA,rB) ->
           "cmpw" ^ " " ^pp_crf crf ^ "," ^ pp_reg rA  ^ "," ^ pp_reg rB
       | Plwz(rD,d,rA) -> ppi_imm_index_mode "lwz" rD d rA
+      | Plwzu(rD,d,rA) -> ppi_imm_index_mode "lwzu" rD d rA
       | Plwzx(rD,rA,rB) -> ppi_index_mode "lwzx" rD rA rB
       | Pmr (rD,rS) -> ppi_rr "mr" rD rS
       | Pstw(rS,d,rA) -> ppi_imm_index_mode "stw" rS d rA
+      | Pstwu(rS,d,rA) -> ppi_imm_index_mode "stwu" rS d rA
       | Pstwx(rS,rA,rB) -> ppi_index_mode "stwx" rS rA rB
       | Plwarx(rD,rA,rB) -> ppi_index_mode "lwarx" rD rA rB
       | Pstwcx(rS,rA,rB) -> ppi_index_mode "stwcx." rS rA rB
@@ -403,9 +407,11 @@ let fold_regs (f_reg,f_sreg) =
   | Pmulli (r1,r2,_)
   | Pcmpw (_,r1,r2)
   | Plwz (r1,_,r2)
+  | Plwzu (r1,_,r2)
   | Pmr (r1,r2)
   | Pdcbf (r1,r2)
   | Pstw (r1,_,r2)
+  | Pstwu (r1,_,r2)
   | Pld (r1,_,r2)
   | Pstd (r1,_,r2) 
   | Pneg (_,r1,r2)
@@ -492,12 +498,16 @@ let map_regs f_reg f_symb =
       map2 (fun (r1,r2) -> Pcmpw (crf,r1,r2)) r1 r2
   | Plwz (r1,cst,r2) ->
       map2 (fun (r1,r2) -> Plwz (r1,cst,r2)) r1 r2
+  | Plwzu (r1,cst,r2) ->
+      map2 (fun (r1,r2) -> Plwzu (r1,cst,r2)) r1 r2
   | Pmr (r1,r2) ->
       map2 (fun (r1,r2) -> Pmr (r1,r2)) r1 r2
   | Pdcbf (r1,r2) ->
       map2 (fun (r1,r2) -> Pdcbf (r1,r2)) r1 r2
   | Pstw (r1,cst,r2) ->
       map2 (fun (r1,r2) -> Pstw (r1,cst,r2)) r1 r2
+  | Pstwu (r1,cst,r2) ->
+      map2 (fun (r1,r2) -> Pstwu (r1,cst,r2)) r1 r2
   | Pld (r1,cst,r2) ->
       map2 (fun (r1,r2) -> Pld (r1,cst,r2)) r1 r2
   | Pstd (r1,cst,r2) ->
@@ -545,8 +555,8 @@ let norm_ins ins = match ins with
   | Pb _ | Pbcc (_,_)
   | Pdcbf (_, _)
   | Pstwcx (_, _, _)|Plwarx (_, _, _)
-  | Pstwx (_, _, _)|Pstw (_, _, _)|Pmr (_, _)
-  | Plwzx (_, _, _)|Plwz (_, _, _)|Pcmpw (_, _, _)
+  | Pstwx (_, _, _)|Pstw (_, _, _)|Pstwu (_,_,_)|Pmr (_, _)
+  | Plwzx (_, _, _)|Plwz (_, _, _)|Plwzu (_,_,_)|Pcmpw (_, _, _)
   | Pcmpwi (_, _, _)|Pli (_, _)
   | Pmulli (_, _, _)|Pxori (_, _, _)|Pori (_, _, _)
   | Pandi (_, _, _)|Paddi (_, _, _)|Pdiv (_, _, _, _)
@@ -572,8 +582,8 @@ let get_next = function
   |Pmull (_, _, _, _)|Pdiv (_, _, _, _)|Paddi (_, _, _)
   | Pandi (_, _, _)|Pori (_, _, _)|Pxori (_, _, _)|Pmulli (_, _, _)
   |Pli (_, _)
-  |Pcmpwi (_, _, _)|Pcmpw (_, _, _)|Plwz (_, _, _)
-  |Plwzx (_, _, _)|Pmr (_, _)|Pstw (_, _, _)|Pstwx (_, _, _)
+  |Pcmpwi (_, _, _)|Pcmpw (_, _, _)|Plwz (_, _, _)|Plwzu(_,_,_)
+  |Plwzx (_, _, _)|Pmr (_, _)|Pstw (_, _, _)|Pstwu(_,_,_)|Pstwx (_, _, _)
   |Plwarx (_, _, _)
   |Pstwcx (_, _, _)|Pstd (_, _, _)|Pstdx (_, _, _)
   |Pld (_, _, _)|Pldx (_, _, _)
@@ -635,8 +645,10 @@ include Pseudo.Make
         | Pcomment _
           -> 0
         | Plwz _
+        | Plwzu _
         | Plwzx _
         | Pstw _
+        | Pstwu _
         | Pstwx _
         | Plwarx _
         | Pstwcx _
@@ -653,8 +665,8 @@ include Pseudo.Make
         | Pdcbf (_, _)|Pldx (_, _, _)|Pld (_, _, _)
         | Pstdx (_, _, _)|Pstd (_, _, _)
         | Pstwcx (_, _, _)|Plwarx (_, _, _)
-        | Pstwx (_, _, _)|Pstw (_, _, _)|Pmr (_, _)
-        | Plwzx (_, _, _)|Plwz (_, _, _)|Pcmpw (_, _, _)
+        | Pstwx (_, _, _)|Pstw (_, _, _)|Pstwu(_,_,_)|Pmr (_, _)
+        | Plwzx (_, _, _)|Plwz (_, _, _)|Plwzu(_,_,_)|Pcmpw (_, _, _)
         | Pcmpwi (_, _, _)|Pli (_, _)
         | Pmulli (_, _, _)|Pxori (_, _, _)|Pori (_, _, _)
         | Pandi (_, _, _)|Paddi (_, _, _)|Pdiv (_, _, _, _)
@@ -677,8 +689,8 @@ include Pseudo.Make
         | Pdcbf (_, _)|Pldx (_, _, _)|Pld (_, _, _)
         | Pstdx (_, _, _)|Pstd (_, _, _)
         | Pstwcx (_, _, _)|Plwarx (_, _, _)
-        | Pstwx (_, _, _)|Pstw (_, _, _)|Pmr (_, _)
-        | Plwzx (_, _, _)|Plwz (_, _, _)|Pcmpw (_, _, _)
+        | Pstwx (_, _, _)|Pstw (_, _, _)|Pstwu(_,_,_)|Pmr (_, _)
+        | Plwzx (_, _, _)|Plwz (_, _, _)|Plwzu(_,_,_)|Pcmpw (_, _, _)
         | Pcmpwi (_, _, _)|Pli (_, _)
         | Pmulli (_, _, _)|Pxori (_, _, _)|Pori (_, _, _)
         | Pandi (_, _, _)|Paddi (_, _, _)|Pdiv (_, _, _, _)

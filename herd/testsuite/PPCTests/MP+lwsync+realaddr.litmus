@@ -1,4 +1,4 @@
-PPC MP+lwync+realaddr
+PPC MP+lwsync+realaddr
 "Real address dependency, 32bits code"
 {
 z=-1; p=z; x=0;

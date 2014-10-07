@@ -29,8 +29,7 @@ type cst = Cst.v
 type v = 
   | Var of csym
   | Val of cst
-	(* A symbolic constant, computations much reduced on them... *)
-
+(* A symbolic constant, computations much reduced on them... *)
 let fresh_var () = Var (gensym ())
 
 let from_var v = Var v
