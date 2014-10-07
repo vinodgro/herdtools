@@ -53,18 +53,6 @@ let acq = (mo_acq | mo_sc | mo_acq_rel) & (R | F | rmw)
 let rel = (mo_rel | mo_sc | mo_acq_rel) & (W | F | rmw)
 
 {%(* 
-The primitive \var{asw} (additional synchronizes-with) relation
-relates every initialisation event to every non-initialisation event.
-We define \var{asw'} as a simpler version that relates initialisation
-events only to those non-initialisation events that come first in
-program-order. Then we define \var{po_asw} as the transitive closure
-of program-order augmented with \var{asw'}. 
-%*)}
-
-let asw' = asw \ (asw;po)
-let po_asw = (po | asw')+
-
-{%(* 
 \paragraph{Scope inclusion} The relation \var{incl} contains
 those pairs of events that have \emph{inclusive scopes}: their
 expected separation is no greater than their actual separation.
@@ -110,28 +98,6 @@ the first operation is $A$ and every subsequent operation either is
 performed by the same work-item or host thread that performed the
 release or is an atomic read-modify-write operation. }
 
-In defining the release sequence, we combine the definition above with
-the notion of the ``hypothetical'' release sequence. That is, when the
-release operation is a write, then its release sequence begins with
-that write. And when the release operation is a fence, its release
-sequence begins with any atomic write that follows that fence in
-program order. In the latter case, the release sequence is
-`hypothetical' because the atomic write need not actually be a release
-write. 
-%*)}
-
-let rel'(r) = [rel]; ([F & r]; po)?; [A & W]
-
-{%(* 
-We take this opportunity to present the symmetric case for
-acquire operations. That is, an acquire read synchronises on the
-location being read, while an acquire fence synchronises on any
-location that is atomically read before that fence in program order.
-%*)}
-
-let acq'(r) = [A & R]; (po; [F & r])?; [acq]
-
-{%(* 
 We define \var{rmw_or_same_wi} as the set of pairs $(a,b)$ for
 which $b$ either is performed by the same work-item that performed $a$
 or is an atomic RMW operation.
@@ -150,17 +116,8 @@ modification order that fails to satisfy \var{rmw_or_same_wi} with
 respect to $a$. \end{itemize} 
 %*)}
 
-let max_co = co & rmw_or_same_wi & ~((co & ~rmw_or_same_wi) ; co)
+let max_co = co? & rmw_or_same_wi & ~((co & ~rmw_or_same_wi) ; co)
 
-{%(* 
-We define $\var{rel_seq}(F)$ as the set of pairs $(a,b)$ for
-which $b$ is in the release sequence headed by the event $a$. Note
-that \var{co} is transitive but not reflexive, so we use the
-\code{?}-operator to ensure that $a$'s release sequence contains
-itself. 
-%*)}
-
-let rel_seq(r) = rel'(r); max_co?
 
 {%(* 
 \paragraph{Synchronisation}~ \myquote{p.~47}{ An atomic operation
@@ -198,13 +155,18 @@ the scopes of $A$ and $B$ are inclusive.
 
 [Analogous paragraphs about local operations omitted.] } 
 
-We define $\var{ir_sw}(r)$ (intra-region synchronizes-with) as the set 
+We define $\var{ra_sw}(r)$ (intra-region synchronizes-with) as the set 
 of pairs of events $(A,B)$ that synchronise with each other on the same 
 region. The events must have inclusive scopes, they must be in different
 work-items, and $B$ must acquire from $A$'s release sequence.
 %*)}
 
-let ir_sw(r) = incl & ~wi & (r^2) & (rel_seq(r); [r]; rf; acq'(r))
+
+let rel'(r) = [rel]; ([F & r]; po)?; [A & W]
+
+let acq'(r) = [A & R]; (po; [F & r])?; [acq]
+
+let ra_sw(r) = incl & ~wi & (r^2) & (rel'(r); max_co; [r]; rf; acq'(r))
 
 {%(* 
 We define $\var{bar_sw}(F)$ (barrier synchronizes-with) as the
@@ -246,10 +208,9 @@ then $X$ both local-synchronizes-with $Y$ and global-synchronizes-with
 $Y$. } 
 %*)}
 
-let g_sw = ir_sw(G) | ((mo_sc^2 | (G & L & F)^2) & ir_sw(L)) |
-bar_sw(G) 
-let l_sw = ir_sw(L) | ((mo_sc^2 | (G & L & F)^2) &
-ir_sw(G)) | bar_sw(L)
+let scf = mo_sc^2 | (G & L & F)^2
+let gsw = ra_sw(G) | bar_sw(G) | (scf & ra_sw(L))  
+let lsw = ra_sw(L) | bar_sw(L) | (scf & ra_sw(G)) 
 
 
 {%(* 
@@ -272,12 +233,10 @@ memory action $C$, $A$ local-happens-before $C$ and $C$
 local-happens-before $B$. \end{itemize}} 
 %*)}
 
-let g_hb = (((G^2) & po_asw) | g_sw)+ 
-let l_hb = (((L^2) & po_asw) | l_sw)+ 
-show g_hb
-show l_hb
-let hb = g_hb | l_hb
-
+let ghb = (((G^2) & (po | (I * !I))) | gsw)+ 
+let lhb = (((L^2) & (po | (I * !I))) | lsw)+ 
+show ghb
+show lhb
 
 {%(* 
 \myquote{p.~46}{ An OpenCL implementation shall ensure that no
@@ -285,17 +244,16 @@ program execution demonstrates a cycle in either the
 local-happens-before relation or the global-happens-before relation. }
 %*)}
 
-acyclic g_hb as ghb_acyclic 
-acyclic l_hb as lhb_acyclic
+acyclic ghb as ghb_acyclic 
+acyclic lhb as lhb_acyclic
 
 {%(*
 We restrict global and local happens-before to events on the same
 location. 
 %*)}
 
-let g_hbl = g_hb & loc 
-let l_hbl = l_hb & loc 
-let hbl = g_hbl | l_hbl
+let ghbl = ghb & loc 
+let lhbl = lhb & loc 
 
 {%(* 
 \paragraph{Coherence} There are four types of coherence-violating
@@ -343,9 +301,10 @@ known as \emph{write-read coherence}. }
 
 let cowr(hbl) = fr; hbl
 
-let coherence(r) = corr(r) | cowr(r) | corw(r) | coww(r) 
-irreflexive coherence(g_hbl) as global_coherence 
-irreflexive coherence(l_hbl) as local_coherence
+irreflexive corr(ghbl) | corr(lhbl) as corr
+irreflexive coww(ghbl) | coww(lhbl) as coww
+irreflexive corw(ghbl) | corw(lhbl) as corr
+irreflexive cowr(ghbl) | cowr(lhbl) as cowr
 
 {%(* 
 \paragraph{Visible side effects.} We define
@@ -364,9 +323,9 @@ global-happens-before $B$. \end{itemize} We define visible side
 effects for local objects $M$ similarly. } 
 %*)}
 
-let vse(hbl) = [W]; (hbl & ~(hbl; [W]; hbl)); [R] 
-let g_vse = [G]; vse(g_hbl) 
-let l_vse = [L]; vse(l_hbl)
+let vse(hbl) = (W * R) & hbl & ~(hbl; [W]; hbl)
+let gvse = [G]; vse(ghb & loc) 
+let lvse = [L]; vse(lhb & loc)
 
 {%(* 
 \myquote{p.~47}{ The visible sequence of side effects on a
@@ -412,8 +371,8 @@ guarantee this by forbidding the following cycles:
 A non-atomic load can only read from a store that is visible.
 %*)}
 
-let g_narf = rf; [nonatomicloc & G]; ~(g_vse^-1)
-let l_narf = rf; [nonatomicloc & L]; ~(l_vse^-1)
+let g_narf = rf; [nonatomicloc & G]; ~(gvse^-1)
+let l_narf = rf; [nonatomicloc & L]; ~(lvse^-1)
 
 irreflexive g_narf as global_nonatomic_rf_consistent
 irreflexive l_narf as local_nonatomic_rf_consistent
@@ -422,10 +381,9 @@ irreflexive l_narf as local_nonatomic_rf_consistent
 An atomic load can only read from a store that already happened.
 %*)}
 
-let arf(hbl) = hbl; rf; [A]
+let arf = (ghb | lhb); rf; [A]
 
-irreflexive arf(g_hbl) as global_atomic_rf_constraint 
-irreflexive arf(l_hbl) as local_atomic_rf_constraint
+irreflexive arf as atomic_rf_constraint
 
 {%(* 
 \paragraph{Read-modify-write consistency}~ 
@@ -441,7 +399,7 @@ write that is too \var{co}-early, and the third prevents it reading
 from a write that is \var{co}-after it. 
 %*)}
 
-let rmw_consistent' = rf;[rmw] | co;fr | co;rf 
+let rmw_consistent' = rf | co;co;rf^-1 | co;rf 
 irreflexive rmw_consistent' as rmw_consistent'
 
 {%(* 
@@ -476,16 +434,16 @@ We define \var{sc_fr} as the from-read relation (\var{fr})
 restricted to SC events. \fixme{John: We should say more about this.}
 %*)}
 
-let sc_fr1 = rf^-1; hbl; [W] 
+let sc_fr1 = rf^-1; (ghbl | lhbl); [W] 
 let sc_fr2 = rf^-1; [mo_sc]; co 
 let sc_fr3 = [F]; po; fr; po; [F] 
-let sc_fr4 = fr; po; [F] 
+let sc_fr4 =          fr; po; [F] 
 let sc_fr5 = [F]; po; fr 
 let sc_fr = sc_fr1 | sc_fr2 | sc_fr3 | sc_fr4 | sc_fr5
 
 {%(* The various sc relations must not form cycles. %*)}
 
-let scp = (mo_sc^2) & (g_hb | l_hb | sc_co | sc_fr)
+let scp = (mo_sc^2) & (ghb | lhb | sc_co | sc_fr)
 show scp
 acyclic scp as sc_consistent
 
@@ -520,7 +478,7 @@ as being annotated with work-item scope, then it suffices only to
 mention scope inclusion. 
 %*)}
 
-let dr = conflict & ~symm(hb) & ~incl
+let dr = conflict & ~symm(ghb | lhb) & ~incl
 undefined_unless empty dr as data_race
 show dr
 
