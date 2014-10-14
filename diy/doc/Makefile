@@ -241,8 +241,9 @@ TSTX86=html/tst-x86.tar html/tst-x86 html/x86-64.cfg
 TSTPPC=html/tst-ppc.tar html/tst-ppc html/power7.cfg
 TSTARM=html/tst-arm.tar html/tst-arm html/tegra3.cfg
 TSTCO=html/tst-co.tar html/tst-co
+CATS=html/uniproccat.txt
 
-html/index.html: html/diy.html $(TSTX86) $(TSTPPC) $(TSTARM) $(TSTCO)
+html/index.html: html/diy.html $(TSTX86) $(TSTPPC) $(TSTARM) $(TSTCO) $(CATS)
 	$(HACHA) $(HACHAOPTS) -o $@ $<
 
 html/tst-x86.tar: tst-x86.tar
@@ -277,6 +278,9 @@ html/tst-co.tar: tst-co.tar
 
 html/tst-co: tst-co.tar
 	( cd html && tar xf ../tst-co.tar )
+
+html/uniproccat.txt: $(HERDDIR)/uniproccat.cat
+	cp $< $@
 
 cleanhtml:
 	/bin/rm -f html/diy.html \

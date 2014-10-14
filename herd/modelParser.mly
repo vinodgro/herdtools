@@ -25,7 +25,7 @@ let do_op op e1 e2 =
 
 let pp () =
   let open Lexing in
-  let start = Parsing.symbol_start_pos ()
+  let start = symbol_start_pos ()
   and fin = symbol_end () in
   let pos = start.pos_cnum in
   let len = fin - pos in
@@ -37,6 +37,7 @@ let pp () =
 %token <string> VAR
 %token <string> STRING
 %token <string> LATEX
+%token INCLUDE
 %token LPAR RPAR LBRAC RBRAC
 %token EMPTY EMPTY_SET UNDERSCORE
 %token WITHCO WITHOUTCO WITHINIT WITHOUTINIT
@@ -58,6 +59,7 @@ let pp () =
 %left DIFF
 %right INTER
 %nonassoc STAR PLUS OPT INV COMP NOT
+%nonassoc HAT
 %%
 
 main:
@@ -83,6 +85,7 @@ ins:
 | SHOW var_list { Show $2 }
 | UNSHOW var_list { UnShow $2 }
 | LATEX { Latex $1 }
+| INCLUDE STRING { Include $2 }
 
 test_type:
 |          { Provides }

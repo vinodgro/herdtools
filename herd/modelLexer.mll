@@ -36,6 +36,7 @@ let () =
      "ext",EXT; "int",INT; "noid",NOID;
      "withco",WITHCO; "withoutco", WITHOUTCO;
      "withinit",WITHINIT; "withoutinit", WITHOUTINIT;
+     "include",INCLUDE;
    ]
 
 

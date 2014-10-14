@@ -75,7 +75,7 @@ module Make
     module MU = ModelUtils.Make(O)(S)
     module W = Warn.Make(O)
 (*  Model interpret *)
-    let (pp,(_,_,prog)) = O.m
+    let (txt,(_,_,prog)) = O.m
 
 (*
     let debug_proc chan p = fprintf chan "%i" p
@@ -359,7 +359,7 @@ module Make
         
 (* Execute one instruction *)
 
-      let rec exec st i c =  match i with
+      let rec exec txt st i c =  match i with
       | Show xs ->
           let show = lazy begin              
             List.fold_left
@@ -367,26 +367,26 @@ module Make
                 StringMap.add x (find_show_rel st.env x) show)
               (Lazy.force st.show) xs
           end in
-          run { st with show;} c
+          run txt { st with show;} c
       | UnShow xs ->
           let show = lazy begin
             List.fold_left
               (fun show x -> StringMap.remove x show)
               (Lazy.force st.show) xs
           end in
-          run { st with show;} c
+          run txt { st with show;} c
       | ShowAs (e,id) ->
           let show = lazy begin
             StringMap.add id
               (rt_loc id (eval_rel st.env e)) (Lazy.force st.show)
           end in
-          run { st with show; } c
+          run txt { st with show; } c
       | Test (pos,t,e,name,test_type) ->
          (* If this is a provides-clause and we've previously
             seen a requires-clause, abort. *)
 	 if st.seen_requires_clause && test_type = Provides then 
 	   begin
-	     let pp = String.sub pp pos.pos pos.len in
+	     let pp = String.sub txt pos.pos pos.len in
 	     Warn.user_error 
 	       "A provided condition must not come after an `undefined_unless' condition. Culprit: '%s'." pp
 	   end;
@@ -408,16 +408,16 @@ module Make
             | TestEmpty -> E.EventRel.is_empty in
             let ok = pred v in
             let ok = MU.check_through ok in
-            if ok then run st c
+            if ok then run txt st c
             else if skip_this_check then begin
               assert O.strictskip ;
-              run 
+              run txt
                 { st with
                   skipped = StringSet.add (Misc.as_some name) st.skipped;}
                 c
             end else begin
               if (O.debug && O.verbose > 0) then begin
-                let pp = String.sub pp pos.pos pos.len in
+                let pp = String.sub txt pos.pos pos.len in
                 MU.pp_failure test conc
                   (sprintf "%s: Failure of '%s'" test.Test.name.Name.name pp)
                   (show_to_vbpp st)
@@ -427,17 +427,17 @@ module Make
 		 None
 	      | Requires -> 
 		 let () = failed_requires_clause () in
-		 run st c
+		 run txt st c
             end
           else begin
             W.warn "Skipping check %s" (Misc.as_some name) ;
-            run st c
+            run txt st c
           end
       | Let bds -> 
           let env = eval_bds st.env bds in
           let st = { st with env; } in
           let st = doshow bds st in
-          run st c
+          run txt st c
       | Rec bds ->
           let env =
             env_rec
@@ -445,12 +445,20 @@ module Make
               bds st.env in
           let st = { st with env; } in
           let st = doshow bds st in
-          run st c
-      | Latex _ -> run st c
+          run txt st c
+      | Include fname ->
+          (* Run sub-model file *)
+          let module P = ParseModel.Make(LexUtils.Default) in
+          let itxt,(_,_,iprog) = P.parse fname in
+          begin match run itxt st iprog with
+          | None -> None            (* Failure *)
+          | Some st -> run txt st c (* Go on *)
+          end
+      | Latex _ -> run txt st c
 
-      and run st = function
+      and run txt st = function
         | [] ->  Some st 
-        | i::c -> exec st i c in
+        | i::c -> exec txt st i c in
 
       let show =
         lazy begin
@@ -462,7 +470,7 @@ module Make
             (fun tag show -> StringMap.add tag (find_show_rel m tag) show)
             S.O.PC.doshow show
         end in
-      run {env=m; show=show; 
+      run txt {env=m; show=show; 
         seen_requires_clause=false;
         skipped=StringSet.empty;} prog
         
