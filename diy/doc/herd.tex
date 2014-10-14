@@ -510,7 +510,8 @@ A relation can be seen as a set of pairs of memory events.
 \begin{syntax}
 \NT{expr} \is{} \T{0}
 \alt \NT{id}
-\alt \NT{expr}\T{*} \orelse \NT{expr}\T{+}  \orelse \NT{expr}\T{?}
+\alt \NT{expr}\T{*} \orelse \NT{expr}\T{+} \orelse \NT{expr}\T{?}
+\orelse \NT{expr}\T{\textasciicircum-1}
 \alt \NT{expr}\T{|}\NT{expr} \orelse
 \NT{expr}\T{;}\NT{expr} \orelse
 \NT{expr}\T{\textbackslash}\NT{expr} \orelse
@@ -561,6 +562,7 @@ or by the model itself.
 \subsubsection*{Operator expressions}
 The transitive and reflexive-transitive closure of an expression are performed
 by the postfix operators \T{+} and~\T{*}.
+The  postfix operator \T{\textasciicircum-1} performs relation inversion.
 The construct \synt{\NT{expr}\T{?}} (option) evaluates to the union
 of  \NT{expr} value and of the identity relation.
 
