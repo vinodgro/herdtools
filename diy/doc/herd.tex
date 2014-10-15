@@ -521,7 +521,7 @@ A relation can be seen as a set of pairs of memory events.
 \alt \T{fun} \T{(} \NT{params} \T{)} \T{->} \NT{expr}
 \alt \T{let} \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{} \T{in} \NT{expr}
 \alt \T{let} \T{rec} \NT{valbinding} \brepet{} \T{and} \NT{valbinding} \erepet{} \T{in} \NT{expr}
-\alt \T{(}\NT{expr}\T{)}
+\alt \T{(}\NT{expr}\T{)} \orelse  \T{begin} \NT{expr} \T{end}
 \sep
 \NT{selector} \is
 \T{MM} \orelse
@@ -538,6 +538,10 @@ A relation can be seen as a set of pairs of memory events.
 \T{AP} \orelse
 \T{PA} \orelse
 \T{PP}
+\alt
+\T{ext} \orelse
+\T{int} \orelse
+\T{noid}
 \sep
 \NT{args} \is \epsilon
 \alt \NT{expr} \brepet{} \T{,} \NT{expr} \erepet{}
@@ -585,10 +589,10 @@ Selectors are filters that operate on relations.
 The value of \synt{\NT{selector}\T{(}\NT{expr}\T{)}} is some subrelation
 of the value of~\synt{\NT{expr}}. Which subrelation depends upon
 \synt{\NT{selector}}.
-Selectors are two-letters keywords
+
+Most selectors are two-letters keywords
 with the first letter operating on the first component of pairs and
 the second letter operating on the second component of pairs.
-
 More precisely, we define the semantics of selector letters as
 predicates over memory events: \T{M} always yield true,
 \T{R} yields true on read events,
@@ -602,6 +606,12 @@ XY(r) = \{ (x,y) \in r \mid X(x) \wedge Y(y)\}
 $$
 For instance, the expression \verb+RW(po)+ yields the read-to-write pairs
 in program order.
+
+Three additional selectors \synt{\T{ext}}, \synt{\T{int}}, and \synt{\T{noid}}
+performs specific operations.
+The first selects pairs of events in different threads (``external''),
+the second selects pairs of events in the same thread (``internal''),
+and the third selects pairs of events that are different (``not identical'').
 
 \subsubsection*{Function calls}
 Functions calls are written
@@ -659,9 +669,11 @@ Notice that
 \synt{\T{let} \T{rec} \NT{id} \T{=} \T{fun} \T{(} \NT{params} \T{)} \T{->} \NT{expr} \T{in}\ldots} is legal syntax. Such a definition will yield
 a runtime error.
 
-\subsubsection*{Parenthesized expressions}
-The expression
-\synt{\T{(}\NT{expr}\T{)}} has the same value as \synt{\NT{expr}}.
+\subsubsection*{Parenthesised expressions}
+The expression \synt{\T{(}\NT{expr}\T{)}}
+has the same value as \synt{\NT{expr}}.
+Notice that a parenthesised expression
+can also be written as  \synt{\T{begin} \NT{expr} \T{end}}.
 
 \subsection{\label{language:instruction}Instructions}
 Instruction are executed for their  effect.
@@ -671,6 +683,8 @@ checking a condition, and specifying relations that are shown in pictures.
 \NT{instruction} \is{} \T{let} \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{}
 \alt \T{let} \T{rec} \NT{valbinding} \brepet{} \T{and} \NT{valbinding} \erepet{}
 \alt \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption
+\alt \T{procedure} \NT{id} \T{(} \NT{params} \T{)} \T{=} \brepet \NT{instruction} \erepet \T{END}
+\alt \T{call} \NT{id} \T{(} \NT{args} \T{)}
 \alt \T{show} \NT{expr} \T{as} \NT{id}
 \alt \T{show} \NT{id} \brepet \T{,} \NT{id} \erepet
 \alt \T{unshow} \NT{id} \brepet \T{,} \NT{id} \erepet
@@ -711,7 +725,7 @@ let complus = tr(rf|co|fr)
 Again notice that the instruction
 \verb-let complus = (rf|co|fr)+- is equivalent.
 
-\subsubsection*{Checks}
+\subsubsection*{\aname{sec:check}{Checks}}
 The construct
 \begin{center}\synt{\NT{check} \NT{expr}}\end{center}
 evaluates \nt{expr} and applies \nt{check}.
@@ -726,6 +740,35 @@ The feature permits not to perform some checks at user's will,
 thanks to the \ahrefloc{skipcheck}{\opt{-skipcheck~}\nt{id}}
 command line~option.
 
+
+\subsubsection*{Procedure definition and call}
+Procedures are similar to functions except that they have no results:
+the body of a procedure is a list of instructions
+and the procedure will be called for the effect of executing
+those instructions. Intended usage of procedures is to define checks
+that are executed later. However, the body of a procedure may
+consist in any kind of instructions.
+
+For instance, one may define the following \verb+uniproc+ procedure with
+no arguments:
+\begin{verbatim}
+procedure uniproc() =
+  let com = fr | rf | co in
+  acyclic com | po
+\end{verbatim}
+Then one can perform the acyclicity check (see
+\ahrefloc{sec:check}{previous section}) by executing the instruction:
+\begin{verbatim}
+call uniproc()
+\end{verbatim}
+As a result the execution will stop if the acyclicity check fails,
+or continue otherwise.
+
+
+Procedures are lexically scoped as functions are.
+Additionally, the bindings performed during the execution of a procedure call
+are discarded when the procedure returns, all other effects performed are
+retained.
 
 \subsubsection*{Show (and unshow) directives}
 \label{show:def}The constructs:
@@ -1247,35 +1290,6 @@ This section describes several extensions to \herd{} that have been implemented 
 \end{description}
 
 
-\subsection{Additional selectors}
-
-\begin{quote}\it
-This is an appendix to Section~\ref{language:expression}.
-\end{quote}
-
-There are three additional \synt{\NT{selector}} expressions: \synt{\T{ext}}, \synt{\T{int}}, and \synt{\T{noid}}. The first selects pairs of events in different threads (``external''), the second selects pairs of events in the same thread (``internal''), and the third selects pairs of events that are different (``not identical''). This syntactic category thus becomes:
-
-\begin{syntax}
-\nt{selector} \is
-\T{MM} \orelse
-\T{MR} \orelse
-\T{RM} \orelse
-\T{MW} \orelse
-\T{WM} \orelse
-\T{RR} \orelse
-\T{WR} \orelse
-\T{RW} \orelse
-\T{WW}
-\alt
-\T{AA} \orelse
-\T{AP} \orelse
-\T{PA} \orelse
-\T{PP}
-\alt
-\T{ext} \orelse
-\T{int} \orelse
-\T{noid}
-\end{syntax}
 
 \subsection{Curried function application}
 

@@ -22,13 +22,20 @@ module type S = sig
     | Rel of S.event_rel
     | Set of S.event_set
     | Clo of closure
-
+    | Proc of procedure
   and env = v Lazy.t StringMap.t
+  and closure
+  and procedure
+(*
   and closure =
     { clo_args : AST.var list ;
       clo_env : env ;
       clo_body : AST.exp; }
-  
+  and procedure = {
+      proc_args : AST.var list;
+      proc_env : env;
+      proc_body : AST.ins list; }
+*)
   type st = { 
     env : env ;
     show : S.event_rel StringMap.t Lazy.t ;
@@ -97,19 +104,23 @@ module Make
       | Rel of S.event_rel
       | Set of S.event_set
       | Clo of closure
-
+      | Proc of procedure
     and env = v Lazy.t StringMap.t
     and closure =
         { clo_args : AST.var list ;
           clo_env : env ;
           clo_body : AST.exp; }
+    and procedure = {
+      proc_args : AST.var list;
+      proc_env : env;
+      proc_body : AST.ins list; }
 
     let find_env env k =
-      Lazy.force (
+      Lazy.force begin
 	try StringMap.find k env
 	with
 	| Not_found -> Warn.user_error "unbound var: %s" k
-      )
+      end
 
     let is_rel = function
       | Rel _ -> true
@@ -181,8 +192,11 @@ module Make
         | Op1 (op,e) ->
           begin match eval env e with
             | Clo _ -> 
-              Warn.user_error 
-                "Expected a set or a relation, found a closure"
+                Warn.user_error
+                  "Expected a set or a relation, found a closure"
+            | Proc _ ->
+                Warn.user_error
+                  "Expected a set or a relation, found a procedure"
             | Set v -> begin match op with
                 | Set_to_rln -> Rel (E.EventRel.set_to_rln v)
                 | Square -> Rel (E.EventRel.cartesian v v)
@@ -269,15 +283,7 @@ module Make
             end
         | App (f,es) ->
             let f = eval_clo env f in
-            let vs = List.map (eval env) es in
-            let bds =
-              try
-                List.combine f.clo_args vs
-              with _ -> Warn.user_error "argument_mismatch" in
-            let env =
-              List.fold_right
-                (fun (x,v) env -> StringMap.add x (lazy v) env)
-                bds f.clo_env in
+            let env = add_args f.clo_args es env f.clo_env in
             eval env f.clo_body
         | Bind (bds,e) ->
             let env = eval_bds env bds in
@@ -286,9 +292,22 @@ module Make
             let env = env_rec (fun pp -> pp) bds env in
             eval env e
 
+      and add_args xs es env_es env_clo =
+        let vs = List.map (eval env_es) es in
+        let bds =
+          try
+            List.combine xs vs
+          with _ -> Warn.user_error "argument_mismatch" in
+        List.fold_right
+          (fun (x,v) env -> StringMap.add x (lazy v) env)
+          bds env_clo
+
       and eval_rel env e = as_rel (eval env e)
       and eval_set env e = as_set (eval env e)
       and eval_clo env e = as_clo (eval env e)
+      and eval_proc env x = match find_env env x with
+      | Proc p -> p
+      | _ -> Warn.user_error "procedure expected"
 
 (* For let *)
       and eval_bds env bds = match bds with
@@ -453,6 +472,19 @@ module Make
           begin match run itxt st iprog with
           | None -> None            (* Failure *)
           | Some st -> run txt st c (* Go on *)
+          end
+      | Procedure (name,args,body) ->
+          let p =
+            Proc { proc_args=args; proc_env=st.env; proc_body=body; } in
+          run txt { st with env = StringMap.add name (lazy p) st.env } c
+      | Call (name,es) ->
+          let env0 = st.env in
+          let p = eval_proc env0 name in
+          let env1 = add_args p.proc_args es env0 p.proc_env in
+          begin match run txt { st with env = env1; } p.proc_body with
+          | None -> None
+          | Some st_call ->
+              run txt { st_call with env = env0; } c
           end
       | Latex _ -> run txt st c
 

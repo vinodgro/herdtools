@@ -65,6 +65,9 @@ type ins =
   | ShowAs of exp * string
   | Latex of string
   | Include of string (* file name, interpreter will read/parse file... *)
+  | Procedure of var * var list * ins list
+  | Call of var * exp list
+
 (** Name X model definition *)
 type t = ModelOption.t * string * ins list
 type pp_t = string * t
