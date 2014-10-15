@@ -831,7 +831,7 @@ and to display pictures.
 
 Model options control some experimental features of \herd.
 More precisely, by default, \herd{} includes a complete
-coherence order relation in every execution candidate,
+coherence order relation in every candidate execution,
 and does not represent initial writes by plain memory
 write events. Said otherwise, by default,
 model files have options \T{withco} and \T{whithoutinit}.
@@ -1318,19 +1318,7 @@ This is an appendix to Section~\ref{language:expression}.
 Models can now define expressions over sets, and also bind identifiers to sets. The syntax of expressions thus becomes:
 
 \begin{syntax}
-\nt{expr} \is{} \T{0}
-\alt \NT{id}
-\alt \NT{expr}\T{*} \orelse \NT{expr}\T{+}  \orelse \NT{expr}\T{?}
-\alt \NT{expr}\T{|}\NT{expr} \orelse
-\NT{expr}\T{;}\NT{expr} \orelse
-\NT{expr}\T{\textbackslash}\NT{expr} \orelse
-\NT{expr}\T{\&}\NT{expr}
-\alt \NT{selector}\T{(}\NT{expr}\T{)}
-\alt \NT{id} \T{(} \NT{args} \T{)}
-\alt \T{fun} \T{(} \NT{params} \T{)} \T{->} \NT{expr}
-\alt \T{let} \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{} \T{in} \NT{expr}
-\alt \T{let} \T{rec} \NT{valbinding} \brepet{} \T{and} \NT{valbinding} \erepet{} \T{in} \NT{expr}
-\alt \T{(}\NT{expr}\T{)}
+\nt{expr} \is{} \ldots
 \alt \T{\{\}}
 \alt \T{\_}
 \alt \T{\textasciitilde}\NT{expr} 
@@ -1339,7 +1327,7 @@ Models can now define expressions over sets, and also bind identifiers to sets. 
 \alt \T{[} \NT{expr} \T{]}
 \end{syntax}
 
-The last five constructions are new. We write \synt{\T{\{\}}} for the empty set (in contrast to \synt{\T{0}} for the empty relation), \synt{\T{\_}} for the universal set of all events in the event structure, \synt{\T{\textasciitilde}} for the complement of a relation, and \synt{\T{!}} for the complement of a set. If $s$ and $t$ represent sets, then \synt{\text{$s$} \T{*} \text{$t$}} builds their cross product. We also provide \synt{\T{[} \text{$s$} \T{]}}, which denotes the relation that links each element of $s$ to itself.
+We write \synt{\T{\{\}}} for the empty set (in contrast to \synt{\T{0}} for the empty relation), \synt{\T{\_}} for the universal set of all events in the event structure, \synt{\T{\textasciitilde}} for the complement of a relation, and \synt{\T{!}} for the complement of a set. If $s$ and $t$ represent sets, then \synt{\text{$s$} \T{*} \text{$t$}} builds their cross product. We also provide \synt{\T{[} \text{$s$} \T{]}}, which denotes the relation that links each element of $s$ to itself.
 
 \subsection{Provided conditions and undefined-unless conditions}
 
@@ -1352,16 +1340,9 @@ A test-instruction is used to enforce a contract between the programming languag
 The syntax for instructions thus becomes:
 
 \begin{syntax}
-\nt{instruction} \is{} \T{let} \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{}
-\alt \T{let} \T{rec} \NT{valbinding} \brepet{} \T{and} \NT{valbinding} \erepet{}
-\alt \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption
+\nt{instruction} \is{} \ldots
 \alt \T{undefined\_unless} \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption
-\alt \T{show} \NT{expr} \T{as} \NT{id}
-\alt \T{show} \NT{id} \brepet \boption \T{,} \eoption \NT{id} \erepet
-\alt \T{unshow} \NT{id} \brepet \boption \T{,} \eoption \NT{id} \erepet
 \end{syntax}
-
-We remark that we have made a further small amendment to the definition above: the commas in the final two rules are now marked as optional.
 
 \subsection{Additional identifiers}
 

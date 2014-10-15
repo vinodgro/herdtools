@@ -108,7 +108,11 @@ test:
 
 var_list:
 | VAR { [$1] }
-| VAR COMMA var_list { $1 :: $3 }
+| VAR comma_opt var_list { $1 :: $3 }
+
+comma_opt:
+|       { () }
+| COMMA { () }
 
 bind:
 | VAR EQUAL exp { ($1,$3) }
