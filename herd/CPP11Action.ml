@@ -216,6 +216,8 @@ end = struct
      | Fence mo -> mo=target
      | _ -> false
 
+   let is_sc_action a = mo_matches CPP11Base.SC a
+
 (* Architecture-specific sets *)
    let arch_sets = [
      "rmw", is_rmw; "brmw", is_blocked_rmw;

@@ -91,6 +91,9 @@ module type S = sig
 (* Mutex operations *)
   val is_mutex_action : event -> bool
 
+(* SC operations *)
+  val is_sc_action : event -> bool
+
 (**************)
 (* Event sets *)
 (**************)
@@ -395,6 +398,11 @@ struct
 
 (* Mutex operations *)
    let is_mutex_action e = Act.is_mutex_action e.action
+
+(* SC operations *)
+   (* For grabbing all the SC operations, so a total order
+   through them can be found. *)
+   let is_sc_action e = Act.is_sc_action e.action
 
 (******************************)
 (* Build structures of events *)

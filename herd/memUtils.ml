@@ -340,6 +340,13 @@ module Make(S : SemExtra.S) = struct
   and collect_stores es = collect_by_loc es E.is_store
   and collect_atomics es = collect_by_loc es E.is_atomic
   and collect_mutex_actions es = collect_by_loc es E.is_mutex_action
+  and collect_sc_actions es = 
+    (* horrible hack ahead -- we're collecting sc actions per location, 
+       but associating them all with a sentinel location that's
+       then ignored. should really construct a single list, rather
+       than one list per location. *)
+    let random_loc = S.A.Location_global (V.intToV 0) in
+    LocEnv.add random_loc (List.filter E.is_sc_action (E.EventSet.fold (fun e k -> e :: k) es.E.events [])) LocEnv.empty
 
 
 (* fr to init stores only *)
@@ -489,6 +496,40 @@ module Make(S : SemExtra.S) = struct
      try
        fold_mutex_serialization_candidates
          conc conc.S.pco process_lo res
+     with E.EventRel.Cyclic ->
+       if S.O.debug.Debug.barrier && S.O.PC.verbose > 2 then begin
+         let module PP = Pretty.Make(S) in
+           let legend =
+             sprintf "%s cyclic co or lo precursor"
+               test.Test.name.Name.name in
+           let pos = conc.S.pos in
+           prerr_endline legend ;
+           PP.show_legend test  legend conc
+             [ ("pos",S.rt pos); ("pco",S.rt conc.S.pco)]
+        end ;
+        res
+
+(*****************************************)
+(* SC serialization candidate generator. *)
+(*****************************************)
+
+  let fold_sc_serialization_candidates conc (* vb *) _ kont res =
+    let sc_actions = collect_sc_actions conc.S.str in
+    let sc_orders : E.EventRel.t list list =
+      LocEnv.fold
+	(fun _loc sc_actions k ->
+          let orders =
+	    E.EventRel.all_topos (PC.verbose > 0)
+              (E.EventSet.of_list sc_actions) E.EventRel.empty in
+          List.map order_to_succ_rel orders::k)
+        sc_actions [] in
+    Misc.fold_cross_gen E.EventRel.union E.EventRel.empty sc_orders kont res
+
+(* With check *)
+  let apply_process_sc test conc process_sc res =
+     try
+       fold_sc_serialization_candidates
+         conc conc.S.pco process_sc res
      with E.EventRel.Cyclic ->
        if S.O.debug.Debug.barrier && S.O.PC.verbose > 2 then begin
          let module PP = Pretty.Make(S) in

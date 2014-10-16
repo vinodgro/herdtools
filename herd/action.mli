@@ -77,6 +77,8 @@ module type S = sig
 (* Mutex operations *)
   val is_mutex_action : action -> bool
 
+  val is_sc_action : action -> bool
+
 (********************)
 (* Equation solving *)
 (********************)
