@@ -145,6 +145,8 @@ end = struct
 (* Mutex operations *)
    let is_mutex_action _ = false
 
+   let is_sc_action _ = false
+
 (* Cache-operators *)
    let cache_op_matches target = function
      | Access (_,_,_,_,cop) -> cop=target

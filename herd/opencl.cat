@@ -1,537 +1,181 @@
 "OpenCL"
-
-{%(* 
-\newcommand\myquote[2]{\begingroup%
-\definecolor{shadecolor}{rgb}{0.9,0.9,1}%
-\begin{shaded*}\noindent\ignorespaces#2\hfill{\scriptsize\mbox{[OpenCL
-standard, #1]}}\end{shaded*}\endgroup\noindent\ignorespaces} 
-%*)}
-
-{%(* 
-\paragraph{Preliminaries} We define \var{symm} as a shorthand for the 
-symmetric closure of a relation. 
-%*)}
+withoutsc
 
 let symm(r) = r | r^-1
 
-{%(* 
-We define abbreviations for five primitive sets of events, each
-of which is populated with events that are produced by instructions
-annotated with the named \code{memory_order} constant. 
-%*)}
-
+(* Access modes *)
 let mo_acq = memory_order_acquire 
 let mo_rel = memory_order_release
 let mo_acq_rel = memory_order_acq_rel 
 let mo_rlx = memory_order_relaxed 
 let mo_sc = memory_order_seq_cst
 
-{%(* 
-We define analogous abbreviations for the four
-\code{memory_scope} constants. We include 
-\code{memory_scope_work_item} in our formalisation, because 
-this provides a convenient encoding of non-atomic operations
-in later definitions.  
-%*)}
-
+(* Scope annotations *)
 let s_wi = memory_scope_work_item 
 let s_wg = memory_scope_work_group
 let s_dev = memory_scope_device 
 let s_all = memory_scope_all_svm_devices
 
-{%(*
-Let \var{acq} and \var{rel} be the sets of events with `acquire'
-and `release' semantics, respectively.
-
-\myquote{p.~19}{ Note that the memory orders acquire, sequentially
-consistent, and acquire\_release all include acquire semantics. }
-\myquote{p.~12}{ Note that the memory orders release, sequentially
-consistent, and acquire\_release all include release semantics. } 
-%*)}
-
-let acq = (mo_acq | mo_sc | mo_acq_rel) & (R | F | rmw) 
-let rel = (mo_rel | mo_sc | mo_acq_rel) & (W | F | rmw)
-
-{%(* 
-The primitive \var{asw} (additional synchronizes-with) relation
-relates every initialisation event to every non-initialisation event.
-We define \var{asw'} as a simpler version that relates initialisation
-events only to those non-initialisation events that come first in
-program-order. Then we define \var{po_asw} as the transitive closure
-of program-order augmented with \var{asw'}. 
-%*)}
-
-let asw' = asw \ (asw;po)
-let po_asw = (po | asw')+
-
-{%(* 
-\paragraph{Scope inclusion} The relation \var{incl} contains
-those pairs of events that have \emph{inclusive scopes}: their
-expected separation is no greater than their actual separation.
-
-\myquote{p.~20}{ Two actions $A$ and $B$ are defined to have an
-inclusive scope if they have the same scope $P$ such that:
-\begin{itemize} \item $P$ is \code{memory_scope_work_group} and $A$
-and $B$ are executed by work-items within the same workgroup. \item
-$P$ is \code{memory_scope_device} and $A$ and $B$ are executed by
-work-items on the same device. \item $P$ is
-\code{memory_scope_all_svm_devices} if $A$ and $B$ are executed by
-host threads or by work-items on one or more devices that can share
-SVM memory with each other and the host process. \end{itemize} }
-%*)}
-
+(* Inclusive scopes *)
 let incl_wi(s) = wi & (s^2) 
 let incl_wg(s) = wg & (s^2) 
 let incl_dev(s) = dev & (s^2) 
 let incl_all(s) = s^2
+let incl = 
+  incl_wi(s_wi) | 
+  incl_wg(s_wg) | 
+  incl_dev(s_dev) | 
+  incl_all(s_all) 
 
-let incl = incl_wi(s_wi) | incl_wg(s_wg) | incl_dev(s_dev) | incl_all(s_all) 
-
-{%(* 
-The relation \var{incl'} is a more liberal (but unused) version
-of scope inclusion, in which the expected separation is the
-\emph{minimum} of the two annotations. 
-%*)}
-
+(* Inclusive scopes, alternative (unused) version *)
 let s_dev' = s_all | s_dev 
 let s_wg' = s_all | s_dev | s_wg 
 let s_wi' = s_all | s_dev | s_wg | s_wi
+let incl' = 
+  incl_wi(s_wi') | 
+  incl_wg(s_wg') | 
+  incl_dev(s_dev') |
+  incl_all(s_all)
+
+(*******************)
+(* Synchronisation *)
+(*******************)
 
-let incl' = incl_wi(s_wi') | incl_wg(s_wg') | incl_dev(s_dev') |
-incl_all(s_all)
-
-{%(*
-\paragraph{Release sequence}~
-
-\myquote{p.~45}{ A \emph{release sequence} begins with a release
-operation $A$ on an atomic object $M$ and is the maximal contiguous
-sub-sequence of side effects in the modification order of $M$, where
-the first operation is $A$ and every subsequent operation either is
-performed by the same work-item or host thread that performed the
-release or is an atomic read-modify-write operation. }
-
-In defining the release sequence, we combine the definition above with
-the notion of the ``hypothetical'' release sequence. That is, when the
-release operation is a write, then its release sequence begins with
-that write. And when the release operation is a fence, its release
-sequence begins with any atomic write that follows that fence in
-program order. In the latter case, the release sequence is
-`hypothetical' because the atomic write need not actually be a release
-write. 
-%*)}
-
-let rel'(r) = [rel]; ([F & r]; po)?; [A & W]
-
-{%(* 
-We take this opportunity to present the symmetric case for
-acquire operations. That is, an acquire read synchronises on the
-location being read, while an acquire fence synchronises on any
-location that is atomically read before that fence in program order.
-%*)}
-
-let acq'(r) = [A & R]; (po; [F & r])?; [acq]
-
-{%(* 
-We define \var{rmw_or_same_wi} as the set of pairs $(a,b)$ for
-which $b$ either is performed by the same work-item that performed $a$
-or is an atomic RMW operation.
-%*)} 
-
-
-let rmw_or_same_wi = (_ * rmw) | wi
-
-
-{%(*
-We then define \var{max_co} as the set of pairs $(a,b)$ for which
-\begin{itemize} \item $b$ is after $a$ in the modification order,
-\item $b$ satisfies \var{rmw_or_same_wi} with respect to $a$, \item
-there exists no intermediate event between $a$ and $b$ in the
-modification order that fails to satisfy \var{rmw_or_same_wi} with
-respect to $a$. \end{itemize} 
-%*)}
-
-let max_co = co & rmw_or_same_wi & ~((co & ~rmw_or_same_wi) ; co)
-
-{%(* 
-We define $\var{rel_seq}(F)$ as the set of pairs $(a,b)$ for
-which $b$ is in the release sequence headed by the event $a$. Note
-that \var{co} is transitive but not reflexive, so we use the
-\code{?}-operator to ensure that $a$'s release sequence contains
-itself. 
-%*)}
-
-let rel_seq(r) = rel'(r); max_co?
-
-{%(* 
-\paragraph{Synchronisation}~ \myquote{p.~47}{ An atomic operation
-$A$ that performs a release operation on a global object $M$
-global-synchronizes-with an atomic operation $B$ that performs an
-acquire operation on $M$ and reads a value written by any side effect
-in the release sequence headed by $A$. A similar rule holds for atomic
-operations on objects in local memory [...] } Note that the paragraph
-above should (we believe) mention that $A$ and $B$ must have inclusive
-scopes. 
-
-\myquote{p.~50}{ A global release fence $A$
-global-synchronizes-with a global acquire fence $B$ if there exist
-atomic operations $X$ and $Y$, both operating on some global atomic
-object $M$, such that $A$ is sequenced-before $X$, $X$ modifies $M$,
-$Y$ is sequenced-before $B$, $Y$ reads the value written by $X$ or a
-value written by any side effect in the hypothetical release sequence
-$X$ would head if it were a release operation, and that the scopes of
-$A$, $B$ are inclusive.
-
-A global release fence $A$ global-synchronizes-with an atomic
-operation $B$ that performs an acquire operation on a global atomic
-object $M$ if there exists an atomic operation $X$ such that $A$ is
-sequenced-before $X$, $X$ modifies $M$, $B$ reads the value written by
-$X$ or a value written by any side effect in the hypothetical release
-sequence $X$ would head if it were a release operation, and the scopes
-of $A$ and $B$ are inclusive.
-
-An atomic operation $A$ that is a release operation on a global atomic
-object $M$ global-synchronizes-with a global acquire fence $B$ if
-there exists some atomic operation $X$ on $M$ such that $X$ is
-sequenced-before $B$ and reads the value written by $A$ or a value
-written by any side effect in the release sequence headed by $A$, and
-the scopes of $A$ and $B$ are inclusive.
-
-[Analogous paragraphs about local operations omitted.] } 
-
-We define $\var{ir_sw}(r)$ (intra-region synchronizes-with) as the set 
-of pairs of events $(A,B)$ that synchronise with each other on the same 
-region. The events must have inclusive scopes, they must be in different
-work-items, and $B$ must acquire from $A$'s release sequence.
-%*)}
-
-let ir_sw(r) = incl & ~wi & (r^2) & (rel_seq(r); [r]; rf; acq'(r))
-
-{%(* 
-We define $\var{bar_sw}(F)$ (barrier synchronizes-with) as the
-set of pairs of events $(A,B)$ where $A$ is the entry fence of a
-dynamic barrier instance, and $B$ is the exit fence of the same
-dynamic barrier instance in a different work-item in the same
-work-group. 
-
-\myquote{p.~51--52}{ \begin{itemize} \item If the flags
-have \code{CLK_GLOBAL_MEM_FENCE} set then for each work-item the entry
-fence global-synchronizes-with the exit fence of all other work-items
-in the same work-group. \item If the flags have
-\code{CLK_LOCAL_MEM_FENCE} set then for each work-item the entry fence
-local-synchronizes-with the exit fence of all other work-items in the
-same work-group. \end{itemize} } 
-%*)}
-
-
-let bar_sw(r) = same_B & ~wi & (entry_fence * exit_fence) & wg & r^2
-
-
-{%(*
-We define $\var{g_sw}(F,F')$ (global synchronizes-with) as the
-set of pairs of events that either synchronise via global fences, or
-synchronise via local fences and either are both SC operations or are
-both global/local fences. We define $\var{l_sw}(F,F')$ (local
-synchronizes-with) as the set of pairs of events that either
-synchronise via local fences, or synchronise via global fences and
-either are both SC operations or are both global/local fences.
-
-\myquote{p.~48}{ Let $X$ and $Y$ be two \code{memory_order_seq_cst}
-operations. If $X$ local-synchronizes-with or global-synchronizes-with
-$Y$ then $X$ both local-synchronizes-with $Y$ and
-global-synchronizes-with $Y$. } \myquote{p.~51}{ Let $X$ and $Y$ be
-two work item fences that each have both the
-\code{CLK_GLOBAL_MEM_FENCE} and \code{CLK_LOCAL_MEM_FENCE} flags set.
-If $X$ either local-synchronizes-with or global-synchronizes-with $Y$,
-then $X$ both local-synchronizes-with $Y$ and global-synchronizes-with
-$Y$. } 
-%*)}
-
-let g_sw = ir_sw(G) | ((mo_sc^2 | (G & L & F)^2) & ir_sw(L)) |
-bar_sw(G) 
-let l_sw = ir_sw(L) | ((mo_sc^2 | (G & L & F)^2) &
-ir_sw(G)) | bar_sw(L)
-
-
-{%(* 
-\paragraph{Happens before} We now define global and local
-happens-before, and require each to be acyclic. Global happens-before
-contains all program-order edges between global locations, plus all
-global synchronizes-with edges. Local happens-before contains all
-program-order edges between local locations, plus all local
-synchronizes-with edges. 
-
-\myquote{pp.~45--46}{ A global memory action
-$A$ global-happens-before a global memory action $B$ if
-\begin{itemize} \item $A$ is sequenced-before $B$, or \item $A$
-global-synchronizes-with $B$, or \item For some global memory action $C$,
-$A$ global-happens-before $C$ and $C$ global-happens-before $B$.
-\end{itemize} A local memory action $A$ local-happens-before a local
-memory action $B$ if \begin{itemize} \item $A$ is sequenced-before
-$B$, or \item $A$ local-synchronizes-with $B$, or \item For some local
-memory action $C$, $A$ local-happens-before $C$ and $C$
-local-happens-before $B$. \end{itemize}} 
-%*)}
-
-let g_hb = (((G^2) & po_asw) | g_sw)+ 
-let l_hb = (((L^2) & po_asw) | l_sw)+ 
-show g_hb
-show l_hb
-let hb = g_hb | l_hb
-
-
-{%(* 
-\myquote{p.~46}{ An OpenCL implementation shall ensure that no
-program execution demonstrates a cycle in either the
-local-happens-before relation or the global-happens-before relation. }
-%*)}
-
-acyclic g_hb as ghb_acyclic 
-acyclic l_hb as lhb_acyclic
-
-{%(*
-We restrict global and local happens-before to events on the same
-location. 
-%*)}
-
-let g_hbl = g_hb & loc 
-let l_hbl = l_hb & loc 
-let hbl = g_hbl | l_hbl
-
-{%(* 
-\paragraph{Coherence} There are four types of coherence-violating
-cycle, and these are all forbidden in OpenCL. These are write-write,
-read-read, read-write and write-read. Coherence is required on both
-the global and the local memory regions.
-
-\myquote{p.~47}{ If an operation $A$ that modifies an atomic object
-$M$ global-happens-before an operation $B$ that modifies $M$, then $A$
-shall be earlier than $B$ in the modification order of $M$. This
-requirement is known as \emph{write-write coherence}. } 
-%*)}
-
-let coww(hbl) = co; hbl
-
-{%(* 
-\myquote{p.~47}{ If a value computation $A$ of an atomic object
-$M$ global-happens-before a value computation $B$ of $M$, and $A$
-takes its value from a side effect $X$ on $M$, then the value computed
-by $B$ shall either equal the value stored by $X$, or be the value
-stored by a side effect $Y$ on $M$, where $Y$ follows $X$ in the
-modification order of $M$. This requirement is known as
-\emph{read-read coherence}. } 
-%*)}
-
-let corr(hbl) = fr; rf; hbl
-
-{%(* 
-\myquote{p.~47}{ If a value computation $A$ of an atomic object
-$M$ global-happens-before an operation $B$ on $M$, then $A$ shall take
-its value from a side effect $X$ on $M$, where $X$ precedes $B$ in the
-modification order of $M$. This requirement is known as
-\emph{read-write coherence}. } 
-%*)}
-
-let corw(hbl) = co; rf; hbl
-
-{%(*
-\myquote{p.~47}{ If a side effect $X$ on an atomic object $M$
-global-happens-before a value computation $B$ of $M$, then the
-evaluation $B$ shall take its value from $X$ or from a side effect $Y$
-that follows $X$ in the modification order of $M$. This requirement is
-known as \emph{write-read coherence}. } 
-%*)}
-
-let cowr(hbl) = fr; hbl
-
-let coherence(r) = corr(r) | cowr(r) | corw(r) | coww(r) 
-irreflexive coherence(g_hbl) as global_coherence 
-irreflexive coherence(l_hbl) as local_coherence
-
-{%(* 
-\paragraph{Visible side effects.} We define
-$\var{vse}(\var{hbl})$ as the set of pairs of events $(A,B)$ for which
-the write $A$ is visible to the read $B$ of the same location, which
-means that $B$ happens-after $A$ and there is no intervening write to
-the same location. There are global and local versions of this
-relation. 
-
-\myquote{p.~46}{ A \emph{visible side effect} $A$ on a
-global object $M$ with respect to a value computation $B$ of $M$
-satisfies the conditions: \begin{itemize} \item $A$
-global-happens-before $B$, and \item there is no other side effect $X$
-to $M$ such that $A$ global-happens-before $X$ and $X$
-global-happens-before $B$. \end{itemize} We define visible side
-effects for local objects $M$ similarly. } 
-%*)}
-
-let vse(hbl) = [W]; (hbl & ~(hbl; [W]; hbl)); [R] 
-let g_vse = [G]; vse(g_hbl) 
-let l_vse = [L]; vse(l_hbl)
-
-{%(* 
-\myquote{p.~47}{ The visible sequence of side effects on a
-global atomic object $M$, with respect to a value computation $B$ of
-$M$, is a maximal contiguous sub-sequence of side effects in the
-modification order of $M$, where the first side effect is visible with
-respect to $B$, and for every side effect, it is not the case that $B$
-global-happens-before it. The value of $M$, as determined by evaluation 
-$B$, shall be the value stored by some operation in the visible
-sequence of $M$ with respect to $B$. } 
-
-Together, the previous two passages define
-where atomic loads can read from. They forbid the atomic read from
-reading a write outside of the visible sequence of side effects of
-some visible side effect of the read. The visible sequence of side
-effects is a subsequence of modification order, which is total over
-all of the writes to the same location, so this restriction can be
-reduced to four cases:
-
-\begin{itemize} 
-\item it prevents the load from reading from a write
-that is modification-order-before the sequence, \item it prevents the
-load from reading from the first happens-before-later write to the
-same location that terminates the sequence, \item it prevents the load
-from reading from a write that is modification-order-after the
-sequence, and \item it leaves the load indeterminate (with no
-reads-from edge), if there are no visible side effects. 
-\end{itemize}
-
-The first case is covered by write-read coherence above. The third is
-covered by read-write coherence. We assume all atomic locations are
-initialised by a parent thread before they are accessed, so the fourth
-case does not apply. The second case does impose a new constraint on
-the execution.
-
-The sequence ends with a write to the same location that
-happens-after the read. The read may not read from this write. We
-guarantee this by forbidding the following cycles: 
-
-%*)}
-
-{%(*
-A non-atomic load can only read from a store that is visible.
-%*)}
-
-let g_narf = rf; [nonatomicloc & G]; ~(g_vse^-1)
-let l_narf = rf; [nonatomicloc & L]; ~(l_vse^-1)
-
-irreflexive g_narf as global_nonatomic_rf_consistent
-irreflexive l_narf as local_nonatomic_rf_consistent
-
-{%(*
-An atomic load can only read from a store that already happened.
-%*)}
-
-let arf(hbl) = hbl; rf; [A]
-
-irreflexive arf(g_hbl) as global_atomic_rf_constraint 
-irreflexive arf(l_hbl) as local_atomic_rf_constraint
-
-{%(* 
-\paragraph{Read-modify-write consistency}~ 
-
-\myquote{p.~49}{
-Atomic read-modify-write operations should always read the last value
-(in the modification order) stored before the write associated with
-the read-modify-write operation. } 
-
-The first disjunct below prevents
-an RMW reading from itself. The second prevents it reading from a
-write that is too \var{co}-early, and the third prevents it reading
-from a write that is \var{co}-after it. 
-%*)}
-
-let rmw_consistent' = rf;[rmw] | co;fr | co;rf 
-irreflexive rmw_consistent' as rmw_consistent'
-
-{%(* 
-\paragraph{Sequential consistency} There is a relation -- let us
-call it $S$ -- between all SC accesses. This relation must be
-consistent with \var{co}, \var{g_hb} and \var{l_hb}. If $B$ is an SC
-read, it can only read from a write that is in the visible sequence of
-side-effects that starts at a write $A$, where $A$ \begin{itemize}
-\item is the most recent (in $S$) SC write, if such exists, and \item
-is any side-effect that is visible to $B$, otherwise. \end{itemize}
-The standard postulates the existence of $S$, and requires certain
-properties of it. In our formalisation, we instead describe how to
-\emph{construct} a partial version of $S$ (which we call \var{scp}),
-and require it to be acyclic. This is advantageous for simulation,
-because we do not need our simulator to iterate over all possible
-total orders.
-
-We define \var{sc_co} as the per-location modification order
-(\var{co}) restricted to SC accesses. It contains the pair of events
-$(a,b)$ only if both are annotated with \code{memory_order_seq_cst}.
-The event $a$ is either an SC write to $x$ or an SC fence that
-precedes a write to $x$ in program order. The event $b$ is either a SC
-write to $x$ or an SC fence that follows a write to $x$ in program
-order. \fixme{Mark: There should be two models, with this optional.
-Also, there's no restriction to local or global here. Is that right?}
-%*)}
-
-let sc_co = ([F]; po)?; co; (po; [F])?
-
-{%(* 
-We define \var{sc_fr} as the from-read relation (\var{fr})
-restricted to SC events. \fixme{John: We should say more about this.}
-%*)}
-
-let sc_fr1 = rf^-1; hbl; [W] 
-let sc_fr2 = rf^-1; [mo_sc]; co 
-let sc_fr3 = [F]; po; fr; po; [F] 
-let sc_fr4 = fr; po; [F] 
-let sc_fr5 = [F]; po; fr 
-let sc_fr = sc_fr1 | sc_fr2 | sc_fr3 | sc_fr4 | sc_fr5
-
-{%(* The various sc relations must not form cycles. %*)}
-
-let scp = (mo_sc^2) & (g_hb | l_hb | sc_co | sc_fr)
+let acq = (mo_acq | mo_sc | mo_acq_rel) & (R | F | rmw)
+let rel = (mo_rel | mo_sc | mo_acq_rel) & (W | F | rmw)
+
+(* Release sequence *)
+let rs = (_ * rmw) | wi
+let max_co = co? & rs & ~((co & ~rs) ; co)
+
+(* Including release-acquire fences *)
+let relf = [rel]; ([F]; po)?; [A & W]
+let acqf = [A & R]; (po; [F])?; [acq]
+
+(* Release-acquire synchronisation *)
+let ra_sw(r) = incl & ~wi & ([r]; relf; max_co; [r]; rf; acqf; [r])
+
+(* Barrier synchronisation *)
+let bar_sw(r) = (entry_fence * exit_fence) & same_B & ~wi & wg & r^2
+
+(* Synchronisation on a region *)
+let region_sw(r) = ra_sw(r) | bar_sw(r)
+
+(* Allowed to synchronise on the other region *)
+let scf = mo_sc^2 | (G & L & F)^2
+
+(* Global and local synchronises-with *)
+let gsw = region_sw(G) | (scf & region_sw(L))  
+let lsw = region_sw(L) | (scf & region_sw(G)) 
+
+(******************)
+(* Happens-before *)
+(******************)
+
+(* Global and local happens-before *)
+let ghb = (((G^2) & (po | (I * !I))) | gsw)+ 
+let lhb = (((L^2) & (po | (I * !I))) | lsw)+ 
+show ghb
+show lhb
+acyclic ghb
+acyclic lhb
+
+(* Per-location happens-before *)
+let ghbl = ghb & loc 
+let lhbl = lhb & loc 
+
+(*************)
+(* Coherence *)
+(*************)
+
+let coh(hb) = (rf^-1)?; co; rf?; hb
+irreflexive coh(ghb)
+irreflexive coh(lhb)
+
+(************************)
+(* Consistency of reads *)
+(************************)
+
+(* Visible side effects *)
+let vse(hbl) = (W * R) & hbl & ~(hbl; [W]; hbl)
+let gvse = [G]; vse(ghbl) 
+let lvse = [L]; vse(lhbl)
+
+(* A non-atomic load can only read from a store that is visible. *)
+irreflexive rf; [nonatomicloc & G]; ~(gvse^-1)
+irreflexive rf; [nonatomicloc & L]; ~(lvse^-1)
+
+(* An atomic load can only read from a store that already happened. *)
+irreflexive (ghb | lhb); rf; [A]
+
+(* Consistency of RMWs *)
+irreflexive rf
+irreflexive fr;co
+irreflexive co;rf
+
+(**************************)
+(* Sequential consistency *)
+(**************************)
+
+(* exists(s) = { 0    if s is empty
+               { unv  otherwise      *)
+let exists(s) = unv; [s]; unv
+
+let sc1 = rf^-1; [mo_sc]; co 
+let sc2 = [F]; po; co; po; [F]
+let sc3 = [F]; po; fr; po; [F] 
+let sc4 =          fr; po; [F] 
+let sc5 = [F]; po; fr
+
+let scp = (mo_sc^2) & (ghb | lhb | co | sc1 | sc2 | sc3 | sc4 | sc5)
+
+let sc6 = rf^-1; (ghb | lhb); [W] 
+
+show S
+
+(*
+(*
+#IFDEF preferred 
+*)
+
+let scp = scp & sc6
+
+acyclic scp & exists(mo_sc & !s_all)
 show scp
-acyclic scp as sc_consistent
 
-{%(* 
-\paragraph{Data races}
+(* 
+#ELSE
 
-Two events \emph{conflict} if at least one is a write and they access
-the same location. \myquote{p.~45}{ Two expression evaluations
-conflict if one of them modifies a memory location and the other one
-reads or modifies the same memory location. } 
-%*)}
+let S = S & exists(mo_sc & !s_all)
+
+irreflexive S ; scp
+let S1 = S & ~(co; S)
+irreflexive S1 ; sc6
+
+#ENDIF 
+*)
+*)
+
+(*********)
+(* Races *)
+(*********)
 
 let conflict = ((W * _) | (_ * W)) & loc
 
-{%(* 
-There is a \emph{data race} between a pair of events if they
-conflict, they are unrelated by happens-before, and their scopes are
-not inclusive. 
-
-\myquote{p.~46}{ The execution of a program contains a
-data race if it contains two conflicting actions $A$ and $B$ in
-different units of execution, and \begin{enumerate} \item at least one
-of $A$ or $B$ is not atomic, or $A$ and $B$ do not have inclusive
-memory scope, and \item the actions are global actions unordered by
-the global-happens-before relation or are local actions unordered by
-the local-happens-before relation. \end{enumerate} Any such data race
-results in undefined behavior. } 
-
-It is actually unnecessary to specify
-that one of the actions is non-atomic. If we define non-atomic actions
-as being annotated with work-item scope, then it suffices only to
-mention scope inclusion. 
-%*)}
-
-let dr = conflict & ~symm(hb) & ~incl
-undefined_unless empty dr as data_race
+(* Data races *)
+let dr = conflict & ~symm(ghb | lhb) & ~incl
+undefined_unless empty dr
 show dr
 
-
-{%(* 
-\paragraph{Unsequenced races} There is an \emph{unsequenced race}
-between a pair of events if they belong to
-the same work-item, they conflict, they are unrelated by
-program-order, and they are different events.
-%*)}
-
+(* Unsequenced races *)
 let ur = (wi & conflict & ~symm(po)) \ id 
 undefined_unless empty ur as unsequenced_race
 show ur
+
+(* Barrier divergence *)
+let bd = 
+  [entry_fence] & ((~wi & wg & ~(bar_sw(G) | bar_sw(L))); unv)
+
+show bd
+
+undefined_unless empty bd

@@ -10,19 +10,24 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-type t = { co : bool ; init : bool } 
+type t = { co : bool ; init : bool ; sc : bool } 
 
-let default = {co=true; init=false;}
+let default = {co=true; init=false; sc=false}
 
-let pp { co; init; } = match co,init with
-| true,true -> "[withco withinit]"
-| true,false -> ""
-| false,_ -> "[withoutco]"
+let pp { co; init; sc; } = match co,init,sc with
+| true,true,true -> "[withco withinit withsc]"
+| true,true,false -> "[withco withinit]"
+| true,false,true -> "[withsc]"
+| true,false,false -> ""
+| false,_,true -> "[withsc]"
+| false,_,false -> "[withoutco]"
 
 
 let set_enumco b t =
-  if not b then { co=false; init=true; }
+  if not b then { t with co=false; init=true; }
   else { t with co=b; }
 
 let set_init b t =
   if not t.co then t else { t with init=b; }
+
+let set_enumsc b t = { t with sc=b; }

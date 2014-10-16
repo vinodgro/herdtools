@@ -128,6 +128,16 @@ type op_type =
   | U32
   | PRED
 
+type ptx_atom_op =
+| Atom_and
+| Atom_or
+| Atom_xor
+| Atom_add
+| Atom_inc
+| Atom_dec
+| Atom_exch
+| Atom_cas
+
 let pp_op_type o = match o with
   | S32 -> ".s32"
   | B64 -> ".b64"
@@ -150,6 +160,16 @@ let pp_cache_op c = match c with
   | WT -> ".wt"
   | NCOP -> ""
 
+let pp_ptx_atom_op o = match o with
+| Atom_and -> ".and"
+| Atom_or -> ".or"
+| Atom_xor -> ".xor"
+| Atom_add -> ".add"
+| Atom_inc -> ".inc"
+| Atom_dec -> ".dec"
+| Atom_exch -> ".exch"
+| Atom_cas -> ".cas"
+    
 type ins_op = 
 | Reg of reg
 | Im of int
@@ -182,6 +202,8 @@ type instruction =
 | Pguardnot of reg*instruction
 | Psetp of Op.op*reg*ins_op*ins_op*op_type
 | Pjmp of lbl
+| Patom2op of reg*reg*ins_op*state_space*ptx_atom_op*op_type
+| Patom3op of reg*reg*ins_op*ins_op*state_space*ptx_atom_op*op_type
 
 include Pseudo.Make
     (struct
@@ -204,7 +226,6 @@ include Pseudo.Make
 
      end)
     
-
 let rec dump_instruction i = match i with
   | Pld(r1,r2,m,cop,t) -> sprintf "ld%s%s%s %s, [%s]" (pp_state_space m)
                                                       (pp_cache_op cop)
@@ -249,6 +270,8 @@ let rec dump_instruction i = match i with
   | Pguardnot(r,ins) -> sprintf "@!%s %s" (pp_reg r) (dump_instruction ins)
   | Psetp(cmp_op,r,op1,op2,t) -> sprintf "setp %s %s %s, %s, %s" (Op.pp_ptx_cmp_op cmp_op) (pp_op_type t) (pp_reg r) (pp_ins_op op1) (pp_ins_op op2)
   | Pjmp (lbl) -> sprintf "bra %s" lbl
+  | Patom2op(d,a,b,ss,o,t) -> sprintf "atom%s%s%s %s, [%s], %s" (pp_state_space ss) (pp_ptx_atom_op o)(pp_op_type t) (pp_reg d) (pp_reg a) (pp_ins_op b)
+  | Patom3op(d,a,b,c,ss,o,t) -> sprintf "atom%s%s%s %s, [%s], %s, %s" (pp_state_space ss) (pp_ptx_atom_op o)(pp_op_type t) (pp_reg d) (pp_reg a) (pp_ins_op b) (pp_ins_op c)
 
 (* Required by archBase.mli   *)
 
@@ -270,6 +293,21 @@ let fold_regs (f_reg,_f_sreg) =
     | _          -> fold_reg (r1) c
     end
 
+      (* possibly 3 registers for 2 op atomics *)
+  | Patom2op(r1,r2,op,_,_,_) -> 
+    begin match op with
+    | Reg r3 -> fold_reg (r1) (fold_reg (r2) (fold_reg (r3) c))
+    | _ -> fold_reg (r1 )(fold_reg (r2) c)
+    end
+
+  (* possibly 4 (phew!) registers for 3 op atomics *)
+  | Patom3op(r1,r2,op1,op2,_,_,_) -> 
+    begin match op1,op2 with
+    | Reg r3, Reg r4-> fold_reg (r1) (fold_reg (r2) (fold_reg (r3) (fold_reg (r4) c)))
+    | Reg r3, _ | _, Reg r3 -> fold_reg (r1) (fold_reg (r2) (fold_reg (r3) c))
+    | _, _ -> fold_reg (r1 )(fold_reg (r2) c)
+    end
+      
   | Padd(r1, op1, op2, _) 
   | Psetp(_, r1, op1, op2, _) 
   | Pand(r1, op1, op2, _) ->
@@ -288,11 +326,9 @@ let fold_regs (f_reg,_f_sreg) =
   (*zero registers*)
   | Pmembar _  -> c
   | Pjmp _  -> c
-
   end 
   in fold_ins
     
-
 let map_regs f_reg _f_symb = 
   let map_reg reg = match reg with
     | GPRreg _ -> f_reg reg
@@ -300,6 +336,7 @@ let map_regs f_reg _f_symb =
 
   let map2 ins r1 r2 = ins (map_reg r1,map_reg r2) in
   let map3 ins r1 r2 r3 =ins (map_reg r1,map_reg r2,map_reg r3) in
+  let map4 ins r1 r2 r3 r4 =ins (map_reg r1,map_reg r2,map_reg r3, map_reg r4) in
 
   let rec map_ins ins = begin match ins with
   (*Two registers*)
@@ -322,6 +359,20 @@ let map_regs f_reg _f_symb =
     | Reg r2  -> map2 (fun (r1,r2) -> Pmov(r1,Reg r2,t)) r1 r2
     | _       -> Pmov(map_reg r1,op,t)
     end
+
+  | Patom2op(r1,r2,op,a,b,c) -> 
+    begin match op with 
+    | Reg r3 -> map3 (fun (rr1,rr2,rr3) -> Patom2op(rr1,rr2,Reg(rr3),a,b,c)) r1 r2 r3
+    | _ -> map2 (fun (rr1,rr2) -> Patom2op(rr1,rr2,op,a,b,c)) r1 r2
+    end
+
+  | Patom3op(r1,r2,op1,op2,a,b,c) -> 
+    begin match op1,op2 with 
+    | Reg r3, Reg r4 -> map4 (fun (rr1,rr2,rr3,rr4) -> Patom3op(rr1,rr2,Reg(rr3),Reg(rr4),a,b,c)) r1 r2 r3 r4
+    | Reg r3,_ -> map3 (fun (rr1,rr2,rr3) -> Patom3op(rr1,rr2,Reg(rr3),op2,a,b,c)) r1 r2 r3 
+    | _, Reg r3 -> map3 (fun (rr1,rr2,rr3) -> Patom3op(rr1,rr2,op1,Reg(rr3),a,b,c)) r1 r2 r3 
+    | _,_ -> map2 (fun (rr1,rr2) -> Patom3op(rr1,rr2,op1,op2,a,b,c)) r1 r2
+    end       		 
 
   | Padd (r1,op1,op2,t) ->
     begin match op1,op2 with
@@ -383,7 +434,7 @@ let map_addrs _f _ins = Warn.fatal "GPU_PTX map_addrs has not been implemented"
 "ARM and PPC do the same..."
 let fold_addrs _f c _ins = c
 
-let pp_instruction _m _ins = Warn.fatal "GPU_PTX dump_instruction has not been implemented"
+let pp_instruction m ins = dump_instruction ins
 
 let get_next _ins = Warn.fatal "GPU_PTX get_next not implemented"
 

@@ -31,7 +31,7 @@ open GPU_PTX
 %token <int> CRK
 
 /* Instruction tokens */
-%token ST LD MEMBAR MOV ADD AND CVT VOL SETP BRA
+%token ST LD MEMBAR MOV ADD AND CVT VOL SETP BRA ATOM ATOM_EXCH ATOM_ADD ATOM_CAS
 
 %type <int list * (GPU_PTXBase.pseudo) list list * MiscParser.gpu_data option> main 
 %start  main
@@ -112,6 +112,19 @@ instr:
 
   | MEMBAR BARRIER_SCOPE
     { Pmembar ($2) }
+      
+  | ATOM prefix atom_op OP_TYPE reg COMMA LBRAC reg RBRAC COMMA ins_op
+    {Patom2op($5,$8,$11,$2,$3,$4) }
+
+  | ATOM prefix atom_op OP_TYPE reg COMMA LBRAC reg RBRAC COMMA ins_op COMMA ins_op
+    {Patom3op($5,$8,$11,$13,$2,$3,$4) }
+
+
+atom_op:
+| ATOM_ADD { GPU_PTXBase.Atom_add}
+| ATOM_EXCH { GPU_PTXBase.Atom_exch}
+| ATOM_CAS { GPU_PTXBase.Atom_cas}
+// Implement the rest of the atomic ops as needed
 
 ins_op:
 | reg {Reg $1}

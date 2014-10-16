@@ -225,6 +225,8 @@ end = struct
      | Fence (_,mo,_,_) -> mo=target
      | _ -> false
 
+   let is_sc_action a = mo_matches OpenCLBase.SC a
+
    let scope_matches target a = match a with
      | Access(_,_,_,_,s)
      | RMW (_,_,_,_,s) 

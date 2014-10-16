@@ -41,6 +41,7 @@ let pp () =
 %token LPAR RPAR LBRAC RBRAC BEGIN END
 %token EMPTY EMPTY_SET UNDERSCORE
 %token WITHCO WITHOUTCO WITHINIT WITHOUTINIT
+%token WITHSC WITHOUTSC
 /* Access direction */
 %token MM  MR  MW WM WW WR RM RW RR INT EXT NOID
 /* Plain/Atomic */
@@ -72,6 +73,8 @@ options:
 | WITHOUTCO options { ModelOption.set_enumco false $2 }
 | WITHINIT options { ModelOption.set_init true $2 }
 | WITHOUTINIT options { ModelOption.set_init false $2 }
+| WITHSC options { ModelOption.set_enumsc true $2 }
+| WITHOUTSC options { ModelOption.set_enumsc false $2 }
 |    { ModelOption.default }
 
 ins_list:

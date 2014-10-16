@@ -138,6 +138,8 @@ end = struct
 (* Mutex operations *)
    let is_mutex_action _ = false
 
+   let is_sc_action _ = false
+
 (* Architecture-specific sets *)
    let arch_sets = []
 
