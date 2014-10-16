@@ -60,12 +60,7 @@ module Make (C:Sem.Config)(V:Value.S)
 
     let mk_m_op op = match op with
       | GPU_PTX.Atom_add -> Op.Add
-      | GPU_PTX.Atom_exch -> Op.Add
       | _ -> assert false (*Not implemented*)
-
-    let mk_m_v v op = match op with
-      | GPU_PTX.Atom_exch -> (V.intToV 0)
-      | _ -> v
 
     let create_barrier b ii = 
       M.mk_singleton_es (Act.Barrier b) ii
@@ -79,6 +74,25 @@ module Make (C:Sem.Config)(V:Value.S)
     let constant_to_int v = match v with
       | Constant.Concrete vv -> vv
       | _ -> Warn.fatal "Couldn't convert constant to int"
+
+(* normal atomic operation with 2 operands *)
+    let norm_atom2op r1 r2 op a_op ii = 
+      	read_reg r2 ii >>= 
+	  (fun addr -> (read_mem_atom GPU_PTX.NCOP addr ii >>|
+	      read_ins_op op ii) >>=
+	    (fun (v1,v2) -> M.op (mk_m_op a_op) v1 v2) >>*= 
+	    (fun v -> write_reg r1 v ii >>| write_mem_atom GPU_PTX.NCOP addr v ii))
+
+	
+    let exch_atom2op r1 r2 op a_op ii = 
+      read_reg r2 ii >>= 
+	(fun addr ->
+	  let rr1 = read_ins_op op ii
+	  and rr2 = read_mem_atom GPU_PTX.NCOP addr ii
+	  and w1 = fun v -> write_reg r1 v ii
+	  and w2 = fun v -> write_mem_atom GPU_PTX.NCOP addr v ii in
+	    M.exch rr1 rr2 w1 w2)
+
 
     let build_semantics ii = 
     let rec build_semantics_inner ii =
@@ -148,23 +162,21 @@ module Make (C:Sem.Config)(V:Value.S)
       | GPU_PTX.Pjmp lbl -> B.branchT lbl    
 
       | GPU_PTX.Patom2op (r1,r2,op,_,a_op,_ ) ->
-	read_reg r2 ii >>= 
-	  (fun addr -> (read_mem_atom GPU_PTX.NCOP addr ii >>|
-	      read_ins_op op ii) >>=
-	    (fun (v1,v2) -> M.op (mk_m_op a_op) (mk_m_v v1 a_op) v2) >>*= 
-	    (fun v -> write_reg r1 v ii >>| write_mem_atom GPU_PTX.NCOP addr v ii))
-	>>! B.Next
-
+	(match a_op with
+	| GPU_PTX.Atom_exch -> exch_atom2op r1 r2 op a_op ii
+	| _ -> norm_atom2op r1 r2 op a_op ii)
+   >>! B.Next
+	  
       (*For compare and swap only*)
       | GPU_PTX.Patom3op (r1,r2,op1,op2,_,a_op,_ ) ->
 	read_reg r2 ii >>= 
 	  (fun addr -> (read_mem_atom GPU_PTX.NCOP addr ii >>|
 	      read_ins_op op1 ii) >>*=
-	    (fun (v1,v2) -> M.op Op.Eq v1 v2 >>=
+	      (fun (v1,v2) -> M.op Op.Eq v1 v2 >>=
 		(fun eq -> M.choiceT eq (read_ins_op op2 ii) (M.unitT v1) >>=	      
 		  (fun v -> write_reg r1 v1 ii >>| write_mem_atom GPU_PTX.NCOP addr v ii))))
 	>>! B.Next
-
-      in 
-      M.addT (A.next_po_index ii.A.program_order_index) (build_semantics_inner ii)
+	  
+    in 
+    M.addT (A.next_po_index ii.A.program_order_index) (build_semantics_inner ii)
   end
