@@ -18,25 +18,49 @@ open LexMisc
 open ModelParser
 module LU = LexUtils.Make(O)
 
-let table = Hashtbl.create 101
-let () =
-  List.iter
-    (fun (s,k) -> Hashtbl.add table s k)
-    [
-     "MM",MM;  "MR",MR;  "MW",MW;
-     "WM",WM; "WW",WW; "WR",WR; "RM",RM; "RW",RW; "RR",RR;
-     "AA",AA; "AP",AP; "PA",PA; "PP",PP;
-     "let",LET; "rec",REC; "set",SET; "rln",RLN; "and",AND;
-     "acyclic",ACYCLIC; "irreflexive",IRREFLEXIVE;
-     "show",SHOW;
-     "unshow",UNSHOW;
-     "empty",TESTEMPTY;
-     "as",AS; "fun", FUN; "in",IN;
-     "undefined_unless",REQUIRES;
-     "ext",EXT; "int",INT; "noid",NOID;
-     "withco",WITHCO; "withoutco", WITHOUTCO;
-     "withinit",WITHINIT; "withoutinit", WITHOUTINIT;
-   ]
+(* Efficient from ocaml 4.02 *)
+
+  let check_keyword = function
+    | "MM" -> MM
+    | "MR" -> MR
+    | "MW" -> MW
+    | "WM" -> WM
+    | "WW" -> WW
+    | "WR" -> WR
+    | "RM" -> RM
+    | "RW" -> RW
+    | "RR" -> RR
+    | "AA" -> AA
+    | "AP" -> AP
+    | "PA" -> PA
+    | "PP" -> PP
+    | "let" -> LET
+    | "rec" -> REC
+    | "set" -> SET
+    | "rln" -> RLN
+    | "and" -> AND
+    | "acyclic" -> ACYCLIC
+    | "irreflexive" -> IRREFLEXIVE
+    | "show" -> SHOW
+    | "unshow" -> UNSHOW
+    | "empty" -> TESTEMPTY
+    | "as" -> AS
+    | "fun" ->  FUN
+    | "in" -> IN
+    | "undefined_unless" -> REQUIRES
+    | "ext" -> EXT
+    | "int" -> INT
+    | "noid" -> NOID
+    | "withco" -> WITHCO
+    | "withoutco" ->  WITHOUTCO
+    | "withinit" -> WITHINIT
+    | "withoutinit" ->  WITHOUTINIT
+    | "include" -> INCLUDE
+    | "begin" -> BEGIN
+    | "end" -> END
+    | "procedure" -> PROCEDURE
+    | "call" -> CALL
+    | x -> VAR x
 
 
 }
@@ -77,8 +101,7 @@ rule token = parse
           LATEX (Buffer.contents buf)
         }
 | '"' ([^'"']* as s) '"' { STRING s } (* '"' *)
-| name as x { 
-    try Hashtbl.find table x with Not_found -> VAR x }
+| name as x { check_keyword x }
 | eof { EOF }
 | ""  { error "Model lexer" lexbuf }
 

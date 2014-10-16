@@ -25,7 +25,7 @@ let do_op op e1 e2 =
 
 let pp () =
   let open Lexing in
-  let start = Parsing.symbol_start_pos ()
+  let start = symbol_start_pos ()
   and fin = symbol_end () in
   let pos = start.pos_cnum in
   let len = fin - pos in
@@ -37,7 +37,8 @@ let pp () =
 %token <string> VAR
 %token <string> STRING
 %token <string> LATEX
-%token LPAR RPAR LBRAC RBRAC
+%token INCLUDE
+%token LPAR RPAR LBRAC RBRAC BEGIN END
 %token EMPTY EMPTY_SET UNDERSCORE
 %token WITHCO WITHOUTCO WITHINIT WITHOUTINIT
 /* Access direction */
@@ -46,9 +47,10 @@ let pp () =
 %token AA AP PA PP
 %token SEMI UNION INTER COMMA DIFF
 %token STAR PLUS OPT INV COMP NOT HAT TWO
-%token LET REC SET RLN AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN
+%token LET REC SET RLN AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN PROCEDURE CALL
 %token REQUIRES
 %token ARROW
+%token SEQTEST
 %type <AST.t> main
 %start main
 
@@ -58,6 +60,7 @@ let pp () =
 %left DIFF
 %right INTER
 %nonassoc STAR PLUS OPT INV COMP NOT
+%nonassoc HAT
 %%
 
 main:
@@ -78,11 +81,17 @@ ins_list:
 ins:
 | LET pat_bind_list { Let $2 }
 | LET REC bind_list { Rec $3 }
-| test_type test exp optional_name { Test(pp (),$2,$3,$4,$1) }
+| deftest { $1 }
 | SHOW exp AS VAR { ShowAs ($2, $4) }
 | SHOW var_list { Show $2 }
 | UNSHOW var_list { UnShow $2 }
 | LATEX { Latex $1 }
+| INCLUDE STRING { Include $2 }
+| PROCEDURE VAR LPAR formals RPAR EQUAL ins_list END { Procedure ($2,$4,$7) }
+| CALL VAR LPAR args RPAR { Call ($2,$4) }
+
+deftest:
+| test_type test exp optional_name { Test(pp (),$2,$3,$4,$1) }
 
 test_type:
 |          { Provides }
@@ -99,12 +108,12 @@ test:
 
 var_list:
 | VAR { [$1] }
-| VAR commaopt var_list { $1 :: $3 }
+| VAR comma_opt var_list { $1 :: $3 }
 
-commaopt:
-| COMMA { () }
+comma_opt:
 |       { () }
-    
+| COMMA { () }
+
 bind:
 | VAR EQUAL exp { ($1,$3) }
 
@@ -155,6 +164,7 @@ base:
 | NOT base { Op1 (Comp SET, $2) }
 | base INTER base { do_op (Inter) $1 $3 }
 | LPAR exp RPAR { $2 }
+| BEGIN exp END { $2 }
 
 exp0:
 | VAR                 { Var $1 }
@@ -162,8 +172,12 @@ exp0:
 
 
 args:
+| { [] }
+| argsN { $1 }
+
+argsN:
 | exp            { [ $1 ] }
-| exp COMMA args { $1 :: $3 }
+| exp COMMA argsN { $1 :: $3 }
 
 select:
 | MM { Select (WriteRead,WriteRead) }

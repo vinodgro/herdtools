@@ -24,7 +24,7 @@ module Make(O:LexUtils.Config) = struct
         Buffer.add_string buff (Bytes.sub_string s 0 r) ;
         r)
 
-    module ML = ModelLexer.Make(O)
+  module ML = ModelLexer.Make(O)
 
   let do_parse fname chan =
     let buff,lexbuf = mk_lexbuf chan in
