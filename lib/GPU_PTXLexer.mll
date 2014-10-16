@@ -47,6 +47,13 @@ rule token = parse
 | "membar" { MEMBAR }
 | "ld" {LD}
 | "st" {ST}
+
+| "atom" {ATOM}
+| ".add" {ATOM_ADD}
+| ".exch" {ATOM_EXCH}
+| ".cas" {ATOM_CAS}
+(* Implement the rest of the atomic ops as needed *)
+
 | "mov" {MOV}
 | "setp" {SETP}
 | "add" {ADD}
