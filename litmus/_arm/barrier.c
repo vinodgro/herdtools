@@ -9,7 +9,7 @@ typedef struct {
 } sense_t;
 
 static void barrier_init (sense_t *p,int n) {
-  p->n = p->c = N;
+  p->n = p->c = n;
   p->sense = 0;
 }
 
@@ -31,6 +31,7 @@ asm __volatile__ (
 "dmb\n\t"
 "mvns %[r1],%[ms]\n\t"
 "str %[r1],[%[s]]\n\t"
+"dsb\n\t"
 "b 2f\n\t"
 "1:\n\t"
 "ldr %[r1],[%[s]]\n\t"

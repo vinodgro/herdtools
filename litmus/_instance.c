@@ -9,7 +9,9 @@ typedef struct {
 #ifdef SOME_VARS
   vars_t v;
 #endif
+#ifdef HAVE_TIMEBASE
   tb_t next_tb;
+#endif
   hash_t t;
   sense_t b;
   param_t p; // For random scan

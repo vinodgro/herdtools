@@ -140,6 +140,7 @@ let nsteps = 5
       let dump_read_timebase () =
         if have_timebase then begin
           O.o "/* Read timebase */" ;
+          O.o "#define HAVE_TIMEBASE 1" ;
           O.o "typedef uint64_t tb_t ;" ;
           O.o "#define PTB PRIu64" ;
           Insert.insert O.o "timebase.c"
@@ -405,7 +406,9 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
       | [] -> []
       | _::xs -> xs
 
-      let get_param_delays test  = Misc.interval 1 (T.get_nprocs test)
+      let get_param_delays =
+        if have_timebase then fun test -> Misc.interval 1 (T.get_nprocs test)
+        else fun _ -> []
 
       let mk_get_param_pos test =
         let xs =  get_param_vars test in
@@ -471,7 +474,8 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
              (List.map (fun _ -> "-1,") all_tags)) ;
         O.o "" ;
         O.o "static int id(int x) { return x; }" ;
-        O.o "static int addnsteps(int x) { return x+NSTEPS2; }" ;
+        if have_timebase then
+          O.o "static int addnsteps(int x) { return x+NSTEPS2; }" ;
         O.o "" ;
         O.o "static parse_param_t parse[] = {" ;
         O.oi "{\"part\",&param.part,id,SCANSZ}," ;
@@ -592,10 +596,12 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         let addrs = A.Out.get_addrs out in (* accessed in code *)
         O.fi "case %i: {" proc ;
         (* Delays *)
-        O.oii "int _delay = DELTA_TB;" ;
-        if proc <> 0 then
-          O.fii "_delay += (_p->d%i - (NSTEPS-1)/2)*STEP;" proc ;
-        (* Define locations *)
+        if have_timebase then begin
+          O.oii "int _delay = DELTA_TB;" ;
+          if proc <> 0 then
+            O.fii "_delay += (_p->d%i - (NSTEPS-1)/2)*STEP;" proc
+        end ;
+       (* Define locations *)
         List.iter
           (fun a ->
             let t =  CType.dump (find_addr_type a env) in
@@ -615,7 +621,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
                     sprintf "(%s)_vars->%s" (CType.dump at) s) in
             O.fii "%s;" ins)
           inits ;
-        eprintf "%i: INIT {%s}\n" proc (String.concat "," inits) ;
+(*        eprintf "%i: INIT {%s}\n" proc (String.concat "," inits) ; *)
         (* And cache-instruct them *)
         O.oii "barrier_wait(_b);" ;
         List.iter
@@ -744,7 +750,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.oi "ctx_t *ctx = c->ctx;" ;
         O.oi "param_t *q = g->param;" ;
         O.o "" ;
-        O.oi "for (int nrun=0 ; nrun < g->nruns ; nrun++) {" ;
+        O.oi "for (int _s=0 ; _s < g->size ; _s++) {" ;
         let n = T.get_nprocs test in                
         let ps =
           let open SkelUtil in
@@ -796,16 +802,16 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.o "" ;
         O.oi "if (q->part >=0) {" ;
         O.oii "set_role(g,&c,q->part);";
-        O.oii "for (int size = 0; size < g->size ; size++) {" ;          
+        O.oii "for (int nrun = 0; nrun < g->nruns ; nrun++) {" ;
         O.oiii
-          "if (g->verbose>1) fprintf(stderr, \"Run %i of %i\\r\", size, g->size);" ;
+          "if (g->verbose>1) fprintf(stderr, \"Run %i of %i\\r\", nrun, g->nruns);" ;
         O.oiii "choose_params(g,&c,q->part);" ;
         O.oii "}" ;
         O.oi "} else {" ;
         O.oii "st_t seed = 0;" ;
-        O.oii "for (int size = 0; size < g->size ; size++) {" ;          
+        O.oii "for (int nrun = 0; nrun < g->nruns ; nrun++) {" ;
         O.oiii
-          "if (g->verbose>1) fprintf(stderr, \"Run %i of %i\\r\", size, g->size);" ;
+          "if (g->verbose>1) fprintf(stderr, \"Run %i of %i\\r\", nrun, g->nruns);" ;
         O.oiii "int part = rand_k(&seed,SCANSZ);" ;
         O.oiii "set_role(g,&c,part);";
         O.oiii "choose_params(g,&c,part);" ;
@@ -920,14 +926,13 @@ let dump_main_def doc env test stats =
   | Driver.Shell ->
       O.o "#define RUN run" ;
       O.o "#define MAIN 1" ;
-      O.o "" ;
-      UD.postlude doc test None true stats ;
-      ()
   | Driver.C|Driver.XCode ->
       O.f "#define RUN %s" (MyName.as_symbol doc) ;
       O.f "#define PRELUDE 1" ;
      ()
   end ;
+  O.o "" ;
+  UD.postlude doc test None true stats ;
   O.o "" ;
   ObjUtil.insert_lib_file O.o "_main.c" ;
   ()
