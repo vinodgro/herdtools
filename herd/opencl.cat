@@ -1,4 +1,5 @@
 "OpenCL"
+withoutsc
 
 let symm(r) = r | r^-1
 
@@ -130,6 +131,9 @@ let scp = (mo_sc^2) & (ghb | lhb | co | sc1 | sc2 | sc3 | sc4 | sc5)
 
 let sc6 = rf^-1; (ghb | lhb); [W] 
 
+show S
+
+(*
 (*
 #IFDEF preferred 
 *)
@@ -149,6 +153,7 @@ let S1 = S & ~(co; S)
 irreflexive S1 ; sc6
 
 #ENDIF 
+*)
 *)
 
 (*********)

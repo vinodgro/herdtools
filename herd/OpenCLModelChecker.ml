@@ -48,6 +48,7 @@ module Make
         r
 
     let withco = opts.ModelOption.co
+    let withsc = opts.ModelOption.sc
 
     let failed_requires_clauses = ref 0
 
@@ -171,17 +172,42 @@ module Make
       in
       if withco then
         let process_co co0 res =
-          let process_sc sc0 res =
+          Printf.printf "Hello. SC is %b" withsc;
+          if withsc then
+            let process_sc sc0 res =
+              let co = S.tr co0 in
+              let sc = S.tr sc0 in
+              let fr = U.make_fr conc co in
+              let vb_pp =
+                lazy begin
+                  (if S.O.PC.showfr then [("fr",fr)] else []) @
+                  (if StringSet.mem "co" S.O.PC.unshow 
+	           then [] else [("co",co0)]) @
+                  (if StringSet.mem "sc" S.O.PC.unshow 
+	           then [] else [("S",sc0)]) @
+	          Lazy.force vb_pp
+	        end in
+              
+              let m =
+                List.fold_left
+                  (fun m (k,v) -> StringMap.add k (lazy (I.Rel v)) m)
+                  m
+                  [
+                    "fr", fr; "fre", U.ext fr; "fri", U.internal fr;
+                    "co", co; "coe", U.ext co; "coi", U.internal co;
+                    "S", sc;
+	          ] in
+              run_interpret failed_requires_clause test conc m id vb_pp kont res 
+            in
+            U.apply_process_sc test conc process_sc res
+          else
             let co = S.tr co0 in
-            let sc = S.tr sc0 in
             let fr = U.make_fr conc co in
             let vb_pp =
               lazy begin
                 (if S.O.PC.showfr then [("fr",fr)] else []) @
                 (if StringSet.mem "co" S.O.PC.unshow 
 	         then [] else [("co",co0)]) @
-                (if StringSet.mem "sc" S.O.PC.unshow 
-	         then [] else [("S",sc0)]) @
 	        Lazy.force vb_pp
 	      end in
           
@@ -192,10 +218,9 @@ module Make
                 [
                   "fr", fr; "fre", U.ext fr; "fri", U.internal fr;
                   "co", co; "coe", U.ext co; "coi", U.internal co;
-                  "S", sc;
 	        ] in
-            run_interpret failed_requires_clause test conc m id vb_pp kont res in
-          U.apply_process_sc test conc process_sc res in
+            run_interpret failed_requires_clause test conc m id vb_pp kont res 
+        in
         U.apply_process_co test conc process_co res
       else
         let co0 = conc.S.pco in

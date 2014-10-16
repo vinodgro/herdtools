@@ -151,7 +151,7 @@ module Make (C:Sem.Config)(V:Value.S)
 	read_reg r2 ii >>= 
 	  (fun addr -> (read_mem_atom GPU_PTX.NCOP addr ii >>|
 	      read_ins_op op ii) >>=
-	    (fun (v1,v2) -> M.op (mk_m_op a_op) (mk_m_v v1 a_op) v2) >>= 
+	    (fun (v1,v2) -> M.op (mk_m_op a_op) (mk_m_v v1 a_op) v2) >>*= 
 	    (fun v -> write_reg r1 v ii >>| write_mem_atom GPU_PTX.NCOP addr v ii))
 	>>! B.Next
 
@@ -159,7 +159,7 @@ module Make (C:Sem.Config)(V:Value.S)
       | GPU_PTX.Patom3op (r1,r2,op1,op2,_,a_op,_ ) ->
 	read_reg r2 ii >>= 
 	  (fun addr -> (read_mem_atom GPU_PTX.NCOP addr ii >>|
-	      read_ins_op op1 ii) >>=
+	      read_ins_op op1 ii) >>*=
 	    (fun (v1,v2) -> M.op Op.Eq v1 v2 >>=
 		(fun eq -> M.choiceT eq (read_ins_op op2 ii) (M.unitT v1) >>=	      
 		  (fun v -> write_reg r1 v1 ii >>| write_mem_atom GPU_PTX.NCOP addr v ii))))

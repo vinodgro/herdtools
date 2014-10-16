@@ -55,6 +55,8 @@ module LU = LexUtils.Make(O)
     | "withoutco" ->  WITHOUTCO
     | "withinit" -> WITHINIT
     | "withoutinit" ->  WITHOUTINIT
+    | "withsc" -> WITHSC
+    | "withoutsc" -> WITHOUTSC
     | "include" -> INCLUDE
     | "begin" -> BEGIN
     | "end" -> END
