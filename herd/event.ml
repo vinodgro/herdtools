@@ -236,7 +236,7 @@ module type S = sig
   val (=**=) :
       event_structure -> event_structure -> event_structure option      
 
-(* exchanche composition :
+(* exchange composition :
    xch rx ry wx wy ->
       rx -data-> wy, ry -data-> wx
       rx -ctrl-> wx, ry -ctrl-> wy
@@ -245,6 +245,17 @@ module type S = sig
      event_structure -> event_structure ->
      event_structure -> event_structure ->
      event_structure
+
+(* stu computation :
+   stu rD rEA wEA wM ->
+      rEA -data-> wEA,
+      rEA -data-> wM,
+      rD -data-> wM *)
+  val stu :
+     event_structure -> event_structure ->
+     event_structure -> event_structure ->
+     event_structure
+
 
 (* Parallel, for different instructions *)
   val (+|+) :
@@ -731,6 +742,35 @@ let (=|=) = check_disjoint para_comp
       exch_comp rx ry wx wy
     else
       assert false
+
+(* Store update composition, read data, read EA, write EA and  write Mem *)
+
+(* Dijointness not checked..., useless *)
+let stu rD rEA wEA wM =
+  assert
+    (EventRel.is_empty rD.intra_causality_control &&
+    EventRel.is_empty rEA.intra_causality_control &&
+    EventRel.is_empty wEA.intra_causality_control &&
+    EventRel.is_empty wM.intra_causality_control) ;
+  assert
+    (Atomicity.is_empty rD.atomicity &&
+     Atomicity.is_empty rEA.atomicity &&
+     Atomicity.is_empty wEA.atomicity &&
+     Atomicity.is_empty wM.atomicity) ;
+  { empty with
+    events = EventSet.unions [rD.events;rEA.events;wEA.events;wM.events;];
+    intra_causality_data = begin
+      let drD = rD.intra_causality_data
+      and drEA = rEA.intra_causality_data
+      and dwEA = wEA.intra_causality_data
+      and dwM = wM.intra_causality_data in
+      EventRel.unions
+        [EventRel.unions [drD; drEA; dwEA; dwM;];
+         EventRel.cartesian (maximals rEA) (minimals wEA);
+         EventRel.cartesian
+           (EventSet.union (maximals rEA) (maximals rD)) (minimals wM);]
+    end ;
+  }
 
 (*************************************************************)	      
 (* Add together event structures from different instructions *)

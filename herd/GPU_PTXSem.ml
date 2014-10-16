@@ -46,10 +46,26 @@ module Make (C:Sem.Config)(V:Value.S)
     let read_mem cop a ii = 
       M.read_loc (mk_read false cop) (A.Location_global a) ii
 
+    let read_mem_atom cop a ii = 
+      M.read_loc (mk_read true cop) (A.Location_global a) ii
+
     let write_reg r v ii = 
       M.mk_singleton_es (Act.Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false, GPU_PTXBase.NCOP)) ii
     let write_mem cop a v ii = 
       M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, false, cop)) ii
+
+    let write_mem_atom cop a v ii = 
+      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, true, cop)) ii
+
+
+    let mk_m_op op = match op with
+      | GPU_PTX.Atom_add -> Op.Add
+      | GPU_PTX.Atom_exch -> Op.Add
+      | _ -> assert false (*Not implemented*)
+
+    let mk_m_v v op = match op with
+      | GPU_PTX.Atom_exch -> (V.intToV 0)
+      | _ -> v
 
     let create_barrier b ii = 
       M.mk_singleton_es (Act.Barrier b) ii
@@ -130,6 +146,24 @@ module Make (C:Sem.Config)(V:Value.S)
         B.Next    
 
       | GPU_PTX.Pjmp lbl -> B.branchT lbl    
+
+      | GPU_PTX.Patom2op (r1,r2,op,_,a_op,_ ) ->
+	read_reg r2 ii >>= 
+	  (fun addr -> (read_mem_atom GPU_PTX.NCOP addr ii >>|
+	      read_ins_op op ii) >>=
+	    (fun (v1,v2) -> M.op (mk_m_op a_op) (mk_m_v v1 a_op) v2) >>= 
+	    (fun v -> write_reg r1 v ii >>| write_mem_atom GPU_PTX.NCOP addr v ii))
+	>>! B.Next
+
+      (*For compare and swap only*)
+      | GPU_PTX.Patom3op (r1,r2,op1,op2,_,a_op,_ ) ->
+	read_reg r2 ii >>= 
+	  (fun addr -> (read_mem_atom GPU_PTX.NCOP addr ii >>|
+	      read_ins_op op1 ii) >>=
+	    (fun (v1,v2) -> M.op Op.Eq v1 v2 >>=
+		(fun eq -> M.choiceT eq (read_ins_op op2 ii) (M.unitT v1) >>=	      
+		  (fun v -> write_reg r1 v1 ii >>| write_mem_atom GPU_PTX.NCOP addr v ii))))
+	>>! B.Next
 
       in 
       M.addT (A.next_po_index ii.A.program_order_index) (build_semantics_inner ii)

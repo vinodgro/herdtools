@@ -510,7 +510,8 @@ A relation can be seen as a set of pairs of memory events.
 \begin{syntax}
 \NT{expr} \is{} \T{0}
 \alt \NT{id}
-\alt \NT{expr}\T{*} \orelse \NT{expr}\T{+}  \orelse \NT{expr}\T{?}
+\alt \NT{expr}\T{*} \orelse \NT{expr}\T{+} \orelse \NT{expr}\T{?}
+\orelse \NT{expr}\T{\textasciicircum-1}
 \alt \NT{expr}\T{|}\NT{expr} \orelse
 \NT{expr}\T{;}\NT{expr} \orelse
 \NT{expr}\T{\textbackslash}\NT{expr} \orelse
@@ -520,7 +521,7 @@ A relation can be seen as a set of pairs of memory events.
 \alt \T{fun} \T{(} \NT{params} \T{)} \T{->} \NT{expr}
 \alt \T{let} \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{} \T{in} \NT{expr}
 \alt \T{let} \T{rec} \NT{valbinding} \brepet{} \T{and} \NT{valbinding} \erepet{} \T{in} \NT{expr}
-\alt \T{(}\NT{expr}\T{)}
+\alt \T{(}\NT{expr}\T{)} \orelse  \T{begin} \NT{expr} \T{end}
 \sep
 \NT{selector} \is
 \T{MM} \orelse
@@ -537,6 +538,10 @@ A relation can be seen as a set of pairs of memory events.
 \T{AP} \orelse
 \T{PA} \orelse
 \T{PP}
+\alt
+\T{ext} \orelse
+\T{int} \orelse
+\T{noid}
 \sep
 \NT{args} \is \epsilon
 \alt \NT{expr} \brepet{} \T{,} \NT{expr} \erepet{}
@@ -561,6 +566,7 @@ or by the model itself.
 \subsubsection*{Operator expressions}
 The transitive and reflexive-transitive closure of an expression are performed
 by the postfix operators \T{+} and~\T{*}.
+The  postfix operator \T{\textasciicircum-1} performs relation inversion.
 The construct \synt{\NT{expr}\T{?}} (option) evaluates to the union
 of  \NT{expr} value and of the identity relation.
 
@@ -583,10 +589,10 @@ Selectors are filters that operate on relations.
 The value of \synt{\NT{selector}\T{(}\NT{expr}\T{)}} is some subrelation
 of the value of~\synt{\NT{expr}}. Which subrelation depends upon
 \synt{\NT{selector}}.
-Selectors are two-letters keywords
+
+Most selectors are two-letters keywords
 with the first letter operating on the first component of pairs and
 the second letter operating on the second component of pairs.
-
 More precisely, we define the semantics of selector letters as
 predicates over memory events: \T{M} always yield true,
 \T{R} yields true on read events,
@@ -600,6 +606,12 @@ XY(r) = \{ (x,y) \in r \mid X(x) \wedge Y(y)\}
 $$
 For instance, the expression \verb+RW(po)+ yields the read-to-write pairs
 in program order.
+
+Three additional selectors \synt{\T{ext}}, \synt{\T{int}}, and \synt{\T{noid}}
+performs specific operations.
+The first selects pairs of events in different threads (``external''),
+the second selects pairs of events in the same thread (``internal''),
+and the third selects pairs of events that are different (``not identical'').
 
 \subsubsection*{Function calls}
 Functions calls are written
@@ -657,9 +669,11 @@ Notice that
 \synt{\T{let} \T{rec} \NT{id} \T{=} \T{fun} \T{(} \NT{params} \T{)} \T{->} \NT{expr} \T{in}\ldots} is legal syntax. Such a definition will yield
 a runtime error.
 
-\subsubsection*{Parenthesized expressions}
-The expression
-\synt{\T{(}\NT{expr}\T{)}} has the same value as \synt{\NT{expr}}.
+\subsubsection*{Parenthesised expressions}
+The expression \synt{\T{(}\NT{expr}\T{)}}
+has the same value as \synt{\NT{expr}}.
+Notice that a parenthesised expression
+can also be written as  \synt{\T{begin} \NT{expr} \T{end}}.
 
 \subsection{\label{language:instruction}Instructions}
 Instruction are executed for their  effect.
@@ -669,9 +683,12 @@ checking a condition, and specifying relations that are shown in pictures.
 \NT{instruction} \is{} \T{let} \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{}
 \alt \T{let} \T{rec} \NT{valbinding} \brepet{} \T{and} \NT{valbinding} \erepet{}
 \alt \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption
+\alt \T{procedure} \NT{id} \T{(} \NT{params} \T{)} \T{=} \brepet \NT{instruction} \erepet \T{END}
+\alt \T{call} \NT{id} \T{(} \NT{args} \T{)}
 \alt \T{show} \NT{expr} \T{as} \NT{id}
 \alt \T{show} \NT{id} \brepet \T{,} \NT{id} \erepet
 \alt \T{unshow} \NT{id} \brepet \T{,} \NT{id} \erepet
+\alt \T{include} \nt{string}
 \sep
 \NT{check} \is \T{acyclic} \orelse \T{irreflexive} \orelse \T{empty}
 \end{syntax}
@@ -708,7 +725,7 @@ let complus = tr(rf|co|fr)
 Again notice that the instruction
 \verb-let complus = (rf|co|fr)+- is equivalent.
 
-\subsubsection*{Checks}
+\subsubsection*{\aname{sec:check}{Checks}}
 The construct
 \begin{center}\synt{\NT{check} \NT{expr}}\end{center}
 evaluates \nt{expr} and applies \nt{check}.
@@ -723,6 +740,35 @@ The feature permits not to perform some checks at user's will,
 thanks to the \ahrefloc{skipcheck}{\opt{-skipcheck~}\nt{id}}
 command line~option.
 
+
+\subsubsection*{Procedure definition and call}
+Procedures are similar to functions except that they have no results:
+the body of a procedure is a list of instructions
+and the procedure will be called for the effect of executing
+those instructions. Intended usage of procedures is to define checks
+that are executed later. However, the body of a procedure may
+consist in any kind of instructions.
+
+For instance, one may define the following \verb+uniproc+ procedure with
+no arguments:
+\begin{verbatim}
+procedure uniproc() =
+  let com = fr | rf | co in
+  acyclic com | po
+\end{verbatim}
+Then one can perform the acyclicity check (see
+\ahrefloc{sec:check}{previous section}) by executing the instruction:
+\begin{verbatim}
+call uniproc()
+\end{verbatim}
+As a result the execution will stop if the acyclicity check fails,
+or continue otherwise.
+
+
+Procedures are lexically scoped as functions are.
+Additionally, the bindings performed during the execution of a procedure call
+are discarded when the procedure returns, all other effects performed are
+retained.
 
 \subsubsection*{Show (and unshow) directives}
 \label{show:def}The constructs:
@@ -741,16 +787,36 @@ label~\nt{id}.
 Hence  \synt{\T{show} \nt{id}} can be viewed as a shorthand
 for \synt{\T{show} \nt{id} \T{as} \nt{id}}
 
+\subsubsection*{Model inclusion}
+The construct \synt{\T{include} \T{"}\nt{filename}\T{"}} is interpreted as
+the inclusion of the model contained in the file whose name is given as
+an argument to the \synt{\T{include}} instruction.
+In practice the list of intructions defined by the included model file
+are executed.
+The string argument is delimited by double quotes ``\verb+"+'',
+which, of course, are not part of the filename.
+
+
+Notice that:
+\begin{itemize}
+\item Files are searched according to \herd{} rules --- see Sec.~\ref{herd:searchpath}.
+\item Model options defined in the model file \synt{\nt{filename}} are ignored.
+\end{itemize}
+
+
 \subsection{\label{language:model}Models}
 \begin{syntax}
-\NT{model} \is \NT{model-comment} \brepet \NT{instruction} \erepet
+\NT{model} \is \NT{model-comment}  \brepet \NT{model-option} \erepet \brepet \NT{instruction} \erepet
 \sep
-\NT{model-comment} \is \NT{id}
-\alt \nt{string}
+\NT{model-comment} \is \NT{id} \orelse  \nt{string}
+\sep
+\NT{model-option} \is \T{withco} \orelse \T{withoutco}
+\orelse \T{withinit} \orelse \T{withoutinit}
 \end{syntax}
 A model is a a list of instruction preceded by a small comment,
 which can be either a name that follows \herd{} conventions for identifiers,
-or a string enclosed in double quotes~``\verb+"+''.
+or a string enclosed in double quotes~``\verb+"+'',
+and a list of options.
 
 Models operate on candidate executions
 (see Sec.~\ref{sec:predef}),
@@ -761,8 +827,45 @@ The accepted execution is then passed over to the rest of \herd{}
 engine, in order to collect final states of locations
 and to display pictures.
 
+\subsubsection*{Model options}
+
+Model options control some experimental features of \herd.
+More precisely, by default, \herd{} includes a complete
+coherence order relation in every candidate execution,
+and does not represent initial writes by plain memory
+write events. Said otherwise, by default,
+model files have options \T{withco} and \T{whithoutinit}.
+
+The generation of all possible coherence orders by \herd{} engine
+is a source of inefficiency that can be alleviated by having the
+model itself compute the sub-relation of \texttt{co} that is really useful.
+Such models must have option \T{withoutco}, so as to
+prevent \herd{} engine from generating all coherence orders.
+Instead, \herd{} will represent initial writes as plain write events
+(\emph{i.e.} option \T{withoutco} implies \T{withinit})
+identify last writes in coherence oders, and pass the model a
+reduced~\texttt{co} relation, named \texttt{co0}, that will,
+for any memory location~$x$,
+relate the initial write to~$x$ to all writes to~$x$, and all writes
+to~$x$ to the final write to~$x$.
+It is then the model responsability  to compute the remainder
+of \texttt{co} from the program read events.
+The model \ahref{uniproccat.txt}{\texttt{uniproccat.cat}} from the distribution
+gives an example of such an advanced model.
+
+The option \T{withinit} can also be given alone so as to instruct
+\herd{} engine to represent initial writes as plain write events.
+In such a situation, \herd{} will compute complete coherence
+orders~\texttt{co} that include those explicit initial writes as
+minimal elements.
+Observe that the representation of initial writes as events
+can be also controlled from the
+command-line (see option~\ahrefloc{opt:initwrites}{\opt{-initwrites}})
+and that command line settings override model options.
+
 \section{Usage of \herd}
-\subsection*{Arguments}
+
+\subsection{Arguments}
 The command \herd{} handles its arguments like \litmus.
 That is, \herd{} interprets its argument as file names.
 Those files are either a single litmus test
@@ -770,7 +873,7 @@ when having extension \file{.litmus}, or a list of file names
 when prefixed by \file{@}.
 
 
-\subsection*{Options}
+\subsection{Options}
 There are many command line options.
 We describe the more useful ones:
 
@@ -909,6 +1012,13 @@ and false for \verb+forall+.
 \item \opt{none} Picture no  execution.
 \end{itemize}
 Default is \opt{none}.
+
+\item[{\tt \aname{opt:initwrites}{-initwrites} <bool>}]
+Represent init writes as plain write events, default is \opt{false} except
+for specifically tagged generic models --- see ``Model options''
+in Sec.~\ref{language:model}.
+
+
 \end{description}
 
 \paragraph*{Discard some observations}
@@ -957,6 +1067,10 @@ pictured:
 \emph{i.e.} memory, fences and branch events.
 \end{itemize}
 Default is \opt{noregs}.
+
+\item[{\tt -showinitwrites <bool>}] Show initial write events
+(when existing, see option~\ahrefloc{opt:initwrites}{-initwrites})
+in pictures. Default is \opt{true}.
 
 \item[{\tt -mono <bool>}] The setting \opt{-mono true} commands monochrome
 pictures. This option acts upon default color selection. Thus, it
@@ -1046,6 +1160,7 @@ Default is~\opt{false}.
 Default is~\opt{false}.
 \item[{\tt -showfinalrf <bool>}] Show read-from edges to the final state,
 \emph{i.e} show the last store to locations. Default is~\opt{false}.
+\emph{i.e} show the last store to locations. Default is~\opt{false}.
 \item[{\tt -showfr <bool>}] Show from-read edges. Default is~\opt{true}.
 \item[{\tt -doshow <\textit{name}$_1$,\ldots,\textit{name}$_n$>}]
 Do show edges labelled with \textit{name}$_1$,\ldots,\textit{name}$_n$.
@@ -1117,7 +1232,7 @@ in combination with option \opt{-show prop} it permits a fine grain
 selection of execution pictures --- see Sec.~\ref{example:invalid}.
 \end{description}
 
-\subsection*{\aname{herd:configfile}{Configuration files}}
+\subsection{\label{herd:configfile}{Configuration files}}
 The syntax of configuration files is minimal:
 lines ``\textit{key} \textit{arg}'' are interpreted
 as setting the value of parameter~\textit{key} to \textit{arg}.
@@ -1153,12 +1268,12 @@ Notice that we used the option~\opt{-through invalid} in the case
 of \ltest{IRIW+syncs} as we would otherwise have no image.
 
 
-\aname{herd:searchpath}{Configuration}
-(and model) files are searched first in the current directory;
+\subsection{\label{herd:searchpath}File searching}
+Configuration and model files are searched first in the current directory;
 then in any directory specified
 by setting the shell environment variable \texttt{HERDDIR};
 and then in herd installation directory, which is defined
-while compiling~\prog{herd}.
+while compiling~\herd.
 
 \section{Extensions to Herd}
 
@@ -1174,54 +1289,7 @@ This section describes several extensions to \herd{} that have been implemented 
 \item[{\tt \aname{opt:evince}{-evince}}] Fork the evince document viewer to display execution diagrams. This option was implemented to provide an alternative to the {\tt gv} viewer.
 \end{description}
 
-\subsection{Model files and the {\tt withco} flag}
 
-\begin{quote}\it
-This is an appendix to Section~\ref{language:model}.
-\end{quote}
-
-The structure of model files has been updated to include a {\tt withco} flag, which is given directly after the name of the model. The flag identifies whether this model will refer to the coherence order (\emph{co}) relation, and hence whether that relation needs to be generated in executions. Without this relation, simulation is considerably faster, because fewer executions must be considered. 
-
-The top-level syntax of model files thus becomes:
-
-\begin{syntax}
-\nt{model} \is \NT{model-comment} \boption \NT{include-co} \eoption \brepet \NT{instruction} \erepet
-\sep
-\NT{include-co} \is \T{withco} \orelse \T{withoutco}
-\sep
-\nt{model-comment} \is \NT{id}
-\alt \nt{string}
-\end{syntax}
-
-\subsection{Additional selectors}
-
-\begin{quote}\it
-This is an appendix to Section~\ref{language:expression}.
-\end{quote}
-
-There are three additional \synt{\NT{selector}} expressions: \synt{\T{ext}}, \synt{\T{int}}, and \synt{\T{noid}}. The first selects pairs of events in different threads (``external''), the second selects pairs of events in the same thread (``internal''), and the third selects pairs of events that are different (``not identical''). This syntactic category thus becomes:
-
-\begin{syntax}
-\nt{selector} \is
-\T{MM} \orelse
-\T{MR} \orelse
-\T{RM} \orelse
-\T{MW} \orelse
-\T{WM} \orelse
-\T{RR} \orelse
-\T{WR} \orelse
-\T{RW} \orelse
-\T{WW}
-\alt
-\T{AA} \orelse
-\T{AP} \orelse
-\T{PA} \orelse
-\T{PP}
-\alt
-\T{ext} \orelse
-\T{int} \orelse
-\T{noid}
-\end{syntax}
 
 \subsection{Curried function application}
 
@@ -1250,19 +1318,7 @@ This is an appendix to Section~\ref{language:expression}.
 Models can now define expressions over sets, and also bind identifiers to sets. The syntax of expressions thus becomes:
 
 \begin{syntax}
-\nt{expr} \is{} \T{0}
-\alt \NT{id}
-\alt \NT{expr}\T{*} \orelse \NT{expr}\T{+}  \orelse \NT{expr}\T{?}
-\alt \NT{expr}\T{|}\NT{expr} \orelse
-\NT{expr}\T{;}\NT{expr} \orelse
-\NT{expr}\T{\textbackslash}\NT{expr} \orelse
-\NT{expr}\T{\&}\NT{expr}
-\alt \NT{selector}\T{(}\NT{expr}\T{)}
-\alt \NT{id} \T{(} \NT{args} \T{)}
-\alt \T{fun} \T{(} \NT{params} \T{)} \T{->} \NT{expr}
-\alt \T{let} \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{} \T{in} \NT{expr}
-\alt \T{let} \T{rec} \NT{valbinding} \brepet{} \T{and} \NT{valbinding} \erepet{} \T{in} \NT{expr}
-\alt \T{(}\NT{expr}\T{)}
+\nt{expr} \is{} \ldots
 \alt \T{\{\}}
 \alt \T{\_}
 \alt \T{\textasciitilde}\NT{expr} 
@@ -1271,7 +1327,7 @@ Models can now define expressions over sets, and also bind identifiers to sets. 
 \alt \T{[} \NT{expr} \T{]}
 \end{syntax}
 
-The last five constructions are new. We write \synt{\T{\{\}}} for the empty set (in contrast to \synt{\T{0}} for the empty relation), \synt{\T{\_}} for the universal set of all events in the event structure, \synt{\T{\textasciitilde}} for the complement of a relation, and \synt{\T{!}} for the complement of a set. If $s$ and $t$ represent sets, then \synt{\text{$s$} \T{*} \text{$t$}} builds their cross product. We also provide \synt{\T{[} \text{$s$} \T{]}}, which denotes the relation that links each element of $s$ to itself.
+We write \synt{\T{\{\}}} for the empty set (in contrast to \synt{\T{0}} for the empty relation), \synt{\T{\_}} for the universal set of all events in the event structure, \synt{\T{\textasciitilde}} for the complement of a relation, and \synt{\T{!}} for the complement of a set. If $s$ and $t$ represent sets, then \synt{\text{$s$} \T{*} \text{$t$}} builds their cross product. We also provide \synt{\T{[} \text{$s$} \T{]}}, which denotes the relation that links each element of $s$ to itself.
 
 \subsection{Provided conditions and undefined-unless conditions}
 
@@ -1284,16 +1340,9 @@ A test-instruction is used to enforce a contract between the programming languag
 The syntax for instructions thus becomes:
 
 \begin{syntax}
-\nt{instruction} \is{} \T{let} \NT{binding} \brepet{} \T{and} \NT{binding} \erepet{}
-\alt \T{let} \T{rec} \NT{valbinding} \brepet{} \T{and} \NT{valbinding} \erepet{}
-\alt \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption
+\nt{instruction} \is{} \ldots
 \alt \T{undefined\_unless} \NT{check} \NT{expr} \boption \T{as} \NT{id}\eoption
-\alt \T{show} \NT{expr} \T{as} \NT{id}
-\alt \T{show} \NT{id} \brepet \boption \T{,} \eoption \NT{id} \erepet
-\alt \T{unshow} \NT{id} \brepet \boption \T{,} \eoption \NT{id} \erepet
 \end{syntax}
-
-We remark that we have made a further small amendment to the definition above: the commas in the final two rules are now marked as optional.
 
 \subsection{Additional identifiers}
 

@@ -239,6 +239,15 @@ module Make (C:Sem.Config)(V:Value.S)
 	    fun v ->
 	      write_reg rD v ii >>!
 	      B.Next
+    | PPC.Plwzu (rD,d,rA) ->
+        read_reg rA ii >>=
+	fun aA ->
+	  M.add aA (V.intToV d) >>=
+	  (fun a ->
+            let load = read_addr a ii >>= fun v ->  write_reg rD v ii in
+            if rA <> PPC.r0 && rA <> rD then
+              (write_reg rA a ii >>| load) >>! B.Next
+            else load >>! B.Next)
     | PPC.Plwzx(rD,rA,rB)|PPC.Pldx(rD,rA,rB) ->
 	(read_reg_or_zero rA ii >>| read_reg rB ii) >>=
 	fun (aA,aB) -> 
@@ -251,6 +260,19 @@ module Make (C:Sem.Config)(V:Value.S)
 	(fun (vS,aA) -> 
 	  M.add aA (V.intToV d) >>=
 	  fun a -> write_addr a vS ii >>! B.Next)
+    | PPC.Pstwu(rS,d,rA) ->
+        if rA <> PPC.r0 then
+          M.stu
+            (read_reg rS ii)
+            (read_reg rA ii >>= fun a -> M.add a (V.intToV d))
+            (fun a -> write_reg rA a ii)
+            (fun (vS,a) ->  write_addr a vS ii) >>! B.Next
+        else
+	(read_reg rS ii >>| read_reg rA ii) >>=
+	(fun (vS,aA) ->
+	  M.add aA (V.intToV d) >>=
+	  fun a -> write_addr a vS ii >>! B.Next)
+
     | PPC.Pstwx(rS,rA,rB) | PPC.Pstdx(rS,rA,rB)->
 	(read_reg rS ii
 	   >>| (* Enforce right associativity of >>| *)

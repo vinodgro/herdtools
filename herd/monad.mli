@@ -36,6 +36,7 @@ module type S =
     val (>>=) : 'a t -> ('a -> 'b t) -> ('b) t
     val (>>*=) : 'a t -> ('a -> 'b t) -> ('b) t
     val exch : 'a t -> 'a t -> ('a -> 'b t) ->  ('a -> 'b t) ->  ('b * 'b) t
+    val stu : 'a t -> 'a t -> ('a -> unit t) -> (('a * 'a) -> unit t) -> unit t
     val (>>>) : 'a t -> ('a -> 'b t) -> 'b t
     val (>>|) : 'a t -> 'b t -> ('a * 'b)  t
     val (>>::) : 'a t -> 'a list t -> 'a list t

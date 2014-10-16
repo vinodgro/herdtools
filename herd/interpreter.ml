@@ -22,13 +22,20 @@ module type S = sig
     | Rel of S.event_rel
     | Set of S.event_set
     | Clo of closure
-
+    | Proc of procedure
   and env = v Lazy.t StringMap.t
+  and closure
+  and procedure
+(*
   and closure =
     { clo_args : AST.var list ;
       clo_env : env ;
       clo_body : AST.exp; }
-  
+  and procedure = {
+      proc_args : AST.var list;
+      proc_env : env;
+      proc_body : AST.ins list; }
+*)
   type st = { 
     env : env ;
     show : S.event_rel StringMap.t Lazy.t ;
@@ -75,7 +82,7 @@ module Make
     module MU = ModelUtils.Make(O)(S)
     module W = Warn.Make(O)
 (*  Model interpret *)
-    let (pp,(_,_,prog)) = O.m
+    let (txt,(_,_,prog)) = O.m
 
 (*
     let debug_proc chan p = fprintf chan "%i" p
@@ -97,19 +104,23 @@ module Make
       | Rel of S.event_rel
       | Set of S.event_set
       | Clo of closure
-
+      | Proc of procedure
     and env = v Lazy.t StringMap.t
     and closure =
         { clo_args : AST.var list ;
           clo_env : env ;
           clo_body : AST.exp; }
+    and procedure = {
+      proc_args : AST.var list;
+      proc_env : env;
+      proc_body : AST.ins list; }
 
     let find_env env k =
-      Lazy.force (
+      Lazy.force begin
 	try StringMap.find k env
 	with
 	| Not_found -> Warn.user_error "unbound var: %s" k
-      )
+      end
 
     let is_rel = function
       | Rel _ -> true
@@ -181,8 +192,11 @@ module Make
         | Op1 (op,e) ->
           begin match eval env e with
             | Clo _ -> 
-              Warn.user_error 
-                "Expected a set or a relation, found a closure"
+                Warn.user_error
+                  "Expected a set or a relation, found a closure"
+            | Proc _ ->
+                Warn.user_error
+                  "Expected a set or a relation, found a procedure"
             | Set v -> begin match op with
                 | Set_to_rln -> Rel (E.EventRel.set_to_rln v)
                 | Square -> Rel (E.EventRel.cartesian v v)
@@ -269,15 +283,7 @@ module Make
             end
         | App (f,es) ->
             let f = eval_clo env f in
-            let vs = List.map (eval env) es in
-            let bds =
-              try
-                List.combine f.clo_args vs
-              with _ -> Warn.user_error "argument_mismatch" in
-            let env =
-              List.fold_right
-                (fun (x,v) env -> StringMap.add x (lazy v) env)
-                bds f.clo_env in
+            let env = add_args f.clo_args es env f.clo_env in
             eval env f.clo_body
         | Bind (bds,e) ->
             let env = eval_bds env bds in
@@ -286,9 +292,22 @@ module Make
             let env = env_rec (fun pp -> pp) bds env in
             eval env e
 
+      and add_args xs es env_es env_clo =
+        let vs = List.map (eval env_es) es in
+        let bds =
+          try
+            List.combine xs vs
+          with _ -> Warn.user_error "argument_mismatch" in
+        List.fold_right
+          (fun (x,v) env -> StringMap.add x (lazy v) env)
+          bds env_clo
+
       and eval_rel env e = as_rel (eval env e)
       and eval_set env e = as_set (eval env e)
       and eval_clo env e = as_clo (eval env e)
+      and eval_proc env x = match find_env env x with
+      | Proc p -> p
+      | _ -> Warn.user_error "procedure expected"
 
 (* For let *)
       and eval_bds env bds = match bds with
@@ -359,7 +378,7 @@ module Make
         
 (* Execute one instruction *)
 
-      let rec exec st i c =  match i with
+      let rec exec txt st i c =  match i with
       | Show xs ->
           let show = lazy begin              
             List.fold_left
@@ -367,26 +386,26 @@ module Make
                 StringMap.add x (find_show_rel st.env x) show)
               (Lazy.force st.show) xs
           end in
-          run { st with show;} c
+          run txt { st with show;} c
       | UnShow xs ->
           let show = lazy begin
             List.fold_left
               (fun show x -> StringMap.remove x show)
               (Lazy.force st.show) xs
           end in
-          run { st with show;} c
+          run txt { st with show;} c
       | ShowAs (e,id) ->
           let show = lazy begin
             StringMap.add id
               (rt_loc id (eval_rel st.env e)) (Lazy.force st.show)
           end in
-          run { st with show; } c
+          run txt { st with show; } c
       | Test (pos,t,e,name,test_type) ->
          (* If this is a provides-clause and we've previously
             seen a requires-clause, abort. *)
 	 if st.seen_requires_clause && test_type = Provides then 
 	   begin
-	     let pp = String.sub pp pos.pos pos.len in
+	     let pp = String.sub txt pos.pos pos.len in
 	     Warn.user_error 
 	       "A provided condition must not come after an `undefined_unless' condition. Culprit: '%s'." pp
 	   end;
@@ -408,16 +427,16 @@ module Make
             | TestEmpty -> E.EventRel.is_empty in
             let ok = pred v in
             let ok = MU.check_through ok in
-            if ok then run st c
+            if ok then run txt st c
             else if skip_this_check then begin
               assert O.strictskip ;
-              run 
+              run txt
                 { st with
                   skipped = StringSet.add (Misc.as_some name) st.skipped;}
                 c
             end else begin
               if (O.debug && O.verbose > 0) then begin
-                let pp = String.sub pp pos.pos pos.len in
+                let pp = String.sub txt pos.pos pos.len in
                 MU.pp_failure test conc
                   (sprintf "%s: Failure of '%s'" test.Test.name.Name.name pp)
                   (show_to_vbpp st)
@@ -427,17 +446,17 @@ module Make
 		 None
 	      | Requires -> 
 		 let () = failed_requires_clause () in
-		 run st c
+		 run txt st c
             end
           else begin
             W.warn "Skipping check %s" (Misc.as_some name) ;
-            run st c
+            run txt st c
           end
       | Let bds -> 
           let env = eval_bds st.env bds in
           let st = { st with env; } in
           let st = doshow bds st in
-          run st c
+          run txt st c
       | Rec bds ->
           let env =
             env_rec
@@ -445,12 +464,33 @@ module Make
               bds st.env in
           let st = { st with env; } in
           let st = doshow bds st in
-          run st c
-      | Latex _ -> run st c
+          run txt st c
+      | Include fname ->
+          (* Run sub-model file *)
+          let module P = ParseModel.Make(LexUtils.Default) in
+          let itxt,(_,_,iprog) = P.parse fname in
+          begin match run itxt st iprog with
+          | None -> None            (* Failure *)
+          | Some st -> run txt st c (* Go on *)
+          end
+      | Procedure (name,args,body) ->
+          let p =
+            Proc { proc_args=args; proc_env=st.env; proc_body=body; } in
+          run txt { st with env = StringMap.add name (lazy p) st.env } c
+      | Call (name,es) ->
+          let env0 = st.env in
+          let p = eval_proc env0 name in
+          let env1 = add_args p.proc_args es env0 p.proc_env in
+          begin match run txt { st with env = env1; } p.proc_body with
+          | None -> None
+          | Some st_call ->
+              run txt { st_call with env = env0; } c
+          end
+      | Latex _ -> run txt st c
 
-      and run st = function
+      and run txt st = function
         | [] ->  Some st 
-        | i::c -> exec st i c in
+        | i::c -> exec txt st i c in
 
       let show =
         lazy begin
@@ -462,7 +502,7 @@ module Make
             (fun tag show -> StringMap.add tag (find_show_rel m tag) show)
             S.O.PC.doshow show
         end in
-      run {env=m; show=show; 
+      run txt {env=m; show=show; 
         seen_requires_clause=false;
         skipped=StringSet.empty;} prog
         

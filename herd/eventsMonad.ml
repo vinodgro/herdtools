@@ -135,6 +135,20 @@ struct
                E.exch esrx esry eswx eswy in
              eiid,Evt.singleton((vwx,vwy),vclrx@vclry@vclwx@vclwy,es)
            
+(* stu comninator *)
+  let stu : 'a t -> 'b t -> ('a -> unit t) -> (('a * 'b) -> unit t) -> unit t
+      = fun rD rEA wEA wM  ->
+        fun eiid ->
+          let eiid,rd = rD eiid in
+          let eiid,rea = rEA eiid in
+          let (vrd,vclrd,esrd) = Evt.as_singleton rd
+          and (vrea,vclrea,esrea) = Evt.as_singleton rea in
+          let eiid,wea = wEA vrea eiid in
+          let eiid,wm = wM (vrd,vrea) eiid in
+          let (_vwea,vclwea,eswea) = Evt.as_singleton wea
+          and (_vwm,vclwm,eswm) = Evt.as_singleton wm in
+          let es = E.stu esrd esrea eswea eswm in
+          eiid,Evt.singleton ((),vclrd@vclrea@vclwea@vclwm,es)
 
 (* Combine the results *)
       let (>>|) : 'a t -> 'b t -> ('a * 'b)  t

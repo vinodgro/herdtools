@@ -8,6 +8,9 @@
   are reads.
 %*)}
 
+(* Atomic *)
+empty atom & (fre;coe)
+
 let com = rf | fr | co
 (* let po-loc-llh = WW(po-loc) | WR(po-loc) | RW(po-loc) *)
 (* let po-loc-llh = po-loc & ((W * W) | (W * R) | (R * W)) *)
