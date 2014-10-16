@@ -149,6 +149,21 @@ module Make(S : SemExtra.S) = struct
 	
   let order_to_rel evts = E.EventRel.of_list (order_to_pairs []  evts)
 
+  let cycle_to_rel cy =
+    let rec do_rec seen = function
+      | [] -> assert false
+      | [e] ->
+          if E.EventSet.is_empty seen then E.EventRel.singleton (e,e)
+          else  begin
+            assert (E.EventSet.mem e seen) ;
+            E.EventRel.empty
+          end
+      | e1::(e2::_ as rem) ->
+          if E.EventSet.mem e1 seen then E.EventRel.empty
+          else
+            E.EventRel.add (e1,e2) (do_rec (E.EventSet.add e1 seen) rem) in
+    do_rec E.EventSet.empty cy
+
 (* The same, for successor relation,
    which is enough for feeding topological orders generators *)
 

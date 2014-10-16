@@ -472,7 +472,7 @@ let compatible_locs_mem e1 e2 =
           | S.Load er,S.Store ew -> E.EventRel.add (ew,er) k
           | _,_ -> k)
           rfm both in
-      match (E.EventRel.get_cycle causality) with
+      match E.EventRel.get_cycle causality with
       | None -> prerr_endline "no cycle"; false 
       | Some cy -> 
           if C.debug.Debug.rfm then begin
