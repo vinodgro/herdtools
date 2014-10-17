@@ -77,8 +77,8 @@ let ghb = (((G^2) & (po | (I * !I))) | gsw)+
 let lhb = (((L^2) & (po | (I * !I))) | lsw)+ 
 show ghb
 show lhb
-acyclic ghb
-acyclic lhb
+acyclic ghb as global_hb_acyclic
+acyclic lhb as local_hb_acyclic
 
 (* Per-location happens-before *)
 let ghbl = ghb & loc 
@@ -89,8 +89,8 @@ let lhbl = lhb & loc
 (*************)
 
 let coh(hb) = (rf^-1)?; co; rf?; hb
-irreflexive coh(ghb)
-irreflexive coh(lhb)
+irreflexive coh(ghb) as global_coherence
+irreflexive coh(lhb) as local_coherence
 
 (************************)
 (* Consistency of reads *)
@@ -102,16 +102,14 @@ let gvse = [G]; vse(ghbl)
 let lvse = [L]; vse(lhbl)
 
 (* A non-atomic load can only read from a store that is visible. *)
-irreflexive rf; [nonatomicloc & G]; ~(gvse^-1)
-irreflexive rf; [nonatomicloc & L]; ~(lvse^-1)
+irreflexive rf; [nonatomicloc & G]; ~(gvse^-1) as global_nonatomic_rf_consistent
+irreflexive rf; [nonatomicloc & L]; ~(lvse^-1) as local_nonatomic_rf_consistent
 
 (* An atomic load can only read from a store that already happened. *)
-irreflexive (ghb | lhb); rf; [A]
+irreflexive (ghb | lhb); rf; [A] as atomic_rf_consistent
 
 (* Consistency of RMWs *)
-irreflexive rf
-irreflexive fr;co
-irreflexive co;rf
+irreflexive rf | (fr;co) | (co;rf) as rmw_consistent
 
 (**************************)
 (* Sequential consistency *)
@@ -133,28 +131,26 @@ let sc6 = rf^-1; (ghb | lhb); [W]
 
 show S
 
-(*
+
 (*
 #IFDEF preferred 
 *)
 
 let scp = scp & sc6
 
-acyclic scp & exists(mo_sc & !s_all)
+acyclic scp & exists(mo_sc & !s_all) as S_exists
 show scp
 
 (* 
 #ELSE
 
 let S = S & exists(mo_sc & !s_all)
-
-irreflexive S ; scp
 let S1 = S & ~(co; S)
-irreflexive S1 ; sc6
+irreflexive (S ; scp) | (S1 ; sc6) as S_consistent
 
 #ENDIF 
 *)
-*)
+
 
 (*********)
 (* Races *)
@@ -164,7 +160,7 @@ let conflict = ((W * _) | (_ * W)) & loc
 
 (* Data races *)
 let dr = conflict & ~symm(ghb | lhb) & ~incl
-undefined_unless empty dr
+undefined_unless empty dr as data_race
 show dr
 
 (* Unsequenced races *)
@@ -173,9 +169,6 @@ undefined_unless empty ur as unsequenced_race
 show ur
 
 (* Barrier divergence *)
-let bd = 
-  [entry_fence] & ((~wi & wg & ~(bar_sw(G) | bar_sw(L))); unv)
-
+let bd = [entry_fence] & ((~wi & wg & ~(bar_sw(G) | bar_sw(L))); unv)
+undefined_unless empty bd as barrier_divergence
 show bd
-
-undefined_unless empty bd

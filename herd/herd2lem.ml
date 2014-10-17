@@ -38,27 +38,40 @@ and lem_of_op1 chan e = function
   | Comp SET -> fprintf chan "(comps X %a)" lem_of_exp e
   | Comp RLN -> fprintf chan "(compr X %a)" lem_of_exp e
 
+and lem_of_var chan x = 
+  match x with
+  | "rf" | "asw" | "lo" -> 
+    fprintf chan "X.%sh" x
+  | "po" | "addr" | "data" | "co" -> 
+    fprintf chan "X.%s" x
+  | "_" -> fprintf chan "(unis X)"
+  | _ -> 
+    let x = Str.global_replace (Str.regexp_string "-") "_" x in
+    fprintf chan "(%s X)" x
+
 and lem_of_exp chan = function
   | Konst k -> lem_of_konst chan k
-  | Var x -> begin match x with
-      | "rf" | "asw" | "lo" -> 
-        fprintf chan "X.%sh" x
-      | "po" | "addr" | "data" | "co" -> 
-        fprintf chan "X.%s" x
-      | "_" -> fprintf chan "(unis X)"
-      | _ -> 
-        let x = Str.global_replace (Str.regexp_string "-") "_" x in
-        fprintf chan "(%s X)" x
-    end 
+  | Var x -> lem_of_var chan x
   | Op1 (op1, e) -> lem_of_op1 chan e op1
   | Op (op2, es) -> lem_of_op2 chan es op2
-  | App _ -> fprintf chan "Local bindings not done yet"
-  | Bind _ -> fprintf chan "Local bindings not done yet"
-  | BindRec _ -> fprintf chan "Local bindings not done yet"
-  | Fun _ -> fprintf chan "Local bindings not done yet"
+  | App (e,es) -> fprintf chan "(%a(%a))" 
+                    lem_of_exp e 
+                    (fprintf_list_infix "," lem_of_exp) es 
+  | Bind _ -> fprintf chan "Bindings not done yet"
+  | BindRec _ -> fprintf chan "Recursive bindings not done yet"
+  | Fun _ -> fprintf chan "Local functions not done yet"
 
 and lem_of_binding chan (x, e) = 
-  fprintf chan "let %s X = %a" x lem_of_exp e
+  match e with
+    | Fun (xs,e) ->
+      fprintf chan "let %s X (%a) = %a" 
+        x 
+        (fprintf_list_infix "," (fun _ x -> fprintf chan "%s" x)) xs
+        lem_of_exp e
+    | _ ->
+      fprintf chan "let %s X = %a" 
+        x 
+        lem_of_exp e
 
 let fprintf_so x chan so = 
   fprintf chan "%s" (match so with
@@ -80,10 +93,10 @@ let lem_of_ins chan = function
   (* doesn't handle recursion properly *)
   | Test (_, test, exp, name, test_type) -> 
     let name = begin match name with 
-        | None -> Warn.user_error "Unnamed constraint."
+        | None -> Warn.user_error "You need to give each constraint a name!\n"
         | Some name -> name 
     end in
-    fprintf chan "let %s X = %s %a" 
+    fprintf chan "let %s X = %s (%a)" 
       name
       (lem_of_test test)
       lem_of_exp exp;

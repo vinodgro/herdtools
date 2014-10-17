@@ -85,8 +85,7 @@ and tex_of_var c x = fprintf c "\\var{%s}" x
 
 and tex_of_name c x = fprintf c "\\name{%s}" x
 
-and tex_of_binding c (x, e) = 
-  begin match e with
+and tex_of_binding c (x, e) = match e with
   | Fun (xs,e) ->
     fprintf c "$%a%a = %a$" 
       tex_of_var x 
@@ -96,7 +95,6 @@ and tex_of_binding c (x, e) =
     fprintf c "$%a = %a$" 
       tex_of_var x 
       (tex_of_exp 0) e
-  end
 
 let tex_of_test = function
   | Acyclic -> "\\kwd{acyclic}"
