@@ -28,7 +28,7 @@ let com = rf | fr | co
 (* let po-loc-llh = WW(po-loc) | WR(po-loc) | RW(po-loc) *)
 (* let po-loc-llh = po-loc & ((W * W) | (W * R) | (R * W)) *)
 let po-loc-llh = po-loc & ((M * W) | (W * M))
-let RRfence = (R * R) & cta-fence
+let RRfence = po-loc & (R * R) & cta-fence
 acyclic (po-loc-llh | com | RRfence) as sc-per-loc-llh
 
 
