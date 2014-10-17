@@ -948,6 +948,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
             "write_one_affinity(id);") ;
         O.oi "init_global(g,id);" ;
 (*        O.oi "if (g->do_scan) scan(id,g); else choose(id,g);" ; *)
+        O.oi "choose(id,g);" ;
         O.oi "return NULL;" ;
         O.o "}" ;
         O.o ""
