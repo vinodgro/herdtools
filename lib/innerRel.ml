@@ -210,7 +210,7 @@ struct
         ME.fold
           (fun x _ -> dfs [] Elts.empty x) m Elts.empty in
       None
-    with Cycle e -> Some e
+    with Cycle e -> Some (List.rev e)
 
     let fold = ME.fold        
   end

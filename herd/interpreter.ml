@@ -437,9 +437,13 @@ module Make
             end else begin
               if (O.debug && O.verbose > 0) then begin
                 let pp = String.sub txt pos.pos pos.len in
+                let cy = E.EventRel.get_cycle v in
                 MU.pp_failure test conc
                   (sprintf "%s: Failure of '%s'" test.Test.name.Name.name pp)
-                  (show_to_vbpp st)
+                  (let k = show_to_vbpp st in
+                  match cy with
+                  | None -> k
+                  | Some r -> ("CY",U.cycle_to_rel r)::k)
 	      end ;
 	      match test_type with
 	      | Provides -> 

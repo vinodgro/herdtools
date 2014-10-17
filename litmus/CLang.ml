@@ -119,7 +119,11 @@ module Make(C:Config) = struct
             out "%s%s = (%s)%s;\n"
               indent outname (CType.dump ty) (CTarget.fmt_reg x)
         | Mode.PreSi ->
-            let outname = CTarget.compile_presi_out_reg proc x in
+            let outname =
+              if CType.is_ptr ty then
+                CTarget.compile_presi_out_ptr_reg proc x
+              else
+                CTarget.compile_presi_out_reg proc x in
             out "%s%s = (%s)%s;\n"
               indent outname (CType.dump ty) (CTarget.fmt_reg x)
 

@@ -28,7 +28,7 @@ let tags =
   "lexer";
   "top";
   "mem";
-  "barrier";
+  "barrier"; "model"; (* handier synonymous *)
   "res";
   "rfm";
 ]
@@ -49,7 +49,7 @@ let parse t tag = match tag with
   | "lexer" -> Some { t with lexer = true; }
   | "top" -> Some { t with top = true; }
   | "mem" -> Some { t with mem = true; }
-  | "barrier" -> Some { t with barrier = true; }
+  | "barrier"|"model" -> Some { t with barrier = true; }
   | "res" -> Some { t with res = true; }
   | "rfm" -> Some { t with rfm = true; }
   | _ -> None
