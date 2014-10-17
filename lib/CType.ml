@@ -32,6 +32,32 @@ let rec  dump = function
   | Global t -> sprintf "__global %s" (dump t)
   | Local t -> sprintf "__local %s" (dump t)
 
+let fmt10 = function
+  | "int"|"char" ->  Some "i"
+  | "int8_t" -> Some  "\"PRIi8\""
+  | "uint8_t" -> Some  "\"PRIu8\""
+  | "int16_t" -> Some  "\"PRIi16\""
+  | "uint16_t" -> Some  "\"PRIu16\""
+  | "int32_t" -> Some  "\"PRIi32\""
+  | "uint32_t" -> Some  "\"PRIu32\""
+  | "int64_t" -> Some  "\"PRIi64\""
+  | "uint64_t" -> Some  "\"PRIu64\""
+  | _ -> None
+
+let fmt16 = function
+  | "int"|"char" ->  Some "x"
+  | "int8_t" -> Some  "\"PRIx8\""
+  | "uint8_t" -> Some  "\"PRIx8\""
+  | "int16_t" -> Some  "\"PRIx16\""
+  | "uint16_t" -> Some  "\"PRIx16\""
+  | "int32_t" -> Some  "\"PRIx32\""
+  | "uint32_t" -> Some  "\"PRIx32\""
+  | "int64_t" -> Some  "\"PRIx64\""
+  | "uint64_t" -> Some  "\"PRIx64\""
+  | _ -> None
+
+let get_fmt hexa = if hexa then fmt16 else fmt10
+
 let rec is_ptr =  function
   | Pointer _ -> true
   | Atomic t|Volatile t -> is_ptr t

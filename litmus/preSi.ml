@@ -215,6 +215,13 @@ let dump_loc_tag = function
   | A.Location_reg (proc,reg) -> A.Out.dump_out_reg proc reg
   | A.Location_global s -> s
 
+let does_pad t =
+  let open CType in
+  match t with
+  | Pointer _
+  | Base ("int"|"int32_t"|"uint32_t"|"int64_t"|"uint64_t") -> true
+  | _ -> false
+
 let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
 
       let choose_dump_loc_tag loc env =
@@ -264,18 +271,44 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         end ;
         O.o "" ;
         O.o "typedef struct {" ;
-        A.LocSet.iter
-          (fun loc ->
-            let t = U.find_type loc env in
-            let decl = sprintf "%s %s;"  (CType.dump t) (dump_loc_tag loc) in
+        let fields = 
+          A.LocSet.fold
+            (fun loc k -> (U.find_type loc env,loc)::k)
+            locs [] in
+        let rec move_rec lst fs = match lst,fs with
+          | None,[] -> true,[]
+          | Some f,[] -> false, [f]
+          | None,(t,_ as f)::fs
+            when does_pad t -> move_rec (Some f) fs
+          | _,f::fs ->
+              let pad,fs = move_rec lst fs in
+              pad,f::fs in
+        let pad,fields = move_rec None fields in
+        List.iter
+          (fun (t,loc) ->
             if CType.is_ptr t then
-              O.fi "%s int %s;" decl (dump_loc_tag_coded loc)
+              O.fi "int %s;" (dump_loc_tag_coded loc)
             else
-              O.oi decl)
-          locs ;
+              O.fi "%s %s;"  (CType.dump t) (dump_loc_tag loc))
+          fields ;
+        if pad  then O.oi "uint32_t _pad;" ;
         O.o "} log_t;" ;
         O.o "" ;
-        if U.ptr_in_outs env test then begin
+(* There are some pointers in log *)
+        let some_ptr =  U.ptr_in_outs env test in
+        if some_ptr then begin
+          (* To log actual pointers *)
+          O.o "#define SOME_PTR 1" ;
+          O.o "typedef struct {" ;
+          A.LocSet.iter
+            (fun loc ->
+              let t = U.find_type loc env in
+              if CType.is_ptr t then
+                O.fi "%s %s;"  (CType.dump t) (dump_loc_tag loc))
+            locs ;
+          O.o "} log_ptr_t;" ;
+          O.o "" ;
+          (* Define indices *)
           List.iteri
             (fun k (a,_) ->
               O.f "static const int %s = %i;"
@@ -328,7 +361,8 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         do_rec  locs ;
         O.o "}" ;
         O.o "" ;
-
+        some_ptr
+(*
         O.o "/* Hash of outcome */" ;
         ObjUtil.insert_lib_file O.o "_mix.h" ;
         O.o "" ;
@@ -362,6 +396,8 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.o "}" ;
         O.o "" ;
         ()
+*)
+
 
 
       let dump_cond_fun env test =    
@@ -590,7 +626,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
 
 
       let dump_run_thread
-          env test stats global_env
+          env test some_ptr stats global_env
           (vars,inits) (proc,(out,(outregs,envVolatile)))  =
         let my_regs = U.select_proc proc env in
         let addrs = A.Out.get_addrs out in (* accessed in code *)
@@ -649,13 +685,16 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         if not (StringSet.is_empty globs) then begin
           let to_collect =
             StringSet.inter
-              (U.get_final_globals test)
+              globs
               (StringSet.of_list inits) in
           StringSet.iter
             (fun a ->
               let loc = A.Location_global a in
               let tag = dump_loc_tag loc in            
-              O.fii "%s = *%s;" (OutUtils.fmt_presi_index tag) tag)
+              O.fii "%s = *%s;"
+                ((if U.is_ptr loc env then OutUtils.fmt_presi_ptr_index
+                  else OutUtils.fmt_presi_index) tag)
+                tag)
             to_collect ;
           O.oii "barrier_wait(_b);"
         end ;
@@ -666,7 +705,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
               if U.is_ptr loc env then
                 O.fii "%s = idx_addr((intmax_t *)%s,_vars);"
                   (OutUtils.fmt_presi_index (dump_loc_tag_coded loc))
-                  (OutUtils.fmt_presi_index (dump_loc_tag loc)))
+                  (OutUtils.fmt_presi_ptr_index (dump_loc_tag loc)))
 
             (U.get_final_locs test) ;
           (* condition *)
@@ -690,7 +729,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.oii "break; }" ;
         ()
           
-      let dump_run_def env test stats  =
+      let dump_run_def env test some_ptr stats  =
         O.o "/*************/" ;
         O.o "/* Test code */" ;
         O.o "/*************/" ;
@@ -703,6 +742,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.oi "intmax_t *_mem = _ctx->mem;" ;
         O.oi "sense_t *_b = &_ctx->b;" ;
         O.oi "log_t *_log = &_ctx->out;" ;
+        if some_ptr then O.oi "log_ptr_t *_log_ptr = &_ctx->out_ptr;" ;
         begin match test.T.globals with
         | [] -> ()
         | locs ->
@@ -725,7 +765,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.oi "switch (_role) {" ;
         let global_env = U.select_global env in
         List.iter2
-          (dump_run_thread env test stats global_env)
+          (dump_run_thread env test some_ptr stats global_env)
           (part_vars test)
           test.T.code ;
         O.oi "}" ;  
@@ -951,12 +991,12 @@ let dump_main_def doc env test stats =
     dump_topology test ;
     let env = U.build_env test in
     let stats = get_stats test in
-    dump_outcomes env test ;
+    let some_ptr = dump_outcomes env test in
     dump_cond_def env test ;
     dump_parameters env test ;
     dump_hash_def env test ;
     dump_instance_def env test ;
-    dump_run_def env test stats ;
+    dump_run_def env test some_ptr stats ;
     dump_zyva_def doc.Name.name env test stats ;
     dump_prelude_def doc test ;
     dump_main_def doc env test stats ;

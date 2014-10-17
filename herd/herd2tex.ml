@@ -107,13 +107,20 @@ let tex_of_test_type = function
   | Provides -> ""
   | Requires -> "\\KWD{undefined\\_unless}~"
 
-let tex_of_ins c = function
+let rec tex_of_ins c = function
   | Let bs -> 
     fprintf c "\\KWD{let}~"; 
     list_iter_alt (tex_of_binding c) (fun () -> fprintf c "~\\KWD{and}~") bs
   | Rec bs -> 
     fprintf c "\\KWD{let}~\\KWD{rec}~"; 
     list_iter_alt (tex_of_binding c) (fun () -> fprintf c "~\\KWD{and}~") bs 
+  | Procedure (x,args,body) ->
+    fprintf c "\\KWD{procedure}~";
+    fprintf c "$%a%a$ = %a"
+        tex_of_var x
+        (tex_of_formals true) args
+        tex_of_inss body ;
+        fprintf c "\\noindent\\KWD{end}\n\n"
   | Test (_, test, exp, name, test_type) -> 
     fprintf c "%s%s~$%a$"
       (tex_of_test_type test_type)
@@ -139,12 +146,15 @@ let tex_of_ins c = function
     fprintf c "\\noindent %s\n" s;
     fprintf c "\\exitcomment\n"
 
+and tex_of_inss c =
+  List.iter (fprintf c "\\noindent %a\n\n" tex_of_ins)
+
 let tex_of_prog c name prog = 
   fprintf c "\\documentclass[12pt]{article}\n";
   fprintf c "\\input{herd2tex}\n";
   fprintf c "\\begin{document}\n";
   fprintf c "\\begin{source}\n";
   fprintf c "\\noindent \\modelname{%s}\n\n" name;
-  List.iter (fprintf c "\\noindent %a\n\n" tex_of_ins) prog;
+  tex_of_inss c prog;
   fprintf c "\\end{source}\n";
   fprintf c "\\end{document}\n"
