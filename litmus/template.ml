@@ -62,6 +62,7 @@ module type S = sig
   val to_string : ins -> string
   val compile_out_reg : int -> arch_reg -> string
   val compile_presi_out_reg : int -> arch_reg -> string
+  val compile_presi_out_ptr_reg : int -> arch_reg -> string
   val dump_type : ('a * CType.t) list -> 'a -> string
 end
 
@@ -145,6 +146,9 @@ struct
 
   let compile_presi_out_reg proc reg =
     OutUtils.fmt_presi_index (dump_out_reg proc reg)
+
+  let compile_presi_out_ptr_reg proc reg =
+    OutUtils.fmt_presi_ptr_index (dump_out_reg proc reg)
 
 
   let get_reg k rs =

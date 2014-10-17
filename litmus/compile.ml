@@ -16,9 +16,9 @@ module type Config = sig
   val barrier : Barrier.t
 end
 
-let get_fmt hexa = function
-  | "int" ->  if hexa then "x" else "i"
-  | t -> Warn.fatal "No format for type '%s'" t
+let get_fmt hexa base = match CType.get_fmt hexa base with
+| Some fmt -> fmt
+| None -> Warn.fatal "No format for type '%s'" base
 
 let base =  CType.Base "int"
 
@@ -41,14 +41,15 @@ module Generic (A : Arch.Base) = struct
             match a with
             | LV (A.Location_reg (q,r),v) when p=q && A.reg_compare reg r = 0 ->
                 begin match typeof v,t with
-                | (Base s1, Some (Base s2))
+                | (Base _ as t, Some (Base _)) ->
+                    Some t (* location takes precedence *)
                 | (Pointer (Base s1), Some (Pointer (Base s2)))
                   when Misc.string_eq s1 s2 ->
                     t
                 | (ty, None) -> Some ty
                 | (loc_ty, Some cond_ty) ->
                     Warn.fatal
-                      "Type missmatch between the locations \
+                      "Type mismatch between the locations \
                        (type: %s) and the final condition (type: %s)"
                       (CType.dump loc_ty)
                       (CType.dump cond_ty)
@@ -78,7 +79,7 @@ module Generic (A : Arch.Base) = struct
    will produce a warning if t is extended *)
         | _,_ (* (Pointer _|Base _),(Pointer _|Base _) *) ->
             Warn.fatal
-              "Type missmatch detected on location %s, required %s vs. found %s"
+              "Type mismatch detected on location %s, required %s vs. found %s"
               a (dump ty) (dump tz)
       with
         Not_found -> StringMap.add a ty env

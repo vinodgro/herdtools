@@ -6,6 +6,9 @@ typedef struct {
   int id ;
   intmax_t *mem;
   log_t out;
+#ifdef SOME_PTR
+  log_ptr_t out_ptr;
+#endif
 #ifdef SOME_VARS
   vars_t v;
 #endif

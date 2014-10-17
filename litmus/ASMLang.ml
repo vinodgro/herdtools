@@ -41,10 +41,6 @@ module Make
 
   and compile_addr_fun x = sprintf "*%s" x 
 
-  and compile_out_reg = match O.mode with
-  | Mode.Std -> Tmpl.compile_out_reg
-  | Mode.PreSi -> Tmpl.compile_presi_out_reg
-
   and compile_val_inline = match O.mode with
   | Mode.Std -> Tmpl.dump_v
   | Mode.PreSi -> SymbConstant.pp_v
@@ -272,6 +268,17 @@ module Make
     ()
 
   let dump chan indent env globEnv volatileEnv proc t =
+
+    let compile_out_reg = match O.mode with
+    | Mode.Std -> Tmpl.compile_out_reg
+    | Mode.PreSi ->
+        fun proc reg ->
+          let ty = List.assoc reg env in
+          if CType.is_ptr ty then
+            Tmpl.compile_presi_out_ptr_reg proc reg
+          else
+            Tmpl.compile_presi_out_reg proc reg in
+
     do_dump 
       compile_val_inline compile_addr_inline 
       (fun x -> sprintf "_a->%s[_i]" (Tmpl.addr_cpy_name x proc))

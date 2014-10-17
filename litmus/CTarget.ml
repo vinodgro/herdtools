@@ -27,4 +27,7 @@ let compile_out_reg proc reg = OutUtils.fmt_index (dump_out_reg proc reg)
 let compile_presi_out_reg proc reg =
   OutUtils.fmt_presi_index (dump_out_reg proc reg)
 
+let compile_presi_out_ptr_reg proc reg =
+  OutUtils.fmt_presi_ptr_index (dump_out_reg proc reg)
+
 let get_addrs t = List.map fst t.inputs
