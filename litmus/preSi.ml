@@ -861,7 +861,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.o ""
 
 
-        let dump_scan_def env test =
+        let _dump_scan_def env test =
           O.o "static void scan(int id,global_t *g) {" ;
           O.oi "param_t p,*q = g->param;" ;
           O.oi "thread_ctx_t c; c.id = id;" ;
@@ -928,7 +928,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.o "/* Forked function */" ;
         O.o "/*******************/" ;
         O.o "" ;
-        dump_scan_def env test ;
+(*        dump_scan_def env test ; *)
         dump_choose_def env test stats ;
         O.o "typedef struct {" ;
         O.oi "int id;" ;
@@ -947,7 +947,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
           else
             "write_one_affinity(id);") ;
         O.oi "init_global(g,id);" ;
-        O.oi "if (g->do_scan) scan(id,g); else choose(id,g);" ;
+(*        O.oi "if (g->do_scan) scan(id,g); else choose(id,g);" ; *)
         O.oi "return NULL;" ;
         O.o "}" ;
         O.o ""
