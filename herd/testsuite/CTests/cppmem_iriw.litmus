@@ -20,13 +20,13 @@ P1 (atomic_int* y) {
 }
 
 P2 (atomic_int* x, atomic_int* y) {
-  r1 = atomic_load_explicit(x, memory_order_acquire);
-  r2 = atomic_load_explicit(y, memory_order_acquire);
+  int r1 = atomic_load_explicit(x, memory_order_acquire);
+  int r2 = atomic_load_explicit(y, memory_order_acquire);
 }
 
 P3 (atomic_int* x, atomic_int* y) {
-  r3 = atomic_load_explicit(y, memory_order_acquire);
-  r4 = atomic_load_explicit(x, memory_order_acquire);
+  int r3 = atomic_load_explicit(y, memory_order_acquire);
+  int r4 = atomic_load_explicit(x, memory_order_acquire);
 }
 
 exists
