@@ -115,9 +115,9 @@ irreflexive rf | (fr;co) | (co;rf) as rmw_consistent
 (* Sequential consistency *)
 (**************************)
 
-(* exists(s) = { 0    if s is empty
+(* ifexists(s) = { 0    if s is empty
                { unv  otherwise      *)
-let exists(s) = unv; [s]; unv
+let ifexists(s) = unv; [s]; unv
 
 let sc1 = rf^-1; [mo_sc]; co 
 let sc2 = [F]; po; co; po; [F]
@@ -136,15 +136,15 @@ show S
 #IFDEF preferred 
 *)
 
-let scp = scp & sc6
+let scp' = scp & sc6
 
-acyclic scp & exists(mo_sc & !s_all) as S_exists
-show scp
+acyclic scp' & ifexists(mo_sc & !s_all) as S_exists
+show scp' as scp
 
 (* 
 #ELSE
 
-let S = S & exists(mo_sc & !s_all)
+let S = S & ifexists(mo_sc & !s_all)
 let S1 = S & ~(co; S)
 irreflexive (S ; scp) | (S1 ; sc6) as S_consistent
 

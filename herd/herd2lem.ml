@@ -17,46 +17,50 @@ let lem_of_konst chan = function
   | Empty SET -> fprintf chan "emps"
   | Empty RLN -> fprintf chan "empr"
 
-let rec lem_of_op2 chan es = function
-  | Union -> fprintf_list_infix "union" lem_of_exp chan es
-  | Inter -> fprintf_list_infix "inter" lem_of_exp chan es
-  | Diff -> fprintf_list_infix "\\" lem_of_exp chan es
-  | Seq -> fprintf_list "seq" lem_of_exp chan es
-  | Cartesian -> fprintf_list "cross" lem_of_exp chan es
+let rec lem_of_op2 args chan es = function
+  | Union -> fprintf_list_infix "union" (lem_of_exp args) chan es
+  | Inter -> fprintf_list_infix "inter" (lem_of_exp args) chan es
+  | Diff -> fprintf_list_infix "\\" (lem_of_exp args) chan es
+  | Seq -> fprintf_list "seq" (lem_of_exp args) chan es
+  | Cartesian -> fprintf_list "cross" (lem_of_exp args) chan es
 
-and lem_of_op1 chan e = function
-  | Plus -> fprintf chan "(tc %a)" lem_of_exp e
-  | Star -> fprintf chan "(rtc %a)" lem_of_exp e
-  | Opt -> fprintf chan "(rc X %a)" lem_of_exp e
+and lem_of_op1 args chan e = function
+  | Plus -> fprintf chan "(tc %a)" (lem_of_exp args) e
+  | Star -> fprintf chan "(rtc %a)" (lem_of_exp args) e
+  | Opt -> fprintf chan "(rc X %a)" (lem_of_exp args) e
   | Select _ -> fprintf chan "Select not done yet"
-  | Inv -> fprintf chan "(inv %a)" lem_of_exp e
-  | Square -> fprintf chan "(cross %a %a)" lem_of_exp e lem_of_exp e
-  | Ext -> fprintf chan "(ext %a)" lem_of_exp e
-  | Int -> fprintf chan "(int %a)" lem_of_exp e
-  | NoId -> fprintf chan "(noid %a)" lem_of_exp e
-  | Set_to_rln -> fprintf chan "(stor %a)" lem_of_exp e
-  | Comp SET -> fprintf chan "(comps X %a)" lem_of_exp e
-  | Comp RLN -> fprintf chan "(compr X %a)" lem_of_exp e
+  | Inv -> fprintf chan "(inv %a)" (lem_of_exp args) e
+  | Square -> fprintf chan "(cross %a %a)" (lem_of_exp args) e (lem_of_exp args) e
+  | Ext -> fprintf chan "(ext %a)" (lem_of_exp args) e
+  | Int -> fprintf chan "(int %a)" (lem_of_exp args) e
+  | NoId -> fprintf chan "(noid %a)" (lem_of_exp args) e
+  | Set_to_rln -> fprintf chan "(stor %a)" (lem_of_exp args) e
+  | Comp SET -> fprintf chan "(comps X %a)" (lem_of_exp args) e
+  | Comp RLN -> fprintf chan "(compr X %a)" (lem_of_exp args) e
 
-and lem_of_var chan x = 
+and lem_of_var args chan x = 
   match x with
-  | "rf" | "asw" | "lo" -> 
+  | "rf" | "asw" | "lo" ->
     fprintf chan "X.%sh" x
   | "po" | "addr" | "data" | "co" -> 
     fprintf chan "X.%s" x
   | "_" -> fprintf chan "(unis X)"
+  | "id" -> fprintf chan "idh X"
   | _ -> 
     let x = Str.global_replace (Str.regexp_string "-") "_" x in
-    fprintf chan "(%s X)" x
+    if List.mem x args then
+      fprintf chan "%s" x
+    else
+      fprintf chan "(%s X)" x
 
-and lem_of_exp chan = function
+and lem_of_exp args chan = function
   | Konst k -> lem_of_konst chan k
-  | Var x -> lem_of_var chan x
-  | Op1 (op1, e) -> lem_of_op1 chan e op1
-  | Op (op2, es) -> lem_of_op2 chan es op2
+  | Var x -> lem_of_var args chan x
+  | Op1 (op1, e) -> lem_of_op1 args chan e op1
+  | Op (op2, es) -> lem_of_op2 args chan es op2
   | App (e,es) -> fprintf chan "(%a(%a))" 
-                    lem_of_exp e 
-                    (fprintf_list_infix "," lem_of_exp) es 
+                    (lem_of_exp args) e 
+                    (fprintf_list_infix "," (lem_of_exp args)) es 
   | Bind _ -> fprintf chan "Bindings not done yet"
   | BindRec _ -> fprintf chan "Recursive bindings not done yet"
   | Fun _ -> fprintf chan "Local functions not done yet"
@@ -67,11 +71,11 @@ and lem_of_binding chan (x, e) =
       fprintf chan "let %s X (%a) = %a" 
         x 
         (fprintf_list_infix "," (fun _ x -> fprintf chan "%s" x)) xs
-        lem_of_exp e
+        (lem_of_exp xs) e
     | _ ->
       fprintf chan "let %s X = %a" 
         x 
-        lem_of_exp e
+        (lem_of_exp []) e
 
 let fprintf_so x chan so = 
   fprintf chan "%s" (match so with
@@ -99,7 +103,7 @@ let lem_of_ins chan = function
     fprintf chan "let %s X = %s (%a)" 
       name
       (lem_of_test test)
-      lem_of_exp exp;
+      (lem_of_exp []) exp;
     begin match test_type with
       | Provides -> 
         if (!seen_requires_clause) then
@@ -119,14 +123,14 @@ let lem_of_prog chan prog =
   fprintf chan "open import Relation\n";
   fprintf chan "open import Herd\n\n";
   List.iter (fprintf chan "%a\n\n" lem_of_ins) prog;
-  fprintf chan "let provides X =\n";
+  fprintf chan "let provides_clauses X =\n";
   fprintf chan "  herd_provides X &&\n";
   List.iter (fprintf chan "  %s X &&\n") (List.rev (!provides));
   fprintf chan "  true\n\n";
-  fprintf chan "let requires X =\n";
+  fprintf chan "let requires_clauses X =\n";
   List.iter (fprintf chan "  %s X &&\n") (List.rev (!requires));
   fprintf chan "  true\n\n";
   fprintf chan "let model =\n";
-  fprintf chan "  <| provides = provides;\n";
-  fprintf chan "     requires = requires;\n";
+  fprintf chan "  <| provides = provides_clauses;\n";
+  fprintf chan "     requires = requires_clauses;\n";
   fprintf chan "  |>\n";
