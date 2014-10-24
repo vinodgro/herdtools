@@ -272,6 +272,7 @@ typedef struct {
   int verbose;
   int max_run;
   int size_of_test;
+  int avail ;
   int n_exe ;
   param_mode_t mode;
 } opt_t ;

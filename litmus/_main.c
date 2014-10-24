@@ -7,12 +7,15 @@ static pthread_t th[AVAIL];
 
 int RUN(int argc,char **argv,FILE *out) {
 #ifdef OUT
-  opt_t def = { 0, NUMBER_OF_RUN, SIZE_OF_TEST, NEXE, mode_random, };
+  opt_t def = { 0, NUMBER_OF_RUN, SIZE_OF_TEST, AVAIL, NEXE, mode_random, };
   opt_t d = def ;
   char *prog = argv[0] ;
   char **p = parse_opt(argc,argv,&def,&d) ;
+  int n_exe = d.n_exe ;
+  if (d.avail != AVAIL) n_exe = d.avail / N ;
+  if (n_exe < 1) n_exe = 1 ;
   global.verbose = d.verbose;
-  global.nexe = d.n_exe;
+  global.nexe = n_exe;
   global.noccs = NOCCS ;
   global.nruns = d.max_run;
   global.size = d.size_of_test;

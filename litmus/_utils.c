@@ -1139,11 +1139,15 @@ static void usage_opt(char *prog,opt_t *d) {
   fprintf(stderr,"usage: %s (options)* (parameters)*\n",prog) ;
   fprintf(stderr,"  -v      be verbose\n") ;
   fprintf(stderr,"  -q      be quiet\n") ;
+  fprintf(stderr,"  -a <n>  consider that <n> cores are available (default %i)\n",d->avail) ;
   fprintf(stderr,"  -n <n>  run n tests concurrently (default %i)\n",d->n_exe) ;
-  fprintf(stderr,"  -r <n>  perform n internal runs (default %i)\n",d->max_run) ;
-  fprintf(stderr,"  -s <n>  perform n external runs (default %i)\n",d->size_of_test) ;
+  fprintf(stderr,"  -r <n>  perform n external runs (default %i)\n",d->max_run) ;
+  fprintf(stderr,"  -s <n>  perform n internal runs (default %i)\n",d->size_of_test) ;
+  /*
   fprintf(stderr,"  +rp     random parameter%s\n",d->mode == mode_random ? " (default)" : "") ;
-  fprintf(stderr,"  +sa     scan parameter%s\n",d->mode == mode_scan ? " (default)" : "") ;
+  fprintf(stderr,"  +sp     scan parameter%s\n",d->mode == mode_scan ? " (default)" : "") ;
+  */
+  exit(2) ;
 }
 
 static int argint_opt(char *prog,char *p,opt_t *d) {
@@ -1172,16 +1176,21 @@ char **parse_opt(int argc,char **argv,opt_t *d, opt_t *p) {
       --argc ; ++argv ;
       if (!*argv) usage_opt(prog,d) ;
       p->size_of_test = argint_opt(prog,argv[0],d) ;
+    } else if (strcmp(*argv,"-a") == 0) {
+      --argc ; ++argv ;
+      if (!*argv) usage_opt(prog,d) ;
+      p->avail = argint_opt(prog,argv[0],d) ;
+      if (p->avail < 1) p->n_exe = 1 ;
     } else if (strcmp(*argv,"-n") == 0) {
       --argc ; ++argv ;
       if (!*argv) usage_opt(prog,d) ;
       p->n_exe = argint_opt(prog,argv[0],d) ;
       if (p->n_exe < 1) p->n_exe = 1 ;
-    } else if (strcmp(*argv,"+rp") == 0) {
+    } /* else if (strcmp(*argv,"+rp") == 0) {
       p->mode = mode_random;
     } else if (strcmp(*argv,"+sp") == 0) {
       p->mode = mode_scan;
-    } else usage_opt(prog,d);
+      } */ else usage_opt(prog,d);
   }
 }
 

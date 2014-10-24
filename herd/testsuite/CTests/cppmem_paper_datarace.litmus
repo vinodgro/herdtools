@@ -16,5 +16,6 @@ P1 (int* x, int* y) {
   *y = (*x == 3); 
 }
 
+locations [x;y;]
 exists
 ()
