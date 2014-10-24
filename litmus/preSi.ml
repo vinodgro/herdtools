@@ -102,8 +102,8 @@ module Make
         if Cfg.c11 then O.o "#include <stdatomic.h>";
         O.o "#include \"affinity.h\"" ;
         O.o "" ;
-        O.o "typedef uint64_t count_t;" ;
-        O.o "#define PCTR PRIu64" ;
+        O.o "typedef uint32_t count_t;" ;
+        O.o "#define PCTR PRIu32" ;
         O.o "" ;
         begin match Cfg.timelimit with
         | None -> ()
@@ -454,6 +454,19 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
             (0,StringMap.empty) xs in
         fun x -> StringMap.find x m
 
+      let mk_get_param_prefix test =
+        let m =
+          let rec do_rec m prx = function
+            | [] -> m
+            | (a,_)::rem ->
+                do_rec
+                  (StringMap.add a prx m)
+                  (a::prx)
+                  rem in
+          do_rec StringMap.empty [] (get_param_vars test) in
+        fun loc -> StringMap.find loc m
+
+
       let get_param_caches test =
         let r =
           List.map
@@ -739,15 +752,17 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.oi "int _role = _c->role;" ;
         O.oi "if (_role < 0) return ok;" ;
         O.oi "ctx_t *_ctx = _c->ctx;" ;
-        O.oi "intmax_t *_mem = _ctx->mem;" ;
         O.oi "sense_t *_b = &_ctx->b;" ;
         O.oi "log_t *_log = &_ctx->out;" ;
         if some_ptr then O.oi "log_ptr_t *_log_ptr = &_ctx->out_ptr;" ;
         begin match test.T.globals with
-        | [] -> ()
-        | locs ->
+        | [] -> O.o ""
+        | _::_ ->
             O.oi "vars_t *_vars = &_ctx->v;" ;
+(*
+            O.o "" ;
             let get_param_pos = mk_get_param_pos test in
+            O.oi "barrier_wait(_b);" ;
             O.oi "if (_role == 0) {" ;
             List.iter
               (fun (a,_) ->
@@ -759,8 +774,9 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
                   O.fii "_vars->%s = _mem;" a)
               locs ;
             O.oi "}"
+*)
+            ()
         end ;
-        O.o "" ;
         O.oi "barrier_wait(_b);" ;
         O.oi "switch (_role) {" ;
         let global_env = U.select_global env in
@@ -789,6 +805,13 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.oi "if (_role < 0) return;" ;
         O.oi "ctx_t *ctx = c->ctx;" ;
         O.oi "param_t *q = g->param;" ;
+        let has_globals =
+          match test.T.globals with
+          | [] -> false
+          | _::_ ->
+              O.oi "intmax_t *_mem = ctx->mem;" ;
+              O.oi "vars_t *_vars = &ctx->v;" ;
+              true in
         O.o "" ;
         O.oi "for (int _s=0 ; _s < g->size ; _s++) {" ;
         let n = T.get_nprocs test in                
@@ -796,29 +819,68 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
           let open SkelUtil in
           List.fold_right
             (fun st k ->
-              if st.name = "dirs" then k
-              else
-                List.fold_right
-                  (fun tag k -> (tag,st.max)::k)
-                  st.tags k)
+              match st.name with
+              | "dirs"|"vars" -> k
+              | _ ->
+                  List.fold_right
+                    (fun tag k -> (tag,st.max)::k)
+                    st.tags k)
             stats [] in
         let pss = Misc.nsplit n ps in
+        let vs = test.T.globals in
+        let vss = Misc.nsplit n vs in
         let cs = get_param_caches test in
         let css = Misc.nsplit n cs in
         O.oii "barrier_wait(&ctx->b);";
         O.oii "switch (_role) {" ;
+        let get_param_pos = mk_get_param_pos test in
+        let get_param_prefix = mk_get_param_prefix test in
         List.iteri
-          (fun i (ps,cs) ->
+          (fun i (vs,(ps,cs)) ->
             O.fii "case %i:" i ;
+(* Location placement comes first, as cache setting depends on it *)
+            if has_globals then begin
+              List.iter
+                (fun (a,_) ->
+                  try
+                    let pos = get_param_pos a in
+                    (* Must come first [raises Not_found] *)
+                    let tag = pvtag a in
+                    O.fiii
+                      "ctx->p.%s = comp_param(&c->seed,&q->%s,NVARS,0);"
+                        tag tag ;
+                    O.fiii "_vars->%s = _mem + LINESZ*ctx->p.%s + %i;"
+                      a tag pos
+                  with Not_found ->
+                    O.fiii "_vars->%s = _mem;" a)
+                vs ;
+              ()
+            end ;
+(* Standard parameters *)
             if i=n-1 then O.oiii "ctx->p.part = part;" ;
             List.iter
               (fun (tag,max) ->
                 O.fiii
                   "ctx->p.%s = comp_param(&c->seed,&q->%s,%s,0);" tag tag max ;)
               ps ;
+(* Cache parameters, locations must be allocated *)
+            if has_globals then O.oiii "barrier_wait(&ctx->b);" ;
             List.iter
               (fun (proc,v as p) ->
-                O.fiii "if (c->act->%s) {" (Topology.active_tag p) ;
+                let more_test =
+                  try
+                    let prx = get_param_prefix v in
+                    let tsts =
+                      sprintf " && ctx->p.%s != 0" (pvtag v)::
+                      List.map
+                        (fun w ->
+                          sprintf " && ctx->p.%s != ctx->p.%s"
+                            (pvtag v) (pvtag w))
+                        prx in
+                    String.concat "" tsts
+                  with Not_found -> "" in
+                O.fiii "if (c->act->%s%s) {"
+                  (Topology.active_tag p) more_test ;
                 let tag = pctag p in
                 O.fiv "ctx->p.%s = comp_param(&c->seed,&q->%s,cmax,1);"
                   tag tag ;
@@ -827,7 +889,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
                 O.oiii "}" ;)
               cs ;
             O.oiii "break;")
-          (List.combine pss css) ;
+          (List.combine vss (List.combine pss css)) ;
         O.oii "}" ;
         O.oii "(void)do_run(c,&ctx->p,g);" ;
         O.oi "}" ;
