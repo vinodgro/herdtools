@@ -68,6 +68,7 @@ module type CommonConfig = sig
   val verbose_prelude : bool
   val check_kind : string -> ConstrGen.kind option
   val check_cond : string -> string option
+  val check_nstates : string -> int option
   val cross : bool
   val tarname : string
   val hint : string option
@@ -92,6 +93,7 @@ module type Config = sig
   val line : int
   val noccs : int
   val timelimit : float option
+  val check_nstates : string -> int option
 (* End of additions *)
   include Skel.Config
   include Run.Config

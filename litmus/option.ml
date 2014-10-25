@@ -139,6 +139,8 @@ let kinds = ref []
 let set_kinds s = kinds := !kinds @ [s]
 let conds = ref []
 let set_conds s = conds := !conds @ [s]
+let nstates = ref []
+let set_nstates s = nstates := !nstates @ [s]
 let sleep = ref 0
 let isync = ref false
 let syncconst = 128

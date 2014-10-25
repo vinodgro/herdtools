@@ -89,6 +89,8 @@ val kinds : string list ref
 val set_kinds : string -> unit
 val conds : string list ref
 val set_conds : string -> unit
+val nstates : string list ref
+val set_nstates : string -> unit
 val sleep : int ref
 val isync : bool ref
 val syncconst : int

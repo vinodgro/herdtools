@@ -175,6 +175,8 @@ let opts =
    argstring_withfun "-conds" set_conds
      "<file> specify conditions of tests (can be repeated)" ;
    "-hints", argstringo Option.hint, "<file> read hints in <file>";
+   argstring_withfun "-nstates" set_nstates
+   "<file> specify number of states mapping";
 (* Bizarre *)
    argbool "-isync" Option.isync "undocumented" ;
    argint "-syncmacro" Option.syncmacro "undocumented" ;
@@ -189,6 +191,7 @@ let () = Arg.parse opts (fun s -> sources := s :: !sources) usage
 let sources = !sources
 let kinds = !Option.kinds
 let conds = !Option.conds
+let nstates = !Option.nstates
 let verbose = !Option.verbose
 let () =
   try
@@ -206,6 +209,11 @@ let () =
       L.read_from_files kinds ConstrGen.parse_kind in
     let conds =
       L.read_from_files conds (fun s -> Some s) in
+    let nstates =
+      L.read_from_files nstates
+        (fun s ->
+          try Some (int_of_string s)
+          with Failure _ -> None) in
     let outname =
       if Option.is_out () then Option.get_tar ()
       else MySys.mktmpdir () in
@@ -223,6 +231,7 @@ let () =
       let check_rename = TblRename.find_value_opt rename
       let check_kind = TblRename.find_value_opt kinds
       let check_cond = TblRename.find_value_opt conds
+      let check_nstates = TblRename.find_value_opt nstates
 (* Static options *)
       let verbose = verbose
       let index = !index

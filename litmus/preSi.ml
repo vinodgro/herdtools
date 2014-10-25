@@ -30,6 +30,7 @@ module type Config = sig
   val delay : int
   val c11 : bool
   val timelimit : float option
+  val check_nstates : string -> int option
   include DumpParams.Config
 end
 
@@ -589,9 +590,12 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
             else c_rec (n-1) k in
         c_rec n 2
 
-      let dump_hash_def env test =
+      let dump_hash_def tname env test =
         let locs = U.get_final_locs test in
-        O.f "#define HASHSZ %i" (hash_size (A.LocSet.cardinal locs)) ;
+        let hashsz = match Cfg.check_nstates tname with
+        | Some sz -> 3*sz
+        | None -> hash_size (A.LocSet.cardinal locs) in
+        O.f "#define HASHSZ %i" hashsz ;
         O.o "" ;
         ObjUtil.insert_lib_file O.o "_hash.c" ;
         O.o ""
@@ -1057,7 +1061,7 @@ let dump_main_def doc env test stats =
     let some_ptr = dump_outcomes env test in
     dump_cond_def env test ;
     dump_parameters env test ;
-    dump_hash_def env test ;
+    dump_hash_def doc.Name.name env test ;
     dump_instance_def env test ;
     dump_run_def env test some_ptr stats ;
     dump_zyva_def doc.Name.name env test stats ;
