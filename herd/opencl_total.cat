@@ -1,5 +1,5 @@
 "OpenCL"
-withoutsc
+withsc
 
 let symm(r) = r | r^-1
 
@@ -131,11 +131,13 @@ let sc6 = rf^-1; (ghb | lhb); [W]
 
 show S
 
-(* BEGIN PARTIAL SC STUFF *)
-let scp' = scp & sc6
-acyclic scp' & ifexists(mo_sc & !s_all) as S_exists
-show scp' as scp
-(* END PARTIAL SC STUFF *)
+(* BEGIN TOTAL SC STUFF *)
+
+let S = S & ifexists(mo_sc & !s_all)
+let S1 = S & ~(co; S)
+irreflexive (S ; scp) | (S1 ; sc6) as S_consistent
+
+(* END TOTAL SC STUFF *)
 
 (*********)
 (* Races *)

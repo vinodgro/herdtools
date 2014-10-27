@@ -25,7 +25,7 @@ let rec lem_of_op2 args chan es = function
   | Cartesian -> fprintf_list "cross" (lem_of_exp args) chan es
 
 and lem_of_op1 args chan e = function
-  | Plus -> fprintf chan "(tc %a)" (lem_of_exp args) e
+  | Plus -> fprintf chan "(tch %a)" (lem_of_exp args) e
   | Star -> fprintf chan "(rtc %a)" (lem_of_exp args) e
   | Opt -> fprintf chan "(rc X %a)" (lem_of_exp args) e
   | Select _ -> fprintf chan "Select not done yet"
@@ -42,7 +42,7 @@ and lem_of_var args chan x =
   match x with
   | "rf" | "asw" | "lo" ->
     fprintf chan "X.%sh" x
-  | "po" | "addr" | "data" | "co" -> 
+  | "po" | "addr" | "data" | "co" | "S" -> 
     fprintf chan "X.%s" x
   | "_" -> fprintf chan "(unis X)"
   | "id" -> fprintf chan "idh X"
