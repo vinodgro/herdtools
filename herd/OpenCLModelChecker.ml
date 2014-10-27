@@ -172,7 +172,6 @@ module Make
       in
       if withco then
         let process_co co0 res =
-          Printf.printf "Hello. SC is %b" withsc;
           if withsc then
             let process_sc sc0 res =
               let co = S.tr co0 in
