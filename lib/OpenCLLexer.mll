@@ -150,9 +150,11 @@ rule token deep = parse
 | "atomic_store_explicit" | "store_exp" { ST_EXPLICIT }
 | "atomic_exchange" { EXC }
 | "atomic_exchange_explicit" { EXC_EXPLICIT }
+| "atomic_compare_exchange_weak"  { WCAS }
+| "atomic_compare_exchange_strong"  { SCAS }
+| "atomic_compare_exchange_weak_explicit"  { WCAS_EXPLICIT }
+| "atomic_compare_exchange_strong_explicit"  { SCAS_EXPLICIT }
 | "lock"  { LOCK }
-| "WCAS"  { WCAS }
-| "SCAS"  { SCAS }
 | "unlock"    { UNLOCK }
 | name as x   { tr_name x  }
 | eof { EOF }

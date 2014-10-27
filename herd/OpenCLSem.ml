@@ -33,14 +33,14 @@ module Make (C:Sem.Config)(V:Value.S)
     let (>>!) = M.(>>!)
     let (>>>) = M.(>>>)
 		       
-    let read_loc s mo = M.read_loc (fun loc v -> Act.Access (Dir.R, loc, v, mo, s))
+    let read_loc b s mo = M.read_loc (fun loc v -> Act.Access (Dir.R, loc, v, mo, s, b))
     let read_exchange vstored s mo =
       M.read_loc (fun loc v -> Act.RMW (loc,v,vstored,mo,s))
-    let read_reg r ii = read_loc OpenCL.S_workitem OpenCL.NA (A.Location_reg (ii.A.proc,r)) ii
-    let read_mem s mo a = read_loc s mo (A.Location_global a)
+    let read_reg r ii = read_loc false OpenCL.S_workitem OpenCL.NA (A.Location_reg (ii.A.proc,r)) ii
+    let read_mem b s mo a = read_loc b s mo (A.Location_global a)
 
     let write_loc s mo loc v ii =
-      M.mk_singleton_es (Act.Access (Dir.W, loc, v, mo, s)) ii >>! v
+      M.mk_singleton_es (Act.Access (Dir.W, loc, v, mo, s, false)) ii >>! v
     let write_reg r v ii = write_loc OpenCL.S_workitem OpenCL.NA (A.Location_reg (ii.A.proc,r)) v ii
     let write_mem s mo a  = write_loc s mo (A.Location_global a) 	     
 		 
@@ -82,7 +82,7 @@ module Make (C:Sem.Config)(V:Value.S)
 
       | OpenCL.Eload(loc,mo,ms) ->
           build_semantics_expr loc ii >>= fun loc ->
-          read_mem ms mo loc ii 
+          read_mem false ms mo loc ii 
 
       | OpenCL.Ecas(obj,exp,des,success,failure,ms,strong) ->
        (* Obtain location of "expected" value *)
@@ -90,10 +90,10 @@ module Make (C:Sem.Config)(V:Value.S)
        (* Obtain location of object *)
         build_semantics_expr obj ii >>= fun loc_obj ->
        (* Non-atomically read the value at "expected" location *)
-        read_mem OpenCL.S_all_svm_devices OpenCL.NA loc_exp ii >>*= fun v_exp ->
+        read_mem false OpenCL.S_all_svm_devices OpenCL.NA loc_exp ii >>*= fun v_exp ->
  (* Non-deterministic choice *)
         M.altT
-           (read_mem ms failure loc_obj ii >>*= fun v_obj ->
+           (read_mem true ms failure loc_obj ii >>*= fun v_obj ->
            (* For "strong" cas: fail only when v_obj != v_exp *)
            (if strong then M.neqT v_obj v_exp else M.unitT ()) >>= fun () -> 
            (* Non-atomically write that value into the "expected" location *)

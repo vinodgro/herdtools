@@ -46,7 +46,8 @@ open CType
 %token <MemSpaceMap.gpu_memory_space> MEMREGION
 %token GLOBAL LOCAL
 %token SCOPETREE DEVICE KERNEL CTA WARP THREAD
-%token LD LD_EXPLICIT ST ST_EXPLICIT EXC EXC_EXPLICIT FENCE LOCK UNLOCK SCAS WCAS BARRIER
+%token LD LD_EXPLICIT ST ST_EXPLICIT EXC EXC_EXPLICIT FENCE LOCK UNLOCK BARRIER
+%token SCAS WCAS SCAS_EXPLICIT WCAS_EXPLICIT
 %token <Op.op> ATOMIC_FETCH
 %token <Op.op> ATOMIC_FETCH_EXPLICIT
 %type <(int * OpenCLBase.pseudo list) list * MiscParser.gpu_data option> deep_main 
@@ -139,9 +140,17 @@ postfix_expression:
   { Eload ($3, $5, $7) }
 | FENCE LPAR fence_flags COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Efence ($3,$5,$7) }
-| WCAS LPAR  assignment_expression COMMA assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER COMMA MEMSCOPE RPAR
+| WCAS LPAR assignment_expression COMMA assignment_expression COMMA assignment_expression RPAR
+  { Ecas ($3,$5,$7,OpenCLBase.SC,OpenCLBase.SC,OpenCLBase.S_all_svm_devices,false) }
+| SCAS LPAR assignment_expression COMMA  assignment_expression COMMA assignment_expression RPAR
+  { Ecas ($3,$5,$7,OpenCLBase.SC,OpenCLBase.SC,OpenCLBase.S_all_svm_devices,true) }
+| WCAS_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
+  { Ecas ($3,$5,$7,$9,$11,OpenCLBase.S_all_svm_devices,false) }
+| SCAS_EXPLICIT LPAR assignment_expression COMMA  assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
+  { Ecas ($3,$5,$7,$9,$11,OpenCLBase.S_all_svm_devices,true) }
+| WCAS_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Ecas ($3,$5,$7,$9,$11,$13,false) }
-| SCAS LPAR  assignment_expression COMMA  assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER COMMA MEMSCOPE RPAR
+| SCAS_EXPLICIT LPAR assignment_expression COMMA  assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Ecas ($3,$5,$7,$9,$11,$13,true) }
 
 unary_expression:

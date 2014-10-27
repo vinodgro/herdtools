@@ -22,7 +22,7 @@ module Make (A : Arch.S) : sig
     | Exit_fence of string
 
  type action =    
-    | Access of Dir.dirn * A.location * A.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | Access of Dir.dirn * A.location * A.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope * bool (* is_failed_rmw *)
     | Fence of OpenCLBase.gpu_memory_space list * OpenCLBase.mem_order * OpenCLBase.mem_scope * fence_type
     | RMW of A.location * A.V.v * A.V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Blocked_RMW of A.location
@@ -39,12 +39,12 @@ end = struct
     | Exit_fence of string
 
   type action = 
-    | Access of dirn * A.location * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
+    | Access of dirn * A.location * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope * bool (* is_failed_rmw *)
     | Fence of OpenCLBase.gpu_memory_space list * OpenCLBase.mem_order * OpenCLBase.mem_scope * fence_type
     | RMW of A.location * V.v * V.v * OpenCLBase.mem_order * OpenCLBase.mem_scope
     | Blocked_RMW of A.location
  
-  let mk_init_write l v = Access (W,l,v,OpenCLBase.NA,OpenCLBase.S_workitem)
+  let mk_init_write l v = Access (W,l,v,OpenCLBase.NA,OpenCLBase.S_workitem,false)
 
     let pp_fence_type = function
       | Normal_fence -> ""
@@ -52,9 +52,10 @@ end = struct
       | Entry_fence lbl -> ", entry " ^ lbl
 
   let pp_action  a = match a with
-    | Access (d,l,v,mo,s) ->
-	sprintf "%s(%s,%s)%s=%s"
+    | Access (d,l,v,mo,s,b) ->
+	sprintf "%s%s(%s,%s)%s=%s"
           (pp_dirn d)
+          (if b then "f" else "") (* failed rmw *)
           (OpenCLBase.pp_mem_order_short mo)
           (OpenCLBase.pp_mem_scope s)
           (A.pp_location l)
@@ -77,94 +78,94 @@ end = struct
 
 (* Utility functions to pick out components *)
     let value_of a = match a with
-    | Access (_,_ , v,_,_) -> Some v
+    | Access (_,_ , v,_,_,_) -> Some v
     | _ -> None
 
     let read_of a = match a with
-    | Access (R,_ , v,_,_)
+    | Access (R,_ , v,_,_,_)
     | RMW (_,v,_,_,_)
       -> Some v
     | _ -> None
 
     let written_of = function
-    | Access (W,_ , v,_,_)
+    | Access (W,_ , v,_,_,_)
     | RMW (_,_,v,_,_)
       -> Some v
     | _ -> None
 
 
     let location_of a = match a with
-    | Access (_, l, _,_,_) 
+    | Access (_, l, _,_,_,_) 
     | RMW (l,_,_,_,_)
     | Blocked_RMW l -> Some l
     | _ -> None
 
 (* relative to memory *)
     let is_mem_store a = match a with
-    | Access (W,A.Location_global _,_,_,_)
+    | Access (W,A.Location_global _,_,_,_,_)
     | RMW (A.Location_global _,_,_,_,_)
         -> true
     | _ -> false
 
     let is_mem_load a = match a with
-    | Access (R,A.Location_global _,_,_,_)
+    | Access (R,A.Location_global _,_,_,_,_)
     | RMW (A.Location_global _,_,_,_,_)
         -> true
     | _ -> false
 
     let is_mem a = match a with
-    | Access (_,A.Location_global _,_,_,_) -> true
+    | Access (_,A.Location_global _,_,_,_,_) -> true
     | RMW _ | Fence _ | Blocked_RMW _ -> true
     | _ -> false
 
     (* The following definition of is_atomic
        is quite arbitrary. *)
     let is_atomic a = match a with
-    | Access (_,A.Location_global _,_,mo,_) -> mo != OpenCLBase.NA
+    | Access (_,A.Location_global _,_,mo,_,_) -> mo != OpenCLBase.NA
     | RMW _ -> true
     | _ -> false
 
     let get_mem_dir a = match a with
-    | Access (d,A.Location_global _,_,_,_) -> d
+    | Access (d,A.Location_global _,_,_,_,_) -> d
     | _ -> assert false
 
 (* relative to the registers of the given proc *)
     let is_reg_store a (p:int) = match a with
-    | Access (W,A.Location_reg (q,_),_,_,_) -> p = q
+    | Access (W,A.Location_reg (q,_),_,_,_,_) -> p = q
     | _ -> false
 
     let is_reg_load a (p:int) = match a with
-    | Access (R,A.Location_reg (q,_),_,_,_) -> p = q
+    | Access (R,A.Location_reg (q,_),_,_,_,_) -> p = q
     | _ -> false
 
     let is_reg a (p:int) = match a with
-    | Access (_,A.Location_reg (q,_),_,_,_) -> p = q
+    | Access (_,A.Location_reg (q,_),_,_,_,_) -> p = q
     | _ -> false
 
 
 (* Store/Load anywhere *)
     let is_store a = match a with
-    | Access (W,_,_,_,_)
+    | Access (W,_,_,_,_,_)
     | RMW _
       -> true
     | _ -> false
 
     let is_load a = match a with
-    | Access (R,_,_,_,_)
+    | Access (R,_,_,_,_,_)
     | RMW _
          -> true
     | _ -> false
 
     let is_reg_any a = match a with
-    | Access (_,A.Location_reg _,_,_,_) -> true
+    | Access (_,A.Location_reg _,_,_,_,_) -> true
     | _ -> false
 
     let is_reg_store_any a = match a with
-    | Access (W,A.Location_reg _,_,_,_) -> true
+    | Access (W,A.Location_reg _,_,_,_,_) -> true
     | _ -> false
 
     let is_reg_load_any a = match a with
-    | Access (R,A.Location_reg _,_,_,_) -> true
+    | Access (R,A.Location_reg _,_,_,_,_) -> true
     | _ -> false
 
 (* Barriers *)
@@ -220,7 +221,7 @@ end = struct
    let is_mutex_action _a = false
 
    let mo_matches target a = match a with
-     | Access(_,_,_,mo,_)
+     | Access(_,_,_,mo,_,_)
      | RMW (_,_,_,mo,_) 
      | Fence (_,mo,_,_) -> mo=target
      | _ -> false
@@ -228,9 +229,13 @@ end = struct
    let is_sc_action a = mo_matches OpenCLBase.SC a
 
    let scope_matches target a = match a with
-     | Access(_,_,_,_,s)
+     | Access(_,_,_,_,s,_)
      | RMW (_,_,_,_,s) 
      | Fence (_,_,s,_) -> s=target
+     | _ -> false
+       
+   let is_failed_rmw a = match a with
+     | Access(_,_,_,_,_,b) -> b
      | _ -> false
 
 (* Architecture-specific sets *)
@@ -242,6 +247,7 @@ end = struct
      "lF", is_local_fence; *)
      "exit_fence", is_exit_fence;
      "entry_fence", is_entry_fence;
+     "failed_rmw", is_failed_rmw;
    ] @ List.map (fun (k,v) -> (k,mo_matches v)) [
      "memory_order_acquire", OpenCLBase.Acq;
      "memory_order_seq_cst", OpenCLBase.SC;
@@ -261,7 +267,7 @@ end = struct
 
     let undetermined_vars_in_action a =
       match a with
-      | Access (_,l,v,_,_) -> 
+      | Access (_,l,v,_,_,_) -> 
 	  let undet_loc = match A.undetermined_vars_in_loc l with
 	  | None -> V.ValueSet.empty
 	  | Some v -> V.ValueSet.singleton v in
@@ -286,10 +292,10 @@ end = struct
 
     let simplify_vars_in_action soln a =
       match a with
-      | Access (d,l,v,mo,s) -> 
+      | Access (d,l,v,mo,s,b) -> 
 	 let l' = A.simplify_vars_in_loc soln l in
 	 let v' = V.simplify_var soln v in
-	 Access (d,l',v',mo,s)
+	 Access (d,l',v',mo,s,b)
       | RMW(l,v1,v2,mo,s) ->
         let l' = A.simplify_vars_in_loc soln l in
         let v1' = V.simplify_var soln v1 in
