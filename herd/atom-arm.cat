@@ -1,4 +1,4 @@
-"Experimental model, with atomics"
+"Experimental model, with atomics and ARM ppo"
 
 (* Uniproc *)
 acyclic po-loc | rf | fr | co
@@ -21,7 +21,7 @@ let aa = AA(po)
 (* Initial value *)
 let ci0 = ctrlisync | detour | RR(aa) | WR(aa)
 let ii0 = dd | rfi | rdw
-let cc0 = dd | po-loc | ctrl | addrpo | aa
+let cc0 = dd | ctrl | addrpo | aa (* po-loc deleted *)
 let ic0 = 0
 
 (* Fixpoint from i -> c in instructions and transitivity *)
@@ -60,6 +60,7 @@ acyclic hb as thinair
 (* prop *)
 let hbstar = hb*
 let propbase = (fence|(rfe;fence));hbstar
+show propbase
 
 let chapo = rfe|fre|coe|(fre;rfe)|(coe;rfe)
 

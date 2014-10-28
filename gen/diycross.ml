@@ -103,6 +103,19 @@ module Make (Config:Config) (M:Builder.S) =
       er (Po (sd,Dir W,Dir d))::
       (all_fences sd W d [])      
 
+    let atoms_key = "atoms"
+    let atoms_length = String.length atoms_key
+
+    let parse_atoms s =
+      if
+        String.length s >= atoms_length &&
+        String.sub s 0 atoms_length = atoms_key
+      then
+        let suf = String.sub s atoms_length (String.length s - atoms_length) in
+        try Some (M.E.parse_edge suf)
+        with _ -> None
+      else None
+
     let parse_relaxs s = match s with
     | "allRR" -> allR Diff R
     | "allRW" -> allR Diff W
@@ -112,20 +125,30 @@ module Make (Config:Config) (M:Builder.S) =
     | "someRW" -> someR Diff W
     | "someWR" -> someW Diff R
     | "someWW" -> someW Diff W
-    | _ -> 
-        let es = LexUtil.split s in
-        List.map M.R.parse_relax es
+    | _ ->
+        match parse_atoms s with
+        | Some r ->
+            let module V = VarAtomic.Make(M.E)  in
+            let es = V.var_both r in
+            List.map (fun r -> M.R.ERS [r]) es
+            
+        | None ->
+            let es = LexUtil.split s in
+            List.map M.R.parse_relax es
 
     let parse_edges s =
-      let rs = parse_relaxs s in
+(*      let rs = parse_relaxs s in *)
+      let rs = M.R.expand_relax_macros (LexUtil.split s) in
       List.fold_right (fun r k -> M.R.edges_of r :: k) rs []
 
-(*
-    module V = VarAtomic.Make(Config)(M.E) 
 
-    let varatom_ess ess = List.map V.varatom_es ess
-*)
-    let varatom_ess ess = ess
+
+    let varatom_ess =
+      if Config.varatom then
+        let module V = VarAtomic.Make(M.E)  in
+        List.map V.varatom_es
+      else
+        fun ess -> ess
 
     let expand_edge es = M.E.expand_edges es Misc.cons
     let expand_edges ess =

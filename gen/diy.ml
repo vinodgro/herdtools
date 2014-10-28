@@ -61,50 +61,51 @@ module AltConfig = struct
 end
 
 
-module M =  Alt.Make(C)(AltConfig)
+  module M =  Alt.Make(C)(AltConfig)
 
-let gen lr ls n =
-  let lr = parse_relaxs lr
-  and ls = parse_relaxs ls in
-  M.gen ~relax:lr ~safe:ls n
+      
+  let gen lr ls n =
+    let lr = C.R.expand_relax_macros lr
+    and ls = C.R.expand_relax_macros ls in
+    M.gen ~relax:lr ~safe:ls n
 
-let er e = ERS [plain_edge e]
+  let er e = ERS [plain_edge e]
 
-let gen_thin n =
-  let lr = [er (Rf Int); er (Rf Ext)]
-  and ls = [PPO] in
-  M.gen ~relax:lr ~safe:ls n
-
-
-let gen_uni n =
-  let lr = [er (Rf Int); er (Rf Ext)]
-  and ls =
-    [er (Ws Int); er (Ws Ext); er (Fr Int);
-     er (Fr Ext); er (Po (Same,Irr,Irr))] in
-  M.gen ~relax:lr ~safe:ls n
+  let gen_thin n =
+    let lr = [er (Rf Int); er (Rf Ext)]
+    and ls = [PPO] in
+    M.gen ~relax:lr ~safe:ls n
 
 
-let parse_edges_opt = function
-  | None -> None
-  | Some xs -> Some (parse_edges xs)
+  let gen_uni n =
+    let lr = [er (Rf Int); er (Rf Ext)]
+    and ls =
+      [er (Ws Int); er (Ws Ext); er (Fr Int);
+       er (Fr Ext); er (Po (Same,Irr,Irr))] in
+    M.gen ~relax:lr ~safe:ls n
 
-let go n (*size*) olr ols (*relax and safe lists*) _olc (*one + arg*) =
-  match O.choice with
-  | Sc|Critical|Free|Ppo|Transitive|Total ->
-    begin match olr,ols with
-    | None,None -> M.gen n
-    | None,Some ls -> gen [] ls n
-    | Some lr,None -> gen lr [] n
-    | Some lr,Some ls -> gen lr ls n
-    end
-  | Thin -> gen_thin n 
-  | Uni ->
-    begin match olr,ols with
-    | None,None -> gen_uni n
-    | None,Some ls -> gen [] ls n
-    | Some lr,None -> gen lr [] n
-    | Some lr,Some ls -> gen lr ls n
-    end
+
+  let parse_edges_opt = function
+    | None -> None
+    | Some xs -> Some (parse_edges xs)
+
+  let go n (*size*) olr ols (*relax and safe lists*) _olc (*one + arg*) =
+    match O.choice with
+    | Sc|Critical|Free|Ppo|Transitive|Total ->
+        begin match olr,ols with
+        | None,None -> M.gen n
+        | None,Some ls -> gen [] ls n
+        | Some lr,None -> gen lr [] n
+        | Some lr,Some ls -> gen lr ls n
+        end
+    | Thin -> gen_thin n 
+    | Uni ->
+        begin match olr,ols with
+        | None,None -> gen_uni n
+        | None,Some ls -> gen [] ls n
+        | Some lr,None -> gen lr [] n
+        | Some lr,Some ls -> gen lr ls n
+        end
 end
 
 

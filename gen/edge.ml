@@ -40,6 +40,7 @@ module type S = sig
   type edge = { edge: tedge;  a1:atom option; a2: atom option; }
   val plain_edge : tedge -> edge
   
+  val fold_atomo : (atom option -> 'a -> 'a) -> 'a -> 'a
   val fold_edges : (edge -> 'a -> 'a) -> 'a -> 'a
   val iter_edges : (edge -> unit) -> unit
 

@@ -42,9 +42,13 @@ module type S = sig
   val com : relax list
   val po : relax list
 
-(* parsing *)
+(* parsing *)      
   val parse_relax : LexUtil.t -> relax
   val parse_relaxs : LexUtil.t list -> relax list
+(* parsing, with macro expansion *)
+  val expand_relax_macro : LexUtil.t -> relax list
+ (* NB use for set of relaxations only *)
+  val expand_relax_macros : LexUtil.t list -> relax list
 
 (* Sets *)
   module Set : MySet.S with type elt = relax
@@ -219,7 +223,7 @@ and type edge = E.edge
         let rec do_expand_relax ppo r f = match r with
         | ERS es -> E.expand_edges es (fun es -> f (ERS es))
         | PPO  -> ppo (fun r -> do_expand_relax ppo r f)
-          
+              
 
         let expand_relaxs ppo rs =
           let expand_relax r =  do_expand_relax ppo r Misc.cons in
@@ -282,6 +286,87 @@ and type edge = E.edge
 
         let parse_relaxs = List.map parse_relax
 
+(* Expand relax macros *)
+        let er e = ERS [E.plain_edge e]
+
+        let all_fences sd d1 d2 =
+          F.fold_all_fences
+            (fun f k -> er (E.Fenced (f,sd,Dir d1,Dir d2))::k)
+
+        let some_fences sd d1 d2 =
+          F.fold_some_fences
+            (fun f k -> er (E.Fenced (f,sd,Dir d1,Dir d2))::k)
+            
+(* Limited variations *)
+        let app_def_dp o f r = match o with
+        | None -> r
+        | Some dp -> f dp r
+
+        let someR sd d =
+          er (E.Po (sd,Dir R,Dir d))::
+          app_def_dp
+            (match d with R -> F.ddr_default | W -> F.ddw_default)
+            (fun dp k -> er (E.Dp (dp,sd,Dir d))::k)
+            (some_fences sd R d [])      
+
+        let someW sd d =
+          er (E.Po (sd,Dir W,Dir d))::
+          (some_fences sd W d [])      
+
+            
+(* ALL *)
+        let allR sd d =
+          er (E.Po (sd,Dir R,Dir d))::
+          (match d with R -> F.fold_dpr | W -> F.fold_dpw)
+            (fun dp k -> er (E.Dp (dp,sd,Dir d))::k)
+            (all_fences sd R d [])      
+
+        let allW sd d =
+          er (E.Po (sd,Dir W,Dir d))::
+          (all_fences sd W d [])      
+
+        let atoms_key = "atoms"
+
+        let atoms_length = String.length atoms_key
+
+        let parse_atoms s =
+          if
+            String.length s >= atoms_length &&
+            String.sub s 0 atoms_length = atoms_key
+          then
+            let suf =
+              String.sub s atoms_length (String.length s - atoms_length) in
+            try Some (E.parse_edge suf)
+            with _ -> None
+          else None
+
+        let expand_relax_macro = function
+          | One s ->
+              begin match s with
+              | "allRR" -> allR Diff R
+              | "allRW" -> allR Diff W
+              | "allWR" -> allW Diff R
+              | "allWW" -> allW Diff W
+              | "someRR" -> someR Diff R
+              | "someRW" -> someR Diff W
+              | "someWR" -> someW Diff R
+              | "someWW" -> someW Diff W
+              | _ ->
+                  match parse_atoms s with
+                  | None ->  [do_parse_relax s]
+                  | Some r ->
+                      let module V = VarAtomic.Make(E)  in
+                      let es = V.var_both r in
+                      List.map (fun r -> ERS [r]) es
+              end
+          | Seq [] -> Warn.fatal "Empty relaxation"
+          | Seq es -> [ERS (List.map E.parse_edge es)]
+
+        let expand_relax_macros lus =
+          let rs = List.map expand_relax_macro lus in
+          let rs = List.flatten rs in
+          rs
+
 (********)
 (* Sets *)
 (********)
@@ -338,7 +423,7 @@ and type edge = E.edge
               [{edge=Rf Code.Ext; _};
                {edge=Fenced (f,_,_,_); _};
                {edge=Rf Code.Ext; _};]      
-              -> FenceSet.add f k
+            -> FenceSet.add f k
           | _ -> k
 
         let all_fences rs =
@@ -359,7 +444,7 @@ and type edge = E.edge
               [{edge=Rf Code.Ext; _};
                {edge=Fenced (f,_,_,_); _};
                {edge=Rf Code.Ext; _};]      
-              -> FenceSet.add f k
+            -> FenceSet.add f k
           | _ -> k
 
         let all_cumul_fences rs =
