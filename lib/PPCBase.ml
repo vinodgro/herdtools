@@ -103,6 +103,7 @@ type reg =
   | Internal of int
 (* Reservation (for specific dependencies *)
   | RES
+  | RESADDR
 
 let base =  Internal 0
 and max_idx = Internal 1
@@ -149,6 +150,7 @@ open Printf
       | Symbolic_reg r -> "%"^r
       | Internal i -> sprintf "i%i" i
       | RES -> "RES"
+      | RESADDR -> "RESADDR"
 
     let parse_list =
       List.map (fun (r,s) -> s,Ireg r) iregs @

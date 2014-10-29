@@ -339,6 +339,17 @@ struct
 		 E.action = a }))
 
 
+      let mk_singleton_es_eq a x y ii =
+	fun eiid ->
+	  (eiid+1,
+	   Evt.singleton
+	     ((), [VC.Assign (x, VC.Atom y)],
+	      trivial_event_structure
+		{E.eiid = eiid ;
+		 E.iiid = Some ii;
+		 E.action = a }))
+
+
       let any_op mk_v mk_c =
 	(fun eiid_next -> 
 	  eiid_next,

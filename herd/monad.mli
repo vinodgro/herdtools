@@ -65,6 +65,7 @@ module type S =
        make an event structure comprising a single event with
        instruction id "ii", and action "a". *)
     val mk_singleton_es : E.action -> A.inst_instance_id -> unit t
+    val mk_singleton_es_eq : E.action  -> A.V.v -> A.V.v -> A.inst_instance_id -> unit t
 	
 
     val op1 : Op.op1 -> A.V.v -> A.V.v t
