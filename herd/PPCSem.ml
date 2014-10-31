@@ -77,8 +77,12 @@ module Make (C:Sem.Config)(V:Value.S)
     let write_addr a v ii =  write_mem a v ii
 
 (*    let write_addr_conditional a v ii =  write_mem_atomic  a v ii *)
-    let write_addr_conditional a v ar ii = 
-      M.mk_singleton_es_eq (Act.Access (Dir.W, A.Location_global a, v, true)) a ar ii
+    let write_addr_conditional a v rr ar ii =
+      let eq =
+        [M.VC.Assign (a, M.VC.Atom ar);
+         M.VC.Assign (rr,M.VC.Atom V.one)] in
+      M.mk_singleton_es_eq
+        (Act.Access (Dir.W, A.Location_global a, v, true)) (* a rr ar *) eq ii
 
     let read_addr a ii = read_mem a ii
     let read_addr_res a ii = read_mem_atomic a ii
@@ -296,12 +300,12 @@ module Make (C:Sem.Config)(V:Value.S)
 	((read_reg rS ii >>| read_reg PPC.RES ii >>| read_reg PPC.RESADDR ii)
 	   >>| (* Enforce right associativity of >>| *)
 	   (read_reg_or_zero rA ii >>| read_reg rB ii)) >>=
-	fun (((vS,_),aR),(aA,aB)) ->
+	fun (((vS,vR),aR),(aA,aB)) ->
 	  M.add aA aB  >>=
 	  fun a ->
             M.altT
               ((write_reg PPC.RES V.zero ii >>| flags_res false ii) >>! B.Next)
-              (write_reg PPC.RES V.zero ii >>| (write_addr_conditional a vS aR ii >>|
+              (write_reg PPC.RES V.zero ii >>| (write_addr_conditional a vR vS aR ii >>|
               flags_res true ii) >>! B.Next)
     |PPC.Peieio  ->
 	create_barrier PPC.Eieio ii >>! B.Next	  

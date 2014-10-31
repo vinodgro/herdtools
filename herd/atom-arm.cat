@@ -60,7 +60,6 @@ acyclic hb as thinair
 (* prop *)
 let hbstar = hb*
 let propbase = (fence|(rfe;fence));hbstar
-show propbase
 
 let chapo = rfe|fre|coe|(fre;rfe)|(coe;rfe)
 

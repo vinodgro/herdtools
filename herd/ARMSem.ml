@@ -63,8 +63,10 @@ module Make (C:Sem.Config)(V:Value.S)
       M.mk_singleton_es (Act.Access (Dir.W, (A.Location_reg (ii.A.proc,r)), v, false)) ii
     let write_mem a v ii  = 
       M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, false)) ii
-    let write_mem_atomic a v ii = 
-      M.mk_singleton_es (Act.Access (Dir.W, A.Location_global a, v, true)) ii
+
+    let write_mem_atomic a v resa ii =
+      let eq = [M.VC.Assign (a,M.VC.Atom resa)] in
+      M.mk_singleton_es_eq (Act.Access (Dir.W, A.Location_global a, v, true)) eq ii
 			
     let write_flag r o v1 v2 ii =
 	M.addT
@@ -229,8 +231,8 @@ module Make (C:Sem.Config)(V:Value.S)
 	        (read_reg  rn ii)
 		   >>= 
 	         (fun vn ->
-		   (read_mem_atomic vn ii) >>=
-		   (fun v -> write_reg  rt v ii)) in
+                   write_reg ARM.RESADDR vn ii >>|
+		   (read_mem_atomic vn ii >>= fun v -> write_reg  rt v ii)) in
               ldr ii >>! B.Next
 	  |  ARM.I_LDR3 (rt,rn,rm,c) ->
               let ldr3 ii =
@@ -263,12 +265,12 @@ module Make (C:Sem.Config)(V:Value.S)
               checkZ str3 c ii
           | ARM.I_STREX (r1,r2,r3,c) ->
               let strex ii =
-                (read_reg r2 ii >>| read_reg r3 ii) >>=
-                fun (v,a) -> 
+                (read_reg ARM.RESADDR ii >>| read_reg r2 ii >>| read_reg r3 ii) >>=
+                fun ((resa,v),a) ->
                   M.altT
-                    (write_reg r1 V.one ii >>! ())
+                    ((write_reg ARM.RESADDR V.zero ii >>| write_reg r1 V.one ii) >>! ())
                     ((write_reg r1 V.zero ii >>|
-                    write_mem_atomic a v ii) >>! ()) in
+                    write_mem_atomic a v resa ii) >>! ()) in
               checkZ strex c ii
 	  | ARM.I_MOV (rd, rs, c) -> 
               let mov ii =
