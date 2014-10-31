@@ -32,6 +32,7 @@ type reg =
       
   | Symbolic_reg of string
   | Internal of int
+  | RESADDR
 
 
 let base =  Internal 0
@@ -61,9 +62,22 @@ let regs =
    LR, "LR" ;
    PC, "PC" ;
    Z, "Z" ;
+   RESADDR, "RESADDR" ;
  ]
-    
-let parse_list = List.map (fun (r,s) -> s,r) regs
+
+let to_parse =
+  List.filter
+    (fun (r,_) -> match r with
+    | Z|RESADDR -> false
+    | _ -> true)
+    regs
+
+let parse_list =
+  List.map (fun (r,s) -> s,r)
+    (List.filter
+       (fun (r,_) -> match r with
+       | Z|RESADDR -> false | _ -> true)
+       regs)
     
 let parse_reg s =
   try Some (List.assoc s parse_list)
@@ -284,7 +298,7 @@ let fold_regs (f_reg,f_sreg) =
 
   let fold_reg reg (y_reg,y_sreg) = match reg with
   | R0 | R1 | R2 | R3 | R4 | R5 | R6 | R7 | R8 
-  | R9 | R10 | R11 | R12 | SP | LR | PC | Z ->  f_reg reg y_reg,y_sreg
+  | R9 | R10 | R11 | R12 | SP | LR | PC | Z | RESADDR ->  f_reg reg y_reg,y_sreg
   | Symbolic_reg reg -> y_reg,f_sreg reg y_sreg
   | Internal _ -> y_reg,y_sreg in
 
@@ -324,7 +338,7 @@ let map_regs f_reg f_symb =
 
   let map_reg  reg = match reg with
   | R0 | R1 | R2 | R3 | R4 | R5 | R6 | R7 | R8 
-  | R9 | R10 | R11 | R12 | SP | LR | PC | Z -> f_reg reg 
+  | R9 | R10 | R11 | R12 | SP | LR | PC | Z | RESADDR -> f_reg reg
   | Symbolic_reg reg -> f_symb reg
   | Internal _ -> reg in
 
