@@ -64,8 +64,8 @@ module Make : functor (O:Config) -> functor (C:ArchRun.S) ->
       let m,fs = finals in
       let evt = n.C.C.evt in
       let v = match evt.C.C.dir with
-      | R -> evt.C.C.v
-      | W -> prev_value evt.C.C.v in
+      | Code.R -> evt.C.C.v
+      | Code.W -> prev_value evt.C.C.v in
       if show_in_cond n then
         C.C.EventMap.add n.C.C.evt (C.A.of_reg p r) m,
         add_final_v p r (IntSet.singleton v) fs
