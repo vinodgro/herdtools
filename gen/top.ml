@@ -373,9 +373,10 @@ let min_max xs =
               i,c::cs,f@fs
         with NoObserver -> build_observers p i x vss
             
-  let rec check_rec p i =
+  let rec check_rec atoms p i =
     let add_look_loc loc v k =
-      if O.optcond then k else (A.Loc loc,IntSet.singleton v)::k in
+      if not (StringSet.mem loc atoms) && O.optcond then
+        k else (A.Loc loc,IntSet.singleton v)::k in
     let open Config in
     function
       | [] -> i,[],[]
@@ -392,7 +393,8 @@ let min_max xs =
           | Unicond -> assert false
           | Cycle -> begin
               match vs with
-              | []|[[_]] -> i,[],[]
+              | [] -> i,[],[]
+              | [[(v,_)]] -> i,[],add_look_loc x v []
               | [[_;(v,_)]] ->
                   begin match O.do_observers with
                   | Local -> i,[],add_look_loc x v []
@@ -413,10 +415,10 @@ let min_max xs =
               end
           end in
           let i,cs,fs =
-            check_rec (p+List.length c) i xvs in
+            check_rec atoms (p+List.length c) i xvs in
           i,c@cs,f@fs
 
-  let check_writes p i cos = check_rec p i cos
+  let check_writes atoms p i cos = check_rec atoms p i cos
 
   
 (* Local check of coherence *)
@@ -545,7 +547,9 @@ let min_max xs =
     let i,obsc,f =
       match O.cond with
       | Unicond -> [],[],[]
-      | Cycle|Observe -> check_writes 0  [] cos in
+      | Cycle|Observe ->
+          let atoms = U.comp_atoms n in
+          check_writes atoms 0  [] cos in
     match splitted,O.cond with
     | [],_ -> Warn.fatal "No proc"
 (*    | [_],Cycle -> Warn.fatal "One proc" *)

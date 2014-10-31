@@ -11,7 +11,6 @@
 (* select  cycles with at least one atomic specification *)
 open Archs
 open Printf
-open Code
 
 (* Configuration *)
 let arch = ref PPC
@@ -22,17 +21,18 @@ module Make (A:Fence.S) =
     struct
       module E = Edge.Make(A)
 
-      let is_ext e = match E.get_ie e with
-      | Ext -> true
-      | Int -> false
-
-
       let is_atom es =
         List.exists
           (fun e -> match e.E.a1,e.E.a2 with
           | None,None -> false
           | Some _,_
           | _,Some _ -> true)
+          es &&
+        List.for_all
+          (fun e -> match e with
+          | {E.edge=E.Po _; a1=None; a2=None;} -> false
+          | {E.edge=E.Fenced (f,_,_,_) } -> not (A.is_isync f)
+          | _ -> true)
           es
 
       let parse_line s =
@@ -63,6 +63,7 @@ module Make (A:Fence.S) =
             let line = next_line () in
             let _,es = parse_line line in
             if is_atom es then  printf "%s\n" line
+(*           else eprintf "No: '%s'\n" line *)
           with Misc.Fatal msg -> Warn.warn_always "%s" msg
         done with End_of_file -> ()
     end
@@ -70,7 +71,7 @@ module Make (A:Fence.S) =
 let () =
   Util.parse_cmdline
     opts
-    (fun x -> raise (Arg.Bad "No argument"))
+    (fun _ -> raise (Arg.Bad "No argument"))
 
 let () =
   let module V = SymbConstant in

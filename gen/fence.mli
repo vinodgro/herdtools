@@ -13,6 +13,9 @@ module type S = sig
   include Atom.S
 (* Fences *)
   type fence
+
+  val is_isync : fence -> bool
+
   val compare_fence : fence -> fence -> int
 
   val strong : fence

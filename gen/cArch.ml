@@ -29,6 +29,10 @@ let applies_atom a d = match a,d with
 | (Rel|Acq_Rel),R -> false
 | _,_ -> true
 
+let applies_atom_rmw = function
+  | Some Con|None -> false
+  | Some _ -> true
+
 let compare_atom = Pervasives.compare
 let sig_of_atom = sig_of_mem_order
 let pp_as_a = Some SC
@@ -42,9 +46,13 @@ let fold_atom f k =
   let k = f Rlx k in
   let k = f Con k in
   k
-    
+
+let worth_final _ = false
+
 (* Fences, to be completed *)
 type fence = MemOrder.t
+
+let is_isync _ = false
 
 let compare_fence = MemOrder.compare
 

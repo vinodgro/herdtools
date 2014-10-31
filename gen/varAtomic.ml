@@ -27,9 +27,18 @@ with type edge = E.edge = struct
   open E
 
 (* Variations *)
+
+(* Notice, var_src si applied second, hence RMW check *)
+  let can_set_src e a = match e.E.edge with
+  | E.Rmw -> E.compare_atomo e.E.a2 a = 0
+  | _ -> true
+
   let var_src e es =
     E.fold_atomo
-      (fun ao k -> ({ e with a1=ao }::es)::k)
+      (fun ao k ->
+        if can_set_src e ao then
+          ({ e with a1=ao }::es)::k
+        else k)
       []
 
   let var_tgt e es =
@@ -40,10 +49,17 @@ with type edge = E.edge = struct
   let var_edge e1 e2 es =
     E.fold_atomo
       (fun ao k ->
-        ({ e1 with a2 = ao}::{ e2 with a1 = ao}::es)::k)
+        if can_set_src e2 ao then
+          ({ e1 with a2 = ao}::{ e2 with a1 = ao}::es)::k
+        else k)
       []
 
-  let var_both e =
+  let var_both e = match e.E.edge with
+  | E.Rmw -> (* RMW have identical atomic specs for source and targets *)
+      E.fold_atomo
+        (fun ao k -> { e with a1=ao; a2=ao; }::k)
+        []
+  | _ ->
      E.fold_atomo
       (fun ao1 k ->
         E.fold_atomo

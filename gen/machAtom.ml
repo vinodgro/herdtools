@@ -19,6 +19,10 @@ let applies_atom a d = match a,d with
 | Reserve,W -> false
 | _,_ -> true
 
+let applies_atom_rmw = function
+  | None -> true
+  | Some _ -> false
+
 let sig_of_atom = function
   | Atomic -> 'A'
   | Reserve -> 'B'
@@ -32,3 +36,7 @@ let pp_atom = function
 let compare_atom = Pervasives.compare
 
 let fold_atom f r = f Reserve (f Atomic r)
+
+let worth_final = function
+  | Atomic -> true
+  | Reserve -> false

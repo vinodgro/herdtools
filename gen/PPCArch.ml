@@ -28,6 +28,10 @@ module Make(V:Constant.S)(C:Config)  =
 
     type fence = Sync | LwSync | ISync | Eieio
 
+    let is_isync = function
+      | ISync -> true
+      | _ -> false
+
     let compare_fence = compare
 
     let strong = Sync

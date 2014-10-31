@@ -212,11 +212,13 @@ module Make (O:Config) (C:ArchRun.S) :
       let fs = 
         C.EventMap.fold
           (fun r reg fs ->
-            let w =
-              try C.EventMap.find r rfm
-              with Not_found -> assert false in
-            let v = w.C.v in
-            State.add reg v fs)
+            try
+              let w = C.EventMap.find r rfm in
+              (* Can fail because some registers steems from
+                 atomic writes... *)
+              let v = w.C.v in
+              State.add reg v fs
+            with Not_found -> fs)
           m fs in
 (*
       pp_state stderr fs ;

@@ -124,9 +124,14 @@ module Make(O:Config) : Builder.S
           if A.applies_atom mo Code.R then
             A.AtomicLoad (mo,loc)
           else Warn.fatal "wrong memory order for load"
-      let excl_from mo loc v = match mo with
+
+      let excl_from omo loc v = match omo with
       | None -> Warn.fatal "Non atomic RMW"
-      | Some mo -> A.AtomicExcl (mo,loc,v)
+      | Some mo ->
+          if A.applies_atom_rmw omo then
+            A.AtomicExcl (mo,loc,v)
+          else
+            Warn.fatal "wrong memory order for atomic exchange"
 
       let _load_from_event e = load_from e.C.atom (A.Loc e.C.loc)
 

@@ -12,9 +12,7 @@ open Misc
 open Printf
 
 (* Configuration *)
-let rfi = ref false
 let varatom = ref false
-let varreserve = ref false
 let use_eieio = ref true
 let norm = ref false
 
@@ -26,12 +24,8 @@ let opts =
   Config.common_specs @
   ("-num", Arg.Bool (fun b -> Config.numeric := b),
    sprintf "<bool> use numeric names, default %b" !Config.numeric)::
-  ("-varatom", Arg.Set varatom,
-   " include atomic load and store variations")::
-  ("-varreserve", Arg.Set varreserve,
-   " include load with reservation variations")::
-  ("-var", Arg.Unit (fun () ->  varatom := true ; varreserve := true),
-   " include all variations")::
+  ("-varatom", Arg.Unit (fun () ->  varatom := true),
+   " include all atomic variations of relaxations")::
   ("-noeieio", Arg.Clear use_eieio,
    " ignore eieio fence (backward compatibility)")::[]
 
@@ -41,7 +35,6 @@ let opts =
 module type Config = sig  
   include DumpAll.Config
   val varatom : bool
-  val varreserve : bool
   val sta : bool
   val unrollatomic : int option
 end
@@ -195,7 +188,6 @@ let () =
       let lowercase = !Config.lowercase
 (* Specific *)
       let varatom = !varatom
-      let varreserve = !varreserve
       let coherence_decreasing = !Config.coherence_decreasing
       let same_loc =
          !Config.same_loc ||

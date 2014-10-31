@@ -32,6 +32,7 @@ module Make : functor (O:Config) -> functor (C:ArchRun.S) ->
     val compile_coms : C.C.node list list -> string list
 (* Misc *)
     val comp_loc_writes : C.C.node -> StringSet.t
+    val comp_atoms : C.C.node -> StringSet.t
     val check_here : C.C.node -> bool
     val do_poll : C.C.node -> bool
   end = 
@@ -208,6 +209,22 @@ let io_of_node n = {ploc=n.C.C.evt.C.C.loc; pdir=n.C.C.evt.C.C.dir;}
           | R -> k in
         if C.E.is_detour n.C.C.edge  then StringSet.add n.C.C.evt.C.C.loc k
         else k in
+      do_rec n0
+
+(* Atomic accesses *)
+    let comp_atoms n0 =
+      let rec do_rec n =
+        let k =
+          if n.C.C.next == n0 then StringSet.empty
+          else do_rec n.C.C.next in
+        let k =
+          match n.C.C.evt.C.C.atom with
+          | None -> k
+          | Some a ->
+              if C.A.worth_final a then
+                StringSet.add n.C.C.evt.C.C.loc k
+              else k in
+        k in
       do_rec n0
 
 (* insert local check *)

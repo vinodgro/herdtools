@@ -12,6 +12,7 @@ module type Config = sig
   val verbose : int
   val cond : Config.cond
   val optcond : bool
+  val coherence_decreasing : bool
 end
 
 module Make : functor (O:Config) -> functor (C:ArchRun.S) ->
@@ -52,14 +53,22 @@ module Make : functor (O:Config) -> functor (C:ArchRun.S) ->
     else
       (fun _ -> true)
 
-  let add_final_v p r v finals = (C.A.of_reg p r,v)::finals
+    let add_final_v p r v finals = (C.A.of_reg p r,v)::finals
+
+    let prev_value =
+      if O.coherence_decreasing then fun v -> v+1
+      else fun v -> v-1
 
   let add_final p o n finals = match o with
   | Some r ->
       let m,fs = finals in
+      let evt = n.C.C.evt in
+      let v = match evt.C.C.dir with
+      | R -> evt.C.C.v
+      | W -> prev_value evt.C.C.v in
       if show_in_cond n then
         C.C.EventMap.add n.C.C.evt (C.A.of_reg p r) m,
-        add_final_v p r (IntSet.singleton n.C.C.evt.C.C.v) fs
+        add_final_v p r (IntSet.singleton v) fs
       else finals
   | None -> finals
 

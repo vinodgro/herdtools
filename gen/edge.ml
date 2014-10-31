@@ -296,7 +296,7 @@ let fold_tedges f r =
                      if a1 = None && a2=None then
                        f {a1; a2; edge=te;} k
                      else k
-                 | Rmw ->
+                 | Rmw -> (* identical sources and target atomicity for RMW *)
                      if a1 = a2 then
                        f {a1; a2; edge=te;} k
                      else k

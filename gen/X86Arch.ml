@@ -20,6 +20,10 @@ module Make(V:Constant.S) =
     | Atomic,W -> true
     | _,_ -> false
 
+    let applies_atom_rmw = function
+      | None -> true
+      | Some _ -> false
+
     let compare_atom = Pervasives.compare
     let sig_of_atom = function
       | Atomic -> 'A'
@@ -29,6 +33,8 @@ module Make(V:Constant.S) =
       | Atomic -> "A"
     let fold_atom f k = f Atomic k
 
+    let worth_final _ = true
+
     module V = V
 
 (**********)
@@ -36,6 +42,8 @@ module Make(V:Constant.S) =
 (**********)
 
     type fence = MFence
+
+    let is_isync _ = false
 
     let compare_fence = compare
 

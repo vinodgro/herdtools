@@ -21,6 +21,10 @@ module Make(V:Constant.S) =
 
     type fence = DMB of barrier_option | DSB of barrier_option | ISB
 
+    let is_isync = function
+      | ISB -> true
+      | _ -> false
+
     let compare_fence = compare
 
     let strong = DMB SY

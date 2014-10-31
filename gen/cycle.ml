@@ -340,7 +340,9 @@ let patch_edges n =
 (* Set directions of events *)
 
 let is_rmw_edge e = match e.E.edge with
-| E.Rmw -> true
+| E.Rmw ->
+    if E.compare_atomo e.E.a1 e.E.a2 = 0 then true
+    else Warn.fatal "Non equal atomicities for RMW"
 | _ -> false
 
 let is_rmw d e = match d with
@@ -368,8 +370,8 @@ let set_dir n0 =
         else
           Warn.fatal "Impossible atomicity %s %s"
             (E.pp_edge p.edge) (E.pp_edge m.edge) in
-        
-    m.evt <- { m.evt with dir=d; atom=a; rmw=is_rmw d m} ;
+    let rmw = is_rmw d m in
+    m.evt <- { m.evt with dir=d; atom=a; rmw=rmw} ;
     if m.next != n0 then do_rec p.next m.next in
   do_rec (find_prec n0) n0 ;
   patch_edges n0 ;

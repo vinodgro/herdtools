@@ -224,19 +224,22 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
         
 (* STA *)
 
-    let unroll_sta u p rA rB = unroll_rmw p tempo2 rA rB u
+    let unroll_sta u st p rA rB =
+      let rX,st = next_reg st in
+      Some (rX,st),unroll_rmw p rX rA rB u
 
     let loop_sta rA rB = loop_rmw tempo2 rA rB
 
-    let do_emit_sta_reg p rA rB = match Cfg.unrollatomic with
-    | None -> loop_sta rA rB
-    | Some u -> unroll_sta u p rA rB
+    let do_emit_sta_reg st p rA rB = match Cfg.unrollatomic with
+    | None -> None,loop_sta rA rB
+    | Some u -> unroll_sta u st p rA rB
 
     let do_emit_sta st p init rB v =
-      let cs = do_emit_sta_reg p tempo3 rB in
-      init,
-      Instruction (I_MOVI (tempo3,v,AL))::cs,
-      st
+      let rost,cs = do_emit_sta_reg st p tempo3 rB in
+      let cs = Instruction (I_MOVI (tempo3,v,AL))::cs in
+      match rost with
+      | Some (r,st) -> Some r,init,cs,st
+      | None -> None,init,cs,st
 
     let emit_sta  st p init x v =
       let rB,init,st = next_init st p init x in
@@ -244,15 +247,18 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
 
     let emit_sta_idx st p init x idx v =
       let rB,init,st = next_init st p init x in
-      let init,cs,st =  do_emit_sta st p init tempo1 v in
+      let ro,init,cs,st =  do_emit_sta st p init tempo1 v in
+      ro,
       init,
       Instruction (I_ADD3 (DontSetFlags,tempo1,idx,rB))::cs,
       st
 
     let emit_sta_reg st p init x rA =
       let rB,init,st = next_init st p init x in
-      let cs = do_emit_sta_reg p rA rB in
-      init,cs,st
+      let orst,cs = do_emit_sta_reg st p rA rB in
+      match orst with
+      | None -> None,init,cs,st
+      | Some (r,st) -> Some r,init,cs,st
 
 (*************)
 (* Acccesses *)
@@ -273,8 +279,8 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
         None,init,cs,st
     | W,Some Reserve -> Warn.fatal "No store with reservation"
     | W,Some Atomic ->
-        let init,cs,st = emit_sta st p init e.loc e.v in
-        None,init,cs,st
+        let ro,init,cs,st = emit_sta st p init e.loc e.v in
+        ro,init,cs,st
 
     let emit_exch st p init er ew =
       let r,init,csr,st = emit_ldrex st p init er.loc  in
@@ -299,8 +305,8 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
           None,init,Instruction c::cs,st
       | W,Some Reserve -> Warn.fatal "No store with reservation"
       | W,Some Atomic ->
-          let init,cs,st = emit_sta_idx st p init e.loc r2 e.v in
-          None,init,Instruction c::cs,st
+          let ro,init,cs,st = emit_sta_idx st p init e.loc r2 e.v in
+          ro,init,Instruction c::cs,st
 
     let emit_access_dep_data st p init e  r1 =
       match e.dir with
@@ -315,8 +321,8 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
               let init,cs,st = emit_store_reg st p init e.loc r2 in
               None,init,cs2@cs,st
           | Some Atomic ->
-              let init,cs,st = emit_sta_reg st p init e.loc r2 in
-              None,init,cs2@cs,st              
+              let ro,init,cs,st = emit_sta_reg st p init e.loc r2 in
+              ro,init,cs2@cs,st        
           | Some Reserve ->
                Warn.fatal "No store with reservation"
           end
