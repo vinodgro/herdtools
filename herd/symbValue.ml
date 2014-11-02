@@ -155,6 +155,16 @@ let lt v1 v2 = match v1,v2 with
 
 let gt v1 v2 = lt v2 v1
 
+let le v1 v2 = match v1,v2 with
+| Val (Symbolic s1),Val (Symbolic s2) ->
+    intToV (bool_to_int (<=) s1 s2)
+| Val (Symbolic _), Val (Concrete 0) -> one
+| Val (Concrete 0), Val (Symbolic _) -> zero
+| _,_ ->
+    binop Op.Le (bool_to_int (<=)) v1 v2
+
+let ge v1 v2 = le v2 v1
+
 open Op
 
 let op1 op = match op with
@@ -179,6 +189,8 @@ let op op = match op with
 | Gt -> gt
 | Eq -> eq
 | Ne -> ne
+| Le -> le
+| Ge -> ge
 
 let op3 If v1 v2 v3 = match v1 with
 | Val (Concrete i1) ->

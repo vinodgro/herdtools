@@ -26,6 +26,7 @@ undefined_unless empty ur as unsequenced_race
 show ur
 
 (* Barrier divergence *)
-let bd = [entry_fence] & ((~wi & wg & ~(bar_sw(G) | bar_sw(L))); unv)
+let bsw = bar_sw(G) | bar_sw(L)
+let bd = [entry_fence] & ((~wi & wg); unv) \ (bsw ; unv)
 undefined_unless empty bd as barrier_divergence
 show bd
