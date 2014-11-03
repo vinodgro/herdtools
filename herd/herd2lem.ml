@@ -117,6 +117,10 @@ let lem_of_ins chan = function
   | Show _ -> ()
   | ShowAs _ -> ()
   | Latex _ -> ()
+  | Include file -> 
+    let file = String.capitalize file in
+    let file = String.sub file 0 (String.length file - 4) in
+    fprintf chan "open import %s" file
 
 let lem_of_prog chan prog = 
   fprintf chan "open import Pervasives\n";
