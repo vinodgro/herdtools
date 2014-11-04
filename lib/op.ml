@@ -19,6 +19,7 @@ type op =
   | And | Or | Xor
   | ShiftLeft
   | Lt | Gt | Eq | Ne
+  | Le | Ge
 
 let pp_op o = 
   match o with
@@ -33,6 +34,8 @@ let pp_op o =
   | Eq -> "=="
   | Lt -> "<"
   | Gt -> ">"
+  | Le -> "<="
+  | Ge -> ">="
   | Ne -> "!="
 
 let pp_ptx_cmp_op = function
@@ -40,6 +43,8 @@ let pp_ptx_cmp_op = function
   | Lt -> ".lt"
   | Gt -> ".gt"
   | Ne -> ".ne"
+  | Le -> ".le"
+  | Ge -> ".ge"
   | _ -> Warn.user_error "Invalid PTX comparison operator"
 
 (********************)

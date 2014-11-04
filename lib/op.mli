@@ -24,6 +24,7 @@ type op =
   | ShiftLeft
 (* Return C-style boolean (zero is false, not zero is true) *)
   | Lt | Gt | Eq | Ne
+  | Le | Ge
 
 val pp_op : op -> string
 

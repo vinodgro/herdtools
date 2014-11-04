@@ -116,6 +116,7 @@ rule token deep = parse
 | '=' {EQ}
 | "==" {EQ_OP}
 | "!=" {NEQ_OP}
+| "<=" {LEQ_OP}
 | '.' {DOT}
 | "memory_scope_work_item" | "s_wi" 
   {MEMSCOPE (OpenCLBase.S_workitem)}

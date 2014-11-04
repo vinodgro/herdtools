@@ -33,7 +33,7 @@ open CType
 /* For deep parsing */
 %token <int> CONSTANT
 %token NULL
-%token SEMI COLON EQ EQ_OP NEQ_OP DOT
+%token SEMI COLON EQ EQ_OP NEQ_OP LEQ_OP DOT
 %token XOR PIPE
 %token LAND
 %token ADD SUB
@@ -189,6 +189,8 @@ equality_expression:
   { Eop (Op.Eq,$1,$3) }
 | equality_expression NEQ_OP relational_expression 
   { Eop (Op.Ne,$1,$3) }
+| equality_expression LEQ_OP relational_expression 
+  { Eop (Op.Le,$1,$3) }
 
 and_expression:
 | equality_expression { $1 }
