@@ -33,6 +33,7 @@ end
 module Insert (O:InsertConfig) :
     sig
       val insert : (string -> unit) -> string -> unit
+      val exists : string -> bool
     end =
   struct
     open Word
@@ -68,6 +69,13 @@ module Insert (O:InsertConfig) :
       let _,in_chan = find_lib src in
       MySys.cat_chan in_chan out ;
       close_in in_chan
+
+    let exists src =
+      try
+        let _,in_chan = find_lib src in
+        begin try close_in in_chan with _ -> () end ;
+        true
+      with Misc.Fatal _ -> false
   end
 
 module type Config = sig

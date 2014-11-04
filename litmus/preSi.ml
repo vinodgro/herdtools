@@ -48,14 +48,16 @@ module Make
 (*******************************************)
 (* Set compile time parameters from config *)
 (*******************************************)
+      module Insert =
+        ObjUtil.Insert
+          (struct
+            let sysarch = Cfg.sysarch
+            let word = Cfg.word
+          end)
 
-      let have_timebase = function
-        | `ARM -> false
-        | `PPCGen
-        | `PPC|`X86 -> true
-        | _ -> false
 
-      let have_timebase = have_timebase Cfg.sysarch
+      let have_timebase = Insert.exists "timebase.c"
+      let have_cache = Insert.exists "cache.c"
 
 (*************)
 (* Utilities *)
@@ -118,7 +120,7 @@ module Make
 (* Delays *)
 (**********)
 
-let nsteps = 5
+      let nsteps = 5
 
       let dump_delay_def () =
         O.f "#define NSTEPS %i" nsteps ;
@@ -129,13 +131,6 @@ let nsteps = 5
 (***************************************)
 (* Various inclusions from C utilities *)
 (***************************************)
-
-      module Insert =
-        ObjUtil.Insert
-          (struct
-            let sysarch = Cfg.sysarch
-            let word = Cfg.word
-          end)
 
 (* Time base *)
       let dump_read_timebase () =
@@ -155,9 +150,11 @@ let nsteps = 5
 
 (* Cache *)
       let dump_cache_def () =
-        O.o "/* Cache flush/fetch instructions */" ;
-        Insert.insert O.o "cache.c" ;
-        O.o ""
+        if have_cache then begin
+          O.o "/* Cache flush/fetch instructions */" ;
+          Insert.insert O.o "cache.c" ;
+          O.o ""
+        end
 
 
 
@@ -170,7 +167,8 @@ let nsteps = 5
             | `PPCGen
             | `PPC
             | `X86
-            | `ARM ->
+            | `ARM
+            | `MIPS ->
                 sprintf "barrier%s.c" lab_ext 
             | _ -> assert false in
         Insert.insert O.o (fname Cfg.sysarch)
@@ -469,12 +467,14 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
 
 
       let get_param_caches test =
-        let r =
-          List.map
-            (fun (proc,(out,_)) ->
-              List.map (fun a -> proc,a) (A.Out.get_addrs out))
-            test.T.code in
-        List.flatten r
+        if have_cache then begin
+          let r =
+            List.map
+              (fun (proc,(out,_)) ->
+                List.map (fun a -> proc,a) (A.Out.get_addrs out))
+              test.T.code in
+          List.flatten r
+        end else []
 
       let get_stats test =
         let open SkelUtil in
@@ -676,14 +676,16 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
           inits ;
 (*        eprintf "%i: INIT {%s}\n" proc (String.concat "," inits) ; *)
         (* And cache-instruct them *)
-        O.oii "barrier_wait(_b);" ;
-        List.iter
-          (fun addr ->
-            O.fii "if (_p->%s == ctouch) cache_touch((void *)%s);"
-              (pctag (proc,addr)) addr ;
-            O.fii "else if (_p->%s == cflush) cache_flush((void *)%s);"
-              (pctag (proc,addr)) addr)
-          addrs ;
+        if have_cache then begin
+          O.oii "barrier_wait(_b);" ;
+          List.iter
+            (fun addr ->
+              O.fii "if (_p->%s == ctouch) cache_touch((void *)%s);"
+                (pctag (proc,addr)) addr ;
+              O.fii "else if (_p->%s == cflush) cache_flush((void *)%s);"
+                (pctag (proc,addr)) addr)
+            addrs
+        end ;
         (* Synchronise *)
         if have_timebase then O.oii "_ctx->next_tb = read_timebase();" ;
         O.oii "barrier_wait(_b);" ;
@@ -763,22 +765,6 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         | [] -> O.o ""
         | _::_ ->
             O.oi "vars_t *_vars = &_ctx->v;" ;
-(*
-            O.o "" ;
-            let get_param_pos = mk_get_param_pos test in
-            O.oi "barrier_wait(_b);" ;
-            O.oi "if (_role == 0) {" ;
-            List.iter
-              (fun (a,_) ->
-                try
-                  let pos = get_param_pos a in
-                  O.fii "_vars->%s = _mem + LINESZ*_p->%s + %i;"
-                    a (pvtag a) pos
-                with Not_found ->
-                  O.fii "_vars->%s = _mem;" a)
-              locs ;
-            O.oi "}"
-*)
             ()
         end ;
         O.oi "barrier_wait(_b);" ;
