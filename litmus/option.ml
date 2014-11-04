@@ -166,6 +166,10 @@ let ppcopt =
 let armopt =
   { delay = 1024; gccopts = "-O2";
     word = Word.WXX; line = 64;} (* cortexa9 -> 32, cortex-a15 -> 64 *)
+let mipsopt =
+  { delay = 1024; gccopts = "-O2";
+    word = Word.WXX; line = 1024 ;} (* cache line size cannot be wrong... *)
+
 let copt =
   { delay = 2048; gccopts = ""; word = Word.WXX; line = 1024} (* maximal *)
 let get_default arch = match arch with
@@ -173,6 +177,7 @@ let get_default arch = match arch with
 | `PPCGen
 | `PPC -> ppcopt
 | `ARM -> armopt
+| `MIPS -> mipsopt
 | `C -> copt
 | `GPU_PTX 
 | `OpenCL -> assert false

@@ -41,6 +41,7 @@ module Insert (O:InsertConfig) :
     | `X86 -> "_x86"
     | `PPC|`PPCGen -> "_ppc"
     | `ARM -> "_arm"
+    | `MIPS -> "_mips"
 
     let sz = match O.word with
     | W32|WXX -> "32" (* our "default" word size, used for PPC only *)
@@ -111,7 +112,7 @@ module Make(O:Config)(Tar:Tar.S) =
       let fnames = match O.arch with
         | `C ->
             cpy' fnames "showC" "show" ".awk"
-        | `X86 | `ARM | `PPC | `PPCGen ->
+        | `X86 | `ARM | `PPC | `PPCGen |`MIPS ->
             cpy fnames "show" ".awk"
       in
       let fnames = cpy fnames "utils" ".c" in

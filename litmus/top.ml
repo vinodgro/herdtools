@@ -495,6 +495,7 @@ end = struct
             let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
             X.compile cycles hash_env
               name in_chan out_chan splitted
+        | `MIPS -> Warn.fatal "No MIPS"
         | `C ->
             let module Arch' = struct
               let comment = match OX.sysarch with
@@ -502,6 +503,7 @@ end = struct
               | `PPCGen -> PPCGenArch.comment
               | `X86 -> X86Arch.comment
               | `ARM -> ARMArch.comment
+              | `MIPS -> MIPSArch.comment
             end in
             let module X = Make'(Cfg)(Arch') in
             X.compile cycles hash_env

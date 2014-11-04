@@ -17,6 +17,7 @@ module System : sig
     | `PPC
     | `ARM
     | `PPCGen
+    | `MIPS
     ]
 
   val tags : string list
@@ -37,3 +38,5 @@ val ppc : t
 val x86 : t
 val ppcgen : t
 val c : t
+val mips : t
+
