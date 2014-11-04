@@ -36,8 +36,10 @@ module LU = LexUtils.Make(O)
     | "PP" -> PP
     | "let" -> LET
     | "rec" -> REC
+(*
     | "set" -> SET
     | "rln" -> RLN
+*)
     | "and" -> AND
     | "acyclic" -> ACYCLIC
     | "irreflexive" -> IRREFLEXIVE

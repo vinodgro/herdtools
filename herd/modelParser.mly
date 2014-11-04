@@ -14,14 +14,20 @@
 %{
 open AST
 
+let mk_loc () =
+  TxtLoc.make
+    (Parsing.symbol_start_pos ())
+    (Parsing.symbol_end_pos ())
+
+
 let as_op op = function
-  | Op (op0,es) when op0 = op -> es
+  | Op (_,op0,es) when op0 = op -> es
   | e -> [e]
 
 let do_op op e1 e2 =
   let es1 = as_op op e1
   and es2 = as_op op e2 in
-  Op (op,es1@es2)
+  Op (mk_loc(),op,es1@es2)
 
 let pp () =
   let open Lexing in
@@ -30,7 +36,6 @@ let pp () =
   let pos = start.pos_cnum in
   let len = fin - pos in
   {pos;len}
-
 
 %}
 %token EOF
@@ -48,7 +53,7 @@ let pp () =
 %token AA AP PA PP
 %token SEMI UNION INTER COMMA DIFF
 %token STAR PLUS OPT INV COMP NOT HAT TWO
-%token LET REC SET RLN AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN PROCEDURE CALL
+%token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN PROCEDURE CALL
 %token REQUIRES
 %token ARROW
 %token SEQTEST
@@ -82,19 +87,20 @@ ins_list:
 | ins ins_list { $1 :: $2 }
 
 ins:
-| LET pat_bind_list { Let $2 }
-| LET REC bind_list { Rec $3 }
+| LET pat_bind_list { Let (mk_loc (),$2) }
+| LET REC bind_list { Rec (mk_loc (),$3) }
 | deftest { $1 }
-| SHOW exp AS VAR { ShowAs ($2, $4) }
-| SHOW var_list { Show $2 }
-| UNSHOW var_list { UnShow $2 }
-| LATEX { Latex $1 }
-| INCLUDE STRING { Include $2 }
-| PROCEDURE VAR LPAR formals RPAR EQUAL ins_list END { Procedure ($2,$4,$7) }
-| CALL VAR LPAR args RPAR { Call ($2,$4) }
+| SHOW exp AS VAR { ShowAs (mk_loc(),$2, $4) }
+| SHOW var_list { Show (mk_loc(),$2) }
+| UNSHOW var_list { UnShow (mk_loc(),$2) }
+| LATEX { Latex (mk_loc(),$1) }
+| INCLUDE STRING { Include (mk_loc(),$2) }
+| PROCEDURE VAR LPAR formals RPAR EQUAL ins_list END
+   { Procedure (mk_loc (),$2,$4,$7) }
+| CALL VAR LPAR args RPAR { Call (mk_loc (),$2,$4) }
 
 deftest:
-| test_type test exp optional_name { Test(pp (),$2,$3,$4,$1) }
+| test_type test exp optional_name { Test(mk_loc(),pp (),$2,$3,$4,$1) }
 
 test_type:
 |          { Provides }
@@ -126,7 +132,7 @@ bind_list:
 
 pat_bind:
 | bind { $1 }
-| VAR LPAR formals RPAR EQUAL exp { ($1,Fun ($3,$6)) }
+| VAR LPAR formals RPAR EQUAL exp { ($1,Fun (mk_loc(),$3,$6)) }
 
 pat_bind_list:
 | pat_bind { [$1] }
@@ -142,36 +148,36 @@ formalsN:
 | VAR COMMA formalsN { $1 :: $3 }
 
 exp:
-| LET pat_bind_list IN exp { Bind ($2,$4) }
-| LET REC bind_list IN exp { BindRec ($3,$5) }
-| FUN LPAR formals RPAR ARROW exp { Fun ($3,$6) }
+| LET pat_bind_list IN exp { Bind (mk_loc(),$2,$4) }
+| LET REC bind_list IN exp { BindRec (mk_loc(),$3,$5) }
+| FUN LPAR formals RPAR ARROW exp { Fun (mk_loc(),$3,$6) }
 | base { $1 }
 
 base:
-| EMPTY { Konst (Empty RLN) }
-| EMPTY_SET { Konst (Empty SET) }
-| UNDERSCORE { Var "_" }
-| select LPAR exp RPAR { Op1 ($1,$3) }
+| EMPTY { Konst (mk_loc(),Empty RLN) }
+| EMPTY_SET { Konst (mk_loc(),Empty SET) }
+| UNDERSCORE { Var (mk_loc (),"_") }
+| select LPAR exp RPAR { Op1 (mk_loc(),$1,$3) }
 |  exp0 { $1 }
-| base STAR base {Op (Cartesian, [$1; $3])}
-| LBRAC exp RBRAC {Op1(Set_to_rln,$2)}
-| base STAR { Op1(Star,$1) }
-| base PLUS { Op1(Plus,$1) }
-| base OPT { Op1(Opt,$1) }
-| base HAT INV { Op1(Inv,$1) }
-| base HAT TWO { Op1(Square,$1) }
+| base STAR base {Op (mk_loc(),Cartesian, [$1; $3])}
+| LBRAC exp RBRAC {Op1(mk_loc(),Set_to_rln,$2)}
+| base STAR { Op1(mk_loc(),Star,$1) }
+| base PLUS { Op1(mk_loc(),Plus,$1) }
+| base OPT { Op1(mk_loc(),Opt,$1) }
+| base HAT INV { Op1(mk_loc(),Inv,$1) }
+| base HAT TWO { Op1(mk_loc(),Square,$1) }
 | base SEMI base { do_op Seq $1 $3 }
-| base UNION base { do_op (Union) $1 $3 }
-| base DIFF base { do_op (Diff) $1 $3 }
-| COMP base { Op1 (Comp RLN, $2) }
-| NOT base { Op1 (Comp SET, $2) }
-| base INTER base { do_op (Inter) $1 $3 }
+| base UNION base { do_op Union $1 $3 }
+| base DIFF base { do_op Diff $1 $3 }
+| base INTER base { do_op Inter $1 $3 }
+| COMP base { Op1 (mk_loc(),Comp RLN, $2) }
+| NOT base { Op1 (mk_loc(),Comp SET, $2) }
 | LPAR exp RPAR { $2 }
 | BEGIN exp END { $2 }
 
 exp0:
-| VAR                 { Var $1 }
-| exp0 LPAR args RPAR { App ($1,$3) }
+| VAR                 { Var (mk_loc (),$1) }
+| exp0 LPAR args RPAR { App (mk_loc(),$1,$3) }
 
 
 args:

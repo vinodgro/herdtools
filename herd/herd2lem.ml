@@ -54,11 +54,11 @@ and lem_of_var args chan x =
       fprintf chan "(%s X)" x
 
 and lem_of_exp args chan = function
-  | Konst k -> lem_of_konst chan k
-  | Var x -> lem_of_var args chan x
-  | Op1 (op1, e) -> lem_of_op1 args chan e op1
-  | Op (op2, es) -> lem_of_op2 args chan es op2
-  | App (e,es) -> fprintf chan "(%a(%a))" 
+  | Konst (_,k) -> lem_of_konst chan k
+  | Var (_,x) -> lem_of_var args chan x
+  | Op1 (_,op1, e) -> lem_of_op1 args chan e op1
+  | Op (_,op2, es) -> lem_of_op2 args chan es op2
+  | App (_,e,es) -> fprintf chan "(%a(%a))"
                     (lem_of_exp args) e 
                     (fprintf_list_infix "," (lem_of_exp args)) es 
   | Bind _ -> fprintf chan "Bindings not done yet"
@@ -67,7 +67,7 @@ and lem_of_exp args chan = function
 
 and lem_of_binding chan (x, e) = 
   match e with
-    | Fun (xs,e) ->
+    | Fun (_,xs,e) ->
       fprintf chan "let %s X (%a) = %a" 
         x 
         (fprintf_list_infix "," (fun _ x -> fprintf chan "%s" x)) xs
@@ -92,10 +92,10 @@ let requires : string list ref = ref []
 let seen_requires_clause : bool ref = ref false
 
 let lem_of_ins chan = function
-  | Let bs -> List.iter (lem_of_binding chan) bs
-  | Rec bs -> List.iter (lem_of_binding chan) bs 
+  | Let (_,bs) -> List.iter (lem_of_binding chan) bs
+  | Rec (_,bs) -> List.iter (lem_of_binding chan) bs
   (* doesn't handle recursion properly *)
-  | Test (_, test, exp, name, test_type) -> 
+  | Test (_,_, test, exp, name, test_type) ->
     let name = begin match name with 
         | None -> Warn.user_error "You need to give each constraint a name!\n"
         | Some name -> name 
@@ -117,6 +117,8 @@ let lem_of_ins chan = function
   | Show _ -> ()
   | ShowAs _ -> ()
   | Latex _ -> ()
+  | Include _|Procedure _|Call _ ->
+      Warn.fatal "include/procedure/call not handled by herd2lem"
 
 let lem_of_prog chan prog = 
   fprintf chan "open import Pervasives\n";

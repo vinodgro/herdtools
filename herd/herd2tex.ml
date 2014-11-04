@@ -59,18 +59,18 @@ and tex_of_op1 n c e op1 =
 and comma c () = fprintf c ","
 
 and tex_of_exp n c = function
-  | Konst k -> tex_of_konst c k
-  | Var x -> tex_of_var c x
-  | Op1 (op1, e) -> tex_of_op1 n c e op1
-  | Op (op2, es) -> tex_of_op2 n c es op2
-  | App (e,es) -> 
+  | Konst (_,k) -> tex_of_konst c k
+  | Var (_,x) -> tex_of_var c x
+  | Op1 (_,op1, e) -> tex_of_op1 n c e op1
+  | Op (_,op2, es) -> tex_of_op2 n c es op2
+  | App (_,e,es) ->
     paren (n > 2) c (fun () ->
         tex_of_exp 0 c e;
         paren true c (fun () -> 
             list_iter_alt (tex_of_exp 0 c) (comma c) es))
   | Bind _ -> fprintf c "\\mbox{\\color{red}[Local bindings not done yet]}"
   | BindRec _ -> fprintf c "\\mbox{\\color{red}[Local bindings not done yet]}"
-  | Fun (xs,e) -> 
+  | Fun (_,xs,e) ->
     paren (n > 1) c (fun () ->
       fprintf c "\\lambda %a \\ldotp %a" 
         (tex_of_formals false) xs
@@ -86,7 +86,7 @@ and tex_of_var c x = fprintf c "\\var{%s}" x
 and tex_of_name c x = fprintf c "\\name{%s}" x
 
 and tex_of_binding c (x, e) = match e with
-  | Fun (xs,e) ->
+  | Fun (_,xs,e) ->
     fprintf c "$%a%a = %a$" 
       tex_of_var x 
       (tex_of_formals true) xs
@@ -106,20 +106,20 @@ let tex_of_test_type = function
   | Requires -> "\\KWD{undefined\\_unless}~"
 
 let rec tex_of_ins c = function
-  | Let bs -> 
+  | Let (_,bs) ->
     fprintf c "\\KWD{let}~"; 
     list_iter_alt (tex_of_binding c) (fun () -> fprintf c "~\\KWD{and}~") bs
-  | Rec bs -> 
+  | Rec (_,bs) ->
     fprintf c "\\KWD{let}~\\KWD{rec}~"; 
     list_iter_alt (tex_of_binding c) (fun () -> fprintf c "~\\KWD{and}~") bs 
-  | Procedure (x,args,body) ->
+  | Procedure (_,x,args,body) ->
     fprintf c "\\KWD{procedure}~";
     fprintf c "$%a%a$ = %a"
         tex_of_var x
         (tex_of_formals true) args
         tex_of_inss body ;
         fprintf c "\\noindent\\KWD{end}\n\n"
-  | Test (_, test, exp, name, test_type) -> 
+  | Test (_,_, test, exp, name, test_type) ->
     fprintf c "%s%s~$%a$"
       (tex_of_test_type test_type)
       (tex_of_test test)
@@ -127,22 +127,23 @@ let rec tex_of_ins c = function
     begin match name with 
     | None -> () 
     | Some name -> fprintf c "~\\kwd{as}~%a" tex_of_name name end;
-  | UnShow xs ->
+  | UnShow (_,xs) ->
     fprintf c "\\KWD{unshow}~$";
     list_iter_alt (tex_of_var c) (fun () -> fprintf c ",") xs;
     fprintf c "$"
-  | Show xs -> 
+  | Show (_,xs) ->
     fprintf c "\\KWD{show}~$";
     list_iter_alt (tex_of_var c) (fun () -> fprintf c ",") xs;
     fprintf c "$"
-  | ShowAs (exp,name) -> 
+  | ShowAs (_,exp,name) ->
     fprintf c "\\KWD{show}~$%a$~\\kwd{as}~$\\mathrm{%a}$" 
       (tex_of_exp 0) exp 
       tex_of_name name
-  | Latex s -> 
+  | Latex (_,s) ->
     fprintf c "\\entercomment\n";
     fprintf c "\\noindent %s\n" s;
     fprintf c "\\exitcomment\n"
+  | Include _|Call _ -> Warn.fatal "include/call in herd2tex"
 
 and tex_of_inss c =
   List.iter (fprintf c "\\noindent %a\n\n" tex_of_ins)

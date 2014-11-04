@@ -41,14 +41,14 @@ type var = string
 type scope = Device | Kernel | Work_Group | Sub_Group | Work_Item
 
 type exp =
-  | Konst of  konst
-  | Var of var
-  | Op1 of op1 * exp
-  | Op of op2 * exp list
-  | App of exp * exp list
-  | Bind  of binding list * exp
-  | BindRec  of binding list * exp
-  | Fun of var list * exp
+  | Konst of  TxtLoc.t * konst
+  | Var of TxtLoc.t * var
+  | Op1 of  TxtLoc.t * op1 * exp
+  | Op of  TxtLoc.t * op2 * exp list
+  | App of  TxtLoc.t * exp * exp list
+  | Bind  of  TxtLoc.t * binding list * exp
+  | BindRec  of  TxtLoc.t * binding list * exp
+  | Fun of  TxtLoc.t * var list * exp
 
 and binding = var * exp
 
@@ -57,16 +57,16 @@ type test = Acyclic | Irreflexive | TestEmpty
 type test_type = Requires | Provides
 
 type ins =
-  | Let of binding list
-  | Rec of binding list
-  | Test of pos * test * exp * string option * test_type
-  | UnShow of string list
-  | Show of string list
-  | ShowAs of exp * string
-  | Latex of string
-  | Include of string (* file name, interpreter will read/parse file... *)
-  | Procedure of var * var list * ins list
-  | Call of var * exp list
+  | Let of TxtLoc.t * binding list
+  | Rec of  TxtLoc.t * binding list
+  | Test of  TxtLoc.t * pos * test * exp * string option * test_type
+  | UnShow of  TxtLoc.t * string list
+  | Show of  TxtLoc.t * string list
+  | ShowAs of  TxtLoc.t * exp * string
+  | Latex of  TxtLoc.t * string
+  | Include of  TxtLoc.t * string (* file name, interpreter will read/parse file... *)
+  | Procedure of  TxtLoc.t * var * var list * ins list
+  | Call of  TxtLoc.t * var * exp list
 
 (** Name X model definition *)
 type t = ModelOption.t * string * ins list

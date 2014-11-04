@@ -85,21 +85,21 @@ module Make
     let (txt,(_,_,prog)) = O.m
 
 (*
-    let debug_proc chan p = fprintf chan "%i" p
-    let debug_event chan e = fprintf chan "%s" (E.pp_eiid e)
-    let debug_set chan s =
-      output_char chan '{' ;
-      E.EventSet.pp chan "," debug_event s ;
-      output_char chan '}'
+  let debug_proc chan p = fprintf chan "%i" p
+  let debug_event chan e = fprintf chan "%s" (E.pp_eiid e)
+  let debug_set chan s =
+  output_char chan '{' ;
+  E.EventSet.pp chan "," debug_event s ;
+  output_char chan '}'
 
-    let debug_events = debug_set
+  let debug_events = debug_set
 
-    let debug_rel chan r =
-      E.EventRel.pp chan ","
-        (fun chan (e1,e2) -> fprintf chan "%a -> %a"
-            debug_event e1 debug_event e2)
-        r
-*)
+  let debug_rel chan r =
+  E.EventRel.pp chan ","
+  (fun chan (e1,e2) -> fprintf chan "%a -> %a"
+  debug_event e1 debug_event e2)
+  r
+ *)
     type v =
       | Rel of S.event_rel
       | Set of S.event_set
@@ -111,9 +111,13 @@ module Make
           clo_env : env ;
           clo_body : AST.exp; }
     and procedure = {
-      proc_args : AST.var list;
-      proc_env : env;
-      proc_body : AST.ins list; }
+        proc_args : AST.var list;
+        proc_env : env;
+        proc_body : AST.ins list; }
+
+    let error loc msg =
+      eprintf "%a: %s\n" TxtLoc.pp loc msg ;
+      raise Misc.Exit (* Silent failure *)
 
     let find_env env k =
       Lazy.force begin
@@ -121,6 +125,10 @@ module Make
 	with
 	| Not_found -> Warn.user_error "unbound var: %s" k
       end
+
+    let find_env_loc loc env k =
+      try  find_env env k
+      with Misc.UserError msg -> error loc msg
 
     let is_rel = function
       | Rel _ -> true
@@ -132,15 +140,11 @@ module Make
 
     let as_rel = function
       | Rel r -> r
-      | _ ->  Warn.user_error "relation expected"
+      | _ ->  assert false
 
     let as_set = function
       | Set s -> s
-      | _ -> Warn.user_error "set expected"
-
-    let as_clo = function
-      | Clo c -> c
-      | _ -> Warn.user_error "closure expected"
+      | _ -> assert false
 
 
     let rec stabilised vs ws = match vs,ws with
@@ -150,6 +154,18 @@ module Make
     | _,_ -> assert false
 
     open AST
+
+(* Get an expression location *)
+    let get_loc = function
+      | Konst (loc,_)
+      | Var (loc,_)
+      | Op1 (loc,_,_)
+      | Op (loc,_,_)
+      | Bind (loc,_,_)
+      | BindRec (loc,_,_)
+      | App (loc,_,_)
+      | Fun (loc,_,_) -> loc
+
 
 (* State of interpreter *)
     type st =
@@ -174,7 +190,7 @@ module Make
     let interpret failed_requires_clause test conc m id vb_pp =
 
       let is_dir = function
-        (* Todo: are these still needed? *)
+          (* Todo: are these still needed? *)
 	| Unv_Set -> (fun _ -> true)
 	| Bar_Set -> E.is_barrier
         | WriteRead -> E.is_mem
@@ -184,111 +200,114 @@ module Make
         | Plain -> fun e -> not (E.is_atomic e) in
 
       let rec eval env = function
-        | Konst (Empty RLN) -> empty_rel
-	| Konst (Empty SET) -> empty_set
-        | Var k -> find_env env k
-        | Fun (xs,body) ->
+        | Konst (_,Empty RLN) -> empty_rel
+        | Konst (_,Empty SET) -> empty_set
+        | Var (loc,k) -> find_env_loc loc env k
+        | Fun (_,xs,body) ->
             Clo {clo_args=xs; clo_env=env; clo_body=body; }
-        | Op1 (op,e) ->
-          begin match eval env e with
+        | Op1 (loc,op,e) ->
+            begin match eval env e with
             | Clo _ -> 
-                Warn.user_error
+                error (get_loc e)
                   "Expected a set or a relation, found a closure"
             | Proc _ ->
-                Warn.user_error
+                error (get_loc e)
                   "Expected a set or a relation, found a procedure"
             | Set v -> begin match op with
-                | Set_to_rln -> Rel (E.EventRel.set_to_rln v)
-                | Square -> Rel (E.EventRel.cartesian v v)
-                | Comp SET -> 
-                  Set (E.EventSet.diff (eval_set env (Var "_")) v)
-                | Comp RLN ->
-                  Warn.user_error "Bad syntax. Use '!' to complement a set, not '~'"
-                | _ -> 
-                  Warn.user_error "Expected a relation, found a set"
-              end
+              | Set_to_rln -> Rel (E.EventRel.set_to_rln v)
+              | Square -> Rel (E.EventRel.cartesian v v)
+              | Comp SET -> 
+                  Set
+                    (E.EventSet.diff
+                       (eval_set env (Var (TxtLoc.none,"_"))) v)
+
+              | Comp RLN ->
+                  error loc
+                    "Bad syntax. Use '!' to complement a set, not '~'"
+              | _ ->
+                  error loc "Expected a relation, found a set"
+            end
             | Rel v -> 
-              Rel
-                (match op with
-                 | Inv -> E.EventRel.inverse v
-                 | Int -> U.internal v
-                 | Ext -> U.ext v
-                 | NoId ->
-                   E.EventRel.filter
-                     (fun (e1,e2) -> not (E.event_equal e1 e2))
-                     v
-                 | Plus -> S.tr v
-                 | Star -> S.union (S.tr v) id
-                 | Opt -> S.union v id
-                 | Comp RLN -> 
-                   E.EventRel.diff (eval_rel env (Var "unv")) v
-                 | Comp SET -> 
-                   Warn.user_error "Bad syntax. Use '~' to complement a relation, not '!'"
-                 | Select (s1,s2) ->
-                   let f1 = is_dir s1 and f2 = is_dir s2 in
-                   S.restrict f1 f2 v
-                 | Square -> 
-                   Warn.user_error "Expected a set, found a relation"
-                 | Set_to_rln -> 
-                   Warn.user_error "Expected a set, found a relation")
-          end
-        | Op (op,es) ->
+                Rel
+                  (match op with
+                  | Inv -> E.EventRel.inverse v
+                  | Int -> U.internal v
+                  | Ext -> U.ext v
+                  | NoId ->
+                      E.EventRel.filter
+                        (fun (e1,e2) -> not (E.event_equal e1 e2))
+                        v
+                  | Plus -> S.tr v
+                  | Star -> S.union (S.tr v) id
+                  | Opt -> S.union v id
+                  | Comp RLN -> 
+                      E.EventRel.diff (eval_rel env (Var (TxtLoc.none,"unv"))) v
+                  | Comp SET -> 
+                      error loc
+                        "Bad syntax. Use '~' to complement a relation, not '!'"
+                  | Select (s1,s2) ->
+                      let f1 = is_dir s1 and f2 = is_dir s2 in
+                      S.restrict f1 f2 v
+                  | Square|Set_to_rln -> 
+                      error loc "Expected a set, found a relation")
+            end
+        | Op (loc,op,es) ->
             begin
               let vs = List.map (eval env) es in
 	      if List.for_all is_rel vs then begin
 		let vs = List.map as_rel vs in
 		let v = match op with
-		  | Union -> S.unions vs
-		  | Seq -> S.seqs vs
-		  | Diff ->
-                     begin match vs with
-		     | [] -> assert false
-		     | v::vs ->
+		| Union -> S.unions vs
+		| Seq -> S.seqs vs
+		| Diff ->
+                    begin match vs with
+		    | [] -> assert false
+		    | v::vs ->
 			List.fold_left E.EventRel.diff v vs
-                     end
-		  | Inter ->
-                     begin match vs with
-		     | [] -> assert false
-                     | v::vs ->
+                    end
+		| Inter ->
+                    begin match vs with
+		    | [] -> assert false
+                    | v::vs ->
 			List.fold_left E.EventRel.inter v vs
-                     end
-		  | Cartesian -> assert false in
+                    end
+		| Cartesian -> assert false in
 		Rel v
 	      end else if List.for_all is_set vs then begin
 		let vs = List.map as_set vs in
 		match op with
-		  | Union -> Set (E.EventSet.unions vs)
-		  | Seq -> assert false
-		  | Diff ->
-                     begin match vs with
-		     | [] -> assert false
-		     | v::vs ->
+		| Union -> Set (E.EventSet.unions vs)
+		| Seq -> assert false
+		| Diff ->
+                    begin match vs with
+		    | [] -> assert false
+		    | v::vs ->
 			Set (List.fold_left E.EventSet.diff v vs)
-                     end
-		  | Inter ->
-                     begin match vs with
-		     | [] -> assert false
-                     | v::vs ->
+                    end
+		| Inter ->
+                    begin match vs with
+		    | [] -> assert false
+                    | v::vs ->
 			Set (List.fold_left E.EventSet.inter v vs)
-                     end
-		  | Cartesian -> 
-                     begin match vs with
-		     | [v1;v2] -> 
+                    end
+		| Cartesian -> 
+                    begin match vs with
+		    | [v1;v2] -> 
                         Rel (E.EventRel.cartesian v1 v2)
-                     | _ -> assert false
-		     end
+                    | _ -> assert false
+		    end
 	      end else 
-		Warn.user_error 
+	        error loc
 		  "Unable to operate on values of different types (set and relation)" 
             end
-        | App (f,es) ->
+        | App (_,f,es) ->
             let f = eval_clo env f in
             let env = add_args f.clo_args es env f.clo_env in
             eval env f.clo_body
-        | Bind (bds,e) ->
+        | Bind (_,bds,e) ->
             let env = eval_bds env bds in
             eval env e
-        | BindRec (bds,e) ->
+        | BindRec (_,bds,e) ->
             let env = env_rec (fun pp -> pp) bds env in
             eval env e
 
@@ -302,12 +321,22 @@ module Make
           (fun (x,v) env -> StringMap.add x (lazy v) env)
           bds env_clo
 
-      and eval_rel env e = as_rel (eval env e)
-      and eval_set env e = as_set (eval env e)
-      and eval_clo env e = as_clo (eval env e)
-      and eval_proc env x = match find_env env x with
+      and eval_rel env e =  match eval env e with
+      | Rel v -> v
+      | _ -> error (get_loc e) "relation expected"
+
+      and eval_set env e = match eval env e with
+      | Set v -> v
+      | _ -> error (get_loc e) "set expected"
+
+      and eval_clo env e = match eval env e with
+      | Clo v -> v
+      | _ -> error (get_loc e) "closure expected"
+
+      and eval_proc loc env x = match find_env_loc loc env x with
       | Proc p -> p
-      | _ -> Warn.user_error "procedure expected"
+      | _ ->
+          Warn.user_error "procedure expected"
 
 (* For let *)
       and eval_bds env bds = match bds with
@@ -315,12 +344,12 @@ module Make
       | (k,e)::bds ->
           let v = eval env e in
           (*
-          begin match v with
-          | Rel r -> printf "Defining relation %s = {%a}.\n" k debug_rel r
-          | Set s -> printf "Defining set %s = %a.\n" k debug_set s
-          | Clo _ -> printf "Defining function %s.\n" k
-          end;
-          *)
+            begin match v with
+            | Rel r -> printf "Defining relation %s = {%a}.\n" k debug_rel r
+            | Set s -> printf "Defining set %s = %a.\n" k debug_set s
+            | Clo _ -> printf "Defining function %s.\n" k
+            end;
+           *)
           StringMap.add k (lazy v) (eval_bds env bds)
 
 (* For let rec *)
@@ -375,11 +404,11 @@ module Make
               (Lazy.force st.show)
           end in
           { st with show;} in
-        
+
 (* Execute one instruction *)
 
       let rec exec txt st i c =  match i with
-      | Show xs ->
+      | Show (_,xs) ->
           let show = lazy begin              
             List.fold_left
               (fun show x ->
@@ -387,32 +416,32 @@ module Make
               (Lazy.force st.show) xs
           end in
           run txt { st with show;} c
-      | UnShow xs ->
+      | UnShow (_,xs) ->
           let show = lazy begin
             List.fold_left
               (fun show x -> StringMap.remove x show)
               (Lazy.force st.show) xs
           end in
           run txt { st with show;} c
-      | ShowAs (e,id) ->
+      | ShowAs (_,e,id) ->
           let show = lazy begin
             StringMap.add id
               (rt_loc id (eval_rel st.env e)) (Lazy.force st.show)
           end in
           run txt { st with show; } c
-      | Test (pos,t,e,name,test_type) ->
-         (* If this is a provides-clause and we've previously
-            seen a requires-clause, abort. *)
-	 if st.seen_requires_clause && test_type = Provides then 
-	   begin
-	     let pp = String.sub txt pos.pos pos.len in
-	     Warn.user_error 
-	       "A provided condition must not come after an `undefined_unless' condition. Culprit: '%s'." pp
-	   end;
-         (* If this is a requires-clause, record the fact that
-            we have now seen at least one requires-clause. *)
-	 let st = {st with seen_requires_clause = 
-	   (test_type = Requires) || st.seen_requires_clause;} in
+      | Test (_,pos,t,e,name,test_type) ->
+          (* If this is a provides-clause and we've previously
+             seen a requires-clause, abort. *)
+	  if st.seen_requires_clause && test_type = Provides then
+	    begin
+	      let pp = String.sub txt pos.pos pos.len in
+	      Warn.user_error
+	        "A provided condition must not come after an `undefined_unless' condition. Culprit: '%s'." pp
+	    end;
+          (* If this is a requires-clause, record the fact that
+             we have now seen at least one requires-clause. *)
+	  let st = {st with seen_requires_clause =
+	            (test_type = Requires) || st.seen_requires_clause;} in
           let skip_this_check =
             match name with
             | Some name -> StringSet.mem name O.skipchecks
@@ -447,21 +476,21 @@ module Make
 	      end ;
 	      match test_type with
 	      | Provides -> 
-		 None
+		  None
 	      | Requires -> 
-		 let () = failed_requires_clause () in
-		 run txt st c
+		  let () = failed_requires_clause () in
+		  run txt st c
             end
           else begin
             W.warn "Skipping check %s" (Misc.as_some name) ;
             run txt st c
           end
-      | Let bds -> 
+      | Let (_,bds) ->
           let env = eval_bds st.env bds in
           let st = { st with env; } in
           let st = doshow bds st in
           run txt st c
-      | Rec bds ->
+      | Rec (_,bds) ->
           let env =
             env_rec
               (fun pp -> pp@show_to_vbpp st)
@@ -469,21 +498,24 @@ module Make
           let st = { st with env; } in
           let st = doshow bds st in
           run txt st c
-      | Include fname ->
+      | Include (loc,fname) ->
           (* Run sub-model file *)
           let module P = ParseModel.Make(LexUtils.Default) in
-          let itxt,(_,_,iprog) = P.parse fname in
+          let itxt,(_,_,iprog) =
+            try P.parse fname
+            with Misc.Fatal msg | Misc.UserError msg ->
+              error loc msg  in
           begin match run itxt st iprog with
           | None -> None            (* Failure *)
           | Some st -> run txt st c (* Go on *)
           end
-      | Procedure (name,args,body) ->
+      | Procedure (_,name,args,body) ->
           let p =
             Proc { proc_args=args; proc_env=st.env; proc_body=body; } in
           run txt { st with env = StringMap.add name (lazy p) st.env } c
-      | Call (name,es) ->
+      | Call (loc,name,es) ->
           let env0 = st.env in
-          let p = eval_proc env0 name in
+          let p = eval_proc loc env0 name in
           let env1 = add_args p.proc_args es env0 p.proc_env in
           begin match run txt { st with env = env1; } p.proc_body with
           | None -> None
@@ -507,8 +539,8 @@ module Make
             S.O.PC.doshow show
         end in
       run txt {env=m; show=show; 
-        seen_requires_clause=false;
-        skipped=StringSet.empty;} prog
+               seen_requires_clause=false;
+               skipped=StringSet.empty;} prog
         
 
 
