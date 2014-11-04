@@ -106,10 +106,10 @@ let tex_of_test_type = function
   | Requires -> "\\KWD{undefined\\_unless}~"
 
 let rec tex_of_ins c = function
-  | Let (_,bs) ->
+  | Let (_,bs) -> 
     fprintf c "\\KWD{let}~"; 
     list_iter_alt (tex_of_binding c) (fun () -> fprintf c "~\\KWD{and}~") bs
-  | Rec (_,bs) ->
+  | Rec (_,bs) -> 
     fprintf c "\\KWD{let}~\\KWD{rec}~"; 
     list_iter_alt (tex_of_binding c) (fun () -> fprintf c "~\\KWD{and}~") bs 
   | Procedure (_,x,args,body) ->
