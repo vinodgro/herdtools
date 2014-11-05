@@ -166,6 +166,7 @@ let get_nprocs a cfg = match cfg.nprocs with
       | PPC -> 4
       | X86 -> 2
       | ARM -> 2
+      | MIPS -> 2
       | C|CPP -> 2
     end
 | Some i -> i

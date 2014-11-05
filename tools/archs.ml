@@ -18,13 +18,15 @@ type t =
   | X86
   | PPC
   | ARM
+  | MIPS
   | C
-let tags = ["X86";"PPC";"ARM";"C"]
+let tags = ["X86";"PPC";"ARM";"MIPS";"C"]
 
 let parse s = match s with
 | "X86" -> Some X86
 | "PPC" -> Some PPC
 | "ARM" -> Some ARM
+| "MIPS" -> Some MIPS
 | "C" -> Some C
 | _ -> None
 
@@ -37,7 +39,10 @@ let pp a = match a with
 | X86 -> "X86"
 | PPC -> "PPC"
 | ARM -> "ARM"
+| MIPS -> "MIPS"
 | C -> "C"
 let arm = ARM
 let ppc = PPC
 let x86 = X86
+let mips = MIPS
+

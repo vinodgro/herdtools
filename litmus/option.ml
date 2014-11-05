@@ -169,7 +169,7 @@ let armopt =
 let mipsopt =
   { delay = 1024; gccopts = "-O2";
     word = Word.WXX; line = 1024 ;} (* cache line size cannot be wrong... *)
-
+  
 let copt =
   { delay = 2048; gccopts = ""; word = Word.WXX; line = 1024} (* maximal *)
 let get_default arch = match arch with

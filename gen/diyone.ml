@@ -204,6 +204,10 @@ let () =
       let module T = Top.Make(Co) in
       let module M = Build(T(ARMCompile.Make(V)(C))) in
       M.zyva
+  | MIPS ->
+      let module T = Top.Make(Co) in
+      let module M = Build(T(MIPSCompile.Make(V)(C))) in
+      M.zyva
   | C|CPP as a ->
       let module CoC = struct
         include Co

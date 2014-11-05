@@ -148,6 +148,9 @@ let () =
   | ARM ->
       let module M = Build(ARMArch.Make(V)) in
       M.zyva
+  | MIPS ->
+      let module M = Build(MIPSArch.Make(V)) in
+      M.zyva
   | C|CPP ->
       let module M = Build(CArch) in
       M.zyva)

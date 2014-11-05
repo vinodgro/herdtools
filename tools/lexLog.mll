@@ -45,6 +45,7 @@ let hexa = ['0'-'9' 'a'-'f' 'A'-'F' ]
 let hexanum = "0x" hexa+
 let alpha = [ 'a'-'z' 'A'-'Z']
 let name = alpha (alpha|digit)*
+let loc = name | ('$' (alpha+|digit+))
 let blank = [' ' '\t']
 let testname  = (alpha|digit|'_' | '/' | '.' | '-' | '+' | '[' | ']')+
 let nl = '\n'|"\r\n"
@@ -126,7 +127,7 @@ and skip_empty_lines = parse
 
 and pline k = parse
 | blank*
- ((num ':' name as loc)|(('['?) (name as loc) ( ']'?)))
+ ((num ':' loc as loc)|(('['?) (loc as loc) ( ']'?)))
     blank* '=' blank* (('-' ? (num|hexanum))|name as v)
     blank* ';'
     {

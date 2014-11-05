@@ -117,6 +117,7 @@ struct
     Misc.map_string
       (fun c -> match c with
       | '%' -> "%%"
+      | '$' -> "r"
       | _ -> String.make 1 c)
       s
 
@@ -129,6 +130,7 @@ struct
     Misc.map_string
       (fun c -> match c with
       | '%' -> ""
+      | '$' -> "r"
       | _  -> String.make 1 c)
       s
 

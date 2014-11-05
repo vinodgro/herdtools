@@ -190,12 +190,6 @@ type instruction =
   | I_SADD16 of reg * reg * reg           
   | I_SEL of reg * reg * reg     	    
 
-open Constant
-
-let pp_abs = function
-  | Symbolic s -> s
-  | Concrete i -> string_of_int i
-
 let pp_lbl = fun i -> i
 
 open PPMode
@@ -226,8 +220,6 @@ let do_pp_instruction m =
   let ppi_rrr_noflags opcode = ppi_rrr opcode DontSetFlags in
   let ppi_rri opcode s rt rn v =
      pp_memo opcode s^" "^pp_reg rt ^ ","^ pp_reg rn ^ "," ^ m.pp_k v in
-  let _ppi_rrv opcode rt rn v =
-    opcode^" "^pp_reg rt ^ ","^ pp_reg rn ^ "," ^ pp_abs v in
   let ppi_rrmc opcode rt rn c=
     pp_memoc opcode c^" "^pp_reg rt ^
     ","^ "[" ^ pp_reg rn ^ "]" in

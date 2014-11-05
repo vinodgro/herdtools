@@ -10,7 +10,7 @@
 
 (* Power / ARM dependencies *)
 
- type dp = ADDR | DATA | CTRL | CTRLISYNC
+type dp = ADDR | DATA | CTRL | CTRLISYNC
 
 let sig_of_dp = function
       | ADDR -> 'A'

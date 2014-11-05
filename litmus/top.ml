@@ -495,7 +495,19 @@ end = struct
             let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
             X.compile cycles hash_env
               name in_chan out_chan splitted
-        | `MIPS -> Warn.fatal "No MIPS"
+        | `MIPS ->
+            let module Arch' = MIPSArch.Make(OC)(V) in
+            let module LexParse = struct
+              type instruction = Arch'.pseudo
+              type token = MIPSParser.token
+              module Lexer = MIPSLexer.Make(LexConfig)
+              let lexer = Lexer.token
+              let parser = MIPSParser.main
+            end in
+            let module Compile = MIPSCompile.Make(V)(OC) in
+            let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
+            X.compile cycles hash_env
+              name in_chan out_chan splitted
         | `C ->
             let module Arch' = struct
               let comment = match OX.sysarch with

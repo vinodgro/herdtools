@@ -225,6 +225,9 @@ let () =
     | ARM ->
         let module M = Make(C)(T(ARMCompile.Make(V)(C))) in
         M.zyva
+    | MIPS ->
+        let module M = Make(C)(T(MIPSCompile.Make(V)(C))) in
+        M.zyva
     | C|CPP ->
         let module CoC = struct
           include C

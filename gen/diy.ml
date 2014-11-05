@@ -220,6 +220,9 @@ let () =
   | ARM ->
       let module M = Make(T(ARMCompile.Make(V)(C)))(Co) in
       M.go
+  | MIPS ->
+      let module M = Make(T(MIPSCompile.Make(V)(C)))(Co) in
+      M.go
   | C|CPP ->
       let module CoC = struct
         include Co

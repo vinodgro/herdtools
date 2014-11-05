@@ -53,7 +53,7 @@ module Make(V:Constant.S) =
     let fold_some_fences f r = f ISB (fo (fun o -> f (DMB o)) r)
 
 
-    let orders _f _d1 _d2 =true
+   let orders _f _d1 _d2 =true
 
 (********)
 (* Deps *)

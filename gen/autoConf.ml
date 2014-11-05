@@ -37,6 +37,14 @@ module X86 = struct
   let safe_conform = "Rfe,Fre,Wse,PodR*,PodWW,MFencedWR"
 end
 
+module MIPS = struct
+  module X = MIPSArch.Make(SymbConstant)
+  module A = AutoArch.Make(X)
+  let testing = "Rfe,Pod**,Syncd**,[Rfi,SyncdR*],[Rfi,PodR*]"
+  let safe = "Fre,Wse"
+  let safe_conform = "Rfe,Fre,Wse,PodR*,PodWW,SyncdWR"
+end
+
 module ARM = struct
   module P = ARMArch.Make(SymbConstant)
   module A = AutoArch.Make(P)
@@ -73,6 +81,7 @@ let get_arch a =
   | X86 -> (module X86 : ArchConf)
   | PPC -> (module PPC : ArchConf)
   | ARM -> (module ARM : ArchConf)
+  | MIPS -> (module MIPS : ArchConf)
   | C|CPP -> assert false
 
 open AutoOpt 

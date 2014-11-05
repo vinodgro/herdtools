@@ -68,6 +68,7 @@ rule token = parse
 | ".pred" as x {PTX_REG_TYPE x}
 
 | "*" { STAR }
+| '$' (digit+|alpha+) as name { DOLLARNAME name }
 | name as name { NAME name }
 | eof { EOF }
 | "<<" { error "<<" lexbuf }

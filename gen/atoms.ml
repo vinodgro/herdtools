@@ -85,6 +85,9 @@ let () =
   | ARM ->
       let module M = Make(ARMArch.Make(V)) in
       M.zyva
+  | MIPS ->
+      let module M = Make(MIPSArch.Make(V)) in
+      M.zyva 
   | C ->
       let module M = Make(CArch) in
       M.zyva

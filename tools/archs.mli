@@ -15,6 +15,7 @@ type t =
   | X86
   | PPC
   | ARM
+  | MIPS
   | C
 
 val tags : string list
@@ -26,4 +27,6 @@ val pp : t -> string
 val arm : t
 val ppc : t
 val x86 : t
+val mips : t
+
 

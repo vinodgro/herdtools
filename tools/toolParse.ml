@@ -78,6 +78,18 @@ end = struct
         end in
         let module X = Make (ARM) (ARMLexParse) in
         X.zyva chan splitted
+    | MIPS ->
+        let module MIPS = MIPSBase in
+        let module MIPSLexParse = struct
+	  type instruction = MIPS.pseudo
+	  type token = MIPSParser.token
+
+          module L = MIPSLexer.Make(LexConf)
+	  let lexer = L.token
+	  let parser = MIPSParser.main
+        end in
+        let module X = Make (MIPS) (MIPSLexParse) in
+        X.zyva chan splitted
     | C -> Warn.fatal "No C arch in toolParse.ml"
 
   module SP = Splitter.Make(LexConf)
@@ -173,6 +185,18 @@ module Tops
 	      let parser = ARMParser.main
             end in
             let module X = Make (ARM) (ARMLexParse) in
+            X.zyva
+        | MIPS ->
+            let module MIPS = MIPSBase in
+            let module MIPSLexParse = struct
+	      type instruction = MIPS.pseudo
+	      type token = MIPSParser.token
+
+              module L = MIPSLexer.Make(LexConf)
+	      let lexer = L.token
+	      let parser = MIPSParser.main
+            end in
+            let module X = Make (MIPS) (MIPSLexParse) in
             X.zyva
         | C -> Warn.fatal "No C arch in toolParse.ml"
 
