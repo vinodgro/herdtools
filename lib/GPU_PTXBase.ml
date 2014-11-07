@@ -434,7 +434,7 @@ let map_addrs _f _ins = Warn.fatal "GPU_PTX map_addrs has not been implemented"
 "ARM and PPC do the same..."
 let fold_addrs _f c _ins = c
 
-let pp_instruction m ins = dump_instruction ins
+let pp_instruction _m ins = dump_instruction ins
 
 let get_next _ins = Warn.fatal "GPU_PTX get_next not implemented"
 

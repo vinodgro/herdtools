@@ -84,6 +84,23 @@ module FromX86(XB:X86Barrier.S) = struct
   let pp_isync = "???"
 end
 
+
+module FromMIPS(MB:MIPSBarrier.S) = struct
+  type a = MB.a
+
+  type b =
+      | SYNC | LWSYNC | ISYNC | EIEIO (* PPC (MIPS) memory model barrier *)
+      | DSB | DMB | ISB               (* ARM barrier *)
+      | DSBST | DMBST
+      | MFENCE | SFENCE | LFENCE      (* X86 *)
+      | MEMBAR_CTA | MEMBAR_GL | MEMBAR_SYS (*PTX barriers*)
+
+  let a_to_b a = match MB.a_to_b a with
+  | MB.SYNC -> SYNC
+
+  let pp_isync = "???"
+end
+
 module FromCPP11(CB:CPP11Barrier.S) = struct
 
   type a = CB.a

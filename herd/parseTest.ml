@@ -155,6 +155,27 @@ module Top (C:Config) = struct
           let module X = Make (X86S) (P) (X86M) in 
           X.run name chan env splitted
 
+      | `MIPS ->
+          let module MIPS = MIPSArch.Make(C.PC)(SymbValue) in
+          let module MIPSLexParse = struct
+	    type instruction = MIPS.pseudo
+	    type token = MIPSParser.token
+            module Lexer = MIPSLexer.Make(LexConfig)
+	    let lexer = Lexer.token
+	    let parser = MIPSParser.main
+	  end in
+          let module MIPSS = MIPSSem.Make(C)(SymbValue) in
+          let module MIPSBarrier = struct
+            type a = MIPS.barrier
+            type b = SYNC
+            let a_to_b a = match a with
+            | MIPS.Sync -> SYNC
+          end in
+          let module MIPSM = MIPSMem.Make(ModelConfig)(MIPSS)(MIPSBarrier) in
+          let module P = GenParser.Make (C) (MIPS) (MIPSLexParse) in
+          let module X = Make (MIPSS) (P) (MIPSM) in
+          X.run name chan env splitted
+
       | `C ->
         let module CPP11 = CPP11Arch.Make(C.PC)(SymbValue) in
         let module CPP11LexParse = struct

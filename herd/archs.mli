@@ -16,6 +16,7 @@ module System : sig
     [ `X86
     | `PPC
     | `ARM
+    | `MIPS
     | `GPU_PTX
     ]
 
@@ -35,6 +36,7 @@ val pp : t -> string
 val arm : t
 val ppc : t
 val x86 : t
+val mips : t
 val gpu_ptx : t
 val c : t
 val opencl : t
