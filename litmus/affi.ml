@@ -58,7 +58,9 @@ let mk_cycle coms =
       (fun p c ->
         { p=p; edge=c; next=nil; prev=nil;}) coms in
   let patch = function
-    | []|[_] -> assert false
+    | [] -> assert false
+    | [x] ->
+        x.next <- x ; x.prev <- x ; x
     | x::xs ->
         let rec do_rec prev = function
           | [] ->
