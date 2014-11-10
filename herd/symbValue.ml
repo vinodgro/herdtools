@@ -111,6 +111,11 @@ let add v1 v2 = match v1,v2 with
 | (v,Val (Concrete 0)) -> v (* Important for symbolic constants *)
 | _,_ -> binop Op.Add (+) v1 v2
 
+and orop v1 v2 = match v1,v2 with
+| Val (Concrete 0),v
+| v,Val (Concrete 0) -> v
+| _,_ -> binop Op.Or (lor) v1 v2
+
 and xor v1 v2 = 
   if compare v1 v2 = 0 then zero else
   binop Op.Xor (lxor) v1 v2
@@ -182,8 +187,9 @@ let op op = match op with
 | Mul -> binop op ( * )
 | Div -> binop op ( / )
 | And -> binop op (land)
-| Or -> binop op (lor)
+| Or -> orop
 | Xor -> xor
+| Nor -> binop op (fun x1 x2 -> lnot (x1 lor x2))
 | ShiftLeft -> binop op (lsl)
 | Lt -> lt
 | Gt -> gt

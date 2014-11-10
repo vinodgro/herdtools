@@ -9,7 +9,8 @@ MDL=x86tso.cat herd.cat herdcat.cat ppc.cat sc.cat LL.cat arm.cat power.cat \
  atom.cat atom-arm.cat pretty.cat prettycat.cat fulleieio.cat armllh.cat lessrelaxed.cat \
  uniproc.cat uniproccat.cat minimal.cat minimalcat.cat qualcomm.cat \
  cpp11.cat opencl.cat sccat.cat ptx.cat simple-arm.cat \
- uniproc-normw-cat.cat
+ uniproc-normw-cat.cat mips.cat
+
 
 CFG=apoil.cfg enslip.cfg web.cfg doc.cfg cpp11.cfg
 DOT=test7.dot doc.dot

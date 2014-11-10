@@ -267,10 +267,10 @@ module Make (C:Sem.Config)(V:Value.S)
               let strex ii =
                 (read_reg ARM.RESADDR ii >>| read_reg r2 ii >>| read_reg r3 ii) >>=
                 fun ((resa,v),a) ->
+                  (write_reg ARM.RESADDR V.zero ii >>|
                   M.altT
-                    ((write_reg ARM.RESADDR V.zero ii >>| write_reg r1 V.one ii) >>! ())
-                    ((write_reg r1 V.zero ii >>|
-                    write_mem_atomic a v resa ii) >>! ()) in
+                    (write_reg r1 V.one ii)
+                    ((write_reg r1 V.zero ii >>| write_mem_atomic a v resa ii) >>! ())) >>! () in
               checkZ strex c ii
 	  | ARM.I_MOV (rd, rs, c) -> 
               let mov ii =

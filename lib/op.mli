@@ -18,7 +18,7 @@
 
 type op =
   | Add | Sub | Mul | Div
-  | And | Or | Xor
+  | And | Or | Xor | Nor
 
 (* Logical shift left *)
   | ShiftLeft
