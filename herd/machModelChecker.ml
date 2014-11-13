@@ -41,64 +41,68 @@ module Make
       | None -> res
 
     let check_event_structure test conc kont res =
-      let prb = JU.make_procrels conc in
-      let pr = prb.JU.pr in
-      let vb_pp = lazy (JU.vb_pp_procrels prb) in
+      let prb = lazy (JU.make_procrels conc) in
+      let pr = lazy (Lazy.force prb).JU.pr in
+      let vb_pp = lazy (JU.vb_pp_procrels (Lazy.force prb)) in
       let evts = E.EventSet.filter E.is_mem conc.S.str.E.events in
       let id =
-        E.EventRel.of_list
-          (List.rev_map
-             (fun e -> e,e)
-             (E.EventSet.elements evts)) in
-      let unv = E.EventRel.cartesian evts evts in
+        lazy begin
+          E.EventRel.of_list
+            (List.rev_map
+               (fun e -> e,e)
+               (E.EventSet.elements evts))
+        end in
+      let unv = lazy begin E.EventRel.cartesian evts evts  end in
 (* Initial env *)
       let m =
-        List.fold_left
-          (fun m (k,v) -> StringMap.add k (lazy (I.Rel v)) m)
-          StringMap.empty
+        I.add_rels
+          I.env_empty
           (["id",id;
 	   "unv", unv;
-            "loc", E.EventRel.restrict_rel E.same_location unv;
-           "atom",conc.S.atomic_load_store;
-           "po", (* S.restrict E.is_mem E.is_mem *) conc.S.po;
-           "pos", conc.S.pos;
-           "po-loc", conc.S.pos;
-           "addr", pr.S.addr;
-           "data", pr.S.data;
-           "ctrl", pr.S.ctrl;
-           "ctrlisync", pr.S.ctrlisync;
-           "ctrlisb", pr.S.ctrlisync;
-           "rf", pr.S.rf;
-           "rfe", U.ext pr.S.rf;
-           "rfi", U.internal pr.S.rf;
+            "loc", lazy begin
+              E.EventRel.restrict_rel E.same_location (Lazy.force unv)
+            end;
+           "atom",lazy conc.S.atomic_load_store;
+           "po", lazy conc.S.po;
+           "pos", lazy conc.S.pos;
+           "po-loc", lazy conc.S.pos;
+           "addr", lazy (Lazy.force pr).S.addr;
+           "data", lazy (Lazy.force pr).S.data;
+           "ctrl", lazy (Lazy.force pr).S.ctrl;
+           "ctrlisync", lazy (Lazy.force pr).S.ctrlisync;
+           "ctrlisb", lazy (Lazy.force pr).S.ctrlisync;
+           "rf", lazy (Lazy.force pr).S.rf;
+           "rfe", lazy (U.ext (Lazy.force pr).S.rf);
+           "rfi", lazy (U.internal (Lazy.force pr).S.rf);
 (* Power fences *)
-           "lwsync", prb.JU.lwsync;
-           "eieio", prb.JU.eieio;
-           "sync", prb.JU.sync;
-           "isync", prb.JU.isync;
+           "lwsync",lazy  (Lazy.force prb).JU.lwsync;
+           "eieio",lazy  (Lazy.force prb).JU.eieio;
+           "sync",lazy  (Lazy.force prb).JU.sync;
+           "isync",lazy  (Lazy.force prb).JU.isync;
 (* ARM fences *)
-           "dmb",prb.JU.dmb;
-           "dsb",prb.JU.dsb;
-           "dmbst",prb.JU.dmbst;
-           "dmb.st",prb.JU.dmbst;
-           "dsbst",prb.JU.dsbst;
-           "dsb.st",prb.JU.dsbst;
-           "isb",prb.JU.isb;
+           "dmb",lazy (Lazy.force prb).JU.dmb;
+           "dsb",lazy (Lazy.force prb).JU.dsb;
+           "dmbst",lazy (Lazy.force prb).JU.dmbst;
+           "dmb.st",lazy (Lazy.force prb).JU.dmbst;
+           "dsbst",lazy (Lazy.force prb).JU.dsbst;
+           "dsb.st",lazy (Lazy.force prb).JU.dsbst;
+           "isb",lazy (Lazy.force prb).JU.isb;
 (* X86 fences *)
-           "mfence",prb.JU.mfence;
-           "sfence",prb.JU.sfence;
-           "lfence",prb.JU.lfence;
+           "mfence",lazy (Lazy.force prb).JU.mfence;
+           "sfence",lazy (Lazy.force prb).JU.sfence;
+           "lfence",lazy (Lazy.force prb).JU.lfence;
 (* PTX fences *)
-	   "membar.cta", prb.JU.membar_cta;
-	   "membar.gl", prb.JU.membar_gl;
-	   "membar.sys", prb.JU.membar_sys;
+	   "membar.cta", lazy (Lazy.force prb).JU.membar_cta;
+	   "membar.gl", lazy (Lazy.force prb).JU.membar_gl;
+	   "membar.sys", lazy (Lazy.force prb).JU.membar_sys;
           ] @ 
           (match test.Test.scope_tree with
            | None -> []
            | Some scope_tree ->
         List.fold_left (fun z (k,v) ->
-            ("ext-" ^ k, U.ext_scope v unv scope_tree) :: 
-            ((* "int-" ^ *) k, U.int_scope v unv scope_tree) :: 
+            ("ext-" ^ k, lazy (U.ext_scope v (Lazy.force unv) scope_tree)) :: 
+            ((* "int-" ^ *) k,
+             lazy (U.int_scope v (Lazy.force unv) scope_tree)) :: 
             z ) [] [ 
           "wi", AST.Work_Item; "thread", AST.Work_Item;
           "sg", AST.Sub_Group; "warp", AST.Sub_Group;
@@ -107,9 +111,9 @@ module Make
 	  "dev", AST.Device; "gl", AST.Device;
 	])) in
       let m =
-        List.fold_left
-          (fun m (k,v) -> StringMap.add k (lazy (I.Set (E.EventSet.filter v evts))) m)
-          m
+        I.add_sets m
+          (List.map
+             (fun (k,p) -> k,lazy (E.EventSet.filter p evts))
           [
            "_", (fun _ -> true);
            "R", E.is_mem_load;
@@ -119,12 +123,13 @@ module Make
            "P", (fun e -> not (E.is_atomic e));
            "A", E.is_atomic;
 	   "I", E.is_mem_store_init;
-         ] in
-      let m = 
-	List.fold_left
-	  (fun m (k,v) -> StringMap.add k (lazy (I.Set (E.EventSet.filter (fun e -> v e.E.action) evts))) m)
-	  m
-	  E.Act.arch_sets in
+         ]) in
+      let m =
+        I.add_sets m
+          (List.map
+             (fun (k,a) ->
+               k,lazy (E.EventSet.filter (fun e -> a e.E.action) evts))
+	  E.Act.arch_sets) in
       if withco then
         let process_co co0 res =
           let co = S.tr co0 in
@@ -138,23 +143,16 @@ module Make
             end in
 
           let m =
-            List.fold_left
-              (fun m (k,v) -> StringMap.add k (lazy (I.Rel v)) m)
-              m
+            I.add_rels m
               [
-               "fr", fr; "fre", U.ext fr; "fri", U.internal fr;
-               "co", co; "coe", U.ext co; "coi", U.internal co;
-             ] in
+               "fr", lazy fr;
+               "fre", lazy (U.ext fr); "fri", lazy (U.internal fr);
+               "co", lazy co;
+               "coe", lazy (U.ext co); "coi", lazy (U.internal co);
+	     ] in
           run_interpret (fun () -> ()) test conc m id vb_pp kont res in
         U.apply_process_co test  conc process_co res
       else
-        let co0 = conc.S.pco in
-        let m =
-           List.fold_left
-              (fun m (k,v) -> StringMap.add k (lazy (I.Rel v)) m)
-              m
-              [
-               "co0", co0;
-             ] in
+        let m = I.add_rels m ["co0",lazy  conc.S.pco] in
         run_interpret (fun () -> ()) test conc m id vb_pp kont res
   end

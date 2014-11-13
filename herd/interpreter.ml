@@ -18,26 +18,19 @@ module type S = sig
   
   module S : Sem.Semantics
 
-  type v =
-    | Rel of S.event_rel
-    | Set of S.event_set
-    | Clo of closure
-    | Proc of procedure
-  and env = v Lazy.t StringMap.t
-  and closure
-  and procedure
-(*
-  and closure =
-    { clo_args : AST.var list ;
-      clo_env : env ;
-      clo_body : AST.exp; }
-  and procedure = {
-      proc_args : AST.var list;
-      proc_env : env;
-      proc_body : AST.ins list; }
-*)
+(* Values *)
+  module V : sig type env end
+
+  val env_empty : V.env
+
+(* Helpers, initialisation *)
+val add_rels : V.env -> (string * S.event_rel Lazy.t) list -> V.env      
+val add_sets : V.env -> (string * S.event_set Lazy.t) list -> V.env      
+
+(* State of interpreter *)
+
   type st = { 
-    env : env ;
+    env : V.env ;
     show : S.event_rel StringMap.t Lazy.t ;
     seen_requires_clause : bool ;
     skipped : StringSet.t ; 
@@ -50,8 +43,8 @@ module type S = sig
     (unit -> unit) -> (* function called when a requires clause fails *)
     S.test ->
     S.concrete ->
-    env ->
-    S.event_rel ->
+    V.env ->
+    S.event_rel lazy_t ->
     (StringMap.key * S.event_rel) list Lazy.t ->
     st option
 end
@@ -100,20 +93,32 @@ module Make
   debug_event e1 debug_event e2)
   r
  *)
-    type v =
-      | Rel of S.event_rel
-      | Set of S.event_set
-      | Clo of closure
-      | Proc of procedure
-    and env = v Lazy.t StringMap.t
-    and closure =
-        { clo_args : AST.var list ;
-          clo_env : env ;
-          clo_body : AST.exp; }
-    and procedure = {
-        proc_args : AST.var list;
-        proc_env : env;
-        proc_body : AST.ins list; }
+
+    module V = Ivalue.Make(S)
+
+    let env_empty = StringMap.empty
+
+    open V
+
+(* Add values to env *)
+  let add_rels m bds =
+    List.fold_left
+      (fun m (k,v) -> StringMap.add k (lazy (Rel (Lazy.force v))) m)
+      m bds
+    
+  let add_sets m bds =
+    List.fold_left
+      (fun m (k,v) -> StringMap.add k (lazy (Set (Lazy.force v))) m)
+      m bds
+
+
+
+    type st = { 
+        env : env ;
+        show : S.event_rel StringMap.t Lazy.t ;
+        seen_requires_clause : bool ;
+        skipped : StringSet.t ; 
+      }
 
     let error loc msg =
       eprintf "%a: %s\n" TxtLoc.pp loc msg ;
@@ -168,11 +173,6 @@ module Make
 
 
 (* State of interpreter *)
-    type st =
-        { env : env ;
-          show : S.event_rel StringMap.t Lazy.t ;
-	  seen_requires_clause : bool ;
-          skipped : StringSet.t ; }
 
     let rt_loc lbl =
       if
@@ -238,8 +238,8 @@ module Make
                         (fun (e1,e2) -> not (E.event_equal e1 e2))
                         v
                   | Plus -> S.tr v
-                  | Star -> S.union (S.tr v) id
-                  | Opt -> S.union v id
+                  | Star -> S.union (S.tr v) (Lazy.force id)
+                  | Opt -> S.union v (Lazy.force id)
                   | Comp RLN -> 
                       E.EventRel.diff (eval_rel env (Var (TxtLoc.none,"unv"))) v
                   | Comp SET -> 

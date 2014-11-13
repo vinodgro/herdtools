@@ -9,8 +9,9 @@ empty atom & (fre;coe) as atomic
 
 (* ppo, choosing pso at the moment *)
 let ppo = RR(po) | RW(po) | sync
+show sync
 
-let ghb = ppo | rfe| fr | co
+let ghb = ppo | rfe | fr | co
 
 acyclic ghb as pso
 
