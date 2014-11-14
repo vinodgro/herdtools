@@ -240,6 +240,10 @@ module Make
       let vars,tags = env in
       StringMap.add k v vars,tags
 
+    let exists_val k (env,_) =
+      try ignore (StringMap.find k env) ; true
+      with Not_found -> false
+
     let add_rels m bds =
       List.fold_left
         (fun m (k,v) -> add_val k (lazy (Rel (Lazy.force v))) m)
@@ -806,10 +810,14 @@ module Make
           | Some st_call ->
               run txt { st_call with env = env0; } c
           end
-      | Enum (_loc,name,xs) ->
+      | Enum (loc,name,xs) ->
           let env =
             List.fold_left
-              (fun env x -> add_val x (lazy (Tag (name,x))) env)
+              (fun env x ->
+                if exists_val x env then
+                  error loc
+                    "this enum definition redefines %s" x ;
+                add_val x (lazy (Tag (name,x))) env)
               st.env xs in
           let vars,tags = env in
           let env = vars,StringMap.add name xs tags in
