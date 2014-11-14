@@ -53,6 +53,7 @@ module Make
                (E.EventSet.elements evts))
         end in
       let unv = lazy begin E.EventRel.cartesian evts evts  end in
+      let ks = { I.id; unv; evts;} in
 (* Initial env *)
       let m =
         I.add_rels
@@ -95,15 +96,15 @@ module Make
 	   "membar.cta", lazy (Lazy.force prb).JU.membar_cta;
 	   "membar.gl", lazy (Lazy.force prb).JU.membar_gl;
 	   "membar.sys", lazy (Lazy.force prb).JU.membar_sys;
-          ] @ 
+          ] @
           (match test.Test.scope_tree with
            | None -> []
            | Some scope_tree ->
         List.fold_left (fun z (k,v) ->
-            ("ext-" ^ k, lazy (U.ext_scope v (Lazy.force unv) scope_tree)) :: 
+            ("ext-" ^ k, lazy (U.ext_scope v (Lazy.force unv) scope_tree)) ::
             ((* "int-" ^ *) k,
-             lazy (U.int_scope v (Lazy.force unv) scope_tree)) :: 
-            z ) [] [ 
+             lazy (U.int_scope v (Lazy.force unv) scope_tree)) ::
+            z ) [] [
           "wi", AST.Work_Item; "thread", AST.Work_Item;
           "sg", AST.Sub_Group; "warp", AST.Sub_Group;
           "wg", AST.Work_Group; "block", AST.Work_Group; "cta", AST.Work_Group;
@@ -150,9 +151,9 @@ module Make
                "co", lazy co;
                "coe", lazy (U.ext co); "coi", lazy (U.internal co);
 	     ] in
-          run_interpret (fun () -> ()) test conc m id vb_pp kont res in
+          run_interpret (fun () -> ()) test conc m ks vb_pp kont res in
         U.apply_process_co test  conc process_co res
       else
         let m = I.add_rels m ["co0",lazy  conc.S.pco] in
-        run_interpret (fun () -> ()) test conc m id vb_pp kont res
+        run_interpret (fun () -> ()) test conc m ks vb_pp kont res
   end

@@ -305,7 +305,7 @@ module Make (C:Sem.Config)(V:Value.S)
 	  fun a ->
             M.altT
               ((write_reg PPC.RES V.zero ii >>| flags_res false ii) >>! B.Next)
-              (write_reg PPC.RES V.zero ii >>| (write_addr_conditional a vR vS aR ii >>|
+              (write_reg PPC.RES V.zero ii >>| (write_addr_conditional a vS vR aR ii >>|
               flags_res true ii) >>! B.Next)
     |PPC.Peieio  ->
 	create_barrier PPC.Eieio ii >>! B.Next	  

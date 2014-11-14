@@ -57,6 +57,7 @@ module Make
         end in
       let unv =
         lazy begin E.EventRel.cartesian evts evts end in
+      let ks = { I.id; unv; evts; } in
 (* Initial env *)
       let m =
         I.add_rels I.env_empty
@@ -65,7 +66,7 @@ module Make
            "atom",lazy conc.S.atomic_load_store;
            "asw",lazy begin
              S.restrict E.is_mem_store_init
-	       (fun x -> not (E.is_mem_store_init x)) 
+	       (fun x -> not (E.is_mem_store_init x))
 	       (Lazy.force unv)
            end ;
            "po",lazy begin
@@ -97,33 +98,33 @@ module Make
               ("P", (fun e -> not (E.is_atomic e)))::
               ("A", E.is_atomic)::
 	      ("I", E.is_mem_store_init)::
-              ("atomicloc", (fun e -> 
+              ("atomicloc", (fun e ->
                 match E.location_of e with
                 | Some (E.A.Location_global a) ->
                     Misc.exists_exists (fun p ->
-                      p.CAst.param_name = E.A.V.pp_v a && 
-                      CType.is_ptr_to_atomic p.CAst.param_ty) 
+                      p.CAst.param_name = E.A.V.pp_v a &&
+                      CType.is_ptr_to_atomic p.CAst.param_ty)
                       test.Test.param_map
                 | _ -> false))::
-              ("nonatomicloc", (fun e -> 
+              ("nonatomicloc", (fun e ->
                 match E.location_of e with
                 | Some (E.A.Location_global a) ->
-                    Misc.exists_exists (fun p -> 
-                      p.CAst.param_name = E.A.V.pp_v a && 
-                      not (CType.is_ptr_to_atomic p.CAst.param_ty)) 
+                    Misc.exists_exists (fun p ->
+                      p.CAst.param_name = E.A.V.pp_v a &&
+                      not (CType.is_ptr_to_atomic p.CAst.param_ty))
                       test.Test.param_map
                 | _ -> false))::
-              ("mutexloc", (fun e -> 
+              ("mutexloc", (fun e ->
                 match E.location_of e with
                 | Some (E.A.Location_global a) ->
-                    Misc.exists_exists (fun p -> 
-                      p.CAst.param_name = E.A.V.pp_v a && 
-                      CType.is_mutex p.CAst.param_ty) 
+                    Misc.exists_exists (fun p ->
+                      p.CAst.param_name = E.A.V.pp_v a &&
+                      CType.is_mutex p.CAst.param_ty)
                       test.Test.param_map
                 | _ -> false))::
               List.map
                 (fun (k,a) -> k,(fun e -> a e.E.action))
-                E.Act.arch_sets)) in      
+                E.Act.arch_sets)) in
       let failed_requires_clause () =
 	let () = incr failed_requires_clauses in ()
       in
@@ -136,9 +137,9 @@ module Make
             let vb_pp =
               lazy begin
 		(if S.O.PC.showfr then [("fr",fr)] else []) @
-                (if StringSet.mem "co" S.O.PC.unshow 
+                (if StringSet.mem "co" S.O.PC.unshow
 		then [] else [("co",co0)]) @
-		(if StringSet.mem "lo" S.O.PC.unshow 
+		(if StringSet.mem "lo" S.O.PC.unshow
 		then [] else [("lo",lo0)]) @
 		Lazy.force vb_pp
 	      end in
@@ -153,11 +154,11 @@ module Make
 		 "lo", lazy lo;
                  "loe", lazy (U.ext lo); "loi", lazy (U.internal lo);
 	       ] in
-            run_interpret failed_requires_clause test conc m id vb_pp kont res in
+            run_interpret failed_requires_clause test conc m ks vb_pp kont res in
 	  U.apply_process_lo test conc process_lo res in
         U.apply_process_co test conc process_co res
       else
         let co0 = conc.S.pco in
         let m = I.add_rels m ["co0", lazy co0;] in
-        run_interpret failed_requires_clause test conc m id vb_pp kont res
+        run_interpret failed_requires_clause test conc m ks vb_pp kont res
   end

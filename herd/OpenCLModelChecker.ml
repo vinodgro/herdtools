@@ -74,6 +74,7 @@ module Make
                (E.EventSet.elements evts))
         end in
       let unv = lazy begin E.EventRel.cartesian evts evts end in
+      let ks = { I.id; unv; evts; } in
       (* printf "po = {\n%a\n}\n" debug_rel conc.S.po; *)
 (* Initial env *)
       let m =
@@ -83,7 +84,7 @@ module Make
             "atom",lazy (conc.S.atomic_load_store);
             "asw", lazy begin
               S.restrict E.is_mem_store_init
-	        (fun x -> not (E.is_mem_store_init x)) 
+	        (fun x -> not (E.is_mem_store_init x))
 	        (Lazy.force unv)
             end ;
             "po", lazy (S.restrict E.is_mem E.is_mem conc.S.po);
@@ -103,24 +104,24 @@ module Make
             "same_B", lazy begin
               E.EventRel.restrict_rel E.same_barrier_id (Lazy.force unv)
             end;
-          ] @ 
+          ] @
            (match test.Test.scope_tree with
            | None -> []
            | Some scope_tree ->
                List.fold_left (fun z (k,v) ->
                  ("ext-" ^ k,
-                  lazy (U.ext_scope v (Lazy.force unv) scope_tree)) :: 
+                  lazy (U.ext_scope v (Lazy.force unv) scope_tree)) ::
                  ((*"int-" ^ *) k,
-                  lazy (U.int_scope v (Lazy.force unv) scope_tree)) :: 
-                 z ) [] [ 
-               "wi", AST.Work_Item; 
+                  lazy (U.int_scope v (Lazy.force unv) scope_tree)) ::
+                 z ) [] [
+               "wi", AST.Work_Item;
                "thread", AST.Work_Item;
                "sg", AST.Sub_Group; "warp", AST.Sub_Group;
-               "wg", AST.Work_Group; 
-               "block", AST.Work_Group; 
+               "wg", AST.Work_Group;
+               "block", AST.Work_Group;
                "cta", AST.Work_Group;
 	       "kernel", AST.Kernel;
-	       "dev", AST.Device; 
+	       "dev", AST.Device;
 	     ])) in
       let m =
         I.add_sets m
@@ -133,39 +134,39 @@ module Make
               "M", E.is_mem;
               "P", (fun e -> not (E.is_atomic e));
               "A", E.is_atomic;
-	      "I", E.is_mem_store_init;           
-              "G", (fun e -> 
-                E.is_global_fence e || 
+	      "I", E.is_mem_store_init;
+              "G", (fun e ->
+                E.is_global_fence e ||
                 (match E.location_of e with
                 | Some (E.A.Location_global a) ->
-                    Misc.exists_exists (fun p -> 
-                      p.CAst.param_name = E.A.V.pp_v a && 
-                      CType.is_ptr_to_global p.CAst.param_ty) 
+                    Misc.exists_exists (fun p ->
+                      p.CAst.param_name = E.A.V.pp_v a &&
+                      CType.is_ptr_to_global p.CAst.param_ty)
                       test.Test.param_map
                 | _ -> false));
-              "L", (fun e -> 
-                E.is_local_fence e || 
+              "L", (fun e ->
+                E.is_local_fence e ||
                 (match E.location_of e with
                 | Some (E.A.Location_global a) ->
-                    Misc.exists_exists (fun p -> 
-                      p.CAst.param_name = E.A.V.pp_v a && 
-                      CType.is_ptr_to_local p.CAst.param_ty) 
+                    Misc.exists_exists (fun p ->
+                      p.CAst.param_name = E.A.V.pp_v a &&
+                      CType.is_ptr_to_local p.CAst.param_ty)
                       test.Test.param_map
                 | _ -> false));
-              "atomicloc", (fun e -> 
+              "atomicloc", (fun e ->
                 match E.location_of e with
                 | Some (E.A.Location_global a) ->
-                    Misc.exists_exists (fun p -> 
-                      p.CAst.param_name = E.A.V.pp_v a && 
-                      CType.is_ptr_to_atomic p.CAst.param_ty) 
+                    Misc.exists_exists (fun p ->
+                      p.CAst.param_name = E.A.V.pp_v a &&
+                      CType.is_ptr_to_atomic p.CAst.param_ty)
                       test.Test.param_map
                 | _ -> false);
-              "nonatomicloc", (fun e -> 
+              "nonatomicloc", (fun e ->
                 match E.location_of e with
                 | Some (E.A.Location_global a) ->
-                    Misc.exists_exists (fun p -> 
-                      p.CAst.param_name = E.A.V.pp_v a && 
-                      not (CType.is_ptr_to_atomic p.CAst.param_ty)) 
+                    Misc.exists_exists (fun p ->
+                      p.CAst.param_name = E.A.V.pp_v a &&
+                      not (CType.is_ptr_to_atomic p.CAst.param_ty))
                       test.Test.param_map
                 | _ -> false);
             ])) in
@@ -190,13 +191,13 @@ module Make
               let vb_pp =
                 lazy begin
                   (if S.O.PC.showfr then [("fr",fr)] else []) @
-                  (if StringSet.mem "co" S.O.PC.unshow 
+                  (if StringSet.mem "co" S.O.PC.unshow
 	          then [] else [("co",co0)]) @
-                  (if StringSet.mem "sc" S.O.PC.unshow 
+                  (if StringSet.mem "sc" S.O.PC.unshow
 	          then [] else [("S",sc0)]) @
 	          Lazy.force vb_pp
 	        end in
-              
+
               let m =
                 I.add_rels m
                   [
@@ -206,7 +207,7 @@ module Make
                    "coe", lazy (U.ext co); "coi", lazy (U.internal co);
                    "S", lazy sc;
 	         ] in
-              run_interpret failed_requires_clause test conc m id vb_pp kont res 
+              run_interpret failed_requires_clause test conc m ks vb_pp kont res
             in
             U.apply_process_sc test conc process_sc res
           else
@@ -215,11 +216,11 @@ module Make
             let vb_pp =
               lazy begin
                 (if S.O.PC.showfr then [("fr",fr)] else []) @
-                (if StringSet.mem "co" S.O.PC.unshow 
+                (if StringSet.mem "co" S.O.PC.unshow
 	        then [] else [("co",co0)]) @
 	        Lazy.force vb_pp
 	      end in
-            
+
             let m =
               I.add_rels m
                 [
@@ -228,10 +229,10 @@ module Make
                    "co", lazy co;
                    "coe", lazy (U.ext co); "coi", lazy (U.internal co);
 	         ] in
-            run_interpret failed_requires_clause test conc m id vb_pp kont res 
+            run_interpret failed_requires_clause test conc m ks vb_pp kont res
         in
         U.apply_process_co test conc process_co res
       else
         let m = I.add_rels m ["co0",lazy conc.S.pco;] in
-        run_interpret failed_requires_clause test conc m id vb_pp kont res
+        run_interpret failed_requires_clause test conc m ks vb_pp kont res
   end

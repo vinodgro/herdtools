@@ -143,7 +143,7 @@ let rec tex_of_ins c = function
     fprintf c "\\entercomment\n";
     fprintf c "\\noindent %s\n" s;
     fprintf c "\\exitcomment\n"
-  | Include _|Call _ -> Warn.fatal "include/call in herd2tex"
+  | Include _|Call _|Enum _ -> Warn.fatal "include/call/enum in herd2tex"
 
 and tex_of_inss c =
   List.iter (fprintf c "\\noindent %a\n\n" tex_of_ins)

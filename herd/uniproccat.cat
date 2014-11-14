@@ -7,7 +7,7 @@
 (* NB: this model handles RMW *)
 
 let invrf=rf^-1
-
+let invatom=atom^-1
 (* co observations in test *)
 let obsco =
     (WW(po-loc)
@@ -17,12 +17,12 @@ let obsco =
 
 let rmw = R & W
 let rmwco = (rf ; [rmw]) (* co observation by atomicity *)
-
 let cobase = obsco|rmwco|co0
 
 let rec co =
   cobase       (* initial observations *)
 | ([rmw];fr)   (* by atomicity *)
+| (invatom;(fr\atom))
 | (co ; co)    (* transitivity *)
 
 and fr = noid(invrf;co) (* notice: avoid self fr (RMW) *)

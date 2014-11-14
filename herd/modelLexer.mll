@@ -64,6 +64,8 @@ module LU = LexUtils.Make(O)
     | "end" -> END
     | "procedure" -> PROCEDURE
     | "call" -> CALL
+    | "enum" -> ENUM
+    | "debug" -> DEBUG
     | x -> VAR x
 
 

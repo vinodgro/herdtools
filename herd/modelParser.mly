@@ -57,6 +57,7 @@ let pp () =
 %token REQUIRES
 %token ARROW
 %token SEQTEST
+%token ENUM DEBUG
 %type <AST.t> main
 %start main
 
@@ -98,6 +99,15 @@ ins:
 | PROCEDURE VAR LPAR formals RPAR EQUAL ins_list END
    { Procedure (mk_loc (),$2,$4,$7) }
 | CALL VAR LPAR args RPAR { Call (mk_loc (),$2,$4) }
+| ENUM VAR EQUAL unionopt unionvars { Enum (mk_loc (),$2,$5) } 
+| DEBUG exp { Debug (mk_loc (),$2) }
+unionopt:
+| UNION { () }
+|       { () }
+
+unionvars:
+| VAR { [$1] }
+| VAR UNION unionvars { $1 :: $3 }
 
 deftest:
 | test_type test exp optional_name { Test(mk_loc(),pp (),$2,$3,$4,$1) }
@@ -168,8 +178,8 @@ base:
 | base HAT TWO { Op1(mk_loc(),Square,$1) }
 | base SEMI base { do_op Seq $1 $3 }
 | base UNION base { do_op Union $1 $3 }
-| base DIFF base { do_op Diff $1 $3 }
-| base INTER base { do_op Inter $1 $3 }
+| base DIFF base { Op (mk_loc (),Diff, [$1; $3;]) }
+| base INTER base {  Op (mk_loc (),Inter, [$1; $3;]) }
 | COMP base { Op1 (mk_loc(),Comp RLN, $2) }
 | NOT base { Op1 (mk_loc(),Comp SET, $2) }
 | LPAR exp RPAR { $2 }

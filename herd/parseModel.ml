@@ -33,7 +33,7 @@ module Make(O:LexUtils.Config) = struct
         ModelParser.main in
     let pp = Buffer.contents buff in
     pp,model
-      
+
   let parse fname =
     let fname = MyLib.find fname in
     Misc.input_protect (do_parse fname) fname

@@ -67,6 +67,8 @@ type ins =
   | Include of  TxtLoc.t * string (* file name, interpreter will read/parse file... *)
   | Procedure of  TxtLoc.t * var * var list * ins list
   | Call of  TxtLoc.t * var * exp list
+  | Enum of TxtLoc.t * var * var list
+  | Debug of TxtLoc.t * exp
 
 (** Name X model definition *)
 type t = ModelOption.t * string * ins list
