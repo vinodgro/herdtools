@@ -945,10 +945,10 @@ module Make
           let enums = StringMap.add name xs env.enums in
           let env = { env with tags; enums; } in
           run txt { st with env;} c
-      | Foreach (loc,x,e,body) ->
+      | Foreach (_loc,x,e,body) ->
           let env0 = st.env in
           let v = eval env0 e in
-          begin match v with
+          begin match tag2set v with
           | V.Empty -> run txt st c
           | ValSet (_,set) ->
               begin try
@@ -963,7 +963,7 @@ module Make
                 Some st
               with Exit -> None
               end
-          | _ -> error loc "foreach instruction applied to non-set value"
+          | _ -> error (get_loc e) "foreach instruction applied to non-set value"
           end
       | Latex _ -> run txt st c
 
