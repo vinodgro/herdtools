@@ -104,7 +104,7 @@ ins:
    { Procedure (mk_loc (),$2,[$3],$5) }
 | CALL VAR LPAR fargs RPAR { Call (mk_loc (),$2,$4) }
 | CALL VAR exp { Call (mk_loc (),$2,[$3]) }
-| ENUM VAR EQUAL altopt alttags { Enum (mk_loc (),$2,$5) } 
+| ENUM VAR EQUAL altopt alttags { Enum (mk_loc (),$2,$5) }
 | DEBUG exp { Debug (mk_loc (),$2) }
 | FOREACH VAR IN exp DO ins_list END
     { Foreach (mk_loc (),$2,$4,$6) }
@@ -214,7 +214,7 @@ fargs:
 args:
 | { [] }
 | argsN { $1 }
- 
+
 argsN:
 | exp            { [ $1 ] }
 | exp COMMA argsN { $1 :: $3 }

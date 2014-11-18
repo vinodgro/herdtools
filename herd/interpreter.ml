@@ -254,12 +254,12 @@ module Make
        tags=StringMap.empty; }
 
     let add_vals mk env bds =
-      let vals = 
+      let vals =
         List.fold_left
           (fun vals (k,v) -> StringMap.add k (mk v) vals)
           env.vals bds in
       { env with vals; }
-      
+
 
     let add_rels env bds =
       add_vals (fun v -> lazy (Rel (Lazy.force v))) env bds
@@ -283,9 +283,9 @@ module Make
 
     let find_env {vals=env} k =
       Lazy.force begin
-	try StringMap.find k env
-	with
-	| Not_found -> Warn.user_error "unbound var: %s" k
+        try StringMap.find k env
+        with
+        | Not_found -> Warn.user_error "unbound var: %s" k
       end
 
     let find_env_loc loc env k =
@@ -556,7 +556,7 @@ module Make
             let vs = set_args vs in
             begin match vs with
               | [] -> V.Empty
-              | _ -> 
+              | _ ->
                   let t,vs = type_list vs in
                   try ValSet (t,ValSet.of_list vs)
                   with CompError msg ->
@@ -735,7 +735,7 @@ module Make
 
 (* Recursive functions *)
       and env_rec_funs _loc bds env =
-        let clos = 
+        let clos =
           List.map
             (function
               | f,Fun (_,xs,body) ->
@@ -750,7 +750,7 @@ module Make
           (fun (f,clo) -> eprintf "Update %s\n" f ; clo.clo_env <- env)
           clos ;
         env
-            
+
 (* Compute fixpoint of relations *)
       and env_rec_vals loc pp bds =
         let rec fix  k env vs =
@@ -846,16 +846,16 @@ module Make
       | Test (_,pos,t,e,name,test_type) ->
           (* If this is a provides-clause and we've previously
              seen a requires-clause, abort. *)
-	  if st.seen_requires_clause && test_type = Provides then
-	    begin
-	      let pp = String.sub txt pos.pos pos.len in
-	      Warn.user_error
-	        "A provided condition must not come after an `undefined_unless' condition. Culprit: '%s'." pp
-	    end;
+          if st.seen_requires_clause && test_type = Provides then
+            begin
+              let pp = String.sub txt pos.pos pos.len in
+              Warn.user_error
+                "A provided condition must not come after an `undefined_unless' condition. Culprit: '%s'." pp
+            end;
           (* If this is a requires-clause, record the fact that
              we have now seen at least one requires-clause. *)
-	  let st = {st with seen_requires_clause =
-	            (test_type = Requires) || st.seen_requires_clause;} in
+          let st = {st with seen_requires_clause =
+                    (test_type = Requires) || st.seen_requires_clause;} in
           let skip_this_check =
             match name with
             | Some name -> StringSet.mem name O.skipchecks
@@ -887,13 +887,13 @@ module Make
                   match cy with
                   | None -> k
                   | Some r -> ("CY",U.cycle_to_rel r)::k)
-	      end ;
-	      match test_type with
-	      | Provides ->
-		  None
-	      | Requires ->
-		  let () = failed_requires_clause () in
-		  run txt st c
+              end ;
+              match test_type with
+              | Provides ->
+                  None
+              | Requires ->
+                  let () = failed_requires_clause () in
+                  run txt st c
             end
           else begin
             W.warn "Skipping check %s" (Misc.as_some name) ;
@@ -952,7 +952,7 @@ module Make
           | V.Empty -> run txt st c
           | ValSet (_,set) ->
               begin try
-                let st = 
+                let st =
                   ValSet.fold
                     (fun v st ->
                       let env = add_val x (lazy v) st.env in
