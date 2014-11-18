@@ -40,24 +40,25 @@ let pp () =
 %}
 %token EOF
 %token <string> VAR
+%token <string> TAG
 %token <string> STRING
 %token <string> LATEX
 %token INCLUDE
-%token LPAR RPAR LBRAC RBRAC BEGIN END
-%token EMPTY EMPTY_SET UNDERSCORE
+%token LPAR RPAR LBRAC RBRAC BEGIN END LACC RACC
+%token EMPTY UNDERSCORE
 %token WITHCO WITHOUTCO WITHINIT WITHOUTINIT
 %token WITHSC WITHOUTSC
 /* Access direction */
 %token MM  MR  MW WM WW WR RM RW RR INT EXT NOID
 /* Plain/Atomic */
 %token AA AP PA PP
-%token SEMI UNION INTER COMMA DIFF
+%token ALT SEMI UNION INTER COMMA DIFF
 %token STAR PLUS OPT INV COMP NOT HAT TWO
-%token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN PROCEDURE CALL
+%token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN PROCEDURE CALL FOREACH DO
 %token REQUIRES
 %token ARROW
 %token SEQTEST
-%token ENUM DEBUG
+%token ENUM DEBUG MATCH WITH
 %type <AST.t> main
 %start main
 
@@ -68,6 +69,7 @@ let pp () =
 %right INTER
 %nonassoc STAR PLUS OPT INV COMP NOT
 %nonassoc HAT
+%nonassoc prec_app
 %%
 
 main:
@@ -89,7 +91,7 @@ ins_list:
 
 ins:
 | LET pat_bind_list { Let (mk_loc (),$2) }
-| LET REC bind_list { Rec (mk_loc (),$3) }
+| LET REC pat_bind_list { Rec (mk_loc (),$3) }
 | deftest { $1 }
 | SHOW exp AS VAR { ShowAs (mk_loc(),$2, $4) }
 | SHOW var_list { Show (mk_loc(),$2) }
@@ -98,16 +100,21 @@ ins:
 | INCLUDE STRING { Include (mk_loc(),$2) }
 | PROCEDURE VAR LPAR formals RPAR EQUAL ins_list END
    { Procedure (mk_loc (),$2,$4,$7) }
-| CALL VAR LPAR args RPAR { Call (mk_loc (),$2,$4) }
-| ENUM VAR EQUAL unionopt unionvars { Enum (mk_loc (),$2,$5) } 
+| PROCEDURE VAR VAR EQUAL ins_list END
+   { Procedure (mk_loc (),$2,[$3],$5) }
+| CALL VAR LPAR fargs RPAR { Call (mk_loc (),$2,$4) }
+| CALL VAR exp { Call (mk_loc (),$2,[$3]) }
+| ENUM VAR EQUAL altopt alttags { Enum (mk_loc (),$2,$5) } 
 | DEBUG exp { Debug (mk_loc (),$2) }
-unionopt:
-| UNION { () }
-|       { () }
+| FOREACH VAR IN exp DO ins_list END
+    { Foreach (mk_loc (),$2,$4,$6) }
+altopt:
+| ALT  { () }
+|      { () }
 
-unionvars:
-| VAR { [$1] }
-| VAR UNION unionvars { $1 :: $3 }
+alttags:
+| TAG { [$1] }
+| TAG ALT alttags { $1 :: $3 }
 
 deftest:
 | test_type test exp optional_name { Test(mk_loc(),pp (),$2,$3,$4,$1) }
@@ -136,12 +143,9 @@ comma_opt:
 bind:
 | VAR EQUAL exp { ($1,$3) }
 
-bind_list:
-| bind { [$1] }
-| bind AND bind_list { $1 :: $3 }
-
 pat_bind:
 | bind { $1 }
+| VAR VAR EQUAL exp { ($1,Fun (mk_loc(),[$2],$4)) }
 | VAR LPAR formals RPAR EQUAL exp { ($1,Fun (mk_loc(),$3,$6)) }
 
 pat_bind_list:
@@ -159,14 +163,20 @@ formalsN:
 
 exp:
 | LET pat_bind_list IN exp { Bind (mk_loc(),$2,$4) }
-| LET REC bind_list IN exp { BindRec (mk_loc(),$3,$5) }
+| LET REC pat_bind_list IN exp { BindRec (mk_loc(),$3,$5) }
 | FUN LPAR formals RPAR ARROW exp { Fun (mk_loc(),$3,$6) }
 | base { $1 }
 
-base:
+simple:
 | EMPTY { Konst (mk_loc(),Empty RLN) }
-| EMPTY_SET { Konst (mk_loc(),Empty SET) }
+| TAG  { Tag (mk_loc (),$1) }
+| LACC args RACC { ExplicitSet (mk_loc (),$2) }
 | UNDERSCORE { Var (mk_loc (),"_") }
+| LPAR exp RPAR { $2 }
+| BEGIN exp END { $2 }
+
+base:
+| simple { $1 }
 | select LPAR exp RPAR { Op1 (mk_loc(),$1,$3) }
 |  exp0 { $1 }
 | base STAR base {Op (mk_loc(),Cartesian, [$1; $3])}
@@ -182,18 +192,29 @@ base:
 | base INTER base {  Op (mk_loc (),Inter, [$1; $3;]) }
 | COMP base { Op1 (mk_loc(),Comp RLN, $2) }
 | NOT base { Op1 (mk_loc(),Comp SET, $2) }
-| LPAR exp RPAR { $2 }
-| BEGIN exp END { $2 }
+| MATCH exp WITH altopt clause_list END { Match (mk_loc(),$2,$5) }
+
+clause:
+| TAG ARROW exp { $1,$3 }
+
+clause_list:
+| clause { [$1] }
+| clause ALT clause_list { $1 :: $3 }
 
 exp0:
 | VAR                 { Var (mk_loc (),$1) }
-| exp0 LPAR args RPAR { App (mk_loc(),$1,$3) }
+| exp0 simple %prec prec_app   { App (mk_loc (),$1,[$2]) }
+| exp0 LPAR fargs RPAR { App (mk_loc(),$1,$3) }
 
+
+fargs:
+| { [] }
+| exp COMMA argsN { $1::$3 }
 
 args:
 | { [] }
 | argsN { $1 }
-
+ 
 argsN:
 | exp            { [ $1 ] }
 | exp COMMA argsN { $1 :: $3 }

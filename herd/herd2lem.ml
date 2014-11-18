@@ -64,6 +64,8 @@ and lem_of_exp args chan = function
   | Bind _ -> fprintf chan "Bindings not done yet"
   | BindRec _ -> fprintf chan "Recursive bindings not done yet"
   | Fun _ -> fprintf chan "Local functions not done yet"
+  | ExplicitSet _|Match _|Tag _ -> Warn.fatal "explicitset/match/tag in herd2lem"
+
 
 and lem_of_binding chan (x, e) = 
   match e with
@@ -123,6 +125,8 @@ let lem_of_ins chan = function
     provides := (sprintf "%s.provides_clauses" file) :: (!provides);
     requires := (sprintf "%s.requires_clauses" file) :: (!requires);
     fprintf chan "open import %s" file
+  | Procedure _|Call _|Enum _|Debug _|Foreach _ ->
+      Warn.fatal "procedure/call/enum/debug/foreach in herd2lem"
 
 let lem_of_prog chan prog = 
   fprintf chan "open import Pervasives\n";

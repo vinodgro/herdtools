@@ -75,6 +75,7 @@ and tex_of_exp n c = function
       fprintf c "\\lambda %a \\ldotp %a" 
         (tex_of_formals false) xs
         (tex_of_exp 1) e)
+  | Match _ -> Warn.fatal "match in herd2tex"
 
 and tex_of_formals b c = function
   | [] -> paren true c (fun () -> ())
@@ -143,7 +144,7 @@ let rec tex_of_ins c = function
     fprintf c "\\entercomment\n";
     fprintf c "\\noindent %s\n" s;
     fprintf c "\\exitcomment\n"
-  | Include _|Call _|Enum _ -> Warn.fatal "include/call/enum in herd2tex"
+  | Include _|Call _|Enum _| Foreach _-> Warn.fatal "include/call/enum/foreach in herd2tex"
 
 and tex_of_inss c =
   List.iter (fprintf c "\\noindent %a\n\n" tex_of_ins)

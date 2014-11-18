@@ -42,6 +42,7 @@ type scope = Device | Kernel | Work_Group | Sub_Group | Work_Item
 
 type exp =
   | Konst of  TxtLoc.t * konst
+  | Tag of TxtLoc.t * string
   | Var of TxtLoc.t * var
   | Op1 of  TxtLoc.t * op1 * exp
   | Op of  TxtLoc.t * op2 * exp list
@@ -49,6 +50,10 @@ type exp =
   | Bind  of  TxtLoc.t * binding list * exp
   | BindRec  of  TxtLoc.t * binding list * exp
   | Fun of  TxtLoc.t * var list * exp
+  | ExplicitSet of TxtLoc.t * exp list
+  | Match of TxtLoc.t * exp * clause list
+
+and clause = string * exp
 
 and binding = var * exp
 
@@ -68,6 +73,7 @@ type ins =
   | Procedure of  TxtLoc.t * var * var list * ins list
   | Call of  TxtLoc.t * var * exp list
   | Enum of TxtLoc.t * var * var list
+  | Foreach of  TxtLoc.t * var * exp * ins list
   | Debug of TxtLoc.t * exp
 
 (** Name X model definition *)

@@ -66,6 +66,10 @@ module LU = LexUtils.Make(O)
     | "call" -> CALL
     | "enum" -> ENUM
     | "debug" -> DEBUG
+    | "match" -> MATCH
+    | "with" -> WITH
+    | "foreach" -> FOREACH
+    | "do" -> DO
     | x -> VAR x
 
 
@@ -84,10 +88,12 @@ rule token = parse
 | ')'   { RPAR }
 | '['   { LBRAC }
 | ']'   { RBRAC }
+| '{'   { LACC }
+| '}'   { RACC }
 | '_'   { UNDERSCORE }
 | '0'   { EMPTY }
-| "{}"  { EMPTY_SET }
 | '|'   { UNION }
+| "||"  { ALT }
 | '&'   { INTER }
 | '*'   { STAR }
 | '~'   { COMP }
@@ -107,6 +113,7 @@ rule token = parse
           LATEX (Buffer.contents buf)
         }
 | '"' ([^'"']* as s) '"' { STRING s } (* '"' *)
+| '\'' (name as x) { TAG x }
 | name as x { check_keyword x }
 | eof { EOF }
 | ""  { error "Model lexer" lexbuf }
