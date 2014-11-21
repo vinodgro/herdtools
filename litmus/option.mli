@@ -75,6 +75,7 @@ val gcc : string ref
 val c11 : bool ref
 val c11_fence : bool ref
 val ascall : bool ref
+val stdio : bool option ref
 val linkopt : string ref
 val targetos : TargetOS.t ref
 val gas : bool option ref

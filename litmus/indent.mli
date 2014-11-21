@@ -20,6 +20,7 @@ val indent : t
 val indent2 : t
 val indent3 : t
 val indent4 : t
+val indent5 : t
 
 module type S = 
   sig

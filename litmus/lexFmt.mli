@@ -9,35 +9,6 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* The subset of C types that we use *)
+(** parse a subset of C printf format *)
 
-type base = string
-
-type t =
-  | Base of base
-  | Volatile of t
-  | Atomic of t
-  | Pointer of t
-(** OpenCL *)
-  | Global of t
-  | Local of t
-
-val dump : t -> string
-
-type fmt = Direct of string | Macro of string
-
-val get_fmt : bool (* hexa *) -> base -> fmt option
-
-val is_ptr : t -> bool
-val is_atomic : t -> bool
-val is_global : t -> bool
-val is_local : t -> bool
-val is_private : t -> bool
-val strip_atomic : t -> t
-
-val strip_volatile : t -> t
-val is_ptr_to_atomic : t -> bool
-val is_ptr_to_global : t -> bool
-val is_ptr_to_local : t -> bool
-val is_ptr_to_private : t -> bool
-val is_mutex : t -> bool
+val lex : string -> Fmt.t list

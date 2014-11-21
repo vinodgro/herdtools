@@ -10,22 +10,17 @@
 /*  General Public License.                                          */
 /*********************************************************************/
 
-#ifndef _AFFINITY_H
-#define _AFFINITY_H 1
+#ifndef _LITMUS_RAND_H
+#define _LITMUS_RAND_H 1
 
-#include "utils.h"
+#include <stdint.h>
 
-#ifdef CPUS_DEFINED
-cpus_t *read_affinity(void) ;
-#ifdef FORCE_AFFINITY
-cpus_t *read_force_affinity(int n_avail, int verbose) ;
-#endif
-void write_affinity(cpus_t *p) ;
-#endif
+/* type of state for pseudorandom  generators */
+typedef uint32_t st_t ;
 
-void write_one_affinity(int cpu) ;
-#ifdef FORCE_AFFINITY
-void force_one_affinity(int cpu, int sz, int verbose, char *name) ;
-#endif
+/* Unlocked random bit */
+
+int rand_bit(st_t *st) ;
+uint32_t rand_k(st_t *st,uint32_t n) ;
 
 #endif

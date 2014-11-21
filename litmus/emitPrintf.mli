@@ -9,35 +9,15 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* The subset of C types that we use *)
+(** Emit C printf  (or expand to emit functions) *)
 
-type base = string
-
-type t =
-  | Base of base
-  | Volatile of t
-  | Atomic of t
-  | Pointer of t
-(** OpenCL *)
-  | Global of t
-  | Local of t
-
-val dump : t -> string
-
-type fmt = Direct of string | Macro of string
-
-val get_fmt : bool (* hexa *) -> base -> fmt option
-
-val is_ptr : t -> bool
-val is_atomic : t -> bool
-val is_global : t -> bool
-val is_local : t -> bool
-val is_private : t -> bool
-val strip_atomic : t -> t
-
-val strip_volatile : t -> t
-val is_ptr_to_atomic : t -> bool
-val is_ptr_to_global : t -> bool
-val is_ptr_to_local : t -> bool
-val is_ptr_to_private : t -> bool
-val is_mutex : t -> bool
+module type S = sig
+  type sfmt = string
+  val fx : ?out:string -> Indent.t -> sfmt -> string list -> unit
+  val f :  ?out:string -> sfmt -> string list -> unit
+  val fi :  ?out:string -> sfmt -> string list -> unit
+  val fii :  ?out:string -> sfmt -> string list -> unit
+  val fiii :  ?out:string -> sfmt -> string list -> unit
+  val fiv :  ?out:string -> sfmt -> string list -> unit
+  val fv :  ?out:string -> sfmt -> string list -> unit
+end

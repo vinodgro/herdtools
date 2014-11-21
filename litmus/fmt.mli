@@ -9,35 +9,21 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(* The subset of C types that we use *)
+type pad_ty = | Left | Right | Zeros
 
-type base = string
+type padding = | No_padding | Some_padding of int * pad_ty
+
+type int_conv =  Int_i | Int_x | Int_u
+
+type int_ty = I | I8 | I16 | I32 | I64 | CTR
+
+type conv =
+  | Char
+  | String
+  | Float
+  | Int of padding * int_conv * int_ty
 
 type t =
-  | Base of base
-  | Volatile of t
-  | Atomic of t
-  | Pointer of t
-(** OpenCL *)
-  | Global of t
-  | Local of t
-
-val dump : t -> string
-
-type fmt = Direct of string | Macro of string
-
-val get_fmt : bool (* hexa *) -> base -> fmt option
-
-val is_ptr : t -> bool
-val is_atomic : t -> bool
-val is_global : t -> bool
-val is_local : t -> bool
-val is_private : t -> bool
-val strip_atomic : t -> t
-
-val strip_volatile : t -> t
-val is_ptr_to_atomic : t -> bool
-val is_ptr_to_global : t -> bool
-val is_ptr_to_local : t -> bool
-val is_ptr_to_private : t -> bool
-val is_mutex : t -> bool
+  | Conv of conv
+  | Lit of string
+  | Percent

@@ -18,6 +18,7 @@ module type CommonConfig = sig
   val is_out : bool
   val targetos : TargetOS.t
   val affinity : Affinity.t
+  val force_affinity : bool
   val logicalprocs : int list option
   val linkopt : string
   val barrier : Barrier.t
@@ -98,7 +99,9 @@ let get_gcc_opts =
   let opts = match O.affinity with
   | Affinity.No -> opts
   | Affinity.Incr _|Affinity.Random|Affinity.Custom|Affinity.Scan ->
-      "-D_GNU_SOURCE " ^ opts in
+      "-D_GNU_SOURCE " ^
+      if O.force_affinity then "-DFORCE_AFFINITY " ^opts
+      else opts in
   opts
 
 let get_link_opts =

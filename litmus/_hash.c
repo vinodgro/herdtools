@@ -5,16 +5,8 @@ typedef struct {
   int ok ;
 } entry_t ;
 
-static void pp_entry(FILE *fp,entry_t *p, int verbose, char **group) {
-  fprintf(fp,"%-6" PCTR "%c>",p->c,p->ok ? '*' : ':') ;
-  pp_log(fp,&p->key) ;
-  if (verbose) {
-    fprintf(fp," # ") ;
-    pp_param(fp,&p->p) ;
-    if (group) fprintf(fp," %s",group[p->p.part]);
-  }
-  fprintf(fp,"\n") ;
-}
+static void pp_entry(FILE *out,entry_t *p, int verbose, char **group) ;
+
 
 typedef struct {
   int nhash ;

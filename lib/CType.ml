@@ -32,28 +32,30 @@ let rec  dump = function
   | Global t -> sprintf "__global %s" (dump t)
   | Local t -> sprintf "__local %s" (dump t)
 
+type fmt = Direct of string | Macro of string
+
 let fmt10 = function
-  | "int"|"char" ->  Some "i"
-  | "int8_t" -> Some  "\"PRIi8\""
-  | "uint8_t" -> Some  "\"PRIu8\""
-  | "int16_t" -> Some  "\"PRIi16\""
-  | "uint16_t" -> Some  "\"PRIu16\""
-  | "int32_t" -> Some  "\"PRIi32\""
-  | "uint32_t" -> Some  "\"PRIu32\""
-  | "int64_t" -> Some  "\"PRIi64\""
-  | "uint64_t" -> Some  "\"PRIu64\""
+  | "int"|"char" ->  Some (Direct "i")
+  | "int8_t" -> Some (Macro  "PRIi8")
+  | "uint8_t" -> Some (Macro  "PRIu8")
+  | "int16_t" -> Some (Macro  "PRIi16")
+  | "uint16_t" -> Some (Macro  "PRIu16")
+  | "int32_t" -> Some (Macro  "PRIi32")
+  | "uint32_t" -> Some (Macro  "PRIu32")
+  | "int64_t" -> Some (Macro  "PRIi64")
+  | "uint64_t" -> Some (Macro  "PRIu64")
   | _ -> None
 
 let fmt16 = function
-  | "int"|"char" ->  Some "x"
-  | "int8_t" -> Some  "\"PRIx8\""
-  | "uint8_t" -> Some  "\"PRIx8\""
-  | "int16_t" -> Some  "\"PRIx16\""
-  | "uint16_t" -> Some  "\"PRIx16\""
-  | "int32_t" -> Some  "\"PRIx32\""
-  | "uint32_t" -> Some  "\"PRIx32\""
-  | "int64_t" -> Some  "\"PRIx64\""
-  | "uint64_t" -> Some  "\"PRIx64\""
+  | "int"|"char" ->  Some (Direct "x")
+  | "int8_t" -> Some (Macro  "PRIx8")
+  | "uint8_t" -> Some (Macro  "PRIx8")
+  | "int16_t" -> Some (Macro  "PRIx16")
+  | "uint16_t" -> Some (Macro  "PRIx16")
+  | "int32_t" -> Some (Macro  "PRIx32")
+  | "uint32_t" -> Some (Macro  "PRIx32")
+  | "int64_t" -> Some (Macro  "PRIx64")
+  | "uint64_t" -> Some (Macro  "PRIx64")
   | _ -> None
 
 let get_fmt hexa = if hexa then fmt16 else fmt10

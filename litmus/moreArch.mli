@@ -13,7 +13,7 @@
 
 (* Additional arch specification, not so nice... *)
 
-type t = No | ARMv6K 
+type t = No | ARMv6K | Cheri
 
 val tags : string list
 val parse : string -> t option

@@ -59,7 +59,7 @@ module Make (Chan : sig val out : out_channel end) = struct
     kfprintf (fun chan -> output_char chan '\n')
       Chan.out fmt
 
-  let f fmt = fx "" fmt
+  let f fmt = fx indent0 fmt
   let fi fmt = fx indent fmt
   let fii fmt = fx indent2 fmt
   let fiii fmt = fx indent3 fmt

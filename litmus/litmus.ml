@@ -131,6 +131,7 @@ let opts =
    argstring "-gcc" Option.gcc "<name> name of gcc" ;
    argbool "-c11" Option.c11 "enable the C11 standard";
    argbool "-c11_fence" Option.c11_fence "enable the C11 standard";
+   argboolo "-stdio" Option.stdio "use/do not use stdio";
    argbool "-ascall" Option.ascall "tested code is in a function";
    argstring "-linkopt" Option.linkopt "<flags> set gcc link option(s)" ;
    "-gas",
@@ -266,12 +267,20 @@ let () =
         if b && not c11 then
           Warn.fatal "The use of C11 fence cannot be enabled without C11 enabled (use -c11 true)";
         b
+      let stdio = match !stdio with
+      | None ->
+          begin match !mode with
+          | Mode.Std -> true
+          | Mode.PreSi -> false
+          end
+      | Some b -> b
       let ascall = !ascall
       let crossrun = !crossrun
       let driver = !driver
       let sleep = !sleep
       let is_out = is_out ()
       let targetos = !targetos
+      let platform = "_linux"
       let affinity = match !mode with
       | Mode.Std -> !affinity
       | Mode.PreSi -> Affinity.Scan

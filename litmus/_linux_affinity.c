@@ -13,19 +13,10 @@
 #include <stdio.h>
 #include <sched.h>
 #include <unistd.h>
-#include <inttypes.h>
-#include <errno.h>
 #include "utils.h"
 #include "affinity.h"
 
-#if 0
-static void pp_set(FILE *fp, cpus_t *p) {
-  for (int k = 0 ; k < p->sz ; k++) {
-    fprintf(fp," %i", p->cpu[k]) ;
-  }
-}
-#endif
-
+#ifdef CPUS_DEFINED
 cpus_t *read_affinity(void) {
   cpu_set_t mask;
   int sz = 0 ;
@@ -45,11 +36,12 @@ cpus_t *read_affinity(void) {
   return r ;
 }
 
+#endif
 /* Attempt to force processors wake up, on devices where unused procs
    go to sleep... */
 
 
-
+#ifdef FORCE_AFFINITY
 const static tsc_t sec = (tsc_t)1000000 ;
 
 static void* loop(void *p)  {
@@ -67,6 +59,7 @@ static void warm_up(int sz, tsc_t d) {
     for (int k = 0 ; k < sz ; k++) join(&th[k]) ;
 }
 
+#ifdef CPUS_DEFINED
 cpus_t *read_force_affinity(int n_avail, int verbose) {
   int sz = n_avail <= 1 ? 1 : n_avail ;
   tsc_t max = sec / 100 ;
@@ -83,13 +76,16 @@ cpus_t *read_force_affinity(int n_avail, int verbose) {
     cpus_free(r) ;
   }
 }
+#endif
+#endif
 
-
+#ifdef CPUS_DEFINED
 
 /* Enforcing processor affinity.
    Notice that logical processor numbers may be negative.
    In that case, affinity setting is ignored */
  
+
 void write_affinity(cpus_t *p) {
   cpu_set_t mask;
   int exists_pos = 0 ;
@@ -108,6 +104,7 @@ void write_affinity(cpus_t *p) {
     }
   }
 }
+#endif
 
 void write_one_affinity(int a) {
   if (a >= 0) {
@@ -121,6 +118,7 @@ void write_one_affinity(int a) {
   }
 }
 
+#ifdef FORCE_AFFINITY
 /* Get the number of present cpus, fragile */
 
 static const char *present = "/sys/devices/system/cpu/present" ;
@@ -155,3 +153,4 @@ void force_one_affinity(int a, int sz,int verbose, char *name) {
     } while (r != 0) ;
   }
 }
+#endif

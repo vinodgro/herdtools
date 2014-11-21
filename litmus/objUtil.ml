@@ -84,6 +84,8 @@ module type Config = sig
   val affinity : Affinity.t
   val arch : Archs.t
   val mode : Mode.t
+  val stdio : bool
+  val platform : string
 end
 
 module Make(O:Config)(Tar:Tar.S) =
@@ -103,9 +105,15 @@ module Make(O:Config)(Tar:Tar.S) =
       close_in in_chan ;
       fnames
 
+(* Copy lib file *)
     let cpy fnames name ext = do_cpy fnames ("_" ^ name) name ext
 
+(* Copy lib file, changing its name *)
     let cpy' fnames src dst ext = do_cpy fnames ("_" ^ src) dst ext
+(* Copy from platform subdirectory *)
+    let cpy_platform fnames name ext =
+      let name = sprintf "platform_%s" name in
+      do_cpy fnames (Filename.concat O.platform name) name ext
 
     let affinity_base () = match O.targetos with
     | Linux -> "_linux_affinity"
@@ -123,8 +131,23 @@ module Make(O:Config)(Tar:Tar.S) =
         | `X86 | `ARM | `PPC | `PPCGen |`MIPS ->
             cpy fnames "show" ".awk"
       in
-      let fnames = cpy fnames "utils" ".c" in
-      let fnames = cpy fnames "utils" ".h" in
+      let fnames = cpy fnames "litmus_rand" ".c" in
+      let fnames = cpy fnames "litmus_rand" ".h" in
+      let fnames =
+        if O.stdio then fnames
+        else
+          let fnames = cpy_platform fnames "io" ".c" in
+          let fnames = cpy_platform fnames "io" ".h" in
+          let fnames = cpy fnames "litmus_io" ".c" in
+          let fnames = cpy fnames "litmus_io" ".h" in
+          fnames in
+      let fnames = match O.mode with
+      | Mode.Std ->
+          let fnames = cpy fnames "utils" ".c" in
+          cpy fnames "utils" ".h"
+      | Mode.PreSi ->
+          let fnames = cpy' fnames "presi" "utils" ".c" in
+          cpy' fnames "presi" "utils" ".h" in
       let fnames =
         match O.mode with
         | Mode.Std ->

@@ -54,6 +54,7 @@ module type Config = sig
   val c11 : bool
   val c11_fence : bool
   val ascall : bool
+  val stdio : bool
   include DumpParams.Config
 end
 
@@ -210,7 +211,13 @@ end = struct
 
 (* Utilities *)
   module U = SkelUtil.Make(P)(A)(T)
-  module UD = U.Dump(Cfg)(O)
+  module EPF =
+    DoEmitPrintf.Make
+      (struct
+        let emitprintf = Cfg.stdio
+        let ctr = Fmt.I64
+      end)(O)
+  module UD = U.Dump(Cfg)(O)(EPF)
 
 (* Inserted source *)
 
@@ -325,7 +332,9 @@ module Insert =
       if have_timebase then O.f "#define DELTA_TB %s" delta
     end ;
     O.o "/* Includes */" ;
-    O.o "#include <stdio.h>" ;
+    O.o
+      (if Cfg.stdio then "#include <stdio.h>"
+      else "#include \"litmus_io.h\"") ;
     O.o "#include <stdlib.h>" ;
     O.o "#include <unistd.h>" ;
     O.o "#include <errno.h>" ;
@@ -335,7 +344,9 @@ module Insert =
     O.o "#include \"utils.h\"" ;
     if Cfg.c11 then O.o "#include <stdatomic.h>";
     O.o "#include \"outs.h\"" ;
-    if do_affinity then O.o "#include \"affinity.h\"" ;
+    if do_affinity then begin
+      O.o "#include \"affinity.h\""
+    end ;
     O.o "" ;
     O.o "/* params */" ;
     O.o "typedef struct {" ;

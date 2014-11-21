@@ -31,6 +31,7 @@ module type Config = sig
   val c11 : bool
   val timelimit : float option
   val check_nstates : string -> int option
+  val stdio : bool
   include DumpParams.Config
 end
 
@@ -55,6 +56,12 @@ module Make
             let word = Cfg.word
           end)
 
+      module EPF =
+        DoEmitPrintf.Make
+          (struct
+            let emitprintf = Cfg.stdio
+            let ctr = Fmt.I32
+          end)(O)
 
       let have_timebase = Insert.exists "timebase.c"
       let have_cache = Insert.exists "cache.c"
@@ -64,7 +71,7 @@ module Make
 (*************)
 
       module U = SkelUtil.Make(P)(A)(T)
-      module UD = U.Dump(Cfg)(O)
+      module UD = U.Dump(Cfg)(O)(EPF)
 
       let find_addr_type a env = U.find_type (A.Location_global a) env
 
@@ -93,7 +100,6 @@ module Make
           if have_timebase then O.f "#define DELTA_TB %s" delta
         end ;
         O.o "/* Includes */" ;
-        O.o "#include <stdio.h>" ;
         O.o "#include <stdlib.h>" ;
         O.o "#include <inttypes.h>" ;
         O.o "#include <unistd.h>" ;
@@ -101,9 +107,15 @@ module Make
         O.o "#include <assert.h>" ;
         O.o "#include <time.h>" ;
         O.o "#include <limits.h>" ;
+        O.o
+          (if Cfg.stdio then "#include <stdio.h>"
+          else "#include \"litmus_io.h\"") ;
+        O.o "#include \"litmus_rand.h\"" ;
         O.o "#include \"utils.h\"" ;
         if Cfg.c11 then O.o "#include <stdatomic.h>";
-        O.o "#include \"affinity.h\"" ;
+        if true then begin (* Affinity always used *)
+          O.o "#include \"affinity.h\""
+        end ;
         O.o "" ;
         O.o "typedef uint32_t count_t;" ;
         O.o "#define PCTR PRIu32" ;
@@ -238,17 +250,17 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         let rec pp_fmt t = match t with
         | CType.Pointer _ -> "%s"
         | CType.Base t ->
-            let fmt = Compile.get_fmt Cfg.hexa t in
-            if Cfg.hexa then "0x%" ^ fmt else "%" ^ fmt
+            begin match Compile.get_fmt Cfg.hexa t with
+            | CType.Direct fmt|CType.Macro fmt ->
+                if Cfg.hexa then "0x%" ^ fmt else "%" ^ fmt
+            end
         | CType.Atomic t|CType.Volatile t -> pp_fmt t
         | CType.Global _|CType.Local _ -> assert false in
 
-        "\"" ^
         A.LocSet.pp_str " "
           (fun loc -> sprintf "%s=%s;"
               (pp_loc loc) (pp_fmt (U.find_type loc env)))
-          locs ^
-        "\""
+          locs
 
       let dump_addr_idx s = sprintf "_idx_%s" s
 
@@ -343,7 +355,8 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
                 sprintf "pretty_addr[p->%s]" (dump_loc_tag_coded loc)
               else
                 sprintf "p->%s" (dump_loc_tag loc)) locs in
-        O.fi "fprintf(chan,%s);" (String.concat "," (fmt::args)) ;            
+        EPF.fi ~out:"chan" fmt args ;
+(*        O.fi "fprintf(chan,%s);" (String.concat "," (fmt::args)) ; *)
         O.o "}" ;
         O.o "" ;
         let locs = A.LocSet.elements locs in (* Now use lists *)
@@ -552,14 +565,14 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.o "#define PARSESZ (sizeof(parse)/sizeof(parse[0]))" ;
         O.o "";
 (* Print *)  
-        O.o "static void pp_param(FILE *fp,param_t *p) {" ;
+        O.o "static void pp_param(FILE *out,param_t *p) {" ;
         let fmt =
-          "\"{" ^
+          "{" ^
           String.concat ", "
             (List.map (fun tag -> sprintf "%s=%%i" tag) all_tags) ^
-          "}\""
+          "}"
         and params = List.map (sprintf "p->%s") all_tags  in
-        O.fi "fprintf(fp,%s);" (String.concat "," (fmt::params)) ;     
+        EPF.fi fmt params ;
         O.o "}" ;
         O.o "" ;
 (* Statistics *)
@@ -598,6 +611,18 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.f "#define HASHSZ %i" hashsz ;
         O.o "" ;
         ObjUtil.insert_lib_file O.o "_hash.c" ;
+        O.o "" ;
+        O.o "static void pp_entry(FILE *out,entry_t *p, int verbose, char **group) {" ;
+        let fmt = "%-6PCTR%c>" in
+        EPF.fi fmt ["p->c";"p->ok ? '*' : ':'";] ;
+        O.oi "pp_log(out,&p->key);" ;
+        O.oi "if (verbose) {" ;
+        EPF.fii " # " [] ;
+        O.oii "pp_param(out,&p->p);" ;
+        EPF.fii " %s" ["group[p->p.part]"];
+        O.oi "}" ;
+        EPF.fi "%c" ["'\\n'"] ;
+        O.o "}" ;
         O.o ""
 
 (*****************)

@@ -119,6 +119,7 @@ let gcc = ref "gcc"
 let c11 = ref false
 let c11_fence = ref false
 let ascall = ref false
+let stdio = ref None
 let linkopt = ref ""
 let targetos = ref TargetOS.Linux
 let gas = ref None

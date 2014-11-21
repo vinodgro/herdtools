@@ -50,7 +50,8 @@ module Make
       val get_prefetch_info : T.t -> string
 
 (* Dump stuff *)
-      module Dump : functor (Cfg:Config) -> functor (O:Indent.S) -> sig
+      module Dump : functor (Cfg:Config) ->
+        functor (O:Indent.S) -> functor(EPF:EmitPrintf.S) -> sig
         (* Same output as shell script in (normal) shell driver mode *)
         val prelude : Name.t -> T.t -> unit
 
@@ -149,7 +150,7 @@ module Make
 
 (* Dump *)
 
-      module Dump (Cfg:Config) (O:Indent.S) = struct
+      module Dump (Cfg:Config) (O:Indent.S) (EPF:EmitPrintf.S) = struct
 
         open Preload
 
@@ -160,8 +161,7 @@ module Make
           O.f "#include \"%s\"" (MyName.outname doc.Name.file ".h") ;
           O.o "#endif" ;
           O.o "" ;
-          let dstring s = O.fi "fprintf(out,\"%%s\\n\",\"%s\");"
-              (String.escaped s) in
+          let dstring s =  EPF.fi "%s\n"  [String.escaped s] in
 (* Static information *)
           O.o "static void prelude(FILE *out) {" ;
           let title = sprintf "%% Results for %s %%" doc.Name.file in
@@ -187,12 +187,12 @@ module Make
           | LL (loc1,loc2) ->
               sprintf "%s=%s" (A.pp_location loc1) (A.pp_rval loc2)
 
-        let pp_cond c =
-          String.escaped
-            (ConstrGen.constraints_to_string pp_atom c)
+        let pp_cond c = ConstrGen.constraints_to_string pp_atom c
 
         let pp_nstates nstates =
-          O.fi "fprintf(out,\"Histogram (%%i states)\\n\",%s);" nstates
+          EPF.fi "Histogram (%i states)\n" [nstates]
+
+        let cstring s = sprintf "%S" s
 
         let postlude doc test affi show_topos stats =
           O.o "#define ENOUGH 10" ;
@@ -207,11 +207,13 @@ module Make
 (* Print header *)
           let c = test.T.condition in
           if Cfg.kind then
-            O.fi "fprintf(out,\"Test %s %s\\n\") ;"
-              doc.Name.name (ConstrGen.pp_kind (ConstrGen.kind_of c))
+            EPF.fi
+              (sprintf "Test %s %s\n"
+                 doc.Name.name
+                 (ConstrGen.pp_kind (ConstrGen.kind_of c)))
+              []
           else
-            O.fi "fprintf(out,\"Test %s\\n\") ;"
-              doc.Name.name ;
+            EPF.fi (sprintf "Test %s"  doc.Name.name) [] ;
 (* Print histogram *)
           begin match Cfg.mode with
           | Mode.Std ->
@@ -227,36 +229,34 @@ module Make
             | ExistsState _ -> "p_true > 0"
             | ForallStates _|NotExistsState _ -> "p_true == 0" in
             O.fi "int cond = %s;" to_check ;
-            O.fi "fprintf(out,\"%%s\\n\",%s);" "cond?\"Ok\":\"No\"" ;
-            O.oi "fprintf(out,\"\\nWitnesses\\n\");" ;
-            let fmt = "Positive: %\"PCTR\", Negative: %\"PCTR\"\\n" in
-            O.fi "fprintf(out,\"%s\",%s,%s);" fmt
-              (match c with
+            EPF.fi "%s\n" ["cond?\"Ok\":\"No\""] ;
+            EPF.fi "\nWitnesses\n" [] ;
+            let fmt = "Positive: %PCTR, Negative: %PCTR\n" in
+            EPF.fi fmt
+              [(match c with
               | ExistsState _ -> "p_true"
-              | NotExistsState _|ForallStates _ -> "p_false")
+              | NotExistsState _|ForallStates _ -> "p_false");
               (match c with
               | ExistsState _ -> "p_false"
-              | NotExistsState _|ForallStates _ -> "p_true") ;
-            O.fi "fprintf(out,\"Condition %s is %%svalidated\\n\",%s);"
-              (pp_cond c)
-              (sprintf "%s ? \"\" : \"NOT \"" to_check)
+              | NotExistsState _|ForallStates _ -> "p_true")] ;
+            EPF.fi
+              (sprintf "Condition %s is %%svalidated\n" (pp_cond c))
+              [sprintf "%s ? \"\" : \"NOT \"" to_check;] ;
           end else begin
-            O.fi "fprintf(out,\"\\nCondition %s\\n\");"
-              (pp_cond c)
+            EPF.fi
+            (sprintf "\nCondition %s\n" (pp_cond c)) []
           end ;
 
 (* Print meta-information *)
           List.iter
             (fun (k,vs) ->
               if k = "Relax" then
-                let fmt = sprintf "Relax %s %%s %%s\\n" doc.Name.name in
-                O.fi "fprintf(out,\"%s\",p_true > 0 ? \"Ok\" : \"No\",\"%s\");"
-                  fmt (String.escaped vs) ;
+                let fmt = sprintf "Relax %s %%s %%s\n" doc.Name.name in
+                EPF.fi fmt ["p_true > 0 ? \"Ok\" : \"No\"";cstring vs]
               else if k = "Prefetch" then begin
               end else
-                let fmt = "%s=%s\\n" in
-                O.fi "fprintf(out,\"%s\",\"%s\",\"%s\");"
-                  fmt (String.escaped k) (String.escaped vs))
+                let fmt = sprintf "%s=%s\n" k vs in
+                EPF.fi fmt [])
             test.T.info ;
 (* Prefetch shown whenever activated *)
           begin match Cfg.mode with
@@ -281,9 +281,8 @@ module Make
               begin match affi with
               | Some affi ->
                   O.oi "if (cmd->aff_mode == aff_custom) {" ;
-                  let fmt = "%s=%s\\n" in
-                  O.fii "fprintf(out,\"%s\",\"%s\",\"%s\");"
-                    fmt "Affinity" (Affi.pp affi) ;
+                  let fmt = sprintf "Affinity=%s\n"  (Affi.pp affi) in
+                  EPF.fii fmt [] ;
                   O.oi "}"
               | None -> ()
               end
@@ -302,12 +301,12 @@ module Make
             | ForallStates _ -> "p_true") ;
           let fmt =
             sprintf
-              "Observation %s %%s %%\"PCTR\" %%\"PCTR\"\\n"
+              "Observation %s %%s %%PCTR %%PCTR\n"
               doc.Name.name  in
           let obs = 
             "!cond_true ? \"Never\" : !cond_false ? \"Always\" : \"Sometimes\""
           in
-          O.fi "fprintf(out,\"%s\",%s,cond_true,cond_false) ;" fmt obs;
+          EPF.fi fmt [obs;"cond_true";"cond_false";] ;
 (* Parameter sumaries,
    meaningful only when 'remarkable outcomes are present *)
           O.oi "if (p_true > 0) {" ;
@@ -329,8 +328,10 @@ module Make
               O.oii "count_t *ngroups = &g->stats.groups[0];" ;
               O.oii "for (int k = 0 ; k < SCANSZ ; k++) {" ;
               O.oiii "count_t c = ngroups[k];" ;
-              let fmt = "\"Topology %-6\" PCTR\":> part=%i %s \\n\"" in
-              O.fiii "if ((g->verbose > 1 && c > 0) || (c*100)/p_true > ENOUGH) printf(%s,c,k,g->group[k]);" fmt ;
+              O.oiii "if ((g->verbose > 1 && c > 0) || (c*100)/p_true > ENOUGH) {" ;
+              let fmt = "Topology %-6PCTR:> part=%i %s\n" in
+              EPF.fiv fmt ["c";"k";"g->group[k]"] ;
+              O.oiii "}" ;
               O.oii "}"
           end ;
 (* Other stats *)
@@ -345,17 +346,17 @@ module Make
                       (String.concat ""
                          (List.map (sprintf "[k%i]") ks))  ;
                     let fmt =
-                      sprintf "%s %%-6\"PCTR\":> {%s}\\n"
+                      sprintf "%s %%-6PCTR:> {%s}\n"
                         tag
                         (String.concat ", "
                            (List.map (sprintf "%s=%%i") tags))
                     and args =
-                      String.concat ","
-                        (List.map
-                           (fun k -> process (sprintf "k%i" k))
-                           ks) in
-                    O.fx j "if ((g->verbose > 1 && c > 0) || (c*100)/p_true >= ENOUGH) fprintf(out,\"%s\",c,%s);"
-                      fmt args ;
+                      List.map
+                        (fun k -> process (sprintf "k%i" k))
+                        ks in
+                    O.fx j "if ((g->verbose > 1 && c > 0) || (c*100)/p_true >= ENOUGH) {" ;
+                    EPF.fx (Indent.tab j) fmt ("c"::args) ;
+                    O.fx j "}" ;
                     O.fx i "}"
                 | k::ks ->
                     let i = Indent.tab i in
@@ -366,8 +367,8 @@ module Make
             stats ;
           O.oi "}" ;
 (* Show running time *)
-          let fmt = sprintf "Time %s %%.2f\\n"  doc.Name.name in
-          O.fi "fprintf(out,\"%s\",total / 1000000.0) ;" fmt ;
+          let fmt = sprintf "Time %s %%f\n"  doc.Name.name in
+          EPF.fi fmt ["total / 1000000.0"] ;
           O.oi "fflush(out);" ;
           O.o "}" ;
           O.o "" ;

@@ -42,6 +42,7 @@ module type CommonConfig = sig
   val c11 : bool
   val c11_fence : bool
   val ascall : bool
+  val stdio : bool
   val xy : bool
   val pldw : bool
   val morearch : MoreArch.t
@@ -71,6 +72,7 @@ end
 
 module type TopConfig = sig
   include CommonConfig
+  val platform : string
   val check_name : string -> bool
   val check_rename : string -> string option
 (* Arch dependent options *)

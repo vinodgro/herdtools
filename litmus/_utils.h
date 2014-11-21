@@ -13,13 +13,15 @@
 #ifndef _UTILS_H
 #define _UTILS_H 1
 
+#include <stdio.h>
+#include <inttypes.h>
 #include <pthread.h>
+#include "litmus_rand.h"
+
+
 /********/
 /* Misc */
 /********/
-
-/* type of state for pseudorandom  generators */
-typedef unsigned int st_t ;
 
 void fatal(char *msg) ;
 /* e is errno */
@@ -39,6 +41,7 @@ void cat_file(char *path,char *msg,FILE *out) ;
 /* CPU set */
 /***********/
 
+#define CPUS_DEFINED 1
 typedef struct {
   int sz ;
   int *cpu ;
@@ -229,11 +232,6 @@ f_t start_thread ;
 /* Random things */
 /*****************/
 
-/* Unlocked random bit */
-
-int rand_bit(st_t *st) ;
-unsigned rand_k(st_t *st,unsigned n) ;
-
 /* permutations */
 
 void perm_prefix_ints(st_t *st,int t[], int used, int sz) ;
@@ -242,6 +240,7 @@ void perm_funs(st_t *st,f_t *t[], int sz) ;
 void perm_threads(st_t *st,pthread_t t[], int sz) ;
 void perm_ops(st_t *st,op_t *t[], int sz) ;
 
+/* check permutation */
 int check_shuffle(int **t, int *min, int sz) ;
 
 /*********************/
@@ -258,34 +257,5 @@ double tsc_millions(tsc_t t) ;
 
 /* String utilities */
 int find_string(char *t[],int sz,char *s) ;
-
-
-/**********/
-/* Pre-Si */
-/**********/
-
-typedef enum {
-  mode_scan,mode_random,
-} param_mode_t ;
-
-typedef struct {
-  int verbose;
-  int max_run;
-  int size_of_test;
-  int avail ;
-  int n_exe ;
-  param_mode_t mode;
-} opt_t ;
-
-char **parse_opt(int argc,char **argv,opt_t *def, opt_t *p) ;
-
-typedef struct {
-  char* tag;
-  int *dst;
-  int (*f)(int);
-  int max;
-} parse_param_t;
-
-void parse_param(char *prog,parse_param_t *p,int sz,char **argv) ;
 
 #endif
