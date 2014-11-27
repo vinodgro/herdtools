@@ -103,14 +103,29 @@ module Make
         evts : S.event_set; }
 
 (* Internal typing *)
-    type typ = TEvents | TRel | TTag of string |TClo | TProc | TSet of typ
+    type typ =
+      | TEmpty | TEvents | TRel | TTag of string |TClo | TProc | TSet of typ
 
-    let type_equal t1 t2 = t1 = t2
+    let rec eq_type t1 t2 = match t1,t2 with
+    | TEmpty,TSet _ -> Some t2
+    | TSet _,TEmpty -> Some t1
+    | TSet t1,TSet t2 ->
+        begin match eq_type t1 t2 with
+        | None -> None
+        | Some t -> Some (TSet t)
+        end
+    | _,_ -> if t1 = t2 then Some t1 else None
+
+
+    let type_equal t1 t2 = match eq_type t1 t2 with
+    | None -> false
+    | Some _ -> true
 
     exception CompError of string
 
 
     let rec pp_typ = function
+      | TEmpty -> "{}"
       | TEvents -> "event set"
       | TRel -> "rel"
       | TTag ty -> ty
@@ -174,7 +189,8 @@ module Make
           proc_body : AST.ins list; }
 
     let type_val = function
-      | Empty|Unv -> assert false (* Discarded before *)
+      | Empty -> TEmpty
+      | Unv -> assert false (* Discarded before *)
       | Rel _ -> TRel
       | Set _ -> TEvents
       | Clo _ -> TClo
@@ -199,8 +215,7 @@ module Make
 
       | Tag (t1,s1), Tag (t2,s2) when t1=t2 ->
           String.compare s1 s2
-      | ValSet (t1,s1),ValSet (t2,s2) when type_equal t1 t2 ->
-          ValSet.compare s1 s2
+      | ValSet (_,s1),ValSet (_,s2) -> ValSet.compare s1 s2
       | Rel r1,Rel r2 -> E.EventRel.compare r1 r2
       | Set s1,Set s2 -> E.EventSet.compare s1 s2
       | (Unv,_)|(_,Unv) -> error "Universe in compare"
@@ -381,7 +396,7 @@ module Make
     let noid r =
       Rel
         (E.EventRel.filter
-           (fun (e1,e2) -> not (E.event_equal e1 e2))
+           (fun (e1 ,e2) -> not (E.event_equal e1 e2))
            r)
 
     let error_typ loc t0 t1  =
@@ -393,16 +408,19 @@ module Make
     let type_list = function
       | [] -> assert false
       | (_,v)::vs ->
-          let t0 = type_val v in
-          let rec type_rec = function
-            | [] -> []
+          let rec type_rec t0 = function
+            | [] -> t0,[]
             | (loc,v)::vs ->
                 let t1 = type_val v in
-                if t0 = t1 then v::type_rec vs
-                else
-                  error loc
+                match eq_type t0 t1 with
+                | Some t0 ->
+                    let t0,vs = type_rec t0 vs in
+                    t0,v::vs
+                | None ->
+                    error loc
                     "type %s expected, %s found" (pp_typ t0) (pp_typ t1) in
-          t0,v::type_rec vs
+          let t0,vs = type_rec (type_val v) vs in
+          t0,v::vs
 
 (* Helpers for n-ary operations *)
 
@@ -412,8 +430,6 @@ module Make
         | [] -> []
         | (loc,Unv)::_ ->
             error loc "universe in explicit set"
-        | (loc,V.Empty)::_ ->
-            error loc "empty in explicit set"
         | x::xs -> x::s_rec xs in
       s_rec
 (* Union is polymorphic *)
@@ -659,10 +675,12 @@ module Make
             let v1 = eval env e1
             and v2 = eval env e2 in
             begin match v1,v2 with
-            | V.Empty,_ -> error loc "empty in set ++"
             | V.Unv,_ -> error loc "universe in set ++"
             | _,V.Unv -> V.Unv
             | _,V.Empty -> V.ValSet (type_val v1,ValSet.singleton v1)
+            | V.Empty,V.ValSet (TSet e2 as t2,s2) ->
+                let v1 = ValSet (e2,ValSet.empty) in
+                set_op loc t2 ValSet.add v1 s2
             | _,V.ValSet (_,s2) ->
                 set_op loc (type_val v1) ValSet.add v1 s2
             | _,(Rel _|Set _|Clo _|Proc _|V.Tag (_, _)) ->
