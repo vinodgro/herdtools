@@ -27,7 +27,8 @@ let rec tex_of_op2 n c es op2 =
   | Inter -> fprintf_list_infix "\\cap" (tex_of_exp 2) c es
   | Diff -> fprintf_list_infix "\\setminus" (tex_of_exp 2) c es
   | Seq -> fprintf_list_infix "\\semicolon" (tex_of_exp 2) c es
-  | Cartesian -> fprintf_list_infix "\\times" (tex_of_exp 2) c es)
+  | Cartesian -> fprintf_list_infix "\\times" (tex_of_exp 2) c es
+  | Add -> fprintf_list_infix "\\mathop{++}" (tex_of_exp 2) c es)
 
 and string_of_dir = function
   | Write -> "W" 
@@ -75,7 +76,7 @@ and tex_of_exp n c = function
       fprintf c "\\lambda %a \\ldotp %a" 
         (tex_of_formals false) xs
         (tex_of_exp 1) e)
-  | Match _ -> Warn.fatal "match in herd2tex"
+  |  _ -> Warn.fatal "unkown expression in herd2tex"
 
 and tex_of_formals b c = function
   | [] -> paren true c (fun () -> ())
@@ -144,7 +145,7 @@ let rec tex_of_ins c = function
     fprintf c "\\entercomment\n";
     fprintf c "\\noindent %s\n" s;
     fprintf c "\\exitcomment\n"
-  | Include _|Call _|Enum _| Foreach _-> Warn.fatal "include/call/enum/foreach in herd2tex"
+  | Include _|Call _|Enum _| Foreach _ | Debug _-> Warn.fatal "include/call/enum/foreach/debug in herd2tex"
 
 and tex_of_inss c =
   List.iter (fprintf c "\\noindent %a\n\n" tex_of_ins)

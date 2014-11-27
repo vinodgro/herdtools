@@ -52,7 +52,7 @@ let pp () =
 %token MM  MR  MW WM WW WR RM RW RR INT EXT NOID
 /* Plain/Atomic */
 %token AA AP PA PP
-%token ALT SEMI UNION INTER COMMA DIFF
+%token ALT SEMI UNION INTER COMMA DIFF PLUSPLUS
 %token STAR PLUS OPT INV COMP NOT HAT TWO
 %token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN PROCEDURE CALL FOREACH DO
 %token REQUIRES
@@ -63,13 +63,14 @@ let pp () =
 %start main
 
 /* Precedences */
+%left prec_app
 %right UNION
+%right PLUSPLUS
 %right SEMI
 %left DIFF
 %right INTER
 %nonassoc STAR PLUS OPT INV COMP NOT
 %nonassoc HAT
-%nonassoc prec_app
 %%
 
 main:
@@ -137,7 +138,7 @@ var_list:
 | VAR comma_opt var_list { $1 :: $3 }
 
 comma_opt:
-|       { () }
+/* |       { () } */
 | COMMA { () }
 
 bind:
@@ -178,7 +179,7 @@ simple:
 base:
 | simple { $1 }
 | select LPAR exp RPAR { Op1 (mk_loc(),$1,$3) }
-|  exp0 { $1 }
+| exp0 { $1 }
 | base STAR base {Op (mk_loc(),Cartesian, [$1; $3])}
 | LBRAC exp RBRAC {Op1(mk_loc(),Set_to_rln,$2)}
 | base STAR { Op1(mk_loc(),Star,$1) }
@@ -188,23 +189,52 @@ base:
 | base HAT TWO { Op1(mk_loc(),Square,$1) }
 | base SEMI base { do_op Seq $1 $3 }
 | base UNION base { do_op Union $1 $3 }
+| base PLUSPLUS base { Op (mk_loc (), Add, [$1; $3]) }
 | base DIFF base { Op (mk_loc (),Diff, [$1; $3;]) }
 | base INTER base {  Op (mk_loc (),Inter, [$1; $3;]) }
 | COMP base { Op1 (mk_loc(),Comp RLN, $2) }
 | NOT base { Op1 (mk_loc(),Comp SET, $2) }
-| MATCH exp WITH altopt clause_list END { Match (mk_loc(),$2,$5) }
+| MATCH exp WITH altopt clause_list END
+    {
+     let cls,d = $5 in
+     Match (mk_loc(),$2,cls,d)
+    }
+| MATCH exp WITH altopt set_clauses END
+    {
+     let e,f = $5 in
+     MatchSet (mk_loc (),$2,e,f)
+   }
+
+empty_clause:
+| LACC RACC ARROW exp { $4 }
+
+element_clause:
+| VAR PLUSPLUS VAR ARROW exp { $1, $3, $5 }
+
+set_clauses:
+| empty_clause ALT element_clause { $1, $3 }
+| element_clause ALT empty_clause { $3, $1 }
 
 clause:
 | TAG ARROW exp { $1,$3 }
 
 clause_list:
-| clause { [$1] }
-| clause ALT clause_list { $1 :: $3 }
+| clause { [$1],None }
+| UNDERSCORE ARROW exp { [],Some $3 }
+| clause ALT clause_list
+    {
+     let cls,d = $3 in
+     $1 :: cls, d
+    }
 
 exp0:
 | VAR                 { Var (mk_loc (),$1) }
-| exp0 simple %prec prec_app   { App (mk_loc (),$1,[$2]) }
+| exp0  arg %prec prec_app   { App (mk_loc (),$1,[$2]) }
 | exp0 LPAR fargs RPAR { App (mk_loc(),$1,$3) }
+
+arg:
+| VAR { Var (mk_loc (),$1) }
+| simple { $1 }
 
 
 fargs:

@@ -360,7 +360,9 @@ module Make
       | BindRec (loc,_,_)
       | App (loc,_,_)
       | Fun (loc,_,_)
-      | Match (loc,_,_) -> loc
+      | Match (loc,_,_,_)
+      | MatchSet (loc,_,_,_)
+        -> loc
 
 
 (* State of interpreter *)
@@ -450,7 +452,8 @@ module Make
       let rec eval_loc env e = get_loc e,eval env e
 
       and eval env = function
-        | Konst (_,Empty _) -> V.Empty (* Back to polymorphic empty *)
+        | Konst (_,Empty SET) -> V.Empty (* Polymorphic empty *)
+        | Konst (_,Empty RLN) -> empty_rel
         | AST.Tag (loc,s) ->
             begin try
               V.Tag (StringMap.find s env.tags,s)
@@ -652,7 +655,22 @@ module Make
             let s1 = eval_set env e1
             and s2 = eval_set env e2 in
             Rel (E.EventRel.cartesian s1 s2)
-        | Op (_,(Diff|Inter|Cartesian),_) -> assert false (* By parsing *)
+        | Op (loc,Add,[e1;e2;]) ->
+            let v1 = eval env e1
+            and v2 = eval env e2 in
+            begin match v1,v2 with
+            | V.Empty,_ -> error loc "empty in set ++"
+            | V.Unv,_ -> error loc "universe in set ++"
+            | _,V.Unv -> V.Unv
+            | _,V.Empty -> V.ValSet (type_val v1,ValSet.singleton v1)
+            | _,V.ValSet (_,s2) ->
+                set_op loc (type_val v1) ValSet.add v1 s2
+            | _,(Rel _|Set _|Clo _|Proc _|V.Tag (_, _)) ->
+                error (get_loc e2)
+                  "this expression of type '%s' should be a set"
+                  (pp_typ (type_val v2))
+            end
+        | Op (_,(Diff|Inter|Cartesian|Add),_) -> assert false (* By parsing *)
 (* Application/bindings *)
         | App (_,f,es) ->
             let f = eval_clo env f in
@@ -664,19 +682,55 @@ module Make
         | BindRec (loc,bds,e) ->
             let env = env_rec loc (fun pp -> pp) bds env in
             eval env e
-        | Match (loc,e,cls) ->
+        | Match (loc,e,cls,d) ->
             let v = eval env e in
             begin match v with
             | V.Tag (_,s) ->
                 let rec match_rec = function
                   | [] ->
-                      error loc "pattern matching failed on value '%s'" s
+                      begin match d with
+                      | Some e ->  eval env e
+                      | None ->
+                          error loc "pattern matching failed on value '%s'" s
+                      end
                   | (ps,es)::cls ->
                       if s = ps then eval env es
                       else match_rec cls in
                 match_rec cls
+            | V.Empty ->
+                error (get_loc e) "matching on empty"
+            | V.Unv ->
+                error (get_loc e) "matching on universe"
             | _ ->
                 error (get_loc e) "matching on non-tag value of type '%s'"
+                  (pp_typ (type_val v))
+            end
+        | MatchSet (loc,e,ife,(x,xs,ex)) ->
+            let v = eval env e in
+            begin match v with
+            | V.Empty -> eval env ife
+            | V.Unv ->
+                error loc
+                  "%s" "Cannot set-match on universe"
+            | V.ValSet (t,s) ->
+                if ValSet.is_empty s then
+                  eval env ife
+                else
+                  let elt =
+                    lazy begin
+                      try ValSet.choose s
+                      with Not_found -> assert false
+                    end in
+                  let s =
+                    lazy begin
+                      try ValSet (t,ValSet.remove (Lazy.force elt) s)
+                      with  CompError _ -> assert false
+                    end in
+                  let env = add_val x elt env in
+                  let env = add_val xs s env in
+                  eval env ex
+            | _ ->
+                error (get_loc e) "set-matching on non-set value of type '%s'"
                   (pp_typ (type_val v))
             end
 
@@ -747,7 +801,7 @@ module Make
             (fun env (f,clo) -> add_val f (lazy (Clo clo)) env)
             env clos in
         List.iter
-          (fun (f,clo) -> eprintf "Update %s\n" f ; clo.clo_env <- env)
+          (fun (_,clo) -> clo.clo_env <- env)
           clos ;
         env
 

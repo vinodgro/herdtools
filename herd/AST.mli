@@ -26,6 +26,7 @@ type op2 =
   | Diff  (** applies to sets or relations *)
   | Seq   (** sequential composition of relations *) 
   | Cartesian (** build a relation from two sets *)
+  | Add   (** add element to a set *)
 type op1 =
   | Plus | Star | Opt  | Select of direction * direction
   | Comp of set_or_rln (** Set or relation complement *)
@@ -51,7 +52,8 @@ type exp =
   | BindRec  of  TxtLoc.t * binding list * exp
   | Fun of  TxtLoc.t * var list * exp
   | ExplicitSet of TxtLoc.t * exp list
-  | Match of TxtLoc.t * exp * clause list
+  | Match of TxtLoc.t * exp * clause list * exp option
+  | MatchSet of TxtLoc.t * exp * exp * (string * string * exp)
 
 and clause = string * exp
 

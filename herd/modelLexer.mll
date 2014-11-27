@@ -99,6 +99,7 @@ rule token = parse
 | '~'   { COMP }
 | '!'   { NOT }
 | '+'   { PLUS }
+| "++"  { PLUSPLUS }
 | '^'   { HAT }
 | '2'   { TWO }
 | "-1"  { INV }
