@@ -28,7 +28,7 @@ order  [derives from  no visible write speculation rule] *)
 (**********)
 let dmb.st=WW(dmb.st)
 let dsb.st=WW(dsb.st)
-show dmb dsb dmb.st dsb.st
+show dmb, dsb, dmb.st, dsb.st
 let fence = dsb.st | dmb.st | dsb | dmb
 
 (************)

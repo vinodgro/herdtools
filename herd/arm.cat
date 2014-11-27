@@ -9,7 +9,7 @@ let dd = addr | data
 let rdw = po-loc & (fre;rfe)
 let detour = po-loc & (coe ; rfe)
 let addrpo = addr;po
-#show rdw detour dd addrpo
+#show rdw,detour,dd,addrpo
 (*******)
 (* ppo *)
 (*******)
@@ -37,7 +37,7 @@ let ppo = RW(ic) | RR(ii)
 (* ARM *)
 let dmb.st=WW(dmb.st)
 let dsb.st=WW(dsb.st)
-show dmb dsb dmb.st dsb.st
+show dmb,dsb,dmb.st,dsb.st
 
 (* Common, all arm barriers are strong *)
 let strong = dmb|dsb|dmb.st|dsb.st

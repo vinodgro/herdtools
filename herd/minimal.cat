@@ -1,5 +1,5 @@
 "Minimal model"
-show mfence lfence sfence
-show sync lwsync eieio
-show dmb dsb dsbst dmbst
-show isb isync
+show mfence, lfence, sfence
+show sync, lwsync, eieio
+show dmb, dsb, dsbst, dmbst
+show isb, isync

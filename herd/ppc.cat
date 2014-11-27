@@ -9,7 +9,7 @@ let dd = addr | data
 let rdw = po-loc & (fre;rfe)
 let detour = po-loc & (coe ; rfe)
 let addrpo = addr;po
-#show rdw detour dd addrpo
+
 
 (*******)
 (* ppo *)
@@ -35,7 +35,7 @@ show ppo
 (* fences *)
 let lwsync=WW(lwsync)|RR(lwsync)|RW(lwsync)
 let eieio=WW(eieio)
-show sync lwsync eieio
+show sync, lwsync, eieio
 
 (* All arm barriers are strong *)
 let strong = sync

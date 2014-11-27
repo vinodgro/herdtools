@@ -8,7 +8,7 @@ let dd = addr | data
 let rdw = po-loc & (fre;rfe)
 let detour = po-loc & (coe ; rfe)
 let addrpo = addr;po
-#show rdw detour dd addrpo
+
 (*******)
 (* ppo *)
 (*******)
@@ -36,7 +36,7 @@ let ppo = RW(ic) | RR(ii)
 (* Power *)
 let lwsync = RM(lwsync)|WW(lwsync)
 let eieio = WW(eieio)
-show sync lwsync eieio
+show sync, lwsync, eieio
 
 let strong = sync
 let light = lwsync|eieio

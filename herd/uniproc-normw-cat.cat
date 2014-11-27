@@ -22,10 +22,10 @@ show fr
 show co
 
 (* a few additional shows *)
-show mfence lfence sfence
-show sync lwsync eieio
-show dmb dsb dsbst dmbst
-show isb isync
+show mfence, lfence, sfence
+show sync, lwsync, eieio
+show dmb, dsb, dsbst, dmbst
+show isb, isync
 
 (* uni check proper *)
 irreflexive co as uniproc

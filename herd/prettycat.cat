@@ -63,12 +63,12 @@ let ppo = RW(ic) | RR(ii)
 (* Power *)
 let lwsync_eff = RM(lwsync)|WW(lwsync)
 let eieio_eff = WW(eieio)
-show sync lwsync eieio
+show sync, lwsync, eieio
 
 (* ARM *)
 let dmb.st_eff=WW(dmb.st)
 let dsb.st_eff=WW(dsb.st)
-show dmb dsb dmb.st dsb.st
+show dmb, dsb, dmb.st, dsb.st
 
 (* Common, all arm barriers are strong *)
 let strong = sync|dmb|dsb|dmb.st_eff|dsb.st_eff

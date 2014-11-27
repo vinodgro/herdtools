@@ -5,5 +5,5 @@ irreflexive poi ; chapo
 (* Show things... *)
 let dmbst=WW(dmbst)
 let dsbst=WW(dsbst)
-show dmb dsb dmbst dsbst
-show addr data ctrl ctrlisb
+show dmb, dsb, dmbst, dsbst
+show addr, data, ctrl, ctrlisb
