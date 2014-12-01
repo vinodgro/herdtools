@@ -207,17 +207,22 @@ module Make
 
       let error fmt = ksprintf (fun msg -> raise (CompError msg)) fmt
 
-      let rec compare v1 v2 = match v1,v2 with
+      let compare v1 v2 = match v1,v2 with
       | V.Empty,V.Empty -> 0
-
-      | V.Empty,ValSet (t,_) -> compare (ValSet (t,ValSet.empty)) v2
-      | ValSet (t,_),V.Empty -> compare v1 (ValSet (t,ValSet.empty))
-
+(* Expand all legitimate empty's *)
+      | V.Empty,ValSet (_,s) -> ValSet.compare ValSet.empty s
+      | ValSet (_,s),V.Empty -> ValSet.compare s ValSet.empty
+      | V.Empty,Rel r -> E.EventRel.compare E.EventRel.empty r
+      | Rel r,V.Empty -> E.EventRel.compare r E.EventRel.empty
+      | V.Empty,Set s -> E.EventSet.compare E.EventSet.empty s
+      | Set s,V.Empty -> E.EventSet.compare s E.EventSet.empty
+(* Legitimate cmp *)
       | Tag (t1,s1), Tag (t2,s2) when t1=t2 ->
           String.compare s1 s2
       | ValSet (_,s1),ValSet (_,s2) -> ValSet.compare s1 s2
       | Rel r1,Rel r2 -> E.EventRel.compare r1 r2
       | Set s1,Set s2 -> E.EventSet.compare s1 s2
+(* Errors *)
       | (Unv,_)|(_,Unv) -> error "Universe in compare"
       | _,_ ->
           let t1 = V.type_val v1
@@ -250,8 +255,8 @@ module Make
       | Unv -> "<universe>"
       | V.Empty -> "{}"
       | Tag (_,s) -> sprintf "'%s" s
-      | ValSet (t,s) ->
-          sprintf "<%s>{%s}" (pp_typ t) (ValSet.pp_str "," pp_val s)
+      | ValSet (_,s) ->
+          sprintf "{%s}" (ValSet.pp_str "," pp_val s)
       | v -> sprintf "<%s>" (pp_typ (type_val v))
 
 (* lift a tag to a singleton set *)
