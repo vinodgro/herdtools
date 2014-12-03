@@ -63,6 +63,12 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
   module C = S.C
   module PC = S.O.PC
 
+(* One init *)
+
+let one_init = match PC.graph with
+| Graph.Columns -> true
+| Graph.Free|Graph.Cluster -> false
+
 (* Attempt *)
 
   let _reduces_more r1 r2 =
@@ -709,18 +715,32 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
     let maxy,envy =  order_events es events_by_proc_and_poi in
     let inits = E.mem_stores_init_of es.E.events in
     let n_inits = E.EventSet.cardinal inits in
-    let _,init_envx =
-      let delta = if max_proc >= n_inits then 1.0 else  0.75 in
-      let w1 = float_of_int max_proc
-      and w2 = float_of_int (n_inits-1) *. delta in
-      let shift = (w1 -. w2) /. 2.0 in
-      E.EventSet.fold
-        (fun e (k,env) ->
-          k+1,
-          let x =  shift +. (float_of_int k) *. delta in
+    let init_envx =
+      if one_init then
+        let w1 = float_of_int max_proc in
+        let x = (w1 /. 2.0) -. 0.5 in
+         E.EventSet.fold
+          (fun e env ->
+            E.EventMap.add e x env)
+          inits E.EventMap.empty
+      else
+        let delta = if max_proc >= n_inits then 1.0 else  0.75 in
+        let w1 = float_of_int max_proc
+        and w2 = float_of_int (n_inits-1) *. delta in
+        let shift = (w1 -. w2) /. 2.0 in
+        let _,r = E.EventSet.fold
+          (fun e (k,env) ->
+            k+1,
+            let x =  shift +. (float_of_int k) *. delta in
 (*          eprintf "k=%i, x=%f\n" k x ; *)
-          E.EventMap.add e x env)
-        inits (0,E.EventMap.empty) in
+            E.EventMap.add e x env)
+          inits (0,E.EventMap.empty) in
+        r in
+    let pp_node_eiid =
+      if one_init then
+        fun e ->
+          if E.EventSet.mem e inits then "eiidinit" else pp_node_eiid e
+      else pp_node_eiid in
     let maxy =
       if E.EventSet.is_empty inits then maxy
       else maxy +. 1.0 in
@@ -845,21 +865,37 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
     let boxwidth = xscale *. 0.65 in
     let boxheight = yscale *. 0.25 in
 
-    let pp_event color chan e =
+    let pp_event ?lbl color chan e =
       let act = pp_action e in
       if not PC.squished then begin
-        fprintf chan "%s [label=\"%s%s\\l%a%a\""
-	  (pp_node_eiid e) (pp_node_eiid_label e)
-	  (escape_label dm act)  pp_node_ii e.E.iiid
-	  (pp_instruction dm m) e.E.iiid ;
+        begin match lbl with
+        | None ->
+            fprintf chan "%s [label=\"%s%s\\l%a%a\""
+	      (pp_node_eiid e) (pp_node_eiid_label e)
+	      (escape_label dm act)  pp_node_ii e.E.iiid
+	      (pp_instruction dm m) e.E.iiid
+        | Some _ ->
+            fprintf chan "eiidinit [label=\"Init\""
+        end ;
         pp_attr chan "shape" "box" ;
         pp_fontsize chan ;
         pp_attr chan "color" color ;
         fprintf chan "];\n"
       end else begin
-        fprintf chan "%s [label=\"%s%s\""
-          (pp_node_eiid e) (pp_node_eiid_label e)
-	  (escape_label dm act) ;          
+        begin match lbl with
+        | None ->
+            fprintf chan "%s [label=\"%s%s\""
+              (pp_node_eiid e) (pp_node_eiid_label e)
+	      (escape_label dm act)
+        | Some es ->
+            let acts =
+              E.EventSet.fold
+                (fun e k -> pp_action e::k)
+                es [] in
+            let acts = String.concat "," acts in
+            fprintf chan "eiidinit [label=\"%s\""
+              (escape_label dm acts)
+        end ;
         pp_attr chan "shape" (if PC.verbose > 0 then "box" else "none") ;
         pp_fontsize chan ;
         if PC.verbose > 0 then pp_attr chan "color" color ;
@@ -879,6 +915,9 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
         fprintf chan "];\n"
       end in
 
+    let pp_init_event color chan inits =
+      let e = try E.EventSet.choose inits with Not_found -> assert false in
+      pp_event ~lbl:inits color chan e in
 
     let pp_event_structure chan vbss es =
       let pl = fprintf chan "%s\n" in
@@ -905,9 +944,12 @@ module Make (S:SemExtra.S) : S with module S = S  = struct
       if not (E.EventSet.is_empty inits) then begin
         pl "" ;
         pl "/* init events */" ;
-        E.EventSet.iter
-          (fun ew -> pp_event "blue" chan ew)
-          inits 
+        if one_init then
+          pp_init_event "blue" chan inits
+        else
+          E.EventSet.iter
+            (fun ew -> pp_event "blue" chan ew)
+            inits
       end ;
       pl "" ;
       pl "/* the unlocked events */" ;
