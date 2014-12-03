@@ -316,7 +316,9 @@ module Make
       | Rel r -> r
       | Empty -> E.EventRel.empty
       | Unv -> Lazy.force ks.unv
-      | _ ->  assert false
+      | v ->
+          eprintf "not a relation: '%s'\n" (pp_val v) ;
+          assert false
 
     let as_set ks = function
       | Set s -> s
@@ -695,9 +697,9 @@ module Make
             end
         | Op (_,(Diff|Inter|Cartesian|Add),_) -> assert false (* By parsing *)
 (* Application/bindings *)
-        | App (_,f,es) ->
+        | App (loc,f,es) ->
             let f = eval_clo env f in
-            let env = add_args f.clo_args es env f.clo_env in
+            let env = add_args loc f.clo_args es env f.clo_env in
             eval env f.clo_body
         | Bind (_,bds,e) ->
             let env = eval_bds env bds in
@@ -757,12 +759,12 @@ module Make
                   (pp_typ (type_val v))
             end
 
-      and add_args xs es env_es env_clo =
+      and add_args loc xs es env_es env_clo =
         let vs = List.map (eval env_es) es in
         let bds =
           try
             List.combine xs vs
-          with _ -> Warn.user_error "argument_mismatch" in
+          with _ -> error loc "argument_mismatch" in
         List.fold_right
           (fun (x,v) env -> add_val x (lazy v) env)
           bds env_clo
@@ -1007,7 +1009,7 @@ module Make
       | Call (loc,name,es) ->
           let env0 = st.env in
           let p = eval_proc loc env0 name in
-          let env1 = add_args p.proc_args es env0 p.proc_env in
+          let env1 = add_args loc p.proc_args es env0 p.proc_env in
           begin match run txt { st with env = env1; } p.proc_body with
           | None -> None
           | Some st_call ->

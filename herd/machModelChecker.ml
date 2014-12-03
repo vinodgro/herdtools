@@ -44,7 +44,10 @@ module Make
       let prb = lazy (JU.make_procrels conc) in
       let pr = lazy (Lazy.force prb).JU.pr in
       let vb_pp = lazy (JU.vb_pp_procrels (Lazy.force prb)) in
-      let evts = E.EventSet.filter E.is_mem conc.S.str.E.events in
+      let evts =
+        E.EventSet.filter
+          (fun e -> E.is_mem e || E.is_barrier e)
+          conc.S.str.E.events in
       let id =
         lazy begin
           E.EventRel.of_list
@@ -76,26 +79,26 @@ module Make
            "rfe", lazy (U.ext (Lazy.force pr).S.rf);
            "rfi", lazy (U.internal (Lazy.force pr).S.rf);
 (* Power fences *)
-           "lwsync",lazy  (Lazy.force prb).JU.lwsync;
-           "eieio",lazy  (Lazy.force prb).JU.eieio;
-           "sync",lazy  (Lazy.force prb).JU.sync;
-           "isync",lazy  (Lazy.force prb).JU.isync;
+           "lwsync", (Lazy.force prb).JU.lwsync;
+           "eieio", (Lazy.force prb).JU.eieio;
+           "sync",  (Lazy.force prb).JU.sync;
+           "isync",  (Lazy.force prb).JU.isync;
 (* ARM fences *)
-           "dmb",lazy (Lazy.force prb).JU.dmb;
-           "dsb",lazy (Lazy.force prb).JU.dsb;
-           "dmbst",lazy (Lazy.force prb).JU.dmbst;
-           "dmb.st",lazy (Lazy.force prb).JU.dmbst;
-           "dsbst",lazy (Lazy.force prb).JU.dsbst;
-           "dsb.st",lazy (Lazy.force prb).JU.dsbst;
-           "isb",lazy (Lazy.force prb).JU.isb;
+           "dmb", (Lazy.force prb).JU.dmb;
+           "dsb", (Lazy.force prb).JU.dsb;
+           "dmbst", (Lazy.force prb).JU.dmbst;
+           "dmb.st", (Lazy.force prb).JU.dmbst;
+           "dsbst", (Lazy.force prb).JU.dsbst;
+           "dsb.st",(Lazy.force prb).JU.dsbst;
+           "isb",(Lazy.force prb).JU.isb;
 (* X86 fences *)
-           "mfence",lazy (Lazy.force prb).JU.mfence;
-           "sfence",lazy (Lazy.force prb).JU.sfence;
-           "lfence",lazy (Lazy.force prb).JU.lfence;
+           "mfence",(Lazy.force prb).JU.mfence;
+           "sfence",(Lazy.force prb).JU.sfence;
+           "lfence",(Lazy.force prb).JU.lfence;
 (* PTX fences *)
-	   "membar.cta", lazy (Lazy.force prb).JU.membar_cta;
-	   "membar.gl", lazy (Lazy.force prb).JU.membar_gl;
-	   "membar.sys", lazy (Lazy.force prb).JU.membar_sys;
+	   "membar.cta", (Lazy.force prb).JU.membar_cta;
+	   "membar.gl", (Lazy.force prb).JU.membar_gl;
+	   "membar.sys", (Lazy.force prb).JU.membar_sys;
           ] @
           (match test.Test.scope_tree with
            | None -> []

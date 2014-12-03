@@ -49,17 +49,17 @@ module Make
         let a = S.seq rfe r in
         S.unions [a; S.seq r rfe; S.seq a rfe] in
 (* All barriers *)
-      let _sync = prb.JU.sync
+      let _sync = Lazy.force prb.JU.sync
       and _lwsync =
         E.EventRel.filter
           (fun (e1,e2) ->
             not (E.is_mem_store e1 && E.is_mem_load e2))
-          prb.JU.lwsync
-      and _eieio = S.doWW prb.JU.eieio  in
-      let _dsb = prb.JU.dsb
-      and _dmb = prb.JU.dmb in
-      let _dsbst = S.doWW prb.JU.dsbst in
-      let _dmbst = S.doWW prb.JU.dmbst in
+          (Lazy.force prb.JU.lwsync)
+      and _eieio = S.doWW (Lazy.force prb.JU.eieio)  in
+      let _dsb = Lazy.force prb.JU.dsb
+      and _dmb = Lazy.force prb.JU.dmb in
+      let _dsbst = S.doWW (Lazy.force prb.JU.dsbst) in
+      let _dmbst = S.doWW (Lazy.force prb.JU.dmbst) in
       let light =
         if O.opt.jstrongst then
           S.unions [_lwsync; _eieio;]

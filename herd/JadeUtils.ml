@@ -31,21 +31,21 @@ module Make(O:Model.Config) (S : SemExtra.S) (B:AllBarrier.S with type a = S.bar
 
     type procrels =
         { pr : S.procrels;
-          lwsync : S.event_rel;
-          sync : S.event_rel;
-          isync : S.event_rel;
-          eieio : S.event_rel;
-          isb : S.event_rel;
-          dmb : S.event_rel;
-          dsb : S.event_rel;
-          dmbst : S.event_rel;
-          dsbst : S.event_rel;
-          mfence : S.event_rel;
-          sfence : S.event_rel;
-          lfence : S.event_rel; 
-	  membar_cta : S.event_rel;
-	  membar_gl  : S.event_rel;
-	  membar_sys : S.event_rel;
+          lwsync : S.event_rel Lazy.t;
+          sync : S.event_rel Lazy.t;
+          isync : S.event_rel Lazy.t;
+          eieio : S.event_rel Lazy.t;
+          isb : S.event_rel Lazy.t;
+          dmb : S.event_rel Lazy.t;
+          dsb : S.event_rel Lazy.t;
+          dmbst : S.event_rel Lazy.t;
+          dsbst : S.event_rel Lazy.t;
+          mfence : S.event_rel Lazy.t;
+          sfence : S.event_rel Lazy.t;
+          lfence : S.event_rel Lazy.t;
+	  membar_cta : S.event_rel Lazy.t;
+	  membar_gl  : S.event_rel Lazy.t;
+	  membar_sys : S.event_rel Lazy.t;
         }
 
     let is_that_fence b x =  match E.barrier_of x with
@@ -63,6 +63,9 @@ module Make(O:Model.Config) (S : SemExtra.S) (B:AllBarrier.S with type a = S.bar
       and r2 =
         E.EventRel.restrict_domains (is_that_fence b) E.is_mem po in
       E.EventRel.sequence r1 r2
+
+    let sep_by_that_fence_lazy b po =
+      lazy (sep_by_that_fence b po)
 
     let is_rdw conc e1 e2 =
       assert (E.same_location e1 e2) ;
@@ -85,21 +88,21 @@ module Make(O:Model.Config) (S : SemExtra.S) (B:AllBarrier.S with type a = S.bar
       let pr = MU.make_procrels is_isync conc in
       let po = conc.S.po in
       { pr;
-        sync=sep_by_that_fence B.SYNC po;
-        lwsync=sep_by_that_fence B.LWSYNC po;
-        isync=sep_by_that_fence B.ISYNC po;
-        eieio=sep_by_that_fence B.EIEIO po;
-        dsb=sep_by_that_fence B.DSB po;
-        dmb=sep_by_that_fence B.DMB po;
-        dsbst=sep_by_that_fence B.DSBST po;
-        dmbst=sep_by_that_fence B.DMBST po;
-        isb=sep_by_that_fence B.ISB po;
-        mfence=sep_by_that_fence B.MFENCE po;
-        sfence=sep_by_that_fence B.SFENCE po;
-        lfence=sep_by_that_fence B.LFENCE po;
-	membar_cta = sep_by_that_fence B.MEMBAR_CTA po;
-	membar_gl  = sep_by_that_fence B.MEMBAR_GL po;
-	membar_sys = sep_by_that_fence B.MEMBAR_SYS po;
+        sync=sep_by_that_fence_lazy B.SYNC po;
+        lwsync=sep_by_that_fence_lazy B.LWSYNC po;
+        isync=sep_by_that_fence_lazy B.ISYNC po;
+        eieio=sep_by_that_fence_lazy B.EIEIO po;
+        dsb=sep_by_that_fence_lazy B.DSB po;
+        dmb=sep_by_that_fence_lazy B.DMB po;
+        dsbst=sep_by_that_fence_lazy B.DSBST po;
+        dmbst=sep_by_that_fence_lazy B.DMBST po;
+        isb=sep_by_that_fence_lazy B.ISB po;
+        mfence=sep_by_that_fence_lazy B.MFENCE po;
+        sfence=sep_by_that_fence_lazy B.SFENCE po;
+        lfence=sep_by_that_fence_lazy B.LFENCE po;
+	membar_cta = sep_by_that_fence_lazy B.MEMBAR_CTA po;
+	membar_gl  = sep_by_that_fence_lazy B.MEMBAR_GL po;
+	membar_sys = sep_by_that_fence_lazy B.MEMBAR_SYS po;
       }
 
 
