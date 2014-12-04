@@ -700,7 +700,10 @@ module Make
         | App (loc,f,es) ->
             let f = eval_clo env f in
             let env = add_args loc f.clo_args es env f.clo_env in
-            eval env f.clo_body
+            begin try eval env f.clo_body
+            with Misc.Exit ->
+              error loc "Calling"
+            end
         | Bind (_,bds,e) ->
             let env = eval_bds env bds in
             eval env e
