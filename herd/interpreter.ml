@@ -809,11 +809,10 @@ module Make
 
       and env_rec loc pp bds =
         let fs,nfs =  List.partition  (fun (_,e) -> is_fun e) bds in
-        match fs,nfs with
-        | [],bds -> env_rec_vals loc pp bds
-        | bds,[] -> env_rec_funs loc bds
-        | _,_ ->
-            error loc "illegal recursion: mixing functions and other values"
+        match nfs with
+        | [] -> env_rec_funs loc fs
+        | _  -> env_rec_vals loc pp fs nfs
+
 
 (* Recursive functions *)
       and env_rec_funs _loc bds env =
@@ -834,19 +833,21 @@ module Make
         env
 
 (* Compute fixpoint of relations *)
-      and env_rec_vals loc pp bds =
+      and env_rec_vals loc pp funs bds =
         let rec fix  k env vs =
           if O.debug && O.verbose > 1 then begin
             let vb_pp =
-              List.map2
-                (fun (x,_) v ->
-                  let v = match v with
-                  | V.Empty -> E.EventRel.empty
-                  | Unv -> Lazy.force ks.unv
-                  | Rel r -> r
-                  | _ -> E.EventRel.empty in
-                  x, rt_loc x v)
-                bds vs in
+              List.fold_left2
+                (fun k (x,_) v ->
+                  try
+                    let v = match v with
+                    | V.Empty -> E.EventRel.empty
+                    | Unv -> Lazy.force ks.unv
+                    | Rel r -> r
+                    | _ -> raise Exit in
+                  (x, rt_loc x v)::k
+                  with Exit -> k)
+                [] bds vs in
             let vb_pp = pp vb_pp in
             MU.pp_failure test conc
               (sprintf "Fix %i" k)
@@ -858,13 +859,17 @@ module Make
             with Stabilised t ->
               error loc "illegal recursion on type '%s'" (pp_typ t) in
           if ok then env
-          else fix (k+1) env ws in
+          else
+            (* Update recursive functions *)
+            let env = env_rec_funs loc funs env in
+            fix (k+1) env ws in
         fun env ->
-          fix 0
-            (List.fold_left
+          let env0 =
+            List.fold_left
                (fun env (k,_) -> add_val k (lazy V.Empty) env)
-               env bds)
-            (List.map (fun _ -> V.Empty) bds)
+               env bds in
+          let env0 = env_rec_funs loc funs env0 in
+          fix 0 env0 (List.map (fun _ -> V.Empty) bds)
 
       and fix_step env bds = match bds with
       | [] -> env,[]
