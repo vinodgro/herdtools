@@ -38,6 +38,7 @@ type op1 =
   | Set_to_rln (** Convert a set to a relation (viz. identity restricted to that set) *)
 type konst = Empty of set_or_rln
 type var = string
+type varset = StringSet.t
 
 type scope = Device | Kernel | Work_Group | Sub_Group | Work_Item
 
@@ -50,7 +51,8 @@ type exp =
   | App of  TxtLoc.t * exp * exp list
   | Bind  of  TxtLoc.t * binding list * exp
   | BindRec  of  TxtLoc.t * binding list * exp
-  | Fun of  TxtLoc.t * var list * exp
+  | Fun of  TxtLoc.t * var list * exp *
+        var (* name *) * varset (* free vars *)
   | ExplicitSet of TxtLoc.t * exp list
   | Match of TxtLoc.t * exp * clause list * exp option
   | MatchSet of TxtLoc.t * exp * exp * (string * string * exp)

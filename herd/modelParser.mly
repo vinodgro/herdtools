@@ -146,8 +146,10 @@ bind:
 
 pat_bind:
 | bind { $1 }
-| VAR VAR EQUAL exp { ($1,Fun (mk_loc(),[$2],$4)) }
-| VAR LPAR formals RPAR EQUAL exp { ($1,Fun (mk_loc(),$3,$6)) }
+| VAR VAR EQUAL exp
+   { ($1,Fun (mk_loc(),[$2],$4,$1,ASTUtils.free_body [$2] $4)) }
+| VAR LPAR formals RPAR EQUAL exp
+   { ($1,Fun (mk_loc(),$3,$6,$1,ASTUtils.free_body $3 $6)) }
 
 pat_bind_list:
 | pat_bind { [$1] }
@@ -165,7 +167,8 @@ formalsN:
 exp:
 | LET pat_bind_list IN exp { Bind (mk_loc(),$2,$4) }
 | LET REC pat_bind_list IN exp { BindRec (mk_loc(),$3,$5) }
-| FUN LPAR formals RPAR ARROW exp { Fun (mk_loc(),$3,$6) }
+| FUN LPAR formals RPAR ARROW exp
+    { Fun (mk_loc(),$3,$6,"*fun*",ASTUtils.free_body $3 $6) }
 | base { $1 }
 
 simple:

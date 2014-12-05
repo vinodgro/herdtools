@@ -23,6 +23,7 @@ let rec lem_of_op2 args chan es = function
   | Diff -> fprintf_list_infix "\\" (lem_of_exp args) chan es
   | Seq -> fprintf_list "seq" (lem_of_exp args) chan es
   | Cartesian -> fprintf_list "cross" (lem_of_exp args) chan es
+  | _ -> Warn.fatal "lem_of_op2"
 
 and lem_of_op1 args chan e = function
   | Plus -> fprintf chan "(tch %a)" (lem_of_exp args) e
@@ -64,12 +65,12 @@ and lem_of_exp args chan = function
   | Bind _ -> fprintf chan "Bindings not done yet"
   | BindRec _ -> fprintf chan "Recursive bindings not done yet"
   | Fun _ -> fprintf chan "Local functions not done yet"
-  | ExplicitSet _|Match _|Tag _ -> Warn.fatal "explicitset/match/tag in herd2lem"
+  | _ -> Warn.fatal "explicitset/match/tag etc. in herd2lem"
 
 
 and lem_of_binding chan (x, e) = 
   match e with
-    | Fun (_,xs,e) ->
+    | Fun (_,xs,e,_,_) ->
       fprintf chan "let %s X (%a) = %a" 
         x 
         (fprintf_list_infix "," (fun _ x -> fprintf chan "%s" x)) xs

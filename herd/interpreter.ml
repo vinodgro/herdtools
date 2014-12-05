@@ -99,8 +99,8 @@ module Make
  *)
 
     type ks =
-      { id : S.event_rel Lazy.t; unv : S.event_rel Lazy.t;
-        evts : S.event_set; }
+        { id : S.event_rel Lazy.t; unv : S.event_rel Lazy.t;
+          evts : S.event_set; }
 
 (* Internal typing *)
     type typ =
@@ -136,8 +136,8 @@ module Make
 
 
 (*
-    module V = Ivalue.Make(S)
-*)
+  module V = Ivalue.Make(S)
+ *)
 
     module rec V : sig
       type v =
@@ -155,7 +155,8 @@ module Make
       and closure =
           { clo_args : AST.var list ;
             mutable clo_env : env ;
-            clo_body : AST.exp; }
+            clo_body : AST.exp;
+            clo_name : string; }
       and procedure = {
           proc_args : AST.var list;
           proc_env : env;
@@ -181,22 +182,23 @@ module Make
       and closure =
           { clo_args : AST.var list ;
             mutable clo_env : env ;
-            clo_body : AST.exp; }
+            clo_body : AST.exp;
+            clo_name : string; }
 
       and procedure = {
           proc_args : AST.var list;
           proc_env : env;
           proc_body : AST.ins list; }
 
-    let type_val = function
-      | Empty -> TEmpty
-      | Unv -> assert false (* Discarded before *)
-      | Rel _ -> TRel
-      | Set _ -> TEvents
-      | Clo _ -> TClo
-      | Proc _ -> TProc
-      | Tag (t,_) -> TTag t
-      | ValSet (t,_) -> TSet t
+      let type_val = function
+        | Empty -> TEmpty
+        | Unv -> assert false (* Discarded before *)
+        | Rel _ -> TRel
+        | Set _ -> TEvents
+        | Clo _ -> TClo
+        | Proc _ -> TProc
+        | Tag (t,_) -> TTag t
+        | ValSet (t,_) -> TSet t
 
 
     end
@@ -261,8 +263,8 @@ module Make
 
 (* lift a tag to a singleton set *)
     let tag2set v = match v with
-      | Tag (t,_) -> ValSet (TTag t,ValSet.singleton v)
-      | _ -> v
+    | Tag (t,_) -> ValSet (TTag t,ValSet.singleton v)
+    | _ -> v
 
 
 (* Add values to env *)
@@ -311,6 +313,13 @@ module Make
     let find_env_loc loc env k =
       try  find_env env k
       with Misc.UserError msg -> error loc "%s" msg
+
+(* find without forcing lazy's *)
+    let just_find_env fail loc env k =
+      try StringMap.find k env.vals
+      with Not_found ->
+        if fail then error loc "unbound var: %s" k
+        else raise Not_found
 
     let as_rel ks = function
       | Rel r -> r
@@ -364,6 +373,7 @@ module Make
 
     open AST
 
+
 (* Syntactic function *)
     let is_fun = function
       | Fun _ -> true
@@ -381,7 +391,7 @@ module Make
       | Bind (loc,_,_)
       | BindRec (loc,_,_)
       | App (loc,_,_)
-      | Fun (loc,_,_)
+      | Fun (loc,_,_,_,_)
       | Match (loc,_,_,_)
       | MatchSet (loc,_,_,_)
         -> loc
@@ -425,7 +435,7 @@ module Make
                     t0,v::vs
                 | None ->
                     error loc
-                    "type %s expected, %s found" (pp_typ t0) (pp_typ t1) in
+                      "type %s expected, %s found" (pp_typ t0) (pp_typ t1) in
           let t0,vs = type_rec (type_val v) vs in
           t0,v::vs
 
@@ -439,6 +449,7 @@ module Make
             error loc "universe in explicit set"
         | x::xs -> x::s_rec xs in
       s_rec
+
 (* Union is polymorphic *)
     let union_args =
       let rec u_rec = function
@@ -485,8 +496,8 @@ module Make
             end
         | Var (loc,k) ->
             find_env_loc loc env k
-        | Fun (_,xs,body) ->
-            Clo {clo_args=xs; clo_env=env; clo_body=body; }
+        | Fun (loc,xs,body,name,fvs) ->
+            Clo (eval_fun false env loc xs body name fvs)
 (* Unary operators *)
         | Op1 (_,Plus,e) ->
             begin match eval env e with
@@ -532,7 +543,7 @@ module Make
             | v ->
                 error (get_loc e)
                   "set or relation expected, %s found"
-                     (pp_typ (type_val v))
+                  (pp_typ (type_val v))
             end
         | Op1 (_,Inv,e) ->
             begin match eval env e with
@@ -581,12 +592,12 @@ module Make
             let vs = List.map (eval_loc env) es in
             let vs = set_args vs in
             begin match vs with
-              | [] -> V.Empty
-              | _ ->
-                  let t,vs = type_list vs in
-                  try ValSet (t,ValSet.of_list vs)
-                  with CompError msg ->
-                    error loc "%s" msg
+            | [] -> V.Empty
+            | _ ->
+                let t,vs = type_list vs in
+                try ValSet (t,ValSet.of_list vs)
+                with CompError msg ->
+                  error loc "%s" msg
             end
 (* N-ary operators, those associative binary operators are optimized *)
         | Op (loc,Union,es) ->
@@ -762,6 +773,25 @@ module Make
                   (pp_typ (type_val v))
             end
 
+      and eval_fun is_rec env loc xs body name fvs =
+(*
+        let sz =
+          StringMap.fold
+            (fun _ _ k -> k+1) env.vals 0 in
+        let fs = StringSet.pp_str "," (fun x -> x) fvs in
+        eprintf "Closure %s, env=%i, free={%s}\n" name sz fs ;
+*)
+        let vals =
+          StringSet.fold
+            (fun x k ->
+              try
+                let v = just_find_env (not is_rec) loc env x in
+                StringMap.add x v k
+              with Not_found -> k)
+            fvs StringMap.empty in
+        let env = { env with vals; } in
+        {clo_args=xs; clo_env=env; clo_body=body; clo_name=name; }
+
       and add_args loc xs es env_es env_clo =
         let vs = List.map (eval env_es) es in
         let bds =
@@ -819,18 +849,23 @@ module Make
         let clos =
           List.map
             (function
-              | f,Fun (_,xs,body) ->
-                  f,{ clo_args=xs; clo_env=env; clo_body=body;}
+              | f,Fun (loc,xs,body,name,fvs) ->
+                  f,eval_fun true env loc xs body name fvs,fvs
               | _ -> assert false)
             bds in
-        let env =
+        let add_funs pred env =
           List.fold_left
-            (fun env (f,clo) -> add_val f (lazy (Clo clo)) env)
+            (fun env (f,clo,_) ->
+              if pred f then add_val f (lazy (Clo clo)) env
+              else env)
             env clos in
         List.iter
-          (fun (_,clo) -> clo.clo_env <- env)
+          (fun (_,clo,fvs) ->
+            clo.clo_env <-
+              add_funs (fun x -> StringSet.mem x fvs) clo.clo_env)
           clos ;
-        env
+        add_funs (fun _ -> true) env
+
 
 (* Compute fixpoint of relations *)
       and env_rec_vals loc pp funs bds =
@@ -845,7 +880,7 @@ module Make
                     | Unv -> Lazy.force ks.unv
                     | Rel r -> r
                     | _ -> raise Exit in
-                  (x, rt_loc x v)::k
+                    (x, rt_loc x v)::k
                   with Exit -> k)
                 [] bds vs in
             let vb_pp = pp vb_pp in
@@ -866,8 +901,8 @@ module Make
         fun env ->
           let env0 =
             List.fold_left
-               (fun env (k,_) -> add_val k (lazy V.Empty) env)
-               env bds in
+              (fun env (k,_) -> add_val k (lazy V.Empty) env)
+              env bds in
           let env0 = env_rec_funs loc funs env0 in
           fix 0 env0 (List.map (fun _ -> V.Empty) bds)
 
@@ -882,8 +917,16 @@ module Make
 (* Showing bound variables, (-doshow option) *)
 
       let find_show_rel env x =
+        let as_rel v = match v with
+        | Rel r -> r
+        | V.Empty -> E.EventRel.empty
+        | Unv -> Lazy.force ks.unv
+        | v ->
+            Warn.warn_always
+              "Warning show: %s is not a relation: '%s'" x (pp_val v) ;
+            raise Not_found in
         try
-          rt_loc x (as_rel ks (Lazy.force (StringMap.find x env.vals)))
+          rt_loc x (as_rel (Lazy.force (StringMap.find x env.vals)))
         with Not_found -> E.EventRel.empty in
 
       let doshow bds st =
@@ -1015,13 +1058,14 @@ module Make
             Proc { proc_args=args; proc_env=st.env; proc_body=body; } in
           run txt { st with env = add_val name (lazy p) st.env } c
       | Call (loc,name,es) ->
-          let env0 = st.env in
+          let env0 = st.env
+          and show0 = st.show in
           let p = eval_proc loc env0 name in
           let env1 = add_args loc p.proc_args es env0 p.proc_env in
           begin match run txt { st with env = env1; } p.proc_body with
           | None -> None
           | Some st_call ->
-              run txt { st_call with env = env0; } c
+              run txt { st_call with env = env0; show=show0;} c
           end
       | Enum (_loc,name,xs) ->
           let env = st.env in

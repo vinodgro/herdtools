@@ -71,7 +71,7 @@ and tex_of_exp n c = function
             list_iter_alt (tex_of_exp 0 c) (comma c) es))
   | Bind _ -> fprintf c "\\mbox{\\color{red}[Local bindings not done yet]}"
   | BindRec _ -> fprintf c "\\mbox{\\color{red}[Local bindings not done yet]}"
-  | Fun (_,xs,e) ->
+  | Fun (_,xs,e,_,_) ->
     paren (n > 1) c (fun () ->
       fprintf c "\\lambda %a \\ldotp %a" 
         (tex_of_formals false) xs
@@ -88,7 +88,7 @@ and tex_of_var c x = fprintf c "\\var{%s}" x
 and tex_of_name c x = fprintf c "\\name{%s}" x
 
 and tex_of_binding c (x, e) = match e with
-  | Fun (_,xs,e) ->
+  | Fun (_,xs,e,_,_) ->
     fprintf c "$%a%a = %a$" 
       tex_of_var x 
       (tex_of_formals true) xs
