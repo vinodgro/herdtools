@@ -68,6 +68,8 @@ module Make
     =
   struct
 
+    let dbg = false
+
 (****************************)
 (* Convenient abbreviations *)
 (****************************)
@@ -774,13 +776,13 @@ module Make
             end
 
       and eval_fun is_rec env loc xs body name fvs =
-(*
-        let sz =
-          StringMap.fold
-            (fun _ _ k -> k+1) env.vals 0 in
-        let fs = StringSet.pp_str "," (fun x -> x) fvs in
-        eprintf "Closure %s, env=%i, free={%s}\n" name sz fs ;
-*)
+        if dbg then begin
+          let sz =
+            StringMap.fold
+              (fun _ _ k -> k+1) env.vals 0 in
+          let fs = StringSet.pp_str "," (fun x -> x) fvs in
+          eprintf "Closure %s, env=%i, free={%s}\n" name sz fs
+        end ;
         let vals =
           StringSet.fold
             (fun x k ->

@@ -170,7 +170,7 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
       let rA,init,st = next_init st p init x in
       init,
       pseudo
-        [I_MOVI (rA,v,AL);
+        [I_MOVI (rV,v,AL);
          I_STREX (tempo2,rV,rA,AL);
          I_CMPI (tempo2,0);
          I_BNE (Label.fail p);],
