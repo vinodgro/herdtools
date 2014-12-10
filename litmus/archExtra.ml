@@ -42,6 +42,7 @@ module type S = sig
 
 (* A bit of state handling *)
   type state = (location * Constant.v) list
+  type fullstate = (location * (MiscParser.run_type * Constant.v)) list
 
   val find_in_state : location -> state -> Constant.v
 
@@ -80,6 +81,7 @@ module Make(O:Config)(I:I) : S with module I = I
 
 (* A bit of state handling *)
   type state = (location * Constant.v) list
+  type fullstate = (location * (MiscParser.run_type * Constant.v)) list
 
   let rec find_in_state loc = function
     | [] -> I.V.intToV 0

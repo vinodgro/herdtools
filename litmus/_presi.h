@@ -18,9 +18,6 @@
 /* Misc */
 /********/
 
-/* type of state for pseudorandom  generators */
-typedef unsigned int st_t ;
-
 void fatal(char *msg) ;
 /* e is errno */
 void errexit(char *msg,int e) ;

@@ -28,6 +28,11 @@ val check_env : env -> string -> string -> string -> env
 (* Compute digests *)
 (*******************)
 
+(* Digest of init (shared with C digests) *)
+
+val digest_init :
+  (string -> string -> unit) (* debug *) -> MiscParser.state -> string
+
 module Make :
   functor (A:ArchBase.S) -> sig
     type init = MiscParser.state

@@ -353,6 +353,7 @@ end = struct
         let reg_compare = Internal.reg_compare
 
         type state = (location * V.v) list
+        type fullstate = (location * (MiscParser.run_type * V.v)) list
 
         module Out = struct
           include CTarget

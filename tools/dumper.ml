@@ -17,11 +17,11 @@ module Make(A:Arch.S) = struct
       (struct
         module A = A
             
-        type atom = (A.location * A.v)
+        type atom = (A.location * (MiscParser.run_type * A.v))
         type state = atom list
               
-        let dump_atom_state (loc,v) =
-          sprintf "%s=%s" (A.pp_location loc) (A.pp_v v)
+        let dump_atom_state a =
+          MiscParser.dump_state_atom A.pp_location A.pp_v a
 
 
         let dump_state st =
@@ -36,7 +36,9 @@ module Make(A:Arch.S) = struct
         let dump_atom a =
           let open ConstrGen in
           match a with
-          | LV (loc,v) -> dump_atom_state (loc,v)
+          | LV (loc,v) ->
+              sprintf "%s=%s"
+                (A.pp_location loc) (A.pp_v v)
           | LL (loc1,loc2) ->
               sprintf "%s=%s"
                 (A.pp_location loc1)

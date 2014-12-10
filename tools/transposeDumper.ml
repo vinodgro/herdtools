@@ -98,8 +98,14 @@ end = struct
         fprintf chan "locations [" ;
         List.iter
           (fun (loc,t) -> match t with
-          | MiscParser.Ty _ -> fprintf chan "%s; " (I.dump_location loc)
-          | MiscParser.Pointer _ -> fprintf chan "%s*; "(I.dump_location loc))
+          | MiscParser.TyDef  ->
+              fprintf chan "%s; " (I.dump_location loc)
+          | MiscParser.TyDefPointer ->
+              fprintf chan "%s*; "(I.dump_location loc)
+          | MiscParser.Ty t ->
+              fprintf chan "%s %s; " (I.dump_location loc) t
+          | MiscParser.Pointer t ->
+              fprintf chan "%s %s*; " (I.dump_location loc) t)
           locs ;
         fprintf chan "]\n"
     end ;

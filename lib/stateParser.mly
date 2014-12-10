@@ -27,7 +27,7 @@ open ConstrGen
 %token EQUAL PLUS_DISJ
 %token FINAL FORALL EXISTS OBSERVED TOKAND NOT AND OR IMPLIES CASES WITH
 %token LOCATIONS STAR
-%token LBRK RBRK LPAR RPAR SEMI COLON 
+%token LBRK RBRK LPAR RPAR SEMI COLON AMPER
 
 %token PTX_REG_DEC 
 %token <string> PTX_REG_TYPE
@@ -56,7 +56,7 @@ open ConstrGen
 
 /* For initial state */
 init:
-| atom_semi_list EOF { $1 }
+| init_semi_list EOF { $1 }
 
 
 reg:
@@ -91,18 +91,30 @@ atom:
 | location {($1,Concrete 0)}
 | location EQUAL maybev {($1,$3)}
 
-atom_semi_list:
+atom_init:
+| atom { let x,v = $1 in x,(TyDef,v) }
+| NAME location { $2,(Ty $1,Concrete 0)}
+| NAME location EQUAL maybev { ($2,(Ty $1,$4))}
+| NAME STAR location { ($3,(Pointer $1,Concrete 0))}
+| NAME STAR location EQUAL amperopt maybev { ($3,(Pointer $1,$6))}
+| STAR location { ($2,(TyDefPointer,Concrete 0))}
+| STAR location EQUAL amperopt maybev { ($2,(TyDefPointer,$5))}
+
+amperopt:
+| AMPER { () }
+| { () }
+init_semi_list:
 | {[]}
 | SEMI {[]}
-| atom {$1::[]}
-| atom SEMI atom_semi_list  {$1::$3}
+| atom_init {$1::[]}
+| atom_init SEMI init_semi_list  {$1::$3}
 
 
 /* For final state constraints */
 
 loc_typ:
-| location { ($1, Ty "int") }
-| location STAR { ($1, Pointer "int") }
+| location { ($1, TyDef) }
+| location STAR { ($1, TyDefPointer) }
 | location NAME { ($1, Ty $2) }
 | location NAME STAR { ($1, Pointer $2) }
 

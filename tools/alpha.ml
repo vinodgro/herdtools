@@ -72,7 +72,7 @@ struct
     | LV (loc,_) -> collect_location loc regs
     | LL (loc1,loc2) ->  collect_location loc1 (collect_location loc2 regs)
 
-  let collect_state = List.fold_right collect_state_atom
+  let collect_state st = List.fold_right collect_state_atom st
 
   let collect_constr = ConstrGen.fold_constr collect_atom
 
@@ -209,7 +209,7 @@ struct
     | A.Location_reg _ -> loc
     | A.Location_global v -> A.Location_global (map_value f v)
 
-    let collect_state_atom f (loc,v) k =
+    let collect_state_atom f (loc,(_,v)) k =
       collect_location f loc (collect_value f v k)
 
     let collect_atom f a k =
@@ -220,7 +220,7 @@ struct
       | LL (loc1,loc2) ->
           collect_location f loc1 (collect_location f loc2 k)
 
-    let map_state_atom f (loc,v) = map_location f loc,map_value f v
+    let map_state_atom f (loc,(t,v)) = map_location f loc,(t,map_value f v)
 
     let map_atom f a =
       let open ConstrGen in

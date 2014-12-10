@@ -70,7 +70,7 @@ module type S = sig
 	-> (location -> I.V.v -> string) -> string
 
   (* for explict state construction *)
-  val build_state : (location * I.V.v) list -> state
+  val build_state : (location * ('t * I.V.v)) list -> state
   val build_concrete_state : (location * int) list -> state
 
 
@@ -244,7 +244,7 @@ module Make(C:Config) (I:I) : S with module I = I
       (fun l v -> pp_location l ^ "=" ^ I.V.pp C.hexa v ^";")
 
   let build_state bds =
-    List.fold_left (fun st (loc,v) -> State.add loc v st)
+    List.fold_left (fun st (loc,(_,v)) -> State.add loc v st)
       State.empty bds
 
   let build_concrete_state bds =

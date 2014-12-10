@@ -35,6 +35,7 @@ module type Base = sig
   val reg_compare : reg -> reg -> int
 
   type state = (location * V.v) list
+  type fullstate = (location * (MiscParser.run_type * V.v)) list
 
   module Out : Target.S with type arch_reg = reg (* Out abstracted *)
 

@@ -68,8 +68,8 @@ and type pseudo = A.pseudo
   | Location_sreg reg  ->
       let p,r = f_reg reg in A.Location_reg (p,r)
 
-  let finish_state_atom f_reg (loc,v) =
-    finish_location f_reg loc, A.maybevToV v
+  let finish_state_atom f_reg (loc,(t,v)) =
+    finish_location f_reg loc, (t,A.maybevToV v)
 
   let finish_state f_reg = List.map (finish_state_atom f_reg)
 
@@ -129,7 +129,7 @@ and type pseudo = A.pseudo
       regs,StringSet.add reg symbs
   | Location_global _ -> c
 
-  let collect_state_atom (loc,(_:maybev)) = collect_location loc
+  let collect_state_atom (loc,(_,(_:maybev))) = collect_location loc
 
   let collect_state = List.fold_right collect_state_atom
 

@@ -35,13 +35,19 @@ type constr = prop ConstrGen.constr
 type quantifier = ConstrGen.kind
 
 type atom = location * maybev
-type state = atom list
 type outcome = atom list
 
 val pp_atom : atom -> string
 val pp_outcome : outcome -> string
 
-type run_type = Ty of string | Pointer of string
+type run_type =
+  | TyDef | TyDefPointer
+  | Ty of string | Pointer of string
+
+type state = (location * (run_type * maybev)) list
+
+val dump_state_atom :
+  ('loc -> string) -> ('v -> string) -> ('loc * (run_type * 'v)) -> string
 
 (* Packed result *)
 type info = (string * string) list
@@ -64,13 +70,13 @@ type ('i, 'p, 'c, 'loc) result =
 
 (* Easier to handle *)
 type ('loc,'v,'ins) r3 =
-      (('loc * 'v) list,
+       (('loc * (run_type * 'v)) list,
        (int * 'ins list) list,
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
        'loc) result
 
 type ('loc,'v,'code) r4 =
-      (('loc * 'v) list,
+      (('loc * (run_type * 'v)) list,
        'code list,
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
        'loc) result

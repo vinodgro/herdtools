@@ -163,7 +163,7 @@ let x86opt =
     word = Word.WXX; line = 512; }
 let ppcopt =
   { delay = 1024; gccopts = "-O2";
-    word = Word.WXX; line = 1024; }
+    word = Word.WXX; line = 128; }
 let armopt =
   { delay = 1024; gccopts = "-O2";
     word = Word.WXX; line = 64;} (* cortexa9 -> 32, cortex-a15 -> 64 *)

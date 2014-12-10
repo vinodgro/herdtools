@@ -191,10 +191,11 @@ let get_locs c = ConstrGen.fold_constr get_locs_atom c MiscParser.LocSet.empty
                List.fold_left
                  (fun env param ->
                    let loc = param.param_name in
+                   let ty = MiscParser.TyDef in
                    (MiscParser.Location_reg (p,loc),
-                    SymbConstant.nameToV loc)::env)
+                    (ty,SymbConstant.nameToV loc))::env)
                  env t.params)
-          init prog_litmus in            
+          init prog_litmus in
       let procs = List.map fst prog in 
       check_procs procs ;
       let (locs,final,_quantifiers) =

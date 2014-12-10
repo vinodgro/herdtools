@@ -47,8 +47,8 @@ with type v = A.V.v and type location = A.location
   | Location_sreg reg  ->
       let p,r = f_reg reg in A.Location_reg (p,r)
 
-  let finish_state_atom f_reg (loc,v) =
-    finish_location f_reg loc, A.V.maybevToV v
+  let finish_state_atom f_reg (loc,(t,v)) =
+    finish_location f_reg loc, (t,A.V.maybevToV v)
 
   let finish_state f_reg = List.map (finish_state_atom f_reg)
 
@@ -93,7 +93,7 @@ with type v = A.V.v and type location = A.location
       regs,StringSet.add reg symbs
   | Location_global _ -> c
 
-  let collect_state_atom (loc,(_:maybev)) = collect_location loc
+  let collect_state_atom (loc,(_,(_:maybev))) = collect_location loc
 
   let collect_state = List.fold_right collect_state_atom
 

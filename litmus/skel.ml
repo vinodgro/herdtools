@@ -709,13 +709,21 @@ let user2_barrier_def () =
         sprintf "%i:%s" proc (A.pp_reg reg)
     | A.Location_global s -> sprintf "%s" s in
 
-    let pp_fmt loc = match U.find_type loc env with
+    let rec pp_fmt t = match t with
     | CType.Pointer _ -> "%s"
-    | _ -> if Cfg.hexa then "0x%\"PRIxMAX\"" else "%\"PRIiMAX\"" in
+    | CType.Base t ->
+        begin match Compile.get_fmt Cfg.hexa t with
+        | CType.Direct fmt -> "0x%" ^ fmt
+        | CType.Macro fmt ->
+            (if Cfg.hexa then "0x%\"" else "%\"") ^ fmt ^ "\""
+        end
+    | CType.Atomic t|CType.Volatile t -> pp_fmt t
+    | CType.Global _|CType.Local _ -> assert false in
+
 
 
     A.LocSet.pp_str " "
-      (fun loc -> sprintf "%s=%s;" (pp_loc loc) (pp_fmt loc))
+      (fun loc -> sprintf "%s=%s;" (pp_loc loc) (pp_fmt (U.find_type loc env)))
       locs
 
   let get_xys =
@@ -897,7 +905,7 @@ let user2_barrier_def () =
              let sloc = dump_loc_name loc in
              match U.find_type loc env with
              | CType.Pointer _ -> sprintf "pretty_addr[o[%s_f]]" sloc
-             |  _ -> sprintf "o[%s_f]" sloc)
+             | t -> sprintf "(%s)o[%s_f]" (CType.dump t) sloc)
            outs]) in
     O.fi "fprintf(fhist,%s,%s);" fmt args ;
     O.o "}" ;

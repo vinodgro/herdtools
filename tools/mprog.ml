@@ -43,8 +43,8 @@ module Top
             let dump_loc = MiscParser.dump_location
             let dump_reg r = r
 
-            let dump_state_atom dump_loc (loc,v) =
-              sprintf "%s=%s" (dump_loc loc) (SymbConstant.pp_v v)
+            let dump_state_atom dump_loc a =
+              MiscParser.dump_state_atom dump_loc SymbConstant.pp_v a
 
             type state = MiscParser.state
 
@@ -70,7 +70,7 @@ module Top
                   MiscParser.LocSet.empty prog in
               let gs =
                 List.fold_left
-                  (fun k (_,v) -> match v with
+                  (fun k (_,(_,v)) -> match v with
                   | Constant.Symbolic _ as loc -> add_loc loc k
                   | _ -> k) gs st in
                       
@@ -83,7 +83,7 @@ module Top
                           MiscParser.location_compare loc loc0 = 0)
                         global_st
                     then k
-                    else (loc,SymbConstant.intToV 0)::k)
+                    else (loc,(MiscParser.TyDef,SymbConstant.intToV 0))::k)
                   gs [] in
               let st = global_st @ zeros in
               String.concat " "
@@ -108,7 +108,8 @@ module Top
             let dump_atom a =
               let open ConstrGen in
               match a with
-              | LV (loc,v) -> dump_state_atom dump_loc (loc,v)
+              | LV (loc,v) ->
+                  sprintf "%s=%s" (dump_loc loc)  (SymbConstant.pp_v v)
               | LL (loc1,loc2) ->
                   sprintf "%s=%s" (dump_loc loc1) (MiscParser.dump_rval loc2)
 
@@ -141,10 +142,11 @@ module Top
 
             let dump_loc = MiscParser.dump_location
 
-            let dump_state_atom (loc,v) =
-              sprintf "%s=%s" (dump_loc loc) (SymbConstant.pp_v v)
+            let dump_state_atom a =
+              MiscParser.dump_state_atom dump_loc SymbConstant.pp_v a
 
             type state = MiscParser.state
+
             let dump_state st =
               String.concat " "
                 (List.map
@@ -156,7 +158,7 @@ module Top
             let dump_atom a =
               let open ConstrGen in
               match a with
-              | LV (loc,v) -> dump_state_atom (loc,v)
+              | LV (loc,v) -> dump_state_atom (loc,(MiscParser.TyDef,v))
               | LL (loc1,loc2) ->
                   sprintf "%s=%s" (dump_loc loc1) (MiscParser.dump_rval loc2)
 

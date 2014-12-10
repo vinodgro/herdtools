@@ -66,7 +66,6 @@ type constr = prop ConstrGen.constr
 type quantifier = ConstrGen.kind
 
 type atom = location * maybev
-type state = atom list
 type outcome = atom list
 
 open Printf
@@ -78,8 +77,21 @@ let pp_outcome o =
   String.concat " "
     (List.map (fun a -> sprintf "%s;" (pp_atom a)) o)
 
-type run_type = Ty of string | Pointer of string
+type run_type =
+  | TyDef | TyDefPointer
+  | Ty of string | Pointer of string
 
+type state = (location * (run_type * maybev)) list
+
+let dump_state_atom dump_loc dump_val (loc,(t,v)) = match t with
+| TyDef ->
+    sprintf "%s=%s" (dump_loc loc) (dump_val v)
+| TyDefPointer ->
+    sprintf "*%s=%s" (dump_loc loc) (dump_val v)
+| Ty t ->
+    sprintf "%s %s=%s" t (dump_loc loc) (dump_val v)
+| Pointer t ->
+    sprintf "%s *%s=%s" t (dump_loc loc) (dump_val v)
 
 (* Packed result *)
 type info = (string * string) list
@@ -106,13 +118,13 @@ type ('i, 'p, 'c, 'loc) result =
 
 (* Easier to handle *)
 type ('loc,'v,'ins) r3 =
-      (('loc * 'v) list,
+      (('loc * (run_type * 'v)) list,
        (int * 'ins list) list,
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
        'loc) result
 
 type ('loc,'v,'code) r4 =
-      (('loc * 'v) list,
+      (('loc * (run_type * 'v)) list,
        'code list,
        ('loc, 'v) ConstrGen.prop ConstrGen.constr,
        'loc) result

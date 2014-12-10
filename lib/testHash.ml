@@ -29,6 +29,54 @@ let check_env env name filename hash =
   with Not_found ->
     StringMap.add name {hash;filename;} env
 
+(***************************)
+(* Digest of initial state *)
+(***************************)
+
+open Printf
+
+let digest_init debug init =
+  let open MiscParser in
+  let init =
+    List.sort
+      (fun (loc1,(t1,v1)) (loc2,(t2,v2)) ->
+        match location_compare loc1 loc2 with
+        | 0 ->
+            if
+              SymbConstant.compare v1 v2 <> 0 &&
+              compare t1 t2 <> 0
+            then begin
+              Warn.fatal
+                "Location %s non-unique in init state"
+                (dump_location loc1)
+            end ;
+            0
+        | c -> c)
+      init in
+  let init =
+    Misc.rem_dups
+      (fun (loc1,_) (loc2,_) -> location_compare loc1 loc2 = 0)
+      init in
+  let pp =
+    (String.concat "; "
+       (List.map
+          (fun (loc,(t,v)) -> match t with
+          | TyDef ->
+              sprintf "%s=%s"
+                (dump_location loc) (SymbConstant.pp_v v)
+          | TyDefPointer ->
+              sprintf "*%s=%s"
+                (dump_location loc) (SymbConstant.pp_v v)
+          | Ty t ->
+              sprintf "%s %s=%s" t
+                (dump_location loc) (SymbConstant.pp_v v)
+          | Pointer t ->
+              sprintf "%s *%s=%s" t
+                (dump_location loc) (SymbConstant.pp_v v))
+          init)) in
+  debug "INIT" pp ;
+  Digest.string pp
+
 (**********)
 (* Digest *)
 (**********)
@@ -36,9 +84,7 @@ let check_env env name filename hash =
 module Make(A:ArchBase.S)
     = struct
 
-      open Printf
-
-      type init = (MiscParser.location * SymbConstant.v) list
+      type init = MiscParser.state
       type prog = (int * A.pseudo list) list
       type locations =  MiscParser.LocSet.t
 
@@ -51,33 +97,7 @@ module Make(A:ArchBase.S)
         if verbose > 0 then eprintf "%s:\n%s\n" tag s
         else ()
 
-(* Digest of initial state *)     
-      let digest_init init =
-        let init =
-          List.sort
-            (fun (loc1,v1) (loc2,v2) -> match location_compare loc1 loc2 with
-            | 0 ->
-                if SymbConstant.compare v1 v2 <> 0 then begin
-                  Warn.fatal
-                    "Location %s non-unique in init state"
-                    (dump_location loc1)
-                end ;
-                0
-            | c -> c)
-            init in
-        let init =
-          Misc.rem_dups
-            (fun (loc1,_) (loc2,_) -> location_compare loc1 loc2 = 0)
-            init in
-        let pp =
-          (String.concat "; "
-             (List.map
-                (fun (loc,v) -> sprintf "%s=%s"
-                    (dump_location loc) (SymbConstant.pp_v v))
-                init)) in
-        debug "INIT" pp ;
-        Digest.string pp
-
+      let digest_init init = digest_init debug init
 
 (* Code digest *)
 

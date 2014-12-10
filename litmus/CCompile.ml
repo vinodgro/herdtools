@@ -60,10 +60,10 @@ module Make
     let comp_globals init code =
       let env =
         List.fold_right
-          (fun (loc,v) env ->
+          (fun (loc,(t,v)) env ->
             let env = Generic.add_value v env in
-            match loc with
-            | A.Location_global (a) ->
+            match t,loc with
+            | MiscParser.TyDef,A.Location_global (a) ->
                 Generic.add_addr_type a (Generic.typeof v) env
             | _ -> env)
           init StringMap.empty in
@@ -118,6 +118,8 @@ module Make
               (A.LocMap.add loc2 (Generic.type_in_final p reg2 final flocs) acc)
       in
       let locations_flocs acc = function
+        | (x, MiscParser.TyDef) -> A.LocMap.add x Compile.base acc
+        | (x, MiscParser.TyDefPointer) -> A.LocMap.add x Compile.pointer acc
         | (x, MiscParser.Ty s) -> A.LocMap.add x (CType.Base s) acc
         | (x, MiscParser.Pointer s) ->
             A.LocMap.add x (CType.Pointer (CType.Base s)) acc
@@ -161,9 +163,10 @@ module Make
           condition = final;
           locations = locs ; _
         } = t in
-      { T.init = init;
+      let initenv = List.map (fun (x,(_,v)) -> x,v) init in
+      { T.init = initenv;
         info = info;
-        code = comp_code final init locs code;
+        code = comp_code final initenv locs code;
         condition = final;
         globals = comp_globals init code;
         flocs = List.map fst locs;

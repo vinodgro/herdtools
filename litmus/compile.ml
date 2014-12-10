@@ -21,12 +21,13 @@ let get_fmt hexa base = match CType.get_fmt hexa base with
 | None -> Warn.fatal "No format for type '%s'" base
 
 let base =  CType.Base "int"
+let pointer = CType.Pointer base
 
 module Generic (A : Arch.Base) = struct
   open CType
 
   let base =  base
-  let pointer = Pointer base
+  let pointer = pointer
 
   let typeof = function
     | Constant.Concrete _ -> base
@@ -60,6 +61,8 @@ module Generic (A : Arch.Base) = struct
             (fun (loc,t) k -> match loc with
                | A.Location_reg (q,r) when p=q && A.reg_compare reg r = 0 ->
                    begin match t with
+                   | MiscParser.TyDef -> None
+                   | MiscParser.TyDefPointer -> Some pointer
                    | MiscParser.Ty s -> Some (Base s)
                    | MiscParser.Pointer s -> Some (Pointer (Base s))
                    end
@@ -284,7 +287,7 @@ let lblmap_code =
     let comp_initset code inputs_final =
       RegSet.elements (comp_fix code inputs_final)
 
-    let compile_init proc init code flocs final =
+    let compile_init proc initenv code flocs final =
       let locs1 = Constr.locations final
       and locs2 = A.LocSet.of_list flocs in
       let locs = A.LocSet.union locs1 locs2 in
@@ -297,7 +300,7 @@ let lblmap_code =
       let inputs = comp_initset code inputs_final in
       List.map
         (fun reg ->
-          let v = A.find_in_state (A.Location_reg (proc,reg)) init in
+          let v = A.find_in_state (A.Location_reg (proc,reg)) initenv in
           reg,v)
         inputs
 
@@ -342,14 +345,23 @@ let lblmap_code =
             code = code; })
         pecs
 
-    let comp_globals init code =
+    let comp_globals init code flocs =
       let env =
         List.fold_right
-          (fun (loc,v) env ->
-            match loc with
+          (fun (loc,(t,v)) env -> match loc with
             | A.Location_global a ->
 (*                let env = Generic.add_value v env in *)
-                Generic.add_addr_type a (Generic.typeof v) env
+                let open MiscParser in
+                begin match t with
+                | TyDef ->
+                    Generic.add_addr_type a (Generic.typeof v) env
+                | TyDefPointer ->
+                    StringMap.add a pointer env
+                | Ty s -> 
+                    StringMap.add a (CType.Base s) env
+                | Pointer s ->
+                    StringMap.add a (CType.Pointer (CType.Base s)) env
+                end
             | _ -> env)
           init StringMap.empty in
       let env =
@@ -363,9 +375,9 @@ let lblmap_code =
    Those may be accessed by code *)
       let env =
          List.fold_right
-          (fun (_,v) env ->
-            match v with
-            | Constant.Symbolic a ->
+          (fun (_,(t,v)) env ->
+            match t,v with
+            | MiscParser.TyDef,Constant.Symbolic a ->
                 begin try
                   let _ = StringMap.find a env in
                   env
@@ -374,6 +386,21 @@ let lblmap_code =
                 end
             | _ -> env)
           init env in
+      let env = 
+        List.fold_left
+          (fun env (loc,t) -> match loc with
+          | A.Location_global loc ->
+              let open MiscParser in
+              let open CType in
+              begin match t with
+              | TyDef -> env
+              | TyDefPointer -> StringMap.add loc pointer env
+              | Ty s -> StringMap.add loc (Base s) env
+              | MiscParser.Pointer s ->
+                  StringMap.add loc (CType.Pointer (Base s)) env
+              end
+          | _ -> env)
+          env flocs in
       StringMap.fold
         (fun a ty k -> (a,ty)::k)
         env []
@@ -387,7 +414,19 @@ let lblmap_code =
       List.map
         (fun (p,t) -> p,(t, (type_out p t final flocs, [])))
         code
+(*
+    let pp_out (p,(_,(env,_))) =
+      let pp =
+        List.map
+          (fun (reg,t) -> sprintf "<%i:%s,%s>"
+              p (A.pp_reg reg) (CType.dump t))
+          env in
+      String.concat " " pp
 
+    let pp_outs outs =
+      let pp = List.map pp_out outs in
+      String.concat " " pp
+*)
     let compile t =
       let
           { MiscParser.init = init ;
@@ -396,13 +435,14 @@ let lblmap_code =
             condition = final;
             locations = locs ; _
           } = t in
-      let code = mk_templates init code final locs in
+      let initenv = List.map (fun (loc,(_,v)) -> loc,v) init in
+      let code = mk_templates initenv code final locs in
       let code_typed = type_outs code final locs in
-      { T.init = init;
+      { T.init = initenv ;
         info = info;
         code = code_typed;
         condition = final;
-        globals = comp_globals init code;
+        globals = comp_globals init code locs;
         flocs = List.map fst locs ;
         global_code = [];
         src = t;

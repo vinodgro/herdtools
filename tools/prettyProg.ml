@@ -30,7 +30,7 @@ module Make(O:Config)(A:Arch.S) =
          arch : Archs.t ;
          name : Name.t ;
          prog : (int * A.pseudo list) list ;
-         init : (A.location * A.v) list ;
+         init : (A.location * (MiscParser.run_type * A.v)) list ;
          constr : (A.location, A.v) ConstrGen.prop ConstrGen.constr ;
        }
 
@@ -216,12 +216,25 @@ module Make(O:Config)(A:Arch.S) =
       if O.texmacros then sprintf "\\asm{%s}"
       else fun s -> s
 
+
     let pp_initial_state sc =
+      let open MiscParser in
       "\\begin{tabular}[t]{|l|}\n\\hline\n"
       ^ "Initial state\\\\ \\hline \n"
       ^ pp_nice_state sc ""
-          (fun (l,v) ->
-	    "{} "^ pp_mbox (pp_location l) ^ " " ^ pp_equal ^ " " ^ pp_v v ^ "\\\\ ")
+          (fun (l,(t,v)) -> match t with
+          | TyDef ->
+	    "{} "^ pp_mbox (pp_location l) ^ " " ^
+              pp_equal ^ " " ^ pp_v v ^ "\\\\ "
+          | TyDefPointer ->
+	    "{} "^ pp_mbox ("*" ^ pp_location l) ^ " " ^
+              pp_equal ^ " " ^ pp_v v ^ "\\\\ "
+          | Ty t ->
+	    "{} "^ pp_mbox (t ^ " " ^ pp_location l) ^ " " ^
+              pp_equal ^ " " ^ pp_v v ^ "\\\\ "
+          | Pointer t ->
+	    "{} "^ pp_mbox (t ^ " *" ^ pp_location l) ^ " " ^
+              pp_equal ^ " " ^ pp_v v ^ "\\\\ ")
       ^ "\\hline \\end{tabular}\n"
 
     let zero = Constant.Concrete 0
@@ -229,7 +242,7 @@ module Make(O:Config)(A:Arch.S) =
     let pp_initial_state_flat sc =
       let non_zero_constraints = 
         Misc.option_map 
-	  (fun (l,v)->
+	  (fun (l,(_,v))->
 	    if SymbConstant.compare v zero = 0 then None
 	    else
               Some (" \\mbox{"^ pp_location l ^
@@ -240,7 +253,7 @@ module Make(O:Config)(A:Arch.S) =
       | _ ->
           let has_zero =
             List.exists
-              (fun (_,v) -> SymbConstant.compare v zero = 0)
+              (fun (_,(_,v)) -> SymbConstant.compare v zero = 0)
               sc in
           Some begin
             "Initial state: $"

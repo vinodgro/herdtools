@@ -20,24 +20,24 @@ end
 
 module Make(I:I) : sig
   type code =  I.P.code list
-  type test =  (I.A.state, code, I.C.constr, I.A.location)  MiscParser.result
+  type test =  (I.A.fullstate, code, I.C.constr, I.A.location)  MiscParser.result
   val dump : out_channel -> Name.t -> test -> unit
   val lines : Name.t -> test -> string list
 end = struct
   type code =  I.P.code list
-  type test =  (I.A.state, code, I.C.constr, I.A.location)  MiscParser.result
+  type test =  (I.A.fullstate, code, I.C.constr, I.A.location)  MiscParser.result
   include SimpleDumper_prime.Make
       (struct
         open Printf
+        open MiscParser
 
         module A = I.A
 
         module P = I.P
 
-        let dump_state_atom (loc,v) =
-            sprintf "%s=%s" (A.pp_location loc) (A.V.pp_v v)
+        let dump_state_atom = MiscParser.dump_state_atom A.pp_location A.V.pp
 
-        type state = A.state
+        type state = A.fullstate
 
         let dump_state st =
           String.concat " "
@@ -49,7 +49,8 @@ end = struct
         let dump_atom a =
           let open ConstrGen in
           match a with
-          | LV (loc,v) -> dump_state_atom (loc,v)
+          | LV (loc,v) ->
+              sprintf "%s=%s" (A.pp_location loc) (A.V.pp_v v)              
           | LL (loc1,loc2) ->
               sprintf "%s=%s" (A.pp_location loc1) (A.pp_rval loc2)
 

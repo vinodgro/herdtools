@@ -54,6 +54,10 @@ and lexconv pad = parse
 |  ("PRIi16"|"PRId16")  { Int (pad,Int_i,I16) }
 | "PRIx16" { Int (pad,Int_x,I16) }
 | "PRIu16" { Int (pad,Int_u,I16) }
+(* 32 *)
+|  ("PRIi32"|"PRId32")  { Int (pad,Int_i,I32) }
+| "PRIx32" { Int (pad,Int_x,I32) }
+| "PRIu32" { Int (pad,Int_u,I32) }
 (* 64 *)
 |("PRIi64"|"PRId64") { Int (pad,Int_i,I64) }
 |"PRIx64" { Int (pad,Int_x,I64) }

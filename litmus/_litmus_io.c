@@ -42,7 +42,7 @@ static int N(char *dst,int idx,T x) {\
   int n = 0 ;\
   while (x > 0)  {\
     int d = x % 16 ;\
-    char c = d  < 10 ? '0' + d : 'a' + d ;\
+    char c = d  < 10 ? '0' + d : 'a' + d - 10 ;\
     dst[idx--] = c ;  n++ ;\
     x /= 16 ;\
     if (idx < 0) return n ;\
