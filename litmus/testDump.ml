@@ -13,6 +13,7 @@
 (* Dump a test, litmus sources *)
 
 module type I = sig
+  val hexa : bool
   module A : Arch.Base
   module C : Constr.S with module A = A
   module P : PseudoAbstract.S
@@ -35,7 +36,7 @@ end = struct
         module P = I.P
 
         let dump_state_atom =
-          MiscParser.dump_state_atom A.pp_location A.V.pp_v
+          MiscParser.dump_state_atom A.pp_location (A.V.pp I.hexa)
 
         type state = A.fullstate
 
@@ -50,7 +51,7 @@ end = struct
           let open ConstrGen in
           match a with
           | LV (loc,v) ->
-              sprintf "%s=%s" (A.pp_location loc) (A.V.pp_v v)              
+              sprintf "%s=%s" (A.pp_location loc) (A.V.pp I.hexa v)
           | LL (loc1,loc2) ->
               sprintf "%s=%s" (A.pp_location loc1) (A.pp_rval loc2)
 

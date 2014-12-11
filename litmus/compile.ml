@@ -33,6 +33,24 @@ module Generic (A : Arch.Base) = struct
     | Constant.Concrete _ -> base
     | Constant.Symbolic _ -> pointer
 
+  let misc_to_c  = function
+    | MiscParser.TyDef -> base
+    | MiscParser.TyDefPointer  -> pointer
+    | MiscParser.Ty t -> Base t
+    | MiscParser.Pointer t -> Pointer (Base t)
+
+  let type_in_init p reg =
+    let rec find_rec = function
+      | [] -> None
+      | (loc,(t,_))::rem ->
+          begin match loc with
+          | A.Location_reg (q,r) when q = p &&  A.reg_compare reg r = 0
+            -> Some (misc_to_c t)
+          | _ -> find_rec rem
+          end in
+    find_rec
+
+
   let type_in_final p reg final flocs =
     Misc.proj_opt
       base
@@ -78,8 +96,6 @@ module Generic (A : Arch.Base) = struct
         match ty,tz with
         | (Pointer (Base s1), Pointer (Base s2))
         | (Base s1, Base s2) when Misc.string_eq s1 s2 -> env
-(* All default cases expressed,
-   will produce a warning if t is extended *)
         | _,_ (* (Pointer _|Base _),(Pointer _|Base _) *) ->
             Warn.fatal
               "Type mismatch detected on location %s, required %s vs. found %s"
@@ -345,12 +361,18 @@ let lblmap_code =
             code = code; })
         pecs
 
+    let _pp_env env =
+      StringMap.pp_str
+        (fun loc t ->
+          sprintf "<%s,%s>" loc (CType.dump t))
+        env
+
     let comp_globals init code flocs =
       let env =
+(* First extract types from init *)
         List.fold_right
           (fun (loc,(t,v)) env -> match loc with
             | A.Location_global a ->
-(*                let env = Generic.add_value v env in *)
                 let open MiscParser in
                 begin match t with
                 | TyDef ->
@@ -364,11 +386,16 @@ let lblmap_code =
                 end
             | _ -> env)
           init StringMap.empty in
+(* Then extract types from code, notice that init types have precedence *)
       let env =
         List.fold_right
           (fun (_,t) ->
             List.fold_right
-              (fun a -> Generic.add_addr_type a base)
+              (fun a env ->
+                try
+                  ignore (StringMap.find a env) ; env
+                with Not_found ->
+                  Generic.add_addr_type a base env)
               t.addrs)
           code env in
 (* Add uninitialised globals referenced as values in init,
@@ -386,6 +413,7 @@ let lblmap_code =
                 end
             | _ -> env)
           init env in
+(* Then from locations declarations, have precedence (?) *)
       let env = 
         List.fold_left
           (fun env (loc,t) -> match loc with
@@ -405,14 +433,19 @@ let lblmap_code =
         (fun a ty k -> (a,ty)::k)
         env []
 
-    let type_out p t final flocs =
+    let type_out p t init final flocs =
       List.map
-        (fun reg -> reg,Generic.type_in_final p reg final flocs)
+        (fun reg ->
+          match Generic.type_in_init p reg init with
+          | Some t ->
+              reg,t
+          | None ->
+              reg,Generic.type_in_final p reg final flocs)
         t.final
 
-    let type_outs code final flocs =
+    let type_outs code init final flocs =
       List.map
-        (fun (p,t) -> p,(t, (type_out p t final flocs, [])))
+        (fun (p,t) -> p,(t, (type_out p t init final flocs, [])))
         code
 (*
     let pp_out (p,(_,(env,_))) =
@@ -437,7 +470,7 @@ let lblmap_code =
           } = t in
       let initenv = List.map (fun (loc,(_,v)) -> loc,v) init in
       let code = mk_templates initenv code final locs in
-      let code_typed = type_outs code final locs in
+      let code_typed = type_outs code init final locs in
       { T.init = initenv ;
         info = info;
         code = code_typed;

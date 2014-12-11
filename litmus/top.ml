@@ -138,7 +138,7 @@ end = struct
       and type t = A'.Out.t)
       (Pseudo:PseudoAbstract.S) =
     struct
-      module T = Test.Make(A')(Pseudo)
+      module T = Test.Make(O)(A')(Pseudo)
       module R = Run.Make(O)(Tar)(T.D)
 
       let get_cycle t =

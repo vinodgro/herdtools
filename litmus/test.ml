@@ -10,6 +10,10 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+module type Cfg = sig
+  val hexa : bool
+end
+
 module type S = sig
   module A : Arch.Base
   module C : Constr.S with module A = A
@@ -36,12 +40,21 @@ module type S = sig
   val find_our_constraint : t -> C.constr
   val get_nprocs : t -> int
 
-  module D : module type of TestDump.Make(struct module A=A module C=C module P = P end)
+  module D :
+  module type of
+    TestDump.Make
+      (struct
+        let hexa = false
+        module A=A
+        module C=C
+        module P=P
+      end)
 end
 
 
 
-module Make(A:Arch.Base)(P:PseudoAbstract.S) : S with module A = A and module P = P =
+module Make(Cfg:Cfg)(A:Arch.Base)(P:PseudoAbstract.S) : S
+with module A = A and module P = P =
 struct
   module A  = A
   module C = Constr.Make(A)
@@ -72,6 +85,7 @@ struct
   module D =
     TestDump.Make
       (struct
+        let hexa = Cfg.hexa
         module A = A
         module C = C
         module P = P
