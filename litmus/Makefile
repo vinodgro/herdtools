@@ -52,7 +52,7 @@ luc: all install
 #To build several targets with ocamlbuild
 PROGS=litmus.byte
 
-byte native d.byte: config ./pp2ml.byte
+byte native d.byte: config generate ./pp2ml.byte
 	sh lib/handle402.sh
 	$(OCB) $(PROGS:.byte=.$@)
 	@for prog in $(PROGS:.byte=.$@) ; \
@@ -83,3 +83,16 @@ clean::
 clean::
 	/bin/rm -f config.ml
 
+#Generated sources
+GEN=PPCGenLexer.mll PPCGenParser.mly
+
+generate: $(GEN)
+
+PPCGenLexer.mll: PPCGenLexer.mll.tpl ./pp2ml.byte
+	./pp2ml.byte PPCGenLexer.mll.tpl > PPCGenLexer.mll
+
+PPCGenParser.mly: PPCGenParser.mly.tpl ./pp2ml.byte
+	./pp2ml.byte PPCGenParser.mly.tpl > PPCGenParser.mly
+
+clean::
+	/bin/rm -f $(GEN)
