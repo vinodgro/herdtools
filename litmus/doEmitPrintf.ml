@@ -51,6 +51,8 @@ module Make(Cfg:Config)(O:Indent.S) : EmitPrintf.S = struct
         "%" ^ pp_pad pad ^ "\" " ^ pp_int8 c ^ " \""
     | Int (pad,c,I16) ->
         "%" ^ pp_pad pad ^ "\" " ^ pp_int16 c ^ " \""
+    | Int (pad,c,I32) ->
+        "%" ^ pp_pad pad ^ "\" " ^ pp_int32 c ^ " \""
     | Int (pad,c,I64) ->
         "%" ^ pp_pad pad ^ "\" " ^ pp_int64 c ^ " \""
     | Int (pad,_,CTR) ->
