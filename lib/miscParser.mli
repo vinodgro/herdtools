@@ -43,6 +43,8 @@ val pp_outcome : outcome -> string
 type run_type =
   | TyDef | TyDefPointer
   | Ty of string | Pointer of string
+  | TyArray of string * int
+
 
 type state = (location * (run_type * maybev)) list
 

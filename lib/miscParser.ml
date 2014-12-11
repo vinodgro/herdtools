@@ -80,6 +80,7 @@ let pp_outcome o =
 type run_type =
   | TyDef | TyDefPointer
   | Ty of string | Pointer of string
+  | TyArray of string * int
 
 type state = (location * (run_type * maybev)) list
 
@@ -92,6 +93,8 @@ let dump_state_atom dump_loc dump_val (loc,(t,v)) = match t with
     sprintf "%s %s=%s" t (dump_loc loc) (dump_val v)
 | Pointer t ->
     sprintf "%s *%s=%s" t (dump_loc loc) (dump_val v)
+| TyArray (t,sz) ->
+    sprintf "%s %s[%i]" t (dump_loc loc) sz
 
 (* Packed result *)
 type info = (string * string) list

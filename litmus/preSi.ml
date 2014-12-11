@@ -69,9 +69,14 @@ module Make
 (*************)
 (* Utilities *)
 (*************)
-
-      module U = SkelUtil.Make(P)(A)(T)
-      module UD = U.Dump(Cfg)(O)(EPF)
+      module UCfg = struct
+        let memory = Memory.Direct
+        let preload = Cfg.preload
+        let mode = Cfg.mode
+        let kind = Cfg.kind
+      end
+      module U = SkelUtil.Make(UCfg)(P)(A)(T)
+      module UD = U.Dump(O)(EPF)
 
       let find_addr_type a env = U.find_type (A.Location_global a) env
 
@@ -242,25 +247,11 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
 (* Collected locations *)
 
       let fmt_outcome env locs =
-        let pp_loc loc =  match loc with
-        | A.Location_reg (proc,reg) ->
-            sprintf "%i:%s" proc (A.pp_reg reg)
-        | A.Location_global s -> s in
-
-        let rec pp_fmt t = match t with
-        | CType.Pointer _ -> "%s"
-        | CType.Base t ->
-            begin match Compile.get_fmt Cfg.hexa t with
-            | CType.Direct fmt|CType.Macro fmt ->
-                if Cfg.hexa then "0x%" ^ fmt else "%" ^ fmt
-            end
-        | CType.Atomic t|CType.Volatile t -> pp_fmt t
-        | CType.Global _|CType.Local _ -> assert false in
-
-        A.LocSet.pp_str " "
-          (fun loc -> sprintf "%s=%s;"
-              (pp_loc loc) (pp_fmt (U.find_type loc env)))
-          locs
+        U.fmt_outcome
+          (fun t -> match Compile.get_fmt Cfg.hexa t with
+          | CType.Direct fmt|CType.Macro fmt ->
+              if Cfg.hexa then "0x%" ^ fmt else "%" ^ fmt)
+          locs env
 
       let dump_addr_idx s = sprintf "_idx_%s" s
 

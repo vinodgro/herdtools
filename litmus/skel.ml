@@ -17,6 +17,7 @@ let indent = Indent.indent
 and indent2 = Indent.indent2
 and indent3 = Indent.indent3
 and indent4 = Indent.indent4
+and indent5 = Indent.indent5
 
 module type Config = sig
   val verbose : int
@@ -72,6 +73,7 @@ end = struct
   module A = T.A
   module C = T.C
   open Constant
+  open CType
 
 (* Options *)
   open Speedcheck
@@ -149,6 +151,10 @@ end = struct
 
   open Memory
   let memory = Cfg.memory
+  let indirect_star = match memory with
+  | Direct -> ""
+  | Indirect -> "*"
+
   let stride = Cfg.stride
   let do_contiguous = Cfg.contiguous
 
@@ -210,14 +216,14 @@ end = struct
 
 
 (* Utilities *)
-  module U = SkelUtil.Make(P)(A)(T)
+  module U = SkelUtil.Make(Cfg)(P)(A)(T)
   module EPF =
     DoEmitPrintf.Make
       (struct
         let emitprintf = Cfg.stdio
         let ctr = Fmt.I64
       end)(O)
-  module UD = U.Dump(Cfg)(O)(EPF)
+  module UD = U.Dump(O)(EPF)
 
 (* Inserted source *)
 
@@ -616,16 +622,27 @@ let user2_barrier_def () =
 (* Variables *)
 (*************)
 
-  let dump_global_type t = match memory with
-  | Direct -> CType.dump t
-  | Indirect -> sprintf "%s*" (CType.dump t)
+  let dump_global_type = U.dump_global_type
+
+  let dump_vars_types test =
+    let globs = test.T.globals in
+    List.iter
+      (fun (s,t) -> match t with
+      | Array (t,sz) ->
+          O.f "typedef %s %s[%i];" t (U.type_name s) sz
+      | _ -> ())
+      globs ;
+    begin match globs with _::_ -> O.o "" | [] -> () end ;
+    ()
 
   let dump_vars test =
     O.o "/* Shared variables */" ;
     if do_contiguous then O.oi "void *mem;" ;
     List.iter
       (fun (s,t) ->
-        O.fi "%s *%s;" (dump_global_type (CType.strip_volatile t)) s)
+        O.fi "%s%s *%s;"
+          (dump_global_type s (CType.strip_volatile t))
+          indirect_star s)
       test.T.globals ;
     begin match memory with
     | Direct -> []
@@ -633,7 +650,8 @@ let user2_barrier_def () =
         let r =
           List.fold_right
             (fun (a,t) k ->
-              O.fi "%s *mem_%s ;" (CType.dump (CType.strip_volatile t)) a ;
+              O.fi "%s *mem_%s ;"
+                (dump_global_type a (CType.strip_volatile t)) a ;
               if Cfg.cautious then
                 List.fold_right
                   (fun (loc,v) k -> match loc,v with
@@ -653,7 +671,7 @@ let user2_barrier_def () =
      List.iter
       (fun (s,t) ->
         O.f "static %s %s[SIZE_OF_MEM];"
-          (dump_global_type (CType.strip_volatile t)) s)
+          (dump_global_type s (CType.strip_volatile t)) s)
       test.T.globals ;
     begin match memory with
     | Direct -> ()
@@ -704,27 +722,13 @@ let user2_barrier_def () =
      test    
 
   let fmt_outcome locs env =
-    let pp_loc loc =  match loc with
-    | A.Location_reg (proc,reg) ->
-        sprintf "%i:%s" proc (A.pp_reg reg)
-    | A.Location_global s -> sprintf "%s" s in
-
-    let rec pp_fmt t = match t with
-    | CType.Pointer _ -> "%s"
-    | CType.Base t ->
-        begin match Compile.get_fmt Cfg.hexa t with
-        | CType.Direct fmt -> "0x%" ^ fmt
-        | CType.Macro fmt ->
-            (if Cfg.hexa then "0x%\"" else "%\"") ^ fmt ^ "\""
-        end
-    | CType.Atomic t|CType.Volatile t -> pp_fmt t
-    | CType.Global _|CType.Local _ -> assert false in
-
-
-
-    A.LocSet.pp_str " "
-      (fun loc -> sprintf "%s=%s;" (pp_loc loc) (pp_fmt (U.find_type loc env)))
-      locs
+    U.fmt_outcome
+      (fun t -> match Compile.get_fmt Cfg.hexa t with
+      | CType.Direct fmt -> 
+          if Cfg.hexa then "0x%" ^ fmt else "%" ^ fmt
+      | CType.Macro fmt ->
+          (if Cfg.hexa then "0x%\"" else "%\"") ^ fmt ^ "\"")
+      locs env
 
   let get_xys =
     let rec do_rec k n = function
@@ -766,6 +770,13 @@ let user2_barrier_def () =
   let dump_cond_fun_call test dump_loc dump_val =
     DC.funcall (test.T.condition) dump_loc dump_val
 
+  let rec nitems t =
+    match t with
+    | Array (_,sz) -> sz
+    | Volatile t|Atomic t -> nitems t
+    | Base _|Pointer _ -> 1
+    | Global _|Local _ -> assert false
+
   let dump_defs_outs doc env test =
     (* If some of the output registers is of pointer type,
        we need a special function to print addresses *)
@@ -800,14 +811,28 @@ let user2_barrier_def () =
     O.o "/**********************/" ;
 (* Outcome type definition *)
     let outs = U.get_final_locs test in
-    let nouts = A.LocSet.cardinal outs in
+    let nitems =
+      let map = 
+        A.LocSet.fold
+          (fun loc ->
+            A.LocMap.add loc (nitems (U.find_type loc env)))
+          outs A.LocMap.empty in
+      fun loc ->
+        try A.LocMap.find loc map
+        with Not_found -> assert false in
+    let nouts =
+      A.LocSet.fold
+        (fun loc k -> nitems loc + k)
+        outs 0 in
     O.f "#define NOUTS %i" nouts ;
     O.o "typedef intmax_t outcome_t[NOUTS];" ;
     O.o "" ;
-    A.LocSet.iteri
-      (fun i loc ->
-        O.f "static const int %s_f = %i ;" (dump_loc_name loc) i)
-      outs ;
+    let _ =
+      A.LocSet.fold
+      (fun loc pos ->
+        O.f "static const int %s_f = %i ;" (dump_loc_name loc) pos ;
+        pos+nitems loc)
+      outs 0 in
     O.o "" ;
 (* Constant wrappers *)
     O.o DefString.hist_defs ;
@@ -904,7 +929,12 @@ let user2_barrier_def () =
            (fun loc ->
              let sloc = dump_loc_name loc in
              match U.find_type loc env with
-             | CType.Pointer _ -> sprintf "pretty_addr[o[%s_f]]" sloc
+             | Pointer _ -> sprintf "pretty_addr[o[%s_f]]" sloc
+             | Array (t,sz) ->
+                 let rec pp_rec k =
+                   if k >= sz then []
+                   else sprintf "(%s)o[%s_f+%i]" t sloc k::pp_rec (k+1) in
+                 String.concat "," (pp_rec 0)
              | t -> sprintf "(%s)o[%s_f]" (CType.dump t) sloc)
            outs]) in
     O.fi "fprintf(fhist,%s,%s);" fmt args ;
@@ -941,10 +971,11 @@ let user2_barrier_def () =
         if not (StringSet.is_empty locs) then begin
           O.oi "po_t *s_or;" ;
           StringSet.iter
-            (fun loc ->
-              let loc = A.Location_global loc in
+            (fun a ->
+              let loc = A.Location_global a in
               O.fi "%s* cpy_%s[N] ;"
-                (CType.dump (U.find_type loc env)) (dump_loc_name loc))
+                (U.dump_global_type a (U.find_type loc env))
+                (dump_loc_name loc))
             locs
         end
       end
@@ -978,34 +1009,43 @@ let user2_barrier_def () =
           match memory with
           | Indirect ->
               begin match t with
-              | CType.Pointer _ -> ()
-              | _ -> O.fi "%s *mem_%s = _a->mem_%s;" (CType.dump t) a a
+              | Pointer _ -> ()
+              | _ ->
+                  O.fi "%s *mem_%s = _a->mem_%s;"
+                    (U.dump_global_type a t) a a
               end
           | Direct ->
-              O.fi "%s *%s = _a->%s;" (dump_global_type t) a a)
+              O.fi "%s *%s = _a->%s;" (dump_global_type a t) a a)
         test.T.globals ;
 (* LOOPS *)
       loop_test_prelude indent "_a->_p->" ;
 
-      let dump_test (a,t) =
+      let dump_test wrap (a,t) =
         let v = find_global_init a test in
         match memory,t with
-        | (Indirect,CType.Pointer _) ->
-            let load = U.do_load t (dump_a_leftval a) in
+        | (Indirect,Pointer _) ->
+            let load = U.do_load t (wrap (dump_a_leftval a)) in
             sprintf "%s != %s"
               load (dump_a_v_casted v)
         | Indirect,_ ->
-            let load = U.do_load t (sprintf "mem_%s[_i]" a) in
+            let load = U.do_load t (wrap (sprintf "mem_%s[_i]" a)) in
             sprintf "%s != %s" load (A.Out.dump_v v)
         | (Direct,_) ->
-            let load = U.do_load t (dump_leftval a) in
+            let load = U.do_load t (wrap (dump_leftval a)) in
             sprintf "%s != %s"
               load (dump_a_v_casted v) in
       List.iter
-        (fun x ->
-          O.fii "if (%s%s) fatal(\"check_globals failed\");"
-            (if do_randompl then "rand_bit(&(_a->seed)) && " else "")
-            (dump_test x))
+        (fun (s,t as x) -> match t with
+        | Array (t,sz) ->
+            O.fii "for (int _j = 0 ; _j < %i ; _j++) {" sz ;
+            O.fiii "if (%s%s) fatal(\"check_globals failed\");"
+              (if do_randompl then "rand_bit(&(_a->seed)) && " else "")
+              (dump_test (sprintf "(%s)[_j]") (s,Base t)) ;
+            O.fii "}"
+        | _ ->
+            O.fii "if (%s%s) fatal(\"check_globals failed\");"
+              (if do_randompl then "rand_bit(&(_a->seed)) && " else "")
+              (dump_test (fun s -> s) x))
         test.T.globals ;
 (* Check locals *)
       if Cfg.cautious then begin
@@ -1041,8 +1081,9 @@ let user2_barrier_def () =
               let loc = A.Location_global loc in
               let a = dump_loc_name loc
               and t = U.find_type loc env in
-              O.fi "%s *%s = _a->%s;" (dump_global_type t) a a ;
-              O.fi "%s **cpy_%s = _a->cpy_%s;" (CType.dump t) a a)
+              O.fi "%s%s *%s = _a->%s;" (dump_global_type a t)
+                indirect_star a a ;
+              O.fi "%s **cpy_%s = _a->cpy_%s;" (dump_global_type a t) a a)
             locs ;
           O.f "" ;
           O.fi "pb_wait(_a->fst_barrier); " ;
@@ -1052,11 +1093,19 @@ let user2_barrier_def () =
             (fun loc ->
               let loc = A.Location_global loc in
               let t = U.find_type loc env in
-              let ins =
-                do_copy t
-                  (sprintf "cpy_%s[_id][_i]" (dump_loc_name loc))
-                  (dump_loc loc) in
-              O.fiii "%s;" ins)
+              match t with
+              | Array (t,sz) ->
+                  let ins =
+                    do_copy (Base t)
+                      (sprintf "cpy_%s[_id][_i][_j]" (dump_loc_name loc))
+                      (sprintf "(%s)[_j]" (dump_loc loc)) in
+                  O.fiii "for (int _j = 0 ; _j < %i ; _j++) %s;" sz ins
+              | _ ->
+                  let ins =
+                    do_copy t
+                      (sprintf "cpy_%s[_id][_i]" (dump_loc_name loc))
+                      (dump_loc loc) in
+                  O.fiii "%s;" ins)
             locs ;
           loop_test_postlude indent2 ;
           O.fii "po_reinit(_a->s_or);" ;
@@ -1069,11 +1118,21 @@ let user2_barrier_def () =
               let loc = A.Location_global loc in
               let a = dump_loc_name loc in
               let t = U.find_type loc env in
+              let do_load = match t with
+              | Array (t,_) ->
+                  fun _t a -> U.do_load (Base t) (sprintf "%s[_j]" a)
+              | _ -> U.do_load in
               let load1 =
-                U.do_load t (sprintf "cpy_%s[_id][_i]" a)
+                do_load t (sprintf "cpy_%s[_id][_i]" a)
               and load2 =
-                U.do_load t (sprintf "cpy_%s[_nxt_id][_i]" a) in
-              O.fiii "if (%s != %s) { _found = 1; break; }" load1 load2)
+                do_load t (sprintf "cpy_%s[_nxt_id][_i]" a) in
+              match t with
+              | Array (_,sz) ->
+                  O.fiii "for (int _j = 0 ; _j < %i && !_found ; _j++) {" sz ;
+                  O.fiv "if (%s != %s) { _found = 1; }" load1 load2 ;
+                  O.fiii "}"
+              | _ ->
+                  O.fiii "if (%s != %s) { _found = 1; }" load1 load2)
             locs ;
           O.oii "}" ;
           let fmt = "%i: Stabilizing final state!\\n" in
@@ -1313,13 +1372,28 @@ let user2_barrier_def () =
         let v = A.find_in_state (A.Location_global a) test.T.init in
         if Cfg.cautious then O.oii "mcautious();" ;
         let ins =
+          let tag = match memory with
+          | Indirect -> sprintf "_a->mem_%s[_i]"
+          | Direct ->  dump_a_leftval in
+(*
           match CType.is_ptr t,memory with
           | false,Indirect ->
               U.do_store t
                 (sprintf "_a->mem_%s[_i]" a) (dump_a_v v)
           | _,_ ->
-              U.do_store t
-                (dump_a_leftval a) (dump_a_v_casted v) in
+*)  
+            begin match t with
+              | CType.Array (_,sz) ->
+                  let pp_a = tag a
+                  and pp_v = dump_a_v_casted v in
+                  let ins =
+                    U.do_store t
+                      (sprintf "(%s)[_j]" pp_a) pp_v in
+                  sprintf "for (int _j = 0 ; _j < %i; _j++) %s" sz ins
+              | _ ->
+                  U.do_store t
+                    (dump_a_leftval a) (dump_a_v_casted v)
+              end in
         O.fii "%s;" ins)
       test.T.globals ;
     begin if do_safer && do_collect_after then
@@ -1797,10 +1871,19 @@ let user2_barrier_def () =
       A.LocSet.iter
         (fun loc ->
           let t = U.find_type loc env in
-          O.fiii "%s %s = %s;"
-            (CType.dump (CType.strip_atomic t))
-            (dump_loc_copy loc)
-            (U.do_load t (dump_ctx_loc "ctx." loc)) ;
+          let t = CType.strip_attributes t in
+          begin match t with
+          | CType.Array (t,_) ->
+              O.fiii "%s *%s = %s;"
+                t
+                (dump_loc_copy loc)
+                (U.do_load (CType.Base t) (dump_ctx_loc "ctx." loc))
+          | _ ->
+              O.fiii "%s %s = %s;"
+                (CType.dump t)
+                (dump_loc_copy loc)
+                (U.do_load t (dump_ctx_loc "ctx." loc))
+          end ;
           if Cfg.cautious then O.oiii "mcautious();")
         locs ;
       O.oiii "outcome_t o;" ;
@@ -1814,12 +1897,25 @@ let user2_barrier_def () =
             let loc = A.Location_global loc in
             let t = U.find_type loc env in
             loop_proc_prelude indent3 ;
-            O.fiv
-              "if (%s != %s) fatal(\"%s: global %s unstabilized\") ;"
-              (dump_loc_copy loc)
-              (U.do_load t
-                 (sprintf "ctx.cpy_%s[_p][_i]" (dump_loc_name loc)))
-              (doc.Name.name)  (dump_loc_name loc) ;
+            let pp_test i e1 e2 =
+              O.fx i
+                "if (%s != %s) fatal(\"%s: global %s unstabilized\") ;"
+                e1 e2
+                (doc.Name.name)  (dump_loc_name loc) in
+            begin match t with
+            | Array (t,sz) ->
+                O.fiv "for (int _j = 0 ; _j < %i ; _j++) {" sz ;
+                pp_test indent5
+                  (sprintf "%s[_j]" (dump_loc_copy loc))
+                  (U.do_load (Base t)
+                     (sprintf "ctx.cpy_%s[_p][_i][_j]" (dump_loc_name loc))) ;
+                O.fiv "}"
+            | _ ->
+               pp_test indent4
+                  (dump_loc_copy loc)
+                  (U.do_load t
+                     (sprintf "ctx.cpy_%s[_p][_i]" (dump_loc_name loc)))
+            end ;
             loop_proc_postlude indent3)
           locs ;
       end ;
@@ -1836,12 +1932,22 @@ let user2_barrier_def () =
 (* Save outcome *)
       A.LocSet.iter
         (fun loc ->
-          O.fiii "o[%s_f] = %s;"
-            (dump_loc_name loc)
-            (if U.is_ptr loc env then
-              sprintf "idx_addr(&ctx,_i,%s)" (dump_loc_copy loc)
-            else
-              dump_loc_copy loc))
+          let t = CType.strip_attributes (U.find_type loc env) in
+          match t with
+          | Array (_,sz) ->
+              let ins =
+                sprintf
+                  "o[%s_f+_j] = %s[_j]"
+                  (dump_loc_name loc)
+                  (dump_loc_copy loc) in
+              O.fiii "for (int _j = 0 ; _j < %i ; _j++) %s;" sz ins
+          | _ ->
+              O.fiii "o[%s_f] = %s;"
+                (dump_loc_name loc)
+                (if CType.is_ptr t then
+                  sprintf "idx_addr(&ctx,_i,%s)" (dump_loc_copy loc)
+                else
+                  dump_loc_copy loc))
         locs ;
       O.oiii "add_outcome(hist,1,o,cond);" ;
       if mk_dsa test then begin
@@ -1927,6 +2033,7 @@ let user2_barrier_def () =
     O.o "/* Context definition */" ;
     O.o "/**********************/" ;
     O.o "" ;
+    dump_vars_types test ;
     O.o "typedef struct {" ;
     let cpys = dump_vars test in
     dump_out_vars test ;

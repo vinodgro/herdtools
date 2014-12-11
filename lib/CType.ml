@@ -18,6 +18,8 @@ type t =
   | Volatile of t
   | Atomic of t
   | Pointer of t
+(** limited arrays *)
+  | Array of base * int
 (** OpenCL *)
   | Global of t
   | Local of t
@@ -31,6 +33,7 @@ let rec  dump = function
   | Pointer t -> dump t  ^ "*"
   | Global t -> sprintf "__global %s" (dump t)
   | Local t -> sprintf "__local %s" (dump t)
+  | Array (t,sz) -> sprintf "%s[%i]" t sz
 
 type fmt = Direct of string | Macro of string
 
@@ -65,6 +68,11 @@ let rec is_ptr =  function
   | Atomic t|Volatile t -> is_ptr t
   | _ -> false
 
+let rec is_array = function
+  | Array _ -> true
+  | Atomic t|Volatile t -> is_array t
+  | _ -> false
+
 let rec is_global = function
   | Volatile t | Atomic t | Pointer t -> is_global t
   | Global _ -> true
@@ -78,7 +86,7 @@ let rec is_local = function
 let rec is_private = function
   | Volatile t | Atomic t | Pointer t -> is_private t
   | Local _ | Global _ -> false
-  | Base _ -> true
+  | Base _|Array _ -> true
 let rec is_atomic = function
   | Volatile t | Local t | Global t -> is_atomic t
   | Atomic _ -> true
@@ -99,6 +107,8 @@ let strip_volatile0 = function
 let rec strip_volatile = function
   | Atomic t -> Atomic (strip_volatile t)
   | t ->  strip_volatile0 t
+
+let strip_attributes t = strip_atomic (strip_volatile t)
 
 
 let rec is_ptr_to_atomic = function
@@ -124,4 +134,4 @@ let rec is_ptr_to_private = function
 let rec is_mutex = function
   | Volatile t | Atomic t | Global t | Local t -> is_mutex t
   | Base s -> RunTypeUtils.mutex_is_substring s
-  | Pointer _ -> assert false
+  | Pointer _|Array _ -> assert false

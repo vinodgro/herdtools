@@ -38,6 +38,7 @@ module Generic (A : Arch.Base) = struct
     | MiscParser.TyDefPointer  -> pointer
     | MiscParser.Ty t -> Base t
     | MiscParser.Pointer t -> Pointer (Base t)
+    | MiscParser.TyArray (t,sz) -> Array (t,sz)
 
   let type_in_init p reg =
     let rec find_rec = function
@@ -83,6 +84,7 @@ module Generic (A : Arch.Base) = struct
                    | MiscParser.TyDefPointer -> Some pointer
                    | MiscParser.Ty s -> Some (Base s)
                    | MiscParser.Pointer s -> Some (Pointer (Base s))
+                   | MiscParser.TyArray _ -> assert false (* No array register *)
                    end
                | _ -> k)
             flocs
@@ -377,12 +379,8 @@ let lblmap_code =
                 begin match t with
                 | TyDef ->
                     Generic.add_addr_type a (Generic.typeof v) env
-                | TyDefPointer ->
-                    StringMap.add a pointer env
-                | Ty s -> 
-                    StringMap.add a (CType.Base s) env
-                | Pointer s ->
-                    StringMap.add a (CType.Pointer (CType.Base s)) env
+                | _ ->
+                    StringMap.add a (Generic.misc_to_c t) env
                 end
             | _ -> env)
           init StringMap.empty in
@@ -418,14 +416,9 @@ let lblmap_code =
         List.fold_left
           (fun env (loc,t) -> match loc with
           | A.Location_global loc ->
-              let open MiscParser in
-              let open CType in
               begin match t with
-              | TyDef -> env
-              | TyDefPointer -> StringMap.add loc pointer env
-              | Ty s -> StringMap.add loc (Base s) env
-              | MiscParser.Pointer s ->
-                  StringMap.add loc (CType.Pointer (Base s)) env
+              | MiscParser.TyDef -> env
+              | _  -> StringMap.add loc (Generic.misc_to_c t) env
               end
           | _ -> env)
           env flocs in

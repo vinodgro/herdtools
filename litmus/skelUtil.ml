@@ -10,6 +10,7 @@
 (*********************************************************************)
 
 module type Config = sig
+  val memory : Memory.t
   val preload : Preload.t
   val mode : Mode.t
   val kind : bool
@@ -24,6 +25,7 @@ type stat =
 (* Skeleton utilities, useful for Skel and PreSi *)
 
 module Make
+    (Cfg:Config)
     (P:sig type code end)
     (A:Arch.Base)
     (T:Test.S with type P.code = P.code and module A = A) : sig
@@ -35,6 +37,12 @@ module Make
       val select_types : (A.location -> 'a option) -> env -> ('a * CType.t) list
       val select_proc : int -> env -> (A.reg * CType.t) list
       val select_global : env -> (A.loc_global * CType.t) list
+
+(* Some dumping stuff *)
+      val type_name : string -> string
+      val dump_global_type : string -> CType.t -> string
+      val fmt_outcome : (CType.base -> string) -> A.LocSet.t -> env -> string
+
 (* Locations *)
       val get_final_locs : T.t -> A.LocSet.t
       val get_final_globals : T.t -> StringSet.t
@@ -50,8 +58,7 @@ module Make
       val get_prefetch_info : T.t -> string
 
 (* Dump stuff *)
-      module Dump : functor (Cfg:Config) ->
-        functor (O:Indent.S) -> functor(EPF:EmitPrintf.S) -> sig
+      module Dump : functor (O:Indent.S) -> functor(EPF:EmitPrintf.S) -> sig
         (* Same output as shell script in (normal) shell driver mode *)
         val prelude : Name.t -> T.t -> unit
 
@@ -64,6 +71,7 @@ module Make
 
       open Printf
 
+(* Typing stuff *)
       type env = CType.t A.LocMap.t
 
       let build_env test =
@@ -106,6 +114,44 @@ module Make
             | A.Location_reg _ -> None
             | A.Location_global loc -> Some loc)
           env
+
+(* Format stuff *)
+      let type_name loc = sprintf "%s_t" loc
+          
+      let dump_global_type loc t = match t with
+      | CType.Array _ -> type_name loc
+      | _ ->  CType.dump t
+
+      let pp_loc loc =  match loc with
+      | A.Location_reg (proc,reg) ->
+          sprintf "%i:%s" proc (A.pp_reg reg)
+      | A.Location_global s -> sprintf "%s" s
+
+
+      let fmt_outcome pp_fmt_base locs env =
+
+(*
+        let pp_fmt_base t = match Compile.get_fmt Cfg.hexa t with
+        | CType.Direct fmt -> 
+            if Cfg.hexa then "0x%" ^ fmt else fmt
+        | CType.Macro fmt ->
+            (if Cfg.hexa then "0x%\"" else "%\"") ^ fmt ^ "\"" in
+*)
+        let rec pp_fmt t = match t with
+        | CType.Pointer _ -> "%s"
+        | CType.Base t -> pp_fmt_base t
+        | CType.Atomic t|CType.Volatile t -> pp_fmt t
+        | CType.Array (t,sz) ->
+            let fmt_elt = pp_fmt_base t in
+            let fmts = Misc.replicate sz fmt_elt in
+            let fmt = String.concat "," fmts in
+            sprintf "{%s}" fmt
+        | CType.Global _|CType.Local _ -> assert false in
+
+        A.LocSet.pp_str " "
+          (fun loc ->
+            sprintf "%s=%s;" (pp_loc loc) (pp_fmt (find_type loc env)))
+          locs
 
 (* Locations *)
       let get_final_locs t =
@@ -150,7 +196,7 @@ module Make
 
 (* Dump *)
 
-      module Dump (Cfg:Config) (O:Indent.S) (EPF:EmitPrintf.S) = struct
+      module Dump (O:Indent.S) (EPF:EmitPrintf.S) = struct
 
         open Preload
 

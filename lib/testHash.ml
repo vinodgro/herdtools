@@ -60,6 +60,8 @@ let digest_init debug init =
   let pp =
     (String.concat "; "
        (List.map
+(* We explicit printing as as to be  more robust
+   against pretty printer changes *)
           (fun (loc,(t,v)) -> match t with
           | TyDef ->
               sprintf "%s=%s"
@@ -72,7 +74,9 @@ let digest_init debug init =
                 (dump_location loc) (SymbConstant.pp_v v)
           | Pointer t ->
               sprintf "%s *%s=%s" t
-                (dump_location loc) (SymbConstant.pp_v v))
+                (dump_location loc) (SymbConstant.pp_v v)
+          | TyArray (t,sz) ->
+              sprintf "%s %s[%i]" t (dump_location loc) sz)
           init)) in
   debug "INIT" pp ;
   Digest.string pp
