@@ -29,13 +29,13 @@ end = struct
   include SimpleDumper_prime.Make
       (struct
         open Printf
-        open MiscParser
 
         module A = I.A
 
         module P = I.P
 
-        let dump_state_atom = MiscParser.dump_state_atom A.pp_location A.V.pp
+        let dump_state_atom =
+          MiscParser.dump_state_atom A.pp_location A.V.pp_v
 
         type state = A.fullstate
 
