@@ -79,13 +79,20 @@ module Make(C:Config) = struct
 
 
   let dump_call chan indent env globEnv envVolatile proc t =
+    let is_array_of a = match List.assoc a globEnv with
+    | CType.Array (t,_) -> Some t
+    | _ -> None in
     let global_args =
       List.map
-        (fun (x,_) -> match C.memory with
+        (fun (x,_) ->
+          let cast = match is_array_of x with
+          | Some t -> sprintf "(%s *)" t
+          | None -> "" in
+          match C.memory with
         | Memory.Direct ->
-          sprintf "&_a->%s[_i]" x
+            sprintf "%s&_a->%s[_i]" cast x
         | Memory.Indirect ->
-          sprintf "_a->%s[_i]" x)
+            sprintf "%s_a->%s[_i]" cast x)
         t.CTarget.inputs
     and out_args =
       List.map

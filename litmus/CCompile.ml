@@ -35,7 +35,12 @@ module Make
     let rec compat t1 t2 =
       let open CType in
       match t1,t2 with
-      | Base s1,Base s2 -> s1 = s2
+      | (Base s1,Base s2)
+      | (Array (s1,_),Base s2)
+      | (Base s1,Array (s2,_))
+        -> s1 = s2
+      | Array (s1,sz1),Array (s2,sz2) ->
+          s1 = s2 && sz1 = sz2
       | (Volatile t1|Atomic t1),_ -> compat t1 t2
       | _,(Volatile t2|Atomic t2) -> compat t1 t2
       | Pointer t1,Pointer t2 -> compat t1 t2
@@ -45,7 +50,7 @@ module Make
       let ty = CType.strip_volatile param_ty in
       try
         let oty = StringMap.find param_name env in
-        if compat oty ty then StringMap.add param_name ty env
+        if compat oty ty then env
         else begin
           Warn.warn_always
             "Parameter %s, type mismatch %s vs. %s\n"
@@ -65,7 +70,9 @@ module Make
             match t,loc with
             | MiscParser.TyDef,A.Location_global (a) ->
                 Generic.add_addr_type a (Generic.typeof v) env
-            | _ -> env)
+            | _,A.Location_global a ->
+                StringMap.add a (Generic.misc_to_c t) env
+            | _,_ -> env)
           init StringMap.empty in
       let env =
         List.fold_right

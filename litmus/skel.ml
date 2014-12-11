@@ -291,9 +291,11 @@ module Insert =
   | Direct -> sprintf "&(_a->%s[_i])"
   | Indirect -> sprintf "_a->%s[_i]"
 
+(*
   let dump_a_v = function
     | Concrete i ->  sprintf "%i" i
     | Symbolic s -> dump_a_addr s
+*)
 
 (* Right value, casted if pointer *)
   let dump_a_v_casted = function
@@ -622,14 +624,14 @@ let user2_barrier_def () =
 (* Variables *)
 (*************)
 
-  let dump_global_type = U.dump_global_type
+  let dump_global_type = SkelUtil.dump_global_type
 
   let dump_vars_types test =
     let globs = test.T.globals in
     List.iter
       (fun (s,t) -> match t with
       | Array (t,sz) ->
-          O.f "typedef %s %s[%i];" t (U.type_name s) sz
+          O.f "typedef %s %s[%i];" t (SkelUtil.type_name s) sz
       | _ -> ())
       globs ;
     begin match globs with _::_ -> O.o "" | [] -> () end ;
@@ -974,7 +976,7 @@ let user2_barrier_def () =
             (fun a ->
               let loc = A.Location_global a in
               O.fi "%s* cpy_%s[N] ;"
-                (U.dump_global_type a (U.find_type loc env))
+                (dump_global_type a (U.find_type loc env))
                 (dump_loc_name loc))
             locs
         end
@@ -1012,7 +1014,7 @@ let user2_barrier_def () =
               | Pointer _ -> ()
               | _ ->
                   O.fi "%s *mem_%s = _a->mem_%s;"
-                    (U.dump_global_type a t) a a
+                    (dump_global_type a t) a a
               end
           | Direct ->
               O.fi "%s *%s = _a->%s;" (dump_global_type a t) a a)

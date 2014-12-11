@@ -22,6 +22,14 @@ type stat =
       max : string; tag : string;
       process : string -> string; }
 
+let type_name loc = Printf.sprintf "%s_t" loc
+
+let dump_global_type loc t = match t with
+| CType.Array _ -> type_name loc
+| _ ->  CType.dump t
+
+
+
 (* Skeleton utilities, useful for Skel and PreSi *)
 
 module Make
@@ -39,8 +47,6 @@ module Make
       val select_global : env -> (A.loc_global * CType.t) list
 
 (* Some dumping stuff *)
-      val type_name : string -> string
-      val dump_global_type : string -> CType.t -> string
       val fmt_outcome : (CType.base -> string) -> A.LocSet.t -> env -> string
 
 (* Locations *)
@@ -116,12 +122,6 @@ module Make
           env
 
 (* Format stuff *)
-      let type_name loc = sprintf "%s_t" loc
-          
-      let dump_global_type loc t = match t with
-      | CType.Array _ -> type_name loc
-      | _ ->  CType.dump t
-
       let pp_loc loc =  match loc with
       | A.Location_reg (proc,reg) ->
           sprintf "%i:%s" proc (A.pp_reg reg)

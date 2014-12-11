@@ -306,11 +306,12 @@ module Make
           let ty =
             try List.assoc x globEnv
             with Not_found -> assert false in
+          let ty = SkelUtil.dump_global_type x ty in
           match O.memory with
           | Memory.Direct ->  
-              sprintf "%s *%s" (CType.dump ty) x
+              sprintf "%s *%s" ty x
           | Memory.Indirect -> 
-              sprintf "%s **%s" (CType.dump ty) x)
+              sprintf "%s **%s" ty x)
         addrs_proc in
     let cpys =
       if O.memory = Memory.Indirect && O.cautious then
