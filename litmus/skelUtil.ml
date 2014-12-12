@@ -23,7 +23,7 @@ type stat =
       process : string -> string; }
 
 let type_name loc = Printf.sprintf "%s_t" loc
-
+          
 let dump_global_type loc t = match t with
 | CType.Array _ -> type_name loc
 | _ ->  CType.dump t
@@ -65,6 +65,9 @@ module Make
 
 (* Dump stuff *)
       module Dump : functor (O:Indent.S) -> functor(EPF:EmitPrintf.S) -> sig
+        (* Some small dump functions common std/presi *)
+        val dump_vars_types : T.t -> unit
+
         (* Same output as shell script in (normal) shell driver mode *)
         val prelude : Name.t -> T.t -> unit
 
@@ -197,6 +200,17 @@ module Make
 (* Dump *)
 
       module Dump (O:Indent.S) (EPF:EmitPrintf.S) = struct
+
+        let dump_vars_types test =
+          let globs = test.T.globals in
+          List.iter
+            (fun (s,t) -> match t with
+            | CType.Array (t,sz) ->
+                O.f "typedef %s %s[%i];" t (type_name s) sz
+            | _ -> ())
+            globs ;
+          begin match globs with _::_ -> O.o "" | [] -> () end ;
+          ()
 
         open Preload
 

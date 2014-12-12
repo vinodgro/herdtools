@@ -45,6 +45,7 @@ module Make
       val dump : Name.t -> T.t -> unit
     end = struct
 
+      open CType
 
 (*******************************************)
 (* Set compile time parameters from config *)
@@ -231,14 +232,15 @@ let dump_loc_tag = function
   | A.Location_reg (proc,reg) -> A.Out.dump_out_reg proc reg
   | A.Location_global s -> s
 
-let does_pad t =
-  let open CType in
-  match t with
-  | Pointer _
-  | Base ("int"|"int32_t"|"uint32_t"|"int64_t"|"uint64_t") -> true
-  | _ -> false
+      let does_pad t =
+        let open CType in
+        match t with
+        | Pointer _
+        | Array (("int"|"int32_t"|"uint32_t"|"int64_t"|"uint64_t"),_)  
+        | Base ("int"|"int32_t"|"uint32_t"|"int64_t"|"uint64_t") -> true
+        | _ -> false
 
-let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
+      let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
 
       let choose_dump_loc_tag loc env =
         if U.is_ptr loc env then  dump_loc_tag_coded loc
@@ -272,26 +274,32 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
             O.o "} vars_t;"
         end ;
         O.o "" ;
+        UD.dump_vars_types test ;
         O.o "typedef struct {" ;
         let fields = 
           A.LocSet.fold
             (fun loc k -> (U.find_type loc env,loc)::k)
             locs [] in
         let rec move_rec lst fs = match lst,fs with
-          | None,[] -> true,[]
-          | Some f,[] -> false, [f]
-          | None,(t,_ as f)::fs
-            when does_pad t -> move_rec (Some f) fs
-          | _,f::fs ->
-              let pad,fs = move_rec lst fs in
-              pad,f::fs in
+        | None,[] -> true,[]
+        | Some f,[] -> false, [f]
+        | None,(t,_ as f)::fs
+          when does_pad t -> move_rec (Some f) fs
+        | _,f::fs ->
+            let pad,fs = move_rec lst fs in
+            pad,f::fs in
         let pad,fields = move_rec None fields in
         List.iter
           (fun (t,loc) ->
             if CType.is_ptr t then
               O.fi "int %s;" (dump_loc_tag_coded loc)
-            else
-              O.fi "%s %s;"  (CType.dump t) (dump_loc_tag loc))
+            else match loc with
+            | A.Location_global a ->
+                O.fi "%s %s;"
+                  (SkelUtil.dump_global_type a t) (dump_loc_tag loc)
+            | _ ->
+                O.fi "%s %s;"
+                  (CType.dump t) (dump_loc_tag loc))
           fields ;
         if pad  then O.oi "uint32_t _pad;" ;
         O.o "} log_t;" ;
@@ -341,11 +349,19 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         let fmt = fmt_outcome env locs
         and args =
           A.LocSet.map_list
-            (fun loc ->
-              if U.is_ptr loc env then
-                sprintf "pretty_addr[p->%s]" (dump_loc_tag_coded loc)
-              else
-                sprintf "p->%s" (dump_loc_tag loc)) locs in
+            (fun loc -> match U.find_type loc env with
+            | Pointer _ ->
+                [sprintf "pretty_addr[p->%s]" (dump_loc_tag_coded loc)]
+            | Array (_,sz) ->
+                let rec pp_rec k = 
+                  if k >= sz then []
+                  else
+                    sprintf "p->%s[%i]" (dump_loc_tag loc) k::pp_rec (k+1) in
+                pp_rec 0
+            | _ ->
+                [sprintf "p->%s" (dump_loc_tag loc)])
+            locs in
+        let args = List.concat args in
         EPF.fi ~out:"chan" fmt args ;
 (*        O.fi "fprintf(chan,%s);" (String.concat "," (fmt::args)) ; *)
         O.o "}" ;
@@ -357,49 +373,60 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         let do_eq loc suf =
           let loc = choose_dump_loc_tag loc env in
           O.fii "p->%s == q->%s%s" loc loc suf in
+        let do_eq_array loc suf = match U.find_type loc env with
+        | Array (_,sz) ->
+            let tag = choose_dump_loc_tag loc env in
+            let rec pp_rec k = 
+              if k < sz then begin
+                let suf = if k = sz-1 then suf else " &&" in
+                O.fii "p->%s[%i] == q->%s[%i]%s" tag k tag k suf ;
+                pp_rec (k+1)
+              end in
+            pp_rec 0
+        | _ -> do_eq loc suf in
         let rec do_rec = function
           | [] -> O.oii "1;" ;
-          | [x] -> do_eq x ";"
-          | x::rem  -> do_eq x " &&" ; do_rec rem in
+          | [x] -> do_eq_array x ";"
+          | x::rem  -> do_eq_array x " &&" ; do_rec rem in
         do_rec  locs ;
         O.o "}" ;
         O.o "" ;
         some_ptr
 (*
-        O.o "/* Hash of outcome */" ;
-        ObjUtil.insert_lib_file O.o "_mix.h" ;
-        O.o "" ;
-        O.o "static uint32_t hash_log(log_t *p) {" ;
-        O.oi "uint32_t a,b,c; ";
-        O.oi "a = b = c = 0xdeadbeef;" ;
+  O.o "/* Hash of outcome */" ;
+  ObjUtil.insert_lib_file O.o "_mix.h" ;
+  O.o "" ;
+  O.o "static uint32_t hash_log(log_t *p) {" ;
+  O.oi "uint32_t a,b,c; ";
+  O.oi "a = b = c = 0xdeadbeef;" ;
 
-        let dump_loc_tag loc = choose_dump_loc_tag loc env in
-        let rec do_rec = function
-          | [] -> ()
-          | [x] ->
-              O.fi "a += p->%s;" (dump_loc_tag x) ;
-              O.oi "final(a,b,c);"
-          | [x;y;] ->
-              O.fi "a += p->%s;" (dump_loc_tag x) ;
-              O.fi "b += p->%s;" (dump_loc_tag y) ;
-              O.oi "final(a,b,c);"          
-          | [x;y;z;] ->
-              O.fi "a += p->%s;" (dump_loc_tag x) ;
-              O.fi "b += p->%s;" (dump_loc_tag y) ;
-              O.fi "c += p->%s;" (dump_loc_tag z) ;
-              O.oi "final(a,b,c);"
-          | x::y::z::rem ->
-              O.fi "a += p->%s;" (dump_loc_tag x) ;
-              O.fi "b += p->%s;" (dump_loc_tag y) ;
-              O.fi "c += p->%s;" (dump_loc_tag z) ;
-              O.oi "mix(a,b,c);" ;
-              do_rec rem in
-        do_rec locs ;
-        O.oi"return c;" ;
-        O.o "}" ;
-        O.o "" ;
-        ()
-*)
+  let dump_loc_tag loc = choose_dump_loc_tag loc env in
+  let rec do_rec = function
+  | [] -> ()
+  | [x] ->
+  O.fi "a += p->%s;" (dump_loc_tag x) ;
+  O.oi "final(a,b,c);"
+  | [x;y;] ->
+  O.fi "a += p->%s;" (dump_loc_tag x) ;
+  O.fi "b += p->%s;" (dump_loc_tag y) ;
+  O.oi "final(a,b,c);"          
+  | [x;y;z;] ->
+  O.fi "a += p->%s;" (dump_loc_tag x) ;
+  O.fi "b += p->%s;" (dump_loc_tag y) ;
+  O.fi "c += p->%s;" (dump_loc_tag z) ;
+  O.oi "final(a,b,c);"
+  | x::y::z::rem ->
+  O.fi "a += p->%s;" (dump_loc_tag x) ;
+  O.fi "b += p->%s;" (dump_loc_tag y) ;
+  O.fi "c += p->%s;" (dump_loc_tag z) ;
+  O.oi "mix(a,b,c);" ;
+  do_rec rem in
+  do_rec locs ;
+  O.oi"return c;" ;
+  O.o "}" ;
+  O.o "" ;
+  ()
+ *)
 
 
 
@@ -482,23 +509,23 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
 
       let get_stats test =
         let open SkelUtil in
-         begin let tags = get_param_vars test in
-         if tags = [] then [] else
-         [{tags=List.map (fun (s,_) -> pvtag s) tags;
+        begin let tags = get_param_vars test in
+        if tags = [] then [] else
+        [{tags=List.map (fun (s,_) -> pvtag s) tags;
           name = "vars"; max="NVARS"; tag = "Vars";
           process=(fun s -> s);};] end @
-         begin let tags = get_param_delays test in
-         if tags = [] then []
-         else
-         [{tags = List.map pdtag tags ;
-          name = "delays"; max="NSTEPS"; tag="Delays";
-          process = (sprintf "%s-NSTEPS2")};] end @
-         begin let tags = get_param_caches test in
-         if tags = [] then []
-         else
-         [{tags = List.map pctag tags;
-           name = "dirs"; max="cmax"; tag="Cache";
-           process=(fun s -> s);};] end
+        begin let tags = get_param_delays test in
+        if tags = [] then []
+        else
+          [{tags = List.map pdtag tags ;
+            name = "delays"; max="NSTEPS"; tag="Delays";
+            process = (sprintf "%s-NSTEPS2")};] end @
+        begin let tags = get_param_caches test in
+        if tags = [] then []
+        else
+          [{tags = List.map pctag tags;
+            name = "dirs"; max="cmax"; tag="Cache";
+            process=(fun s -> s);};] end
 
       let dump_parameters env test =    
         let v_tags = List.map (fun (s,_) -> pvtag s) (get_param_vars test)
@@ -646,7 +673,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
                 List.filter (fun v -> not (StringSet.mem v seen)) vs in
               vs::do_rec (StringSet.union (StringSet.of_list vs) seen) vss in
         do_rec StringSet.empty
-        
+          
 (* Untouched variables, per thread + responsability *)
       let part_vars test =
         let all,vs = get_all_vars test in
@@ -670,24 +697,33 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
           if proc <> 0 then
             O.fii "_delay += (_p->d%i - (NSTEPS-1)/2)*STEP;" proc
         end ;
-       (* Define locations *)
+(* --->>> before switch..
+        (* Define locations *)
         List.iter
           (fun a ->
-            let t =  CType.dump (find_addr_type a env) in
+            let t =  SkelUtil.dump_global_type a (find_addr_type a env) in
             O.fii "%s volatile *%s = (%s *)_vars->%s;" t a t a)
           (vars@addrs) ;
+*)
         (* Initialize them*)
         List.iter
           (fun a ->
             let at =  find_addr_type a env in
             let v = A.find_in_state (A.Location_global a) test.T.init in
             let ins =
-              U.do_store at (sprintf "*%s" a)
-                (let open Constant in
+              let pp_const v =
+                let open Constant in
                 match v with
                 | Concrete i -> sprintf "%i" i
                 | Symbolic s ->
-                    sprintf "(%s)_vars->%s" (CType.dump at) s) in
+                    sprintf "(%s)_vars->%s" (CType.dump at) s in                
+              match at with
+              | Array (t,sz) ->
+                  sprintf "for (int _j = 0 ; _j < %i ; _j++) %s"
+                    sz
+                    (U.do_store (Base t) (sprintf "%s[_j]" a) (pp_const v))
+              | _ ->
+                  U.do_store at (sprintf "*%s" a) (pp_const v) in
             O.fii "%s;" ins)
           inits ;
 (*        eprintf "%i: INIT {%s}\n" proc (String.concat "," inits) ; *)
@@ -725,11 +761,17 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
           StringSet.iter
             (fun a ->
               let loc = A.Location_global a in
-              let tag = dump_loc_tag loc in            
-              O.fii "%s = *%s;"
-                ((if U.is_ptr loc env then OutUtils.fmt_presi_ptr_index
-                  else OutUtils.fmt_presi_index) tag)
-                tag)
+              let tag = dump_loc_tag loc in
+              match U.find_type loc env with
+              | Array (_,sz) ->
+                  O.fii
+                    "for (int _j = 0 ; _j < %i ; _j++) %s[_j] = %s[_j];"
+                    sz (OutUtils.fmt_presi_index tag) tag
+              | _ ->
+                  O.fii "%s = *%s;"
+                    ((if U.is_ptr loc env then OutUtils.fmt_presi_ptr_index
+                    else OutUtils.fmt_presi_index) tag)
+                    tag)
             to_collect ;
           O.oii "barrier_wait(_b);"
         end ;
@@ -741,11 +783,10 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
                 O.fii "%s = idx_addr((intmax_t *)%s,_vars);"
                   (OutUtils.fmt_presi_index (dump_loc_tag_coded loc))
                   (OutUtils.fmt_presi_ptr_index (dump_loc_tag loc)))
-
             (U.get_final_locs test) ;
           (* condition *)
           O.oii "int _cond = final_ok(final_cond(_log));" ;
-          (* recored outcome *)
+          (* recorded outcome *)
           O.oii "hash_add(&_ctx->t,_log,_p,1,_cond);" ;
           (* Result and stats *)
           O.oii "if (_cond) {" ;
@@ -779,8 +820,16 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         if some_ptr then O.oi "log_ptr_t *_log_ptr = &_ctx->out_ptr;" ;
         begin match test.T.globals with
         | [] -> O.o ""
-        | _::_ ->
+        | globs ->
             O.oi "vars_t *_vars = &_ctx->v;" ;
+        (* Define locations *)
+            List.iter
+              (fun (a,t) ->
+                let t =  match t with
+                | Array (t,_) -> t
+                | _ -> CType.dump t in
+                O.fi "%s volatile *%s = (%s volatile *)_vars->%s;" t a t a)
+              globs ;
             ()
         end ;
         O.oi "barrier_wait(_b);" ;
@@ -854,7 +903,7 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
                     let tag = pvtag a in
                     O.fiii
                       "ctx->p.%s = comp_param(&c->seed,&q->%s,NVARS,0);"
-                        tag tag ;
+                      tag tag ;
                     O.fiii "_vars->%s = _mem + LINESZ*ctx->p.%s + %i;"
                       a tag pos
                   with Not_found ->
@@ -929,67 +978,67 @@ let dump_loc_tag_coded loc =  sprintf "%s_idx" (dump_loc_tag loc)
         O.o ""
 
 
-        let _dump_scan_def env test =
-          O.o "static void scan(int id,global_t *g) {" ;
-          O.oi "param_t p,*q = g->param;" ;
-          O.oi "thread_ctx_t c; c.id = id;" ;
-          O.oi "int nrun = 0;" ;
-          O.o "" ;
-          O.oi "g->ok = 0;" ;
-          O.oi "do {" ;
-          O.oii "for (int part = 0 ; part < SCANSZ ; part++) {" ;
-          O.oiii "if (q->part >= 0) p.part = q->part; else p.part = part;" ;
-          O.oiii "set_role(g,&c,p.part);" ;
-          (* Enumerate parameters *)
-          let rec loop_delays i = function
-            | [] ->
-                O.ox i "if (do_run(&c,&p,g)) (void)__sync_add_and_fetch(&g->ok,1);" ;
-                ()
-            | d::ds ->
-                let tag = pdtag d in
-                O.fx i "for (int %s = 0 ; %s < NSTEPS ; %s++) {" tag tag tag ;
-                O.fx (Indent.tab i)
-                  "if (q->%s >= 0) p.%s = q->%s; else p.%s = %s;"
-                  tag tag tag tag tag ;
-                loop_delays (Indent.tab i) ds ;
-                O.fx i "}" in
-          let rec loop_caches i = function
-            | [] -> loop_delays i (get_param_delays test)
-            | c::cs ->
-                let tag = pctag c in
-                O.fx i "for (int %s = cflush ; %s < cmax ; %s++) {" tag tag tag ;
-                O.fx (Indent.tab i)
-                  "if (q->%s >= 0) p.%s = q->%s; else p.%s = %s;"
-                  tag tag tag tag tag ;
-                loop_caches (Indent.tab i) cs ;
-                O.fx i "}" in                
-          let rec loop_vars i = function
-            | [] -> loop_caches i (get_param_caches test)
-            | (x,_)::xs ->
-                let tag = pvtag x in
-                O.fx i "for (int %s = 0 ; %s < NVARS ; %s++) {" tag tag tag ;
-                O.fx (Indent.tab i)
-                  "if (q->%s >= 0) p.%s = q->%s; else p.%s = %s;"
-                  tag tag tag tag tag ;
-                loop_vars (Indent.tab i) xs ;
-                O.fx i "}" in
-          loop_vars Indent.indent3 (get_param_vars test) ;
-          O.oii "}" ;
-          begin match Cfg.timelimit with
-          | None -> ()
-          | Some _ ->
-              O.oii "if (id == 0) g->now = timeofday();"
-          end ;
-          O.oii "barrier_wait(&g->gb);" ;
-          O.oii "if (++nrun >= g->nruns) break;" ;
-          begin match Cfg.timelimit with
-          | None -> ()
-          | Some _ ->
-              O.oiii "if ((g->now - g->start)/ 1000000.0 > TIMELIMIT) break;"
-          end ;
-          O.oi "} while (g->ok < g->noccs);" ;
-          O.o "}" ;
-          O.o ""
+      let _dump_scan_def env test =
+        O.o "static void scan(int id,global_t *g) {" ;
+        O.oi "param_t p,*q = g->param;" ;
+        O.oi "thread_ctx_t c; c.id = id;" ;
+        O.oi "int nrun = 0;" ;
+        O.o "" ;
+        O.oi "g->ok = 0;" ;
+        O.oi "do {" ;
+        O.oii "for (int part = 0 ; part < SCANSZ ; part++) {" ;
+        O.oiii "if (q->part >= 0) p.part = q->part; else p.part = part;" ;
+        O.oiii "set_role(g,&c,p.part);" ;
+        (* Enumerate parameters *)
+        let rec loop_delays i = function
+          | [] ->
+              O.ox i "if (do_run(&c,&p,g)) (void)__sync_add_and_fetch(&g->ok,1);" ;
+              ()
+          | d::ds ->
+              let tag = pdtag d in
+              O.fx i "for (int %s = 0 ; %s < NSTEPS ; %s++) {" tag tag tag ;
+              O.fx (Indent.tab i)
+                "if (q->%s >= 0) p.%s = q->%s; else p.%s = %s;"
+                tag tag tag tag tag ;
+              loop_delays (Indent.tab i) ds ;
+              O.fx i "}" in
+        let rec loop_caches i = function
+          | [] -> loop_delays i (get_param_delays test)
+          | c::cs ->
+              let tag = pctag c in
+              O.fx i "for (int %s = cflush ; %s < cmax ; %s++) {" tag tag tag ;
+              O.fx (Indent.tab i)
+                "if (q->%s >= 0) p.%s = q->%s; else p.%s = %s;"
+                tag tag tag tag tag ;
+              loop_caches (Indent.tab i) cs ;
+              O.fx i "}" in                
+        let rec loop_vars i = function
+          | [] -> loop_caches i (get_param_caches test)
+          | (x,_)::xs ->
+              let tag = pvtag x in
+              O.fx i "for (int %s = 0 ; %s < NVARS ; %s++) {" tag tag tag ;
+              O.fx (Indent.tab i)
+                "if (q->%s >= 0) p.%s = q->%s; else p.%s = %s;"
+                tag tag tag tag tag ;
+              loop_vars (Indent.tab i) xs ;
+              O.fx i "}" in
+        loop_vars Indent.indent3 (get_param_vars test) ;
+        O.oii "}" ;
+        begin match Cfg.timelimit with
+        | None -> ()
+        | Some _ ->
+            O.oii "if (id == 0) g->now = timeofday();"
+        end ;
+        O.oii "barrier_wait(&g->gb);" ;
+        O.oii "if (++nrun >= g->nruns) break;" ;
+        begin match Cfg.timelimit with
+        | None -> ()
+        | Some _ ->
+            O.oiii "if ((g->now - g->start)/ 1000000.0 > TIMELIMIT) break;"
+        end ;
+        O.oi "} while (g->ok < g->noccs);" ;
+        O.o "}" ;
+        O.o ""
 
       let dump_zyva_def tname env test stats =
         O.o "/*******************/" ;

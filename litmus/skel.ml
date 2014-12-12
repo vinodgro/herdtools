@@ -625,17 +625,7 @@ let user2_barrier_def () =
 (*************)
 
   let dump_global_type = SkelUtil.dump_global_type
-
-  let dump_vars_types test =
-    let globs = test.T.globals in
-    List.iter
-      (fun (s,t) -> match t with
-      | Array (t,sz) ->
-          O.f "typedef %s %s[%i];" t (SkelUtil.type_name s) sz
-      | _ -> ())
-      globs ;
-    begin match globs with _::_ -> O.o "" | [] -> () end ;
-    ()
+  let dump_vars_types = UD.dump_vars_types
 
   let dump_vars test =
     O.o "/* Shared variables */" ;
