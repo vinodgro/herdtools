@@ -476,13 +476,17 @@ let dump_loc_tag = function
         if have_timebase then fun test -> Misc.interval 1 (T.get_nprocs test)
         else fun _ -> []
 
-      let mk_get_param_pos test =
-        let xs =  get_param_vars test in
-        let _,m =
-          List.fold_left
-            (fun (i,m) (a,_) -> i+1,StringMap.add a (i+1) m)
-            (0,StringMap.empty) xs in
-        fun x -> StringMap.find x m
+      let mk_get_param_pos env test = match test.T.globals with
+      | [] -> fun _ -> assert false
+      | (x,t0)::xs ->
+          let sum,m =
+            List.fold_left
+              (fun (i,m) (a,t) ->
+                let sz = SkelUtil.nitems t in
+                i+sz,StringMap.add a i m)
+              (SkelUtil.nitems t0,StringMap.empty) xs in
+          eprintf "sum=%i\n" sum ;
+          fun x -> StringMap.find x m
 
       let mk_get_param_prefix test =
         let m =
@@ -888,7 +892,7 @@ let dump_loc_tag = function
         let css = Misc.nsplit n cs in
         O.oii "barrier_wait(&ctx->b);";
         O.oii "switch (_role) {" ;
-        let get_param_pos = mk_get_param_pos test in
+        let get_param_pos = mk_get_param_pos env test in
         let get_param_prefix = mk_get_param_prefix test in
         List.iteri
           (fun i (vs,(ps,cs)) ->

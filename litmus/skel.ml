@@ -762,13 +762,6 @@ let user2_barrier_def () =
   let dump_cond_fun_call test dump_loc dump_val =
     DC.funcall (test.T.condition) dump_loc dump_val
 
-  let rec nitems t =
-    match t with
-    | Array (_,sz) -> sz
-    | Volatile t|Atomic t -> nitems t
-    | Base _|Pointer _ -> 1
-    | Global _|Local _ -> assert false
-
   let dump_defs_outs doc env test =
     (* If some of the output registers is of pointer type,
        we need a special function to print addresses *)
@@ -807,7 +800,7 @@ let user2_barrier_def () =
       let map = 
         A.LocSet.fold
           (fun loc ->
-            A.LocMap.add loc (nitems (U.find_type loc env)))
+            A.LocMap.add loc (SkelUtil.nitems (U.find_type loc env)))
           outs A.LocMap.empty in
       fun loc ->
         try A.LocMap.find loc map

@@ -23,11 +23,18 @@ type stat =
       process : string -> string; }
 
 let type_name loc = Printf.sprintf "%s_t" loc
-          
+
+open CType
 let dump_global_type loc t = match t with
-| CType.Array _ -> type_name loc
+| Array _ -> type_name loc
 | _ ->  CType.dump t
 
+
+let rec nitems t = match t with
+| Array (_,sz) -> sz
+| Volatile t|Atomic t -> nitems t
+| Base _|Pointer _ -> 1
+| Global _|Local _ -> assert false
 
 
 (* Skeleton utilities, useful for Skel and PreSi *)
