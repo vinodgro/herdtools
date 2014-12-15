@@ -1,23 +1,23 @@
 open Ocamlbuild_plugin;;
 open Command;;
 
-(* Is there a better way to specify source directory? *)
-let pp = A"../pp2ml.sh";;
+let sh = A"sh";;
+let pp = A"./pp2ml.sh";;
 
 dispatch begin function
   | After_rules ->
       rule "pp: .mly.tpl -> mly"
         ~prods:["%.mly";]
-        ~dep:"%.mly.tpl"
+        ~deps:["pp2ml.sh";"%.mly.tpl";]
       begin fun env _build ->
-        Cmd(S[pp; P(env "%.mly.tpl")])
+        Cmd(S[sh; pp; P(env "%.mly.tpl")])
       end ;
       rule "pp: .mll.tpl -> mll"
         ~prods:["%.mll";]
-        ~dep:"%.mll.tpl"
+        ~deps:["pp2ml.sh";"%.mll.tpl";]
       begin fun env _build ->
-        Cmd(S[pp; P(env "%.mll.tpl")])
+        Cmd(S[sh; pp; P(env "%.mll.tpl")])
       end ;
-
+      ()
   | _ -> ()
 end

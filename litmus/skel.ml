@@ -626,15 +626,21 @@ let user2_barrier_def () =
 
   let dump_global_type = SkelUtil.dump_global_type
   let dump_vars_types = UD.dump_vars_types
+  let tag_malloc s = sprintf "malloc_%s" s
+  let tag_mem s = sprintf "mem_%s" s
 
   let dump_vars test =
     O.o "/* Shared variables */" ;
     if do_contiguous then O.oi "void *mem;" ;
     List.iter
       (fun (s,t) ->
-        O.fi "%s%s *%s;"
-          (dump_global_type s (CType.strip_volatile t))
-          indirect_star s)
+        let pp_t = dump_global_type s (CType.strip_volatile t) in
+        match memory,t,do_staticalloc with
+        | Direct,Array _,false ->
+            O.fi "%s *%s;" pp_t (tag_malloc s) ;
+            O.fi "%s *%s;" pp_t s
+        | _,_,_ ->
+            O.fi "%s%s *%s;" pp_t indirect_star s)
       test.T.globals ;
     begin match memory with
     | Direct -> []
@@ -642,8 +648,15 @@ let user2_barrier_def () =
         let r =
           List.fold_right
             (fun (a,t) k ->
-              O.fi "%s *mem_%s ;"
-                (dump_global_type a (CType.strip_volatile t)) a ;
+              let pp_t = dump_global_type a (CType.strip_volatile t) in
+              let a = tag_mem a in
+              begin match t,do_staticalloc with
+              | Array _,false ->
+                  O.fi "%s *%s;" pp_t (tag_malloc a) ;
+                  O.fi "%s *%s;" pp_t a
+              | _,_ ->
+                  O.fi "%s *%s;" pp_t a
+              end ;
               if Cfg.cautious then
                 List.fold_right
                   (fun (loc,v) k -> match loc,v with
@@ -662,8 +675,8 @@ let user2_barrier_def () =
   let dump_static_vars test =
      List.iter
       (fun (s,t) ->
-        O.f "static %s %s[SIZE_OF_MEM];"
-          (dump_global_type s (CType.strip_volatile t)) s)
+        O.f "static %s%s %s[SIZE_OF_MEM];"
+          (dump_global_type s (CType.strip_volatile t)) indirect_star s)
       test.T.globals ;
     begin match memory with
     | Direct -> ()
@@ -671,7 +684,7 @@ let user2_barrier_def () =
         List.iter
           (fun (a,t) ->
             O.f "static %s mem_%s[SIZE_OF_MEM];"
-              (CType.dump (CType.strip_volatile t)) a ;
+              (dump_global_type a (CType.strip_volatile t)) a ;
             if Cfg.cautious then
               List.iter
                 (fun (loc,v) -> match loc,v with
@@ -1132,7 +1145,7 @@ let user2_barrier_def () =
       end
     end
 
-  let dump_reinit test cpys =
+  let dump_reinit env test cpys =
     O.o "/*******************************************************/" ;
     O.o "/* Context allocation, freeing and reinitialization    */" ;
     O.o "/*******************************************************/" ;
@@ -1170,11 +1183,18 @@ let user2_barrier_def () =
       O.fx indent "_a->%s = &%s[fst];" name name in
 
     let malloc  = malloc_gen "size_of_test"
-    and malloc2 = malloc_gen "N" in
+    and malloc2 = malloc_gen "N"
+    and malloc3  = malloc_gen "(size_of_test+1)" in
 
     let set_or_malloc = if do_staticalloc then set_mem else malloc in
     let set_or_malloc2 = if do_staticalloc then set_mem_gen "N" else malloc2 in
-
+    let set_or_malloc3  =
+      if do_staticalloc then set_mem
+      else fun indent a ->
+        malloc3 indent a ;
+        O.fx indent "_a->%s = _a->%s;" (tag_malloc a) a ;
+        O.fx indent "_a->%s = do_align(_a->%s,sizeof(*_a->%s));" a a a
+    in
     O.f "static void init(ctx_t *_a%s) {"
       (if do_staticalloc then ",int id" else "") ;
     O.oi "int size_of_test = _a->_p->size_of_test;" ;
@@ -1209,12 +1229,17 @@ let user2_barrier_def () =
           ()
       end
     end else begin
-      List.iter (fun (a,_) -> set_or_malloc indent a) test.T.globals ;
+      List.iter (fun (a,t) -> match memory,t with
+      | Direct,Array _ -> set_or_malloc3 indent a
+      | _,_ -> set_or_malloc indent a)
+        test.T.globals ;
       begin match memory with
       | Direct -> ()
       | Indirect ->
           List.iter
-            (fun (a,_) -> set_or_malloc indent (sprintf "mem_%s" a))
+            (fun (a,t) -> match t with
+            | Array _ -> set_or_malloc3 indent (sprintf "mem_%s" a)
+            | _ -> set_or_malloc3 indent (sprintf "mem_%s" a))
             test.T.globals ;
           ()
       end
@@ -1294,7 +1319,13 @@ let user2_barrier_def () =
       free indent "mem"
     else
       List.iter
-        (fun (a,_) -> nop_or_free indent (dump_ctx_tag a)) test.T.globals ;
+        (fun (a,t) ->
+          let tag = dump_ctx_tag a in
+          let tag = match t with
+          | Array _ -> tag_malloc tag
+          | _ -> tag in
+          nop_or_free indent tag)
+        test.T.globals ;
     begin match memory with
     | Direct -> ()
     | Indirect ->
@@ -2469,7 +2500,7 @@ let user2_barrier_def () =
     let cpys = dump_def_ctx env test in
     dump_cond_fun env test ;
     dump_defs_outs doc env test ;
-    dump_reinit test cpys ;
+    dump_reinit env test cpys ;
     dump_check_globals env test ;
     dump_templates env doc.Name.name test ;
     dump_zyva doc cpys env test ;

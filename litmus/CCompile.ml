@@ -125,7 +125,7 @@ module Make
               (A.LocMap.add loc2 (Generic.type_in_final p reg2 final flocs) acc)
       in
       let locations_flocs acc = function
-        | (x, MiscParser.TyDef) -> acc
+(*        | (x, MiscParser.TyDef) -> acc *)
         | (x, t) -> A.LocMap.add x (Generic.misc_to_c t) acc
       in
       let locs = ConstrGen.fold_constr locations_atom final A.LocMap.empty in
