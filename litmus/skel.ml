@@ -1239,7 +1239,7 @@ let user2_barrier_def () =
           List.iter
             (fun (a,t) -> match t with
             | Array _ -> set_or_malloc3 indent (sprintf "mem_%s" a)
-            | _ -> set_or_malloc3 indent (sprintf "mem_%s" a))
+            | _ -> set_or_malloc indent (sprintf "mem_%s" a))
             test.T.globals ;
           ()
       end
