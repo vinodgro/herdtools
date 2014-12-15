@@ -108,6 +108,36 @@ module Generic (A : Arch.Base) = struct
     let add_value v env = match v with
     | Constant.Concrete _ -> env
     | Constant.Symbolic a -> add_addr_type a base env
+
+(* Complete typing.... *)
+
+(* final, only default types *)
+    let type_final final env =
+      let type_atom a env = match a with
+      | ConstrGen.LV (loc,v) ->
+          A.LocMap.add loc (typeof v) env
+      | ConstrGen.LL _ -> env in
+      ConstrGen.fold_constr type_atom final env
+
+(* locations, default and explicit types *)
+  let type_locations flocs env =
+    List.fold_left
+      (fun env (loc,t) -> A.LocMap.add loc (misc_to_c t) env)
+      env flocs
+
+(* init, default and explicit types *)
+  let type_init init env =
+    List.fold_left
+      (fun env (loc,(t,v)) -> match t with
+      | MiscParser.TyDef -> A.LocMap.add loc (typeof v) env
+      | _ -> A.LocMap.add loc (misc_to_c t) env)
+      env init
+
+  let build_type_env init final flocs =
+    let env = type_final final A.LocMap.empty in
+    let env = type_locations flocs env in
+    let env = type_init init env in
+    env
 end
 
 module Make

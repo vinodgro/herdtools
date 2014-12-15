@@ -62,18 +62,13 @@ module Make
 
     let add_params = List.fold_right add_param
 
-    let comp_globals init code =
+    let comp_globals env code =
       let env =
-        List.fold_right
-          (fun (loc,(t,v)) env ->
-            let env = Generic.add_value v env in
-            match t,loc with
-            | MiscParser.TyDef,A.Location_global (a) ->
-                Generic.add_addr_type a (Generic.typeof v) env
-            | _,A.Location_global a ->
-                StringMap.add a (Generic.misc_to_c t) env
-            | _,_ -> env)
-          init StringMap.empty in
+        A.LocMap.fold
+          (fun loc t env -> match loc with
+          | A.Location_global a -> StringMap.add a t env
+          | A.Location_reg _ -> env)
+          env StringMap.empty in
       let env =
         List.fold_right
           (function
@@ -100,44 +95,26 @@ module Make
        let f {CAst.param_name; param_ty; } = param_name,param_ty in
        List.map f
 
-    let comp_template proc init final code =
+    let comp_template final code =
       let inputs = string_of_params code.CAst.params in
       {
         CTarget.inputs ;
         finals=final ;
         code = code.CAst.body; }
 
-    let get_reg_from_loc = function
-      | A.Location_reg (_, reg) -> reg
-      | A.Location_global reg -> reg
 
-    let locations p final flocs =
-      let locations_atom reg acc = match reg with
-        | ConstrGen.LV (loc, _) ->
-            let reg = get_reg_from_loc loc in
-            A.LocMap.add loc (Generic.type_in_final p reg final flocs) acc
-        | ConstrGen.LL (loc1, loc2) ->
-            let reg1 = get_reg_from_loc loc1 in
-            let reg2 = get_reg_from_loc loc2 in
-            A.LocMap.add
-              loc1
-              (Generic.type_in_final p reg1 final flocs)
-              (A.LocMap.add loc2 (Generic.type_in_final p reg2 final flocs) acc)
-      in
-      let locations_flocs acc = function
-(*        | (x, MiscParser.TyDef) -> acc *)
-        | (x, t) -> A.LocMap.add x (Generic.misc_to_c t) acc
-      in
-      let locs = ConstrGen.fold_constr locations_atom final A.LocMap.empty in
-      let locs = List.fold_left locations_flocs locs flocs in
-      A.LocMap.bindings locs
-
-    let comp_code final init flocs procs =
+    let comp_code env procs =
       List.fold_left
         (fun acc -> function
            | CAst.Test code ->
                let proc = code.CAst.proc in
-               let regs = get_locals proc (locations proc final flocs) in
+               let regs =
+                 A.LocMap.fold
+                   (fun loc t k -> match loc with
+                   | A.Location_reg (q,r) when q = proc ->
+                       (r,t)::k
+                   | _ -> k)
+                   env [] in
                let final = List.map fst regs in
                let volatile = []
 (*
@@ -147,7 +124,7 @@ module Make
                  in
                  List.fold_left f [] code.CAst.params *)
                in
-               acc @ [(proc, (comp_template proc init final code, (regs, volatile)))]
+               acc @ [(proc, (comp_template final code, (regs, volatile)))]
            | CAst.Global _ -> acc
         )
         [] procs
@@ -168,11 +145,12 @@ module Make
           locations = locs ; _
         } = t in
       let initenv = List.map (fun (x,(_,v)) -> x,v) init in
+      let env = Generic.build_type_env init final locs in
       { T.init = initenv;
         info = info;
-        code = comp_code final initenv locs code;
+        code = comp_code env code;
         condition = final;
-        globals = comp_globals init code;
+        globals = comp_globals env code;
         flocs = List.map fst locs;
         global_code = get_global_code code;
         src = t;

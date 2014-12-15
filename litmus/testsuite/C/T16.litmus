@@ -1,5 +1,5 @@
 C T16
-"Misaligned accesses, uint64_t"
+"Missaligned accesses, uint16_t"
 {
 uint8_t p[256] ; 
 uint8_t 1:r1 ; 
@@ -14,9 +14,9 @@ P0(volatile uint8_t *p) {
 
 P1(volatile uint8_t *p) {
   uint8_t r1 = p[128];
-  asm ("lwsync") ;
+  mbar() ;
   uint8_t r2 = p[127];
-  asm ("lwsync") ;
+  mbar() ;
   uint16_t *q = (uint16_t *)(p+127);
   uint16_t r3 = *q;
 }
