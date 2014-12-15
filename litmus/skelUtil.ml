@@ -14,6 +14,7 @@ module type Config = sig
   val preload : Preload.t
   val mode : Mode.t
   val kind : bool
+  val hexa : bool
 end
 
 type stat =
@@ -250,7 +251,7 @@ module Make
         let pp_atom a =
           match a with
           | LV (loc,v) ->
-              sprintf "%s=%s" (A.pp_location loc) (A.V.pp_v v)
+              sprintf "%s=%s" (A.pp_location loc) (A.V.pp Cfg.hexa v)
           | LL (loc1,loc2) ->
               sprintf "%s=%s" (A.pp_location loc1) (A.pp_rval loc2)
 

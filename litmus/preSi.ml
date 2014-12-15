@@ -75,6 +75,7 @@ module Make
         let preload = Cfg.preload
         let mode = Cfg.mode
         let kind = Cfg.kind
+        let hexa = Cfg.hexa
       end
       module U = SkelUtil.Make(UCfg)(P)(A)(T)
       module UD = U.Dump(O)(EPF)
