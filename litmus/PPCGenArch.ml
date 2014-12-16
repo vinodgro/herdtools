@@ -12,7 +12,7 @@
 
 open Printf
 
-let comment = PPCArch.comment
+let comment = '#' (* PPCArch.comment *)
 
 module Make(O:Arch.Config)(V:Constant.S) = struct
   include PPCGenBase

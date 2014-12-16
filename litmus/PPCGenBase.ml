@@ -194,34 +194,23 @@ type crmask = int (* in fact [0..127] *)
 
 type setcr0 = SetCR0 | DontSetCR0
 type setsoov = SetSOOV | DontSetSOOV
+type setaa = SetAA | DontSetAA
+type setlk = SetLK | DontSetLK
 
 (* j: for arithm at least, should be ireg *)
 type instruction =
+  [
   (* Generated fixed-point instructions *)
-  (* #include "generated/ast.gen" *)
+  (* #include "./src_power_gen/ast.gen" *)
 
   (* Branch *)
-  | Pb of lbl
-  | Pbl of lbl
-  | Pbcc of cond * lbl
-  | Pblr
+  | `Pb_lbl of lbl
+  | `Pbl_lbl of lbl
+  | `Pbcc_lbl of cond * lbl
+  | `Pblr_lbl
 
-  (* Extra, is a nop in memevents *)
-  | Pdcbf of reg * reg
-
-  (* Fence instructions *)
-  | Peieio
-  | Pisync
-  | Plwsync
-  | Psync
-
-  | Plwarx of reg * reg * reg (* load word and reserve indexed *)
-  | Pstwcx of reg * reg * reg (* store word conditional indexed *)
-
-  | Pcrnand of crbit * crbit * crbit (* XXX use reg instead? *)
-  | Pcrand of crbit * crbit * crbit (* XXX use reg instead? *)
-
-  | Pcomment of string
+  | `Pcomment of string
+ ]
 
     let pp_k = string_of_int
     let pp_idx = string_of_int
@@ -266,27 +255,18 @@ type instruction =
     | Gt -> "gt" | Le -> "le"
 
     let do_pp_instruction i = match i with
-    (* #include "generated/pretty.gen" *)
+    (* extended mnemonics first *)
+    | `Paddi (r1, Ireg GPR0, k) -> sprintf "li %s,%d" (pp_reg r1) k
+    (* TODO: other extended mnemonics *)
+ 
+    (* #include "src_power_gen/pretty.gen" *)
 
-    | Pb lbl -> "b   " ^ lbl
-    | Pbl lbl -> "bl   " ^ lbl
-    | Pbcc(cond, lbl) -> "b"^pp_cond cond ^ "  " ^ lbl
-    | Pblr -> "blr"
+    | `Pb_lbl lbl -> "b   " ^ lbl
+    | `Pbl_lbl lbl -> "bl   " ^ lbl
+    | `Pbcc_lbl (cond, lbl) -> "b"^pp_cond cond ^ "  " ^ lbl
+    | `Pblr_lbl -> "blr"
 
-    | Pdcbf (r1,r2) -> ppi_rr "dcbf" r1 r2
-
-    | Psync -> "sync"
-    | Plwsync -> "lwsync"
-    | Pisync -> "isync"
-    | Peieio -> "eieio"
-
-    | Plwarx(rD,rA,rB) -> ppi_index_mode "lwarx" rD rA rB
-    | Pstwcx(rS,rA,rB) -> ppi_index_mode "stwcx." rS rA rB
-
-    | Pcrnand(bT,bA,bB) -> sprintf "crnand %d,%d,%d" bT bA bB
-    | Pcrand(bT,bA,bB) -> sprintf "crand %d,%d,%d" bT bA bB
-
-    | Pcomment s -> "com \"" ^ s ^ "\""
+    | `Pcomment s -> "com \"" ^ s ^ "\""
 
     let pp_instruction _m ins = do_pp_instruction ins
 
@@ -314,22 +294,13 @@ let fold_regs (f_reg,f_sreg) =
   |  _ -> y_reg, y_sreg in
 
   fun (y_reg,y_sreg as c) ins -> match ins with
-  (* #include "generated/fold.gen" *)
+  (* #include "src_power_gen/fold.gen" *)
 
-  | Plwarx (r1,r2,r3)
-  | Pstwcx (r1,r2,r3)
-    -> fold_reg r3 (fold_reg r2 (fold_reg r1 (y_reg,y_sreg)))
-  | Pdcbf (r1,r2) ->  fold_reg r2 (fold_reg r1 (y_reg,y_sreg))
-  | Pb _
-  | Pbcc _
-  | Psync
-  | Peieio
-  | Pisync
-  | Plwsync
-  | Pbl _
-  | Pblr
-  | Pcomment _
-  | Pcrnand _ | Pcrand _
+  | `Pb_lbl _
+  | `Pbcc_lbl _
+  | `Pbl_lbl _
+  | `Pblr_lbl
+  | `Pcomment _
     -> c
 
 
@@ -345,24 +316,13 @@ let map_regs f_reg f_symb =
   and map2 ins r1 r2 = ins (map_reg r1,map_reg r2) in
 
   fun ins -> match ins with
-  (* #include "generated/map.gen" *)
+  (* #include "src_power_gen/map.gen" *)
 
-  | Plwarx (r1,r2,r3) ->
-      map3 (fun (r1,r2,r3) -> Plwarx (r1,r2,r3)) r1 r2 r3
-  | Pstwcx (r1,r2,r3) ->
-      map3 (fun (r1,r2,r3) -> Pstwcx (r1,r2,r3)) r1 r2 r3
-  | Pdcbf (r1,r2) ->
-      map2 (fun (r1,r2) -> Pdcbf (r1,r2)) r1 r2
-  | Pb _
-  | Pbcc _
-  | Psync
-  | Peieio
-  | Pisync
-  | Plwsync
-  | Pbl _
-  | Pblr
-  | Pcrnand _ | Pcrand _
-  | Pcomment _
+  | `Pb_lbl _
+  | `Pbcc_lbl _
+  | `Pbl_lbl _
+  | `Pblr_lbl
+  | `Pcomment _
     -> ins
 
 (* No addresses burried in PPC code *)
@@ -372,30 +332,30 @@ let map_addrs _f ins = ins
 
 (* Go back to 32bits mode *)
 
-let norm_ins ins = match ins with
-  | Pld (r1,cst,r2)  -> Plwz (r1,cst,r2)
-  | Pstd (r1,cst,r2) -> Pstw (r1,cst,r2)
-  | Pldx (r1,r2,r3)  -> Plwarx (r1,r2,r3)
-  | Pstdx (r1,r2,r3) -> Pstwx (r1,r2,r3)
+let norm_ins ins = (* FIXME ??? *) ins (* match ins with *)
+  (* | Pld (r1,cst,r2)  -> Plwz (r1,cst,r2) *)
+  (* | Pstd (r1,cst,r2) -> Pstw (r1,cst,r2) *)
+  (* | Pldx (r1,r2,r3)  -> Plwarx (r1,r2,r3) *)
+  (* | Pstdx (r1,r2,r3) -> Pstwx (r1,r2,r3) *)
 
-  (* XXX I don't understand what I should do *)
-  | _ -> ins
+  (* (\* XXX I don't understand what I should do *\) *)
+  (* | _ -> ins *)
 
-let is_data r1 i = match i with
-| Pstd (r,_,_)
-| Pstwcx (r,_,_)
-| Pstw (r,_,_) -> r1 = r
-(* XXX I don't understand what I should do *)
-| _ -> false
+let is_data r1 i = (* FIXME ??? *) false (* match i with *)
+(* | Pstd (r,_,_) *)
+(* | Pstwcx (r,_,_) *)
+(* | Pstw (r,_,_) -> r1 = r *)
+(* (\* XXX I don't understand what I should do *\) *)
+(* | _ -> false *)
 
 let get_next = function
-  |Pb lbl -> [Label.To lbl]
-  |Pbcc (_, lbl) -> [Label.Next;Label.To lbl]
+  |`Pb_lbl lbl -> [Label.To lbl]
+  |`Pbcc_lbl (_, lbl) -> [Label.Next;Label.To lbl]
         (* Hum *)
-  |Pbl _ -> [Label.Next]
-  |Pblr|Pmtspr (8,_) |Pmfspr (_,8) -> []
+  |`Pbl_lbl _ -> [Label.Next]
+  |`Pblr_lbl (*|`Pmtspr (8,_) |`Pmfspr (_,8) *)-> []
 
-  (* XXX I'm not sure this is correct; eg. see Pmtspr. *)
+  (* XXX I'm not sure this is correct; eg. see `Pmtspr. *)
   | _ -> [Label.Next]
 
 (* Macros *)
@@ -411,16 +371,16 @@ include Pseudo.Make
         function _ ->  failwith "shouldn't need this for litmus"
 
       let fold_labels k f = function
-        | Pb lab
-        | Pbl lab
-        | Pbcc (_,lab) -> f k lab
+        | `Pb_lbl lab
+        | `Pbl_lbl lab
+        | `Pbcc_lbl (_,lab) -> f k lab
         (* XXX there is no label in generated code *)
         | _ -> k
 
       let map_labels f = function
-        | Pb lab -> Pb (f lab)
-        | Pbl lab -> Pbl (f lab)
-        | Pbcc (cc,lab) -> Pbcc (cc,f lab)
+        | `Pb_lbl lab -> `Pb_lbl (f lab)
+        | `Pbl_lbl lab -> `Pbl_lbl (f lab)
+        | `Pbcc_lbl (cc,lab) -> `Pbcc_lbl (cc,f lab)
         (* XXX there is no label in generated code *)
         | ins -> ins
 

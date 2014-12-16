@@ -28,7 +28,7 @@ open PPCGen
 %token <int> CRBIT
 %token PLUS TIMES
 
-/* #include "generated/tokens.gen" */
+/* #include "src_power_gen/tokens.gen" */
 
 %token B
 %token BL
@@ -113,75 +113,75 @@ reg_list :
 
 instr:
   /* Generated fixed-point instructions */
-  /* #include "generated/parser.gen" */
+  /* #include "src_power_gen/parser.gen" */
 
   | B NAME
-    { Pb $2 }
+    { `Pb_lbl $2 }
   | BL NAME
-    { Pbl $2 }
-  | DCBF reg COMMA reg
-    { Pdcbf ($2,$4) }
-  | EIEIO
-    { Peieio }
-  | ISYNC
-    { Pisync }
-  | LWARX  reg COMMA reg COMMA reg
-    { Plwarx ($2,$4,$6)}
-  | STWCX reg COMMA reg COMMA reg
-    { Pstwcx ($2,$4,$6) }
-  | SYNC
-    { Psync }
-  | CRNAND crbit COMMA crbit COMMA crbit
-    { Pcrnand($2, $4, $6) }
-  | CRAND crbit COMMA crbit COMMA crbit
-    { Pcrand($2, $4, $6) }
+    { `Pbl_lbl $2 }
 
   /* Extended mnemonics */
+  | DCBF reg COMMA reg
+    { `Pdcbf ($2,$4, 0) }
   | BEQ NAME
-    { Pbcc (Eq,$2) }
+    { `Pbcc_lbl (Eq,$2) }
   | BGE NAME
-    { Pbcc (Ge,$2) }
+    { `Pbcc_lbl (Ge,$2) }
   | BGT NAME
-    { Pbcc (Gt,$2) }
+    { `Pbcc_lbl (Gt,$2) }
   | BLE NAME
-    { Pbcc (Le,$2) }
+    { `Pbcc_lbl (Le,$2) }
   | BLT NAME
-    { Pbcc (Lt,$2) }
+    { `Pbcc_lbl (Lt,$2) }
   | BNE NAME
-    { Pbcc (Ne,$2) }
+    { `Pbcc_lbl (Ne,$2) }
   | BNG NAME
-    { Pbcc (Le,$2) }
+    { `Pbcc_lbl (Le,$2) }
   | BNL NAME
-    { Pbcc (Ge,$2) }
+    { `Pbcc_lbl (Ge,$2) }
   | BLR
-    { Pblr }
+    { `Pblr_lbl }
   | CMPW crindex COMMA reg COMMA reg
-    { Pcmp ($2,0,$4,$6) }
+    { `Pcmp ($2,0,$4,$6) }
   | CMPW reg COMMA reg
-    { Pcmp (0,0,$2,$4) }
+    { `Pcmp (0,0,$2,$4) }
   | CMPWI crindex COMMA reg COMMA k
-    { Pcmpi ($2,0,$4,$6) }
+    { `Pcmpi ($2,0,$4,$6) }
   | CMPWI reg COMMA k
-    { Pcmpi (0,0,$2,$4) }
+    { `Pcmpi (0,0,$2,$4) } 
   | LI reg COMMA k
-    { Paddi ($2, Ireg GPR0,$4) }
+    { `Paddi ($2, Ireg GPR0,$4) } 
+  | SYNC
+    { `Psync (0) }
   | LWSYNC
-    { Plwsync }
+    { `Psync (1) } 
   | MFLR reg
-    { Pmfspr ($2, 8)}
+    { `Pmfspr ($2, 8)} 
   | MR reg COMMA reg
-    { Por (DontSetCR0,$2,$4,$4) }
+    { `Por (DontSetCR0,$2,$4,$4) }
   | MTLR reg
-    { Pmtspr (8,$2) }
+    { `Pmtspr (8,$2) } 
   | SUB reg COMMA reg COMMA reg
-    { Psubf (DontSetSOOV,DontSetCR0,$2,$6,$4) }
+    { `Psubf (DontSetSOOV,DontSetCR0,$2,$6,$4) }
   | SUBDOT reg COMMA reg COMMA reg
-    { Psubf (DontSetSOOV,SetCR0,$2,$6,$4) }
+    { `Psubf (DontSetSOOV,SetCR0,$2,$6,$4) }
   | SUBI reg COMMA reg COMMA k
-    { Paddi ($2,$4, 0 - $6) }
+    { `Paddi ($2,$4, 0 - $6) }
+  | LWZ reg COMMA k COMMA reg
+    { `Plwz ($2, $4, $6) }
+  | LWZU reg COMMA k COMMA reg
+    { `Plwzu ($2,$4,$6)}
+  | LD reg COMMA k COMMA reg
+    { `Pld ($2,$4,$6)}
+  | STW reg COMMA k COMMA reg
+    { `Pstw ($2,$4,$6) }
+  | STWU reg COMMA k COMMA reg
+    { `Pstwu ($2,$4,$6) }
+  | STD reg COMMA k COMMA reg
+    { `Pstd ($2,$4,$6) }
 
   | COMMENT STRING
-    { Pcomment $2 }
+    { `Pcomment $2 }
 
 k:
 | NUM  { $1 }

@@ -58,10 +58,10 @@ module Make(V:Constant.S)(C:Config) =
     | Word.W64 -> fun i -> i
     | Word.W32|Word.WXX ->
         fun i -> match i with
-        | Pld (a1,a2,a3) -> Plwz (a1,a2,a3)
-        | Pstd (a1,a2,a3) -> Pstw (a1,a2,a3)
-        | Pldx (a1,a2,a3) -> Plwzx (a1,a2,a3)
-        | Pstdx (a1,a2,a3) -> Pstwx (a1,a2,a3) 
+        | `Pld (a1,a2,a3) -> `Plwz (a1,a2,a3)
+        | `Pstd (a1,a2,a3) -> `Pstw (a1,a2,a3)
+        | `Pldx (a1,a2,a3) -> `Plwzx (a1,a2,a3)
+        | `Pstdx (a1,a2,a3) -> `Pstwx (a1,a2,a3) 
         | _ -> i
 
     let emit_lbl lbl =
@@ -200,28 +200,26 @@ module Make(V:Constant.S)(C:Config) =
           cmpwi loop_idx 0;
           bcc tr_nolab Gt lbl1; ]
 
-    let do_compile_ins tr_lab ins k = match tr_ins ins with
+    let do_compile_ins tr_lab (ins : A.instruction) k = match tr_ins ins with
     (* Generated fix-point instructions *)
-    (* #include "generated/compile.gen" *)
+    (* #include "src_power_gen/compile.gen" *)
 
-    | Pb lbl -> jump tr_lab lbl::k
-    | Pbl lbl -> jump_and_link  tr_lab lbl::k
-    | Pbcc(cond, lbl) -> bcc tr_lab cond lbl::k
-    | Pblr ->
+    | `Pb_lbl lbl -> jump tr_lab lbl::k
+    | `Pbl_lbl lbl -> jump_and_link  tr_lab lbl::k 
+    | `Pbcc_lbl (cond, lbl) -> bcc tr_lab cond lbl::k 
+    | `Pblr_lbl -> 
         { empty_ins with
           memo = "blr" ;
           inputs = [A.LR];
           branch = []; (* Hum *) }::k
 
-    | Psync ->
+    | `Psync (0) ->
         begin match C.syncmacro with
         | None  ->justOp "sync"::k
         | Some _ -> emit_sync_macro k
         end
-    | Plwsync -> justOp "lwsync"::k
-    | Pisync -> justOp "isync"::k
-    | Peieio -> justOp "eieio"::k
-    | Pdcbf (rA,rB) ->
+    | `Psync (1) -> justOp "lwsync"::k 
+    | `Pdcbf (rA,rB,0) ->
         begin match rA with
         | A.Ireg A.GPR0 -> (* Yes, it's this way cf. ISA p. 415 *)
             { empty_ins with
@@ -229,48 +227,34 @@ module Make(V:Constant.S)(C:Config) =
               inputs=[rB] ; }
         | _ -> dcbf rA rB
         end::k
-    | Plwarx (rT,rA,rB) ->
-        begin match rA with
-        | A.Ireg A.GPR0 ->
-            { empty_ins with
-              memo = "lwarx ^o0,0,^i0" ;
-              inputs=[rB] ;
-              outputs=[rT] ; }
-        | _ ->
-            { empty_ins with
-              memo = "lwarx ^o0,^i0,^i1" ;
-              inputs=[rA; rB] ;
-              outputs=[rT] ; }
-        end::k
-    | Pstwcx (rS,rA,rB) ->
-        begin match rA with
-        | A.Ireg A.GPR0 ->
-            { empty_ins with
-              memo = "stwcx. ^i0,0,^i1" ;
-              inputs=[rS;rB] ;
-              outputs=[] ; }
-        | _ ->
-            { empty_ins with
-              memo = "stwcx. ^i0,^i1,^i2" ;
-              inputs=[rS ;rA; rB] ;
-              outputs=[] ; }
-        end::k
+(*     | `Plwarx (rT,rA,rB,0) -> *)
+(*         begin match rA with *)
+(*         | A.Ireg A.GPR0 -> *)
+(*             { empty_ins with *)
+(*               memo = "lwarx ^o0,0,^i0" ; *)
+(*               inputs=[rB] ; *)
+(*               outputs=[rT] ; } *)
+(*         | _ -> *)
+(*             { empty_ins with *)
+(*               memo = "lwarx ^o0,^i0,^i1" ; *)
+(*               inputs=[rA; rB] ; *)
+(*               outputs=[rT] ; } *)
+(*         end::k *)
+(*     | `Pstwcx (rS,rA,rB) -> *)
+(*         begin match rA with *)
+(*         | A.Ireg A.GPR0 -> *)
+(*             { empty_ins with *)
+(*               memo = "stwcx. ^i0,0,^i1" ; *)
+(*               inputs=[rS;rB] ; *)
+(*               outputs=[] ; } *)
+(*         | _ -> *)
+(*             { empty_ins with *)
+(*               memo = "stwcx. ^i0,^i1,^i2" ; *)
+(*               inputs=[rS ;rA; rB] ; *)
+(*               outputs=[] ; } *)
+(*         end::k *)
 
-    | Pcrnand (bT,bA,bB) ->
-        { empty_ins with
-          memo = sprintf "crnand %d,%d,%d" bT bA bB ;
-          inputs=[];
-          outputs=[];
-        } :: k
-
-    | Pcrand (bT,bA,bB) ->
-        { empty_ins with
-          memo = sprintf "crand %d,%d,%d" bT bA bB ;
-          inputs=[];
-          outputs=[];
-        } :: k
-
-    | Pcomment c ->
+    | `Pcomment c ->
         { empty_ins with memo = c; comment = true; }::k
 
     let extract_addrs _ins = StringSet.empty
