@@ -31,6 +31,7 @@ module Make
     let (pp,(opts,_,prog)) = O.m
 
     let withco = opts.ModelOption.co
+    let withsc = opts.ModelOption.sc
 
     let failed_requires_clauses = ref 0
 
@@ -128,37 +129,73 @@ module Make
       let failed_requires_clause () =
 	let () = incr failed_requires_clauses in ()
       in
-      if withco then
-        let process_co co0 res =
-	  let process_lo lo0 res =
-            let co = S.tr co0 in
-	    let lo = lo0 in
-            let fr = U.make_fr conc co in
-            let vb_pp =
-              lazy begin
-		(if S.O.PC.showfr then [("fr",fr)] else []) @
-                (if StringSet.mem "co" S.O.PC.unshow
-		then [] else [("co",co0)]) @
-		(if StringSet.mem "lo" S.O.PC.unshow
-		then [] else [("lo",lo0)]) @
-		Lazy.force vb_pp
-	      end in
+      if withsc then
+        let process_sc sc0 res =
+          let process_co co0 res =
+            let process_lo lo0 res =
+              let sc = S.tr sc0 in
+              let co = S.tr co0 in
+              let lo = lo0 in
+              let fr = U.make_fr conc co in
+              let vb_pp =
+                lazy begin
+                  (if StringSet.mem "sc" S.O.PC.unshow
+                   then [] else [("S",sc0)]) @
+                  (if S.O.PC.showfr then [("fr",fr)] else []) @
+                  (if StringSet.mem "co" S.O.PC.unshow
+                  then [] else [("co",co0)]) @
+                  (if StringSet.mem "lo" S.O.PC.unshow
+                  then [] else [("lo",lo0)]) @
+                  Lazy.force vb_pp
+                end in
 
-            let m =
-              I.add_rels m
-		[
-		 "fr", lazy fr;
-                 "fre", lazy (U.ext fr);"fri", lazy (U.internal fr);
-		 "co", lazy co;
-                 "coe", lazy (U.ext co); "coi", lazy (U.internal co);
-		 "lo", lazy lo;
-                 "loe", lazy (U.ext lo); "loi", lazy (U.internal lo);
-	       ] in
-            run_interpret failed_requires_clause test conc m ks vb_pp kont res in
-	  U.apply_process_lo test conc process_lo res in
-        U.apply_process_co test conc process_co res
+              let m =
+                I.add_rels m
+                  [
+                   "S", lazy sc;
+                   "fr", lazy fr;
+                   "fre", lazy (U.ext fr);"fri", lazy (U.internal fr);
+                   "co", lazy co;
+                   "coe", lazy (U.ext co); "coi", lazy (U.internal co);
+                   "lo", lazy lo;
+                   "loe", lazy (U.ext lo); "loi", lazy (U.internal lo);
+                 ] in
+              run_interpret failed_requires_clause test conc m ks vb_pp kont res in
+            U.apply_process_lo test conc process_lo res in
+          U.apply_process_co test conc process_co res in
+        U.apply_process_sc test conc process_sc res
       else
-        let co0 = conc.S.pco in
-        let m = I.add_rels m ["co0", lazy co0;] in
-        run_interpret failed_requires_clause test conc m ks vb_pp kont res
+        if withco then
+          let process_co co0 res =
+            let process_lo lo0 res =
+              let co = S.tr co0 in
+              let lo = lo0 in
+              let fr = U.make_fr conc co in
+              let vb_pp =
+                lazy begin
+                  (if S.O.PC.showfr then [("fr",fr)] else []) @
+                  (if StringSet.mem "co" S.O.PC.unshow
+                  then [] else [("co",co0)]) @
+                  (if StringSet.mem "lo" S.O.PC.unshow
+                  then [] else [("lo",lo0)]) @
+                  Lazy.force vb_pp
+                end in
+
+              let m =
+                I.add_rels m
+                  [
+                   "fr", lazy fr;
+                   "fre", lazy (U.ext fr);"fri", lazy (U.internal fr);
+                   "co", lazy co;
+                   "coe", lazy (U.ext co); "coi", lazy (U.internal co);
+                   "lo", lazy lo;
+                   "loe", lazy (U.ext lo); "loi", lazy (U.internal lo);
+                 ] in
+              run_interpret failed_requires_clause test conc m ks vb_pp kont res in
+            U.apply_process_lo test conc process_lo res in
+          U.apply_process_co test conc process_co res
+        else
+          let co0 = conc.S.pco in
+          let m = I.add_rels m ["co0", lazy co0;] in
+          run_interpret failed_requires_clause test conc m ks vb_pp kont res
   end
