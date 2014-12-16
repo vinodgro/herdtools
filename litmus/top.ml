@@ -446,32 +446,40 @@ end = struct
         end
       end in
       let module Cfg = OX in
-      let aux = function
-        | `PPC ->
-            let module Arch' = PPCArch.Make(OC)(V) in
-            let module LexParse = struct
-              type instruction = Arch'.pseudo
-              type token = PPCParser.token
-              module Lexer = PPCLexer.Make(LexConfig)
-              let lexer = Lexer.token
-              let parser = PPCParser.main
-            end in
-            let module Compile = PPCCompile.Make(V)(OC) in
-            let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
-            X.compile cycles hash_env name in_chan out_chan splitted
-        | `PPCGen ->
-            let module Arch' = PPCGenArch.Make(OC)(V) in
-            let module LexParse = struct
-              type instruction = Arch'.pseudo
-              type token = PPCGenParser.token
-              module Lexer = PPCGenLexer.Make(LexConfig)
-              let lexer = Lexer.token
-              let parser = PPCGenParser.main
-            end in
+      let do_ppc () =             
+        let module Arch' = PPCArch.Make(OC)(V) in
+        let module LexParse = struct
+          type instruction = Arch'.pseudo
+          type token = PPCParser.token
+          module Lexer = PPCLexer.Make(LexConfig)
+          let lexer = Lexer.token
+          let parser = PPCParser.main
+        end in
+        let module Compile = PPCCompile.Make(V)(OC) in
+        let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
+        X.compile cycles hash_env name in_chan out_chan splitted
+      in
+      let do_ppcgen () =
+        let module Arch' = PPCGenArch.Make(OC)(V) in
+        let module LexParse = struct
+          type instruction = Arch'.pseudo
+          type token = PPCGenParser.token
+          module Lexer = PPCGenLexer.Make(LexConfig)
+          let lexer = Lexer.token
+          let parser = PPCGenParser.main
+        end in
             let module Compile = PPCGenCompile.Make(V)(OC) in
             let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
             X.compile cycles hash_env
               name in_chan out_chan splitted
+      in
+      let aux = function
+        | `PPC ->
+            begin match !Option.usearch with
+            | UseArch.Trad -> do_ppc ()
+            | UseArch.Gen -> do_ppcgen ()
+            end
+        | `PPCGen -> do_ppcgen ()
         | `X86 ->
             let module Arch' = X86Arch.Make(OC)(V) in
             let module LexParse = struct

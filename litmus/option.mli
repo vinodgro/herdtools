@@ -101,6 +101,7 @@ val morearch : MoreArch.t ref
 val pldw : bool ref
 val carch : Archs.System.t option ref
 val mode : Mode.t ref
+val usearch : UseArch.t ref
 
 (* Arch dependent option *)
 type opt
