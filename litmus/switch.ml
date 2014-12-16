@@ -297,7 +297,8 @@ module Make (O:Indent.S) (I:CompCondUtils.I) :
       let pre = ref (Indent.as_string i) in
       List.iter
         (fun i ->
-          O.fprintf "%scase %i:" !pre i ;
+          if O.hexa then O.fprintf "%scase 0x%x:" !pre i
+          else O.fprintf "%scase %i:" !pre i ;
           pre := " ")
         is ;
       O.output "\n"

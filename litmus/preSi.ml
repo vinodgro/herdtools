@@ -441,7 +441,9 @@ let dump_loc_tag = function
                 type t = Constant.v
                 let compare = A.V.compare
                 let dump = function
-                  | Concrete i -> sprintf "%i" i
+                  | Concrete i ->
+                      if Cfg.hexa then sprintf "0x%x"i
+                      else sprintf "%i" i
                   | Symbolic s -> dump_addr_idx s
               end
               module Loc = struct

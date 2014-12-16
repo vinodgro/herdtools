@@ -328,7 +328,8 @@ module Insert =
         | None -> 1
         | Some a -> if a < n then 1 else a / n in
       O.f "#define NEXE %i" nexe ;
-      O.o "#define SIZE_OF_MEM (NEXE * SIZE_OF_TEST)"
+      O.o "#define SIZE_OF_MEM (NEXE * SIZE_OF_TEST)" ;
+      O.o "#define SIZE_OF_ALLOC (NEXE * (SIZE_OF_TEST+1))" ;
     end ;
     O.f "#define AFF_INCR (%i)"
       (match affinity with
@@ -674,23 +675,28 @@ let user2_barrier_def () =
 
   let dump_static_vars test =
      List.iter
-      (fun (s,t) ->
-        O.f "static %s%s %s[SIZE_OF_MEM];"
-          (dump_global_type s (CType.strip_volatile t)) indirect_star s)
+      (fun (s,t) -> match t,memory with
+      | Array _,Direct ->
+          O.f "static %s%s %s[SIZE_OF_ALLOC];"
+            (dump_global_type s t) indirect_star s
+      | _,_ ->
+          O.f "static %s%s %s[SIZE_OF_MEM];"
+            (dump_global_type s t) indirect_star s)
       test.T.globals ;
     begin match memory with
     | Direct -> ()
     | Indirect ->
         List.iter
           (fun (a,t) ->
-            O.f "static %s mem_%s[SIZE_OF_MEM];"
-              (dump_global_type a (CType.strip_volatile t)) a ;
+            O.f "static %s mem_%s[%s];"
+              (dump_global_type a t) a
+              (match t with Array _ -> "SIZE_OF_ALLOC" | _ -> "SIZE_OF_MEM");
             if Cfg.cautious then
               List.iter
                 (fun (loc,v) -> match loc,v with
                 | A.Location_reg(p,r),Symbolic s when s = a ->
                     let cpy = A.Out.addr_cpy_name a p in
-                    O.f "static %s* %s[SIZE_OF_MEM];"
+                    O.f "static %s* %s[SIZE_OF_ALLOC];"
                       (CType.dump t) cpy ;
                     ()
                 | _,_ -> ())
@@ -754,7 +760,9 @@ let user2_barrier_def () =
           type t = Constant.v
           let compare = A.V.compare
           let dump = function
-            | Concrete i -> sprintf "%i" i
+            | Concrete i -> 
+                if Cfg.hexa then sprintf "0x%x"i
+                else sprintf "%i" i
             | Symbolic s -> dump_val_param s
         end
         module Loc = struct
@@ -983,10 +991,10 @@ let user2_barrier_def () =
     if do_check_globals && do_safer_write then begin
       let locs = U.get_final_globals test in
       StringSet.iter
-        (fun loc ->
-          let loc = A.Location_global loc in
+        (fun a ->
+          let loc = A.Location_global a in
           O.f "static %s cpy_%s[N*SIZE_OF_MEM];"
-            (CType.dump (U.find_type loc env)) (dump_loc_name loc))
+            (dump_global_type a (U.find_type loc env)) (dump_loc_name loc))
         locs
     end
 
@@ -1189,7 +1197,9 @@ let user2_barrier_def () =
     let set_or_malloc = if do_staticalloc then set_mem else malloc in
     let set_or_malloc2 = if do_staticalloc then set_mem_gen "N" else malloc2 in
     let set_or_malloc3  =
-      if do_staticalloc then set_mem
+      if do_staticalloc then
+        fun indent a ->
+          O.fx indent "_a->%s = do_align(&%s[fst],sizeof(*%s));" a a a
       else fun indent a ->
         malloc3 indent a ;
         O.fx indent "_a->%s = _a->%s;" (tag_malloc a) a ;
@@ -1211,7 +1221,7 @@ let user2_barrier_def () =
           (List.map
              (fun (a,_) -> sprintf "sizeof(_a->%s[0])" (dump_ctx_tag a))
              test.T.globals) in
-      (* +1 for allignement *)
+      (* +1 for alignement *)
       let sz = sprintf "(size_of_test+1) * (%s)" sz in
       O.fx indent "_a->mem = malloc_check(%s);" sz ;
       O.ox indent "void * _am = _a->mem;" ;

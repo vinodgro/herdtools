@@ -28,6 +28,7 @@ module type Config = sig
   val tarname : string
   val driver : Driver.t
   val cross : bool
+  val hexa : bool
   include RunUtils.CommonConfig
   val mkopt : Option.opt -> Option.opt
 end
@@ -333,7 +334,7 @@ let dump_shell_cont arch sources utils =
 let dump_c xcode names =
   Misc.output_protect
     (fun out_chan ->
-      let module O = Indent.Make(struct let out = out_chan end) in
+      let module O = Indent.Make(struct let hexa = Cfg.hexa let out = out_chan end) in
       O.o "#include <stdio.h>" ;
       O.o "#include <stdlib.h>" ;
       O.o "" ;
@@ -471,7 +472,7 @@ let dump_c_cont xcode arch sources utils =
   if xcode then begin
     Misc.output_protect
       (fun chan ->
-        let module O = Indent.Make(struct let out = chan end) in
+        let module O = Indent.Make(struct let hexa = Cfg.hexa let out = chan end) in
         O.o "#import <Foundation/Foundation.h>" ;
         O.o "#import \"ticker.h\"" ;
         O.o "" ;

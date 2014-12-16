@@ -26,6 +26,7 @@ let indent4 = tab indent3
 let indent5 = tab indent4
 
 module type S = sig
+  val hexa : bool
   val out : out_channel
 
   val fprintf :  ('a, out_channel, unit, unit) format4 -> 'a
@@ -48,8 +49,9 @@ module type S = sig
   val ov : string -> unit
 end
 
-module Make (Chan : sig val out : out_channel end) = struct
+module Make (Chan : sig val hexa : bool val out : out_channel end) = struct
   open Printf
+  let hexa = Chan.hexa
   let out = Chan.out
 
   let fprintf fmt = Printf.fprintf Chan.out fmt

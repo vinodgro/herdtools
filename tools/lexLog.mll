@@ -43,6 +43,7 @@ let digit = [ '0'-'9' ]
 let num = digit+
 let hexa = ['0'-'9' 'a'-'f' 'A'-'F' ]
 let hexanum = "0x" hexa+
+let set = '{' (' '|','|('-'?(num|hexanum)))* '}'
 let alpha = [ 'a'-'z' 'A'-'Z']
 let name = alpha (alpha|digit)*
 let loc = name | ('$' (alpha+|digit+))
@@ -128,10 +129,10 @@ and skip_empty_lines = parse
 and pline k = parse
 | blank*
  ((num ':' loc as loc)|(('['?) (loc as loc) ( ']'?)))
-    blank* '=' blank* (('-' ? (num|hexanum))|name as v)
+    blank* '=' blank* (('-' ? (num|hexanum))|name|set as v)
     blank* ';'
     {
-     let v = to_dec v in
+     let v = to_dec v in  (* Translate to decimal *)
      let p = poolize loc v in
      pline (p::k) lexbuf }
 | blank* ('#' [^'\n']*)?  nl  { incr_lineno lexbuf ; k }
