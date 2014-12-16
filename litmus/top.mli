@@ -79,6 +79,8 @@ module type TopConfig = sig
   val mkopt : Option.opt -> Option.opt
 (* Mode *)
   val mode : Mode.t
+(* usearch *)
+  val usearch : UseArch.t
 end
 
 (* Compile/Run tests *)

@@ -126,7 +126,7 @@ let lem_of_ins chan = function
     provides := (sprintf "%s.provides_clauses" file) :: (!provides);
     requires := (sprintf "%s.requires_clauses" file) :: (!requires);
     fprintf chan "open import %s" file
-  | Procedure _|Call _|Enum _|Debug _|Foreach _ ->
+  | ProcedureTest _|Procedure _|Call _|Enum _|Debug _|Foreach _ ->
       Warn.fatal "procedure/call/enum/debug/foreach in herd2lem"
 
 let lem_of_prog chan prog = 

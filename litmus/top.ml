@@ -86,6 +86,8 @@ module type TopConfig = sig
   val mkopt : Option.opt -> Option.opt
 (* Mode *)
   val mode : Mode.t
+(* usearch *)
+  val usearch : UseArch.t
 end
 
 module type Config = sig
@@ -475,7 +477,7 @@ end = struct
       in
       let aux = function
         | `PPC ->
-            begin match !Option.usearch with
+            begin match OT.usearch with
             | UseArch.Trad -> do_ppc ()
             | UseArch.Gen -> do_ppcgen ()
             end

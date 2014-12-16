@@ -313,6 +313,7 @@ let () =
       let mkopt = Option.get_dependent ()
 (* Mode *)
       let mode = !mode
+      let usearch = !usearch
     end in
     let module T = Top.Top (Config) (Tar) in
     T.from_files sources ;
