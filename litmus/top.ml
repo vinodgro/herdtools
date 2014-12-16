@@ -188,7 +188,7 @@ end = struct
         Misc.output_protect
           (fun chan ->
             let module Out =
-              Indent.Make(struct let out = chan end) in
+              Indent.Make(struct let hexa = O.hexa let out = chan end) in
             let dump =
               match OT.mode with
               | Mode.Std ->

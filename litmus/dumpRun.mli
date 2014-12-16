@@ -27,6 +27,7 @@ module type Config = sig
   val tarname : string
   val driver : Driver.t
   val cross : bool
+  val hexa : bool
   include RunUtils.CommonConfig
   val mkopt : Option.opt -> Option.opt
 end

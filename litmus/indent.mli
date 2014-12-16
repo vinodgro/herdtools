@@ -24,6 +24,7 @@ val indent5 : t
 
 module type S = 
   sig
+    val hexa : bool
     val out : out_channel
 
     val fprintf :  ('a, out_channel, unit, unit) format4 -> 'a
@@ -46,4 +47,4 @@ module type S =
     val ov : string -> unit
   end
 
-module Make : functor (Chan : sig val out : out_channel end) -> S
+module Make : functor (Chan : sig val hexa : bool val out : out_channel end) -> S
