@@ -63,6 +63,7 @@ module LU = LexUtils.Make(O)
     | "begin" -> BEGIN
     | "end" -> END
     | "procedure" -> PROCEDURE
+    | "checkcall" -> CHECKCALL
     | "call" -> CALL
     | "enum" -> ENUM
     | "debug" -> DEBUG

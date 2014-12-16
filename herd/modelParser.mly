@@ -54,7 +54,7 @@ let pp () =
 %token AA AP PA PP
 %token ALT SEMI UNION INTER COMMA DIFF PLUSPLUS
 %token STAR PLUS OPT INV COMP NOT HAT TWO
-%token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN PROCEDURE CALL FOREACH DO
+%token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN PROCEDURE CALL FOREACH DO CHECKCALL
 %token REQUIRES
 %token ARROW
 %token SEQTEST
@@ -119,6 +119,7 @@ alttags:
 
 deftest:
 | test_type test exp optional_name { Test(mk_loc(),pp (),$2,$3,$4,$1) }
+| CHECKCALL VAR LPAR fargs RPAR optional_name { ProcedureTest(mk_loc(), $2,$4,$6)  }
 
 test_type:
 |          { Provides }

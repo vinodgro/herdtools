@@ -975,6 +975,25 @@ module Make
               (rt_loc id (eval_rel st.env e)) (Lazy.force st.show)
           end in
           run txt { st with show; } c
+      | ProcedureTest (loc,pname,es,name) ->
+          let skip_this_check =
+            match name with
+            | Some name -> StringSet.mem name O.skipchecks
+            | None -> false in
+          if
+            O.strictskip || not skip_this_check
+          then
+            let env0 = st.env in
+            let p = eval_proc loc env0 pname in
+            let env1 = add_args loc p.proc_args es env0 p.proc_env in
+            begin match run txt { st with env = env1; } p.proc_body with
+            | None -> None
+            | Some st_call ->
+                run txt { st_call with env = env0; } c
+            end
+          else
+            let _ = W.warn "Skipping check %s" (Misc.as_some name) in
+            run txt st c
       | Test (_,pos,t,e,name,test_type) ->
           (* If this is a provides-clause and we've previously
              seen a requires-clause, abort. *)

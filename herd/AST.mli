@@ -75,6 +75,7 @@ type ins =
   | Latex of  TxtLoc.t * string
   | Include of  TxtLoc.t * string (* file name, interpreter will read/parse file... *)
   | Procedure of  TxtLoc.t * var * var list * ins list
+  | ProcedureTest of TxtLoc.t * var * exp list * string option
   | Call of  TxtLoc.t * var * exp list
   | Enum of TxtLoc.t * var * var list
   | Foreach of  TxtLoc.t * var * exp * ins list
