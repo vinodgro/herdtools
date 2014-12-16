@@ -142,6 +142,8 @@ rule token deep = parse
 | "lock"  { LOCK }
 | "WCAS"  { WCAS }
 | "SCAS"  { SCAS }
+| "atomic_compare_exchange_weak_explicit" { WCAS}
+| "atomic_compare_exchange_strong_explicit" { SCAS}
 | "unlock"    { UNLOCK }
 | name as x   { tr_name x  }
 | eof { EOF }
