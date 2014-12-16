@@ -150,6 +150,7 @@ let xy = ref false
 let morearch = ref MoreArch.No
 let carch = ref None
 let mode = ref Mode.Std
+let usearch = ref UseArch.Trad
 
 (* Arch dependent options *)
 type opt =

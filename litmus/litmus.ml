@@ -85,6 +85,8 @@ let opts =
    P.parse "-safer" Option.safer "safer mode" end ;
    begin let module P = ParseTag.Make(Mode) in
    P.parse "-mode" Option.mode "output style for C files" end ;
+   begin let module P = ParseTag.Make(UseArch) in
+   P.parse "-usearch" Option.usearch "use generated/traditional arch description" end;
    argbool "-cautious" Option.cautious
      "insert additional memory barriers" ;
 (* Affinity *)
