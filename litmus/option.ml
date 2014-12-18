@@ -160,10 +160,10 @@ type opt =
 let mod_config = ref (fun cfg -> cfg)
 
 let x86opt =
-  { delay = 2048; gccopts = "-fomit-frame-pointer -O2";
+  { delay = 2048; gccopts="-fomit-frame-pointer -O2";
     word = Word.WXX; line = 512; }
 let ppcopt =
-  { delay = 1024; gccopts = "-O2";
+  { delay = 1024; gccopts = "-fomit-frame-pointer -O2";
     word = Word.WXX; line = 128; }
 let armopt =
   { delay = 1024; gccopts = "-O2";
