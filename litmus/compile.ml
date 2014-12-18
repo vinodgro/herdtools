@@ -23,7 +23,7 @@ let get_fmt hexa base = match CType.get_fmt hexa base with
 let base =  CType.Base "int"
 let pointer = CType.Pointer base
 
-module Generic (A : Arch.Base) = struct
+module Generic (A : Arch.Base) (C:Constr.S with module A = A) = struct
   open CType
 
   let base =  base
@@ -141,9 +141,16 @@ module Generic (A : Arch.Base) = struct
     let env = type_init init env in
     env
 
-    let find_type loc env =
-      try A.LocMap.find loc env
-      with Not_found -> assert false
+  let find_type loc env =
+    try A.LocMap.find loc env
+    with Not_found -> assert false
+
+(* All observed locations *)
+  let observed final locs =
+    A.LocSet.union
+      (C.locations final)
+      (A.LocSet.of_list (List.map fst locs))
+
 end
 
 module Make
@@ -153,6 +160,7 @@ module Make
      type A.reg = A.reg and
      type A.location = A.location and
      module A.LocSet = A.LocSet and
+     module A.LocMap = A.LocMap and
      type A.Out.t = A.Out.t and
      type P.code = int * A.pseudo list)
     (C:XXXCompile.S with module A = A) =
@@ -163,7 +171,7 @@ module Make
     module A = A
     module V = A.V
     module Constr = T.C
-    module Generic = Generic(A)
+    module Generic = Generic(A)(Constr)
     open A.Out
 
     let rec do_extract_pseudo nop f ins = match ins with
@@ -196,20 +204,20 @@ module Make
 
 
 
-let rec lblmap_pseudo c m i = match i with
-| A.Nop|A.Instruction _ -> c,m
-| A.Label(lbl,i) ->
-    let m = StringMap.add lbl c m in
-    lblmap_pseudo (c+1) m i
-| A.Macro _ -> assert false
+    let rec lblmap_pseudo c m i = match i with
+    | A.Nop|A.Instruction _ -> c,m
+    | A.Label(lbl,i) ->
+        let m = StringMap.add lbl c m in
+        lblmap_pseudo (c+1) m i
+    | A.Macro _ -> assert false
 
-let lblmap_code =
-  let rec do_rec c m = function
-    | [] -> m
-    | i::code ->
-        let c,m = lblmap_pseudo c m i in
-        do_rec c m code in
-  do_rec 0 StringMap.empty
+    let lblmap_code =
+      let rec do_rec c m = function
+        | [] -> m
+        | i::code ->
+            let c,m = lblmap_pseudo c m i in
+            do_rec c m code in
+      do_rec 0 StringMap.empty
 
 
 
@@ -269,7 +277,7 @@ let lblmap_code =
 
 
 
-    let compile_code proc code final =
+    let compile_code code =
       let code = compile_pseudo_code code [] in
       let code =
         if O.timeloop > 0 then C.emit_loop code
@@ -321,7 +329,7 @@ let lblmap_code =
           (RegSet.diff live_out
 (* Conditional instruction, a la ARM *)
              (if ins.cond then RegSet.empty
-               else RegSet.of_list ins.outputs)) in
+             else RegSet.of_list ins.outputs)) in
       (match ins.label with
       | None -> env
       | Some lbl -> LabEnv.add lbl live_in env),
@@ -334,13 +342,13 @@ let lblmap_code =
 (* Fixpoint *)
     let comp_fix code live_in_final =
 (*
-      eprintf "FINAL: {%a}\n" pp_reg_set live_in_final ;
-*)
+  eprintf "FINAL: {%a}\n" pp_reg_set live_in_final ;
+ *)
       let rec do_rec env0 =
         let env,r = live_in_code code env0 live_in_final in
 (*
-        eprintf "FIX: {%a}\n" pp_reg_set r ;
-*)
+  eprintf "FIX: {%a}\n" pp_reg_set r ;
+ *)
         let c =
           LabEnv.compare RegSet.compare env env0 in
         if c = 0 then r
@@ -350,16 +358,8 @@ let lblmap_code =
     let comp_initset code inputs_final =
       RegSet.elements (comp_fix code inputs_final)
 
-    let compile_init proc initenv code flocs final =
-      let locs1 = Constr.locations final
-      and locs2 = A.LocSet.of_list flocs in
-      let locs = A.LocSet.union locs1 locs2 in
-      let inputs_final =
-        A.LocSet.fold
-          (fun loc k -> match loc with
-          | A.Location_reg (p,reg) when p = proc -> RegSet.add reg k
-          | _ -> k)
-          locs RegSet.empty in
+    let compile_init proc initenv observed code  =
+      let inputs_final = observed in
       let inputs = comp_initset code inputs_final in
       List.map
         (fun reg ->
@@ -367,46 +367,31 @@ let lblmap_code =
           reg,v)
         inputs
 
-    let load_addrs env =
-      let lst =
-        StringMap.fold
-          (fun addr i k -> (i,addr)::k)
-          env [] in
-      List.sort
-        (fun (x,_) (y,_) -> Misc.int_compare x y)
-        lst
+    let compile_final proc observed = RegSet.elements observed
 
-    let uniq xs ys = A.LocSet.elements (A.LocSet.of_list (xs@ys))
-
-    let compile_final proc final flocs =
-      let locs =
-        A.LocSet.union
-          (Constr.locations final)
-          (A.LocSet.of_list flocs) in
-      A.LocSet.fold
-        (fun loc k -> match loc with
-        | A.Location_reg (p,reg) when p=proc -> reg::k
-        | _ -> k)
-        locs []
-
-    let mk_templates init code final flocs =
+    let mk_templates init code observed =
       let outs =
         List.map
           (fun (proc,code) ->
             let addrs = extract_addrs code in
             let stable = stable_regs code in
-            let code = compile_code proc code final in
+            let code = compile_code code in
             proc,addrs,stable,code)
           code in
-      let flocs = List.map fst flocs in
       let pecs = outs in
       List.map
         (fun (proc,addrs,stable,code) ->
+          let observed_proc = 
+            A.LocSet.fold
+              (fun loc k -> match A.of_proc proc loc with
+              | Some r -> RegSet.add r k
+              | _ -> k)
+              observed RegSet.empty in
           proc,
-          { init = compile_init proc init code flocs final ;
+          { init = compile_init proc init observed_proc code ;
             addrs = StringSet.elements addrs ;
             stable = A.RegSet.elements stable;
-            final = compile_final proc final flocs;
+            final = compile_final proc observed_proc;
             code = code; })
         pecs
 
@@ -416,22 +401,16 @@ let lblmap_code =
           sprintf "<%s,%s>" loc (CType.dump t))
         env
 
-    let comp_globals init code flocs =
+(* Compile globals, with their type *)
+    let comp_globals env init code =
       let env =
-(* First extract types from init *)
-        List.fold_right
-          (fun (loc,(t,v)) env -> match loc with
-            | A.Location_global a ->
-                let open MiscParser in
-                begin match t with
-                | TyDef ->
-                    Generic.add_addr_type a (Generic.typeof v) env
-                | _ ->
-                    StringMap.add a (Generic.misc_to_c t) env
-                end
-            | _ -> env)
-          init StringMap.empty in
-(* Then extract types from code, notice that init types have precedence *)
+(* First from typing env, this catches all globals listed in init,final,flocs *)
+        A.LocMap.fold
+          (fun loc t k -> match loc with
+          | A.Location_global a -> StringMap.add a t k
+          | _ -> k)
+          env StringMap.empty in
+(* Then extract types from code, notice that env types have precedence *)
       let env =
         List.fold_right
           (fun (_,t) ->
@@ -446,7 +425,7 @@ let lblmap_code =
 (* Add uninitialised globals referenced as values in init,
    Those may be accessed by code *)
       let env =
-         List.fold_right
+        List.fold_right
           (fun (_,(t,v)) env ->
             match t,v with
             | MiscParser.TyDef,Constant.Symbolic a ->
@@ -458,48 +437,32 @@ let lblmap_code =
                 end
             | _ -> env)
           init env in
-(* Then from locations declarations, have precedence (?) *)
-      let env = 
-        List.fold_left
-          (fun env (loc,t) -> match loc with
-          | A.Location_global loc ->
-              begin match t with
-              | MiscParser.TyDef -> env
-              | _  -> StringMap.add loc (Generic.misc_to_c t) env
-              end
-          | _ -> env)
-          env flocs in
       StringMap.fold
         (fun a ty k -> (a,ty)::k)
         env []
 
-    let type_out p t init final flocs =
+    let type_out env p t =
       List.map
-        (fun reg ->
-          match Generic.type_in_init p reg init with
-          | Some t ->
-              reg,t
-          | None ->
-              reg,Generic.type_in_final p reg final flocs)
+        (fun reg -> reg,Generic.find_type (A.Location_reg (p,reg)) env)
         t.final
 
-    let type_outs code init final flocs =
+    let type_outs env code =
       List.map
-        (fun (p,t) -> p,(t, (type_out p t init final flocs, [])))
+        (fun (p,t) -> p,(t, (type_out env p t, [])))
         code
 (*
-    let pp_out (p,(_,(env,_))) =
-      let pp =
-        List.map
-          (fun (reg,t) -> sprintf "<%i:%s,%s>"
-              p (A.pp_reg reg) (CType.dump t))
-          env in
-      String.concat " " pp
+  let pp_out (p,(_,(env,_))) =
+  let pp =
+  List.map
+  (fun (reg,t) -> sprintf "<%i:%s,%s>"
+  p (A.pp_reg reg) (CType.dump t))
+  env in
+  String.concat " " pp
 
-    let pp_outs outs =
-      let pp = List.map pp_out outs in
-      String.concat " " pp
-*)
+  let pp_outs outs =
+  let pp = List.map pp_out outs in
+  String.concat " " pp
+ *)
     let compile t =
       let
           { MiscParser.init = init ;
@@ -509,13 +472,15 @@ let lblmap_code =
             locations = locs ; _
           } = t in
       let initenv = List.map (fun (loc,(_,v)) -> loc,v) init in
-      let code = mk_templates initenv code final locs in
-      let code_typed = type_outs code init final locs in
+      let observed = Generic.observed final locs in
+      let ty_env = Generic.build_type_env init final locs in
+      let code = mk_templates initenv code observed in
+      let code_typed = type_outs ty_env code in
       { T.init = initenv ;
         info = info;
         code = code_typed;
         condition = final;
-        globals = comp_globals init code locs;
+        globals = comp_globals ty_env init code;
         flocs = List.map fst locs ;
         global_code = [];
         src = t;

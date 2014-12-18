@@ -26,17 +26,11 @@ module Make
 
     module A = T.A
     module C = T.C
-    module Generic = Compile.Generic(A)
+    module Generic = Compile.Generic(A)(C)
 
 (******************************)
 (* Compute observed locations *)
 (******************************)
-
-  let observed final locs =
-    A.LocSet.union
-      (C.locations final)
-      (A.LocSet.of_list (List.map fst locs))
-
 
     type t =
       | Test of A.Out.t
@@ -146,7 +140,7 @@ module Make
         } = t in
       let initenv = List.map (fun (x,(_,v)) -> x,v) init in
       let env = Generic.build_type_env init final locs in
-      let observed = observed final locs in
+      let observed = Generic.observed final locs in
       { T.init = initenv;
         info = info;
         code = comp_code observed env code;
