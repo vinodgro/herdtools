@@ -45,6 +45,7 @@ module type S = sig
   type t = {
       init : (arch_reg * Constant.v) list ;
       addrs : string list ; (* addesses in code (eg X86) *)
+      stable : arch_reg list; (* stable registers, ie must be self-allocated by gcc *)
       final : arch_reg list ;
       code : ins list;
     }
@@ -88,6 +89,7 @@ struct
   type t = {
       init : (arch_reg * Constant.v) list ;
       addrs : string list ;
+      stable : arch_reg list;
       final : arch_reg list ;
       code : ins list;
     }
@@ -105,6 +107,7 @@ struct
               [] init)) in
     StringSet.elements set
 
+  let get_stable { stable; _} = stable
 
   exception Internal of string
   let internal msg = raise (Internal msg)

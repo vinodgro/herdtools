@@ -103,6 +103,8 @@ rule token = parse
 | "blr"   { BLR }
 | "mtlr"  { MTLR }
 | "mflr"  { MFLR }
+| "stmw"  { STMW }
+| "lmw"  { LMW }
 | "com"   { COMMENT}
 
 | name as x

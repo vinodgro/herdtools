@@ -160,12 +160,13 @@ module Make
     module Generic = Generic(A)
     open A.Out
 
-    let rec extract_pseudo ins = match ins with
-    | A.Nop -> StringSet.empty
-    | A.Label (_,ins) -> extract_pseudo ins
-    | A.Instruction ins -> C.extract_addrs ins
+    let rec do_extract_pseudo nop f ins = match ins with
+    | A.Nop -> nop
+    | A.Label (_,ins) -> do_extract_pseudo nop f ins
+    | A.Instruction ins -> f ins
     | A.Macro (_,_) -> assert false
 
+    let extract_pseudo = do_extract_pseudo StringSet.empty C.extract_addrs
 
     let extract_addrs code =
       List.fold_right
@@ -173,6 +174,14 @@ module Make
           StringSet.union (extract_pseudo ins) env)
         code
         StringSet.empty
+
+    let stable_regs code =
+      List.fold_right
+        (fun ins env ->
+          A.RegSet.union
+            (do_extract_pseudo A.RegSet.empty C.stable_regs ins) env)
+        code
+        A.RegSet.empty
 
 
 (*******************************)
@@ -379,16 +388,18 @@ let lblmap_code =
         List.map
           (fun (proc,code) ->
             let addrs = extract_addrs code in
+            let stable = stable_regs code in
             let code = compile_code proc code final in
-            proc,addrs,code)
+            proc,addrs,stable,code)
           code in
       let flocs = List.map fst flocs in
       let pecs = outs in
       List.map
-        (fun (proc,addrs,code) ->
+        (fun (proc,addrs,stable,code) ->
           proc,
           { init = compile_init proc init code flocs final ;
             addrs = StringSet.elements addrs ;
+            stable = A.RegSet.elements stable;
             final = compile_final proc final flocs;
             code = code; })
         pecs

@@ -35,7 +35,7 @@ open PPC
 %token LD STD LDX STDX
 %token SYNC EIEIO ISYNC LWSYNC DCBF B BEQ BNE BLT BGT BLE BGE BNL BNG
 %token NOR NORDOT NEG NEGDOT SLW SRAWI SRAW BL BLR MTLR MFLR
-
+%token LMW STMW
 %token COMMENT
 %token <string> STRING
 
@@ -212,6 +212,8 @@ instr:
   | BLR { Pblr }
   | MTLR reg { Pmtlr $2}
   | MFLR reg { Pmflr $2}
+  | LMW reg  COMMA idx LPAR reg RPAR { Plmw ($2,$4,$6) }
+  | STMW reg  COMMA idx LPAR reg RPAR { Pstmw ($2,$4,$6) }
   | COMMENT STRING { Pcomment $2 }
  
 k:

@@ -14,6 +14,7 @@ module type S = sig
   module A : Arch.S
 
   val extract_addrs : A.instruction -> StringSet.t
+  val stable_regs : A.instruction -> A.RegSet.t
   val emit_loop : A.Out.ins list -> A.Out.ins list
   val compile_ins :
       (Label.t -> string) ->

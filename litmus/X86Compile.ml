@@ -74,6 +74,8 @@ module Make(V:Constant.S)(O:Config) =
     | I_MOVSD
       -> StringSet.empty
 
+    let stable_regs _ins = A.RegSet.empty
+
 (****************************)
 (* compilation to templates *)
 (****************************)

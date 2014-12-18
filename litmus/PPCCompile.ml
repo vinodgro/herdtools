@@ -362,10 +362,43 @@ module Make(V:Constant.S)(C:Config) =
           memo = "mflr ^o0";
           outputs=[rD];
           inputs=[A.LR]; }::k
+    | Plmw (rD,d,rA) ->
+        { empty_ins with
+          memo =
+          begin
+            if rA = A.Ireg A.GPR0
+            then sprintf "lmw ^o0,%i(r0)" d
+            else sprintf "lmw ^o0,%i(^i0)" d
+          end ;
+          outputs = A.regs_interval rD;
+          inputs = begin
+            if rA = A.Ireg A.GPR0
+            then []
+            else [rA]
+          end; }::k
+    | Pstmw (rS,d,rA) ->
+        { empty_ins with
+          memo =
+          begin
+            if rA = A.Ireg A.GPR0
+            then sprintf "stmw ^i0,%i(r0)" d
+            else sprintf "stmw ^i1,%i(^i0)" d
+          end ;
+          inputs=
+          begin
+            let rs = A.regs_interval rS in
+            if rA = A.Ireg A.GPR0 then rs else rA::rs;
+          end; }::k
     | Pcomment c ->
         { empty_ins with memo = c; comment = true; }::k
 
     let extract_addrs _ins = StringSet.empty
+
+    let stable_regs ins = match ins with
+    | Pstmw (r1,_,_)
+    | Plmw (r1,_,_) ->
+        A.RegSet.of_list (A.regs_interval r1)
+    | _ -> A.RegSet.empty
 
     let compile_ins is_before ins = do_compile_ins is_before ins
 

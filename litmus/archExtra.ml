@@ -34,6 +34,7 @@ module type S = sig
 
   val vToName : Constant.v -> string
 
+  module RegSet : MySet.S with type elt = I.arch_reg
   include Location.S
   with type loc_reg = I.arch_reg and type loc_global = string
   module Out : Template.S
@@ -60,6 +61,13 @@ module Make(O:Config)(I:I) : S with module I = I
   let vToName v = match v with
   | Concrete i -> "addr_" ^ string_of_int i
   | Symbolic s -> s
+
+  module RegSet =
+    MySet.Make
+      (struct
+        type t = I.arch_reg
+        let compare = I.reg_compare
+      end)
 
   include Location.Make
       (struct

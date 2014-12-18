@@ -10,7 +10,7 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
-(** Define registers, barriers, and instructions for PPC *) 
+(** Define registers, barriers, and instructions for PPC *)
 
 (* Who am i ? *)
 let arch = Archs.ppc
@@ -130,47 +130,59 @@ let pp_freg r =
 
 open Printf
 
-    let pp_crf crb = sprintf "cr%i" crb
+let pp_crf crb = sprintf "cr%i" crb
 
-    let pp_reg r =
-      match r with
-      | Ireg(ir) -> pp_ireg ir
-      | Freg(fr) -> pp_freg fr
-      | CRField k -> sprintf "CR%i" k
-      | CRBit k -> sprintf "CR:%i" k
-      | PC -> "PC"
-      | LR -> "LR"
-      | CTR -> "CTR"
-      | CARRY -> "CARRY"
-      | Rc -> "Rc"
-      | XER_0 -> "XER_0"
-      | XER_1 -> "XER_1"
-      | XER_2 -> "XER_2"
-      | OE -> "OE"
-      | Symbolic_reg r -> "%"^r
-      | Internal i -> sprintf "i%i" i
-      | RES -> "RES"
-      | RESADDR -> "RESADDR"
+let pp_reg r =
+  match r with
+  | Ireg(ir) -> pp_ireg ir
+  | Freg(fr) -> pp_freg fr
+  | CRField k -> sprintf "CR%i" k
+  | CRBit k -> sprintf "CR:%i" k
+  | PC -> "PC"
+  | LR -> "LR"
+  | CTR -> "CTR"
+  | CARRY -> "CARRY"
+  | Rc -> "Rc"
+  | XER_0 -> "XER_0"
+  | XER_1 -> "XER_1"
+  | XER_2 -> "XER_2"
+  | OE -> "OE"
+  | Symbolic_reg r -> "%"^r
+  | Internal i -> sprintf "i%i" i
+  | RES -> "RES"
+  | RESADDR -> "RESADDR"
 
-    let parse_list =
-      List.map (fun (r,s) -> s,Ireg r) iregs @
-      List.map (fun (r,s) -> s,Freg r) fregs
-	    
-    let parse_reg s =
-      let s = String.lowercase s in
-      try Some (List.assoc s parse_list)
-      with Not_found -> None
+let parse_list =
+  List.map (fun (r,s) -> s,Ireg r) iregs @
+  List.map (fun (r,s) -> s,Freg r) fregs
+
+let parse_reg s =
+  let s = String.lowercase s in
+  try Some (List.assoc s parse_list)
+  with Not_found -> None
+
+
+let regs_interval =
+  let iregs = List.map (fun (r,_) -> Ireg r) iregs in
+  let rec from_reg r = function
+    | [] -> assert false
+    | t::rem as rs ->
+        if  reg_compare r t = 0 then  rs
+      else from_reg r rem in
+  fun r -> match r with
+  | Ireg _ -> from_reg r iregs
+  | _ -> Warn.fatal "illegal regs_interval from %s" (pp_reg r)
 
 
 (************)
 (* Barriers *)
 (************)
-	    
-  type barrier =
-      | Sync
-      | Isync
-      | Lwsync
-      | Eieio
+
+type barrier =
+  | Sync
+  | Isync
+  | Lwsync
+  | Eieio
 
 let all_kinds_of_barriers =  [ (*Isync;*) Sync ; Lwsync ; Eieio; ]
 
@@ -255,6 +267,9 @@ type instruction =
   | Pblr
   | Pmtlr of reg
   | Pmflr of reg
+(* Extra load and store multiple, litmus only *)
+  | Plmw of reg * k * reg
+  | Pstmw of reg * k * reg
   | Pcomment of string
 
     let pp_k = string_of_int
@@ -264,7 +279,7 @@ type instruction =
       opcode^" "^pp_reg r1 ^ ","^pp_reg r2 ^ ","^pp_reg r3
 
     let ppi_index_mode2 opcode r1 r2 =
-      opcode^" "^pp_reg r1 ^ ","^pp_reg r2 
+      opcode^" "^pp_reg r1 ^ ","^pp_reg r2
 
     let ppi_imm_index_mode opcode r1 d r2 =
       opcode^" "^pp_reg r1 ^ ","^pp_idx d ^ "("^pp_reg r2^")"
@@ -320,7 +335,7 @@ type instruction =
       | Pcmpwi (crf,rS,v) ->
           "cmpwi" ^ " " ^pp_crf crf ^ "," ^ pp_reg rS  ^ "," ^ pp_k v
       | Pb lbl -> "b   " ^ lbl
-      | Pbcc(cond, lbl) -> "b"^pp_cond cond ^ "  " ^ lbl 
+      | Pbcc(cond, lbl) -> "b"^pp_cond cond ^ "  " ^ lbl
       | Pcmpw(0,rA,rB) -> ppi_rr "cmpw" rA rB
       | Pcmpw(crf,rA,rB) ->
           "cmpw" ^ " " ^pp_crf crf ^ "," ^ pp_reg rA  ^ "," ^ pp_reg rB
@@ -339,6 +354,9 @@ type instruction =
       | Pstd(rS,d,rA) -> ppi_imm_index_mode "std" rS d rA
       | Pstdx(rS,rA,rB) -> ppi_index_mode "stdx" rS rA rB
 
+      | Plmw (rD,d,rA) -> ppi_imm_index_mode "lmw" rD d rA
+      | Pstmw (rS,d,rA) -> ppi_imm_index_mode "stmw" rS d rA
+
       | Psync -> "sync"
       | Plwsync -> "lwsync"
       | Pisync -> "isync"
@@ -351,7 +369,7 @@ type instruction =
       | Psrawi(set,rD,rA,k) -> ppi_imm_instr_memo "srawi" set rD rA k
       | Psraw(set,rD,rA,rB) -> pp_op3 "sraw" set rD rA rB
       | Pbl lbl -> "bl   " ^ lbl
-      | Pblr -> "blr" 
+      | Pblr -> "blr"
       | Pmtlr reg -> "mtlr " ^ pp_reg reg
       | Pmflr reg -> "mflr " ^ pp_reg reg
       | Pcomment s -> "com \"" ^ s ^ "\""
@@ -415,13 +433,13 @@ let fold_regs (f_reg,f_sreg) =
   | Pstw (r1,_,r2)
   | Pstwu (r1,_,r2)
   | Pld (r1,_,r2)
-  | Pstd (r1,_,r2) 
+  | Pstd (r1,_,r2)
   | Pneg (_,r1,r2)
   | Psrawi (_,r1,r2,_)
     ->  fold_reg r2 (fold_reg r1 (y_reg,y_sreg))
 	(* One *)
   | Pli (r1,_)
-  | Pcmpwi (_,r1,_) 
+  | Pcmpwi (_,r1,_)
   | Pmtlr r1
   | Pmflr r1
     ->  fold_reg r1 (y_reg,y_sreg)
@@ -430,15 +448,19 @@ let fold_regs (f_reg,f_sreg) =
   | Pbcc _
   | Psync
   | Peieio
-  | Pisync 
-  | Plwsync 
+  | Pisync
+  | Plwsync
   | Pbl _
   | Pblr
-  | Pcomment _ 
+  | Pcomment _
     -> c
+  | Plmw (r1,_,r2)
+  | Pstmw (r1,_,r2) ->
+      let rs = regs_interval r1 in
+      fold_reg r2 (List.fold_right fold_reg rs (y_reg,y_sreg))
 
-	
-	(* Map over symbolic regs *)
+
+(* Map over symbolic regs *)
 let map_regs f_reg f_symb =
 
   let map_reg reg = match reg with
@@ -450,15 +472,19 @@ let map_regs f_reg f_symb =
   and map2 ins r1 r2 = ins (map_reg r1,map_reg r2) in
 
   fun ins -> match ins with
+(* Special, keep r1 as is *)
+  | Plmw (r1,d,r2) -> Plmw (r1,d,map_reg r2)
+  | Pstmw (r1,d,r2) -> Pstmw (r1,d,map_reg r2)
+(* Standard, map all registers *)
   | Padd (set,r1,r2,r3) -> (* Hum ocaml constructor syntax does not help *)
       map3  (fun (r1,r2,r3) -> Padd (set,r1,r2,r3)) r1 r2 r3
-  | Psub (set,r1,r2,r3) -> 
+  | Psub (set,r1,r2,r3) ->
       map3  (fun (r1,r2,r3) -> Psub (set,r1,r2,r3)) r1 r2 r3
-  | Psubf (set,r1,r2,r3) -> 
+  | Psubf (set,r1,r2,r3) ->
       map3  (fun (r1,r2,r3) -> Psubf (set,r1,r2,r3)) r1 r2 r3
-  | Por (set,r1,r2,r3) -> 
+  | Por (set,r1,r2,r3) ->
       map3  (fun (r1,r2,r3) -> Por (set,r1,r2,r3)) r1 r2 r3
-  | Pand (set,r1,r2,r3) -> 
+  | Pand (set,r1,r2,r3) ->
       map3  (fun (r1,r2,r3) -> Pand (set,r1,r2,r3)) r1 r2 r3
   | Pxor (set,r1,r2,r3) ->
       map3 (fun (r1,r2,r3) -> Pxor (set,r1,r2,r3)) r1 r2 r3
@@ -475,12 +501,12 @@ let map_regs f_reg f_symb =
   | Pstdx (r1,r2,r3) ->
       map3 (fun (r1,r2,r3) -> Pstdx (r1,r2,r3)) r1 r2 r3
   | Plwarx (r1,r2,r3) ->
-      map3 (fun (r1,r2,r3) -> Plwarx (r1,r2,r3)) r1 r2 r3	
+      map3 (fun (r1,r2,r3) -> Plwarx (r1,r2,r3)) r1 r2 r3
   | Pstwcx (r1,r2,r3) ->
       map3 (fun (r1,r2,r3) -> Pstwcx (r1,r2,r3)) r1 r2 r3
-  | Pnor (set,r1,r2,r3) -> 
+  | Pnor (set,r1,r2,r3) ->
       map3  (fun (r1,r2,r3) -> Pnor (set,r1,r2,r3)) r1 r2 r3
-  | Pslw (set,r1,r2,r3) -> 
+  | Pslw (set,r1,r2,r3) ->
       map3  (fun (r1,r2,r3) -> Pslw (set,r1,r2,r3)) r1 r2 r3
   | Psraw (set,r1,r2,r3) ->
       map3  (fun (r1,r2,r3) -> Psraw (set,r1,r2,r3)) r1 r2 r3
@@ -534,9 +560,9 @@ let map_regs f_reg f_symb =
   | Pbcc _
   | Psync
   | Peieio
-  | Pisync 
-  | Plwsync 
-  | Pbl _ 
+  | Pisync
+  | Plwsync
+  | Pbl _
   | Pblr
   | Pcomment _
 
@@ -566,10 +592,11 @@ let norm_ins ins = match ins with
   | Pand (_, _, _, _)|Por (_, _, _, _)
   | Psub (_, _, _, _)| Psubf (_, _, _, _)|Padd (_, _, _, _)
   | Plwsync|Pisync|Peieio|Psync
-  | Pnor (_,_,_,_) | Pneg(_,_,_) 
-  | Pslw(_,_,_,_) | Psrawi(_,_,_,_) | Psraw(_,_,_,_) 
-  | Pbl _ | Pblr | Pmtlr _ | Pmflr _ 
+  | Pnor (_,_,_,_) | Pneg(_,_,_)
+  | Pslw(_,_,_,_) | Psrawi(_,_,_,_) | Psraw(_,_,_,_)
+  | Pbl _ | Pblr | Pmtlr _ | Pmflr _
   | Pcomment _
+  | Plmw _|Pstmw _
           -> ins
 
 let is_data r1 i = match i with
@@ -592,6 +619,7 @@ let get_next = function
   |Psync|Peieio|Pisync|Plwsync
   |Pdcbf (_, _)|Pnor (_, _, _, _)|Pneg (_, _, _)
   |Pslw (_, _, _, _)|Psrawi (_, _, _, _)|Psraw (_, _, _, _)
+  |Plmw _|Pstmw _
   |Pcomment _ -> [Label.Next]
   |Pb lbl -> [Label.To lbl]
   |Pbcc (_, lbl) -> [Label.Next;Label.To lbl]
@@ -601,13 +629,15 @@ let get_next = function
 
 
 (* Macros *)
-        
+
 
 include Pseudo.Make
     (struct
       type ins = instruction
       type reg_arg = reg
 
+
+(* Number if memory accesses per instruction (for estimating test complexity) *)
       let get_naccesses = function
 (* Two forms of ins: set cr0 or not *)
         | Padd _
@@ -659,10 +689,12 @@ include Pseudo.Make
         | Pld _
         | Pldx _
           -> 1
-
+        |Plmw (r1,_,_)
+        |Pstmw (r1,_,_)
+            -> 2 (* could be List.length (regs_interval r1), not that important *)
 
       let fold_labels k f = function
-        | Pb lab 
+        | Pb lab
         | Pbcc (_,lab) -> f k lab
         | Pdcbf (_, _)|Pldx (_, _, _)|Pld (_, _, _)
         | Pstdx (_, _, _)|Pstd (_, _, _)
@@ -676,14 +708,15 @@ include Pseudo.Make
         | Pand (_, _, _, _)|Por (_, _, _, _)
         | Psub (_, _, _, _)| Psubf (_, _, _, _)|Padd (_, _, _, _)
         | Plwsync|Pisync|Peieio|Psync
-        | Pnor (_,_,_,_) | Pneg(_,_,_) 
-        | Pslw(_,_,_,_) | Psrawi(_,_,_,_) | Psraw(_,_,_,_) 
-        | Pbl _ | Pblr | Pmtlr _ | Pmflr _ 
+        | Pnor (_,_,_,_) | Pneg(_,_,_)
+        | Pslw(_,_,_,_) | Psrawi(_,_,_,_) | Psraw(_,_,_,_)
+        | Pbl _ | Pblr | Pmtlr _ | Pmflr _
         | Pcomment _
+        | Plmw _|Pstmw _
           -> k
 
 
-              
+
 
       let map_labels f = function
         | Pb lab -> Pb (f lab)
@@ -699,10 +732,11 @@ include Pseudo.Make
         | Pmull (_, _, _, _)|Pxor (_, _, _, _)
         | Pand (_, _, _, _)|Por (_, _, _, _)
         | Psub (_, _, _, _)| Psubf (_, _, _, _)|Padd (_, _, _, _)
-        | Plwsync|Pisync|Peieio|Psync 
-        | Pnor (_,_,_,_) | Pneg(_,_,_) 
-        | Pslw(_,_,_,_) | Psrawi(_,_,_,_) | Psraw(_,_,_,_) 
-        | Pbl _ | Pblr | Pmtlr _ | Pmflr _  
+        | Plwsync|Pisync|Peieio|Psync
+        | Pnor (_,_,_,_) | Pneg(_,_,_)
+        | Pslw(_,_,_,_) | Psrawi(_,_,_,_) | Psraw(_,_,_,_)
+        | Pbl _ | Pblr | Pmtlr _ | Pmflr _
+        | Plmw _|Pstmw _
         | Pcomment _
             as ins
           -> ins
@@ -747,7 +781,7 @@ let fno2 regs k = match regs with
     Label (lab,Nop)::
     Instruction (Plwarx (r,r0,addr))::
     Instruction (Pcmpw (0,r0,r0))::
-    Instruction (Pbcc (Eq,lab_next))::  
+    Instruction (Pbcc (Eq,lab_next))::
     Label (lab_next,Instruction (Pisync))::
     Instruction (Pstwcx (r,r0,addr))::
     Instruction (Pbcc (Ne,lab))::k
@@ -795,16 +829,16 @@ let lock regs k = match regs with
     Instruction (Pstwcx (sym,r0 ,addr))::
     Instruction (Pbcc (Ne,loop))::
     Instruction (Pisync)::
-    k                 
-| _ -> Warn.fatal "LOCK takes one reg argument (address)"     
+    k
+| _ -> Warn.fatal "LOCK takes one reg argument (address)"
 
 let unlock regs k = match regs with
 | [addr] ->
     Instruction (Plwsync)::
     Instruction (Pli (sym,0))::
     Instruction (Pstw (sym,0,addr))::
-    k                 
-| _ -> Warn.fatal "UNLOCK takes one reg argument (address)"     
+    k
+| _ -> Warn.fatal "UNLOCK takes one reg argument (address)"
 
 (* SETFLAG/READFLAG *)
 let setflag regs k = match regs with
@@ -812,7 +846,7 @@ let setflag regs k = match regs with
     Instruction (Plwsync)::
     Instruction (Pli (sym,1))::
     Instruction (Pstw (sym,0,addr))::k
-| _ -> Warn.fatal "SF takes one reg argument (address)" 
+| _ -> Warn.fatal "SF takes one reg argument (address)"
 
 let readflag regs k =  match regs with
 | [r; addr] ->
@@ -822,7 +856,7 @@ let readflag regs k =  match regs with
     Instruction (Pbcc (Ne,next))::
     Label (next,Nop)::
     Instruction (Pisync)::k
-| _ -> Warn.fatal "RF takes two reg argument (dest,address)" 
+| _ -> Warn.fatal "RF takes two reg argument (dest,address)"
 
 let readflagloop regs k = match regs with
 | [addr] ->
@@ -832,7 +866,7 @@ let readflagloop regs k = match regs with
     Instruction (Pcmpwi (0,sym,0))::
     Instruction (Pbcc (Eq,loop))::
     Instruction (Pisync)::k
-| _ -> Warn.fatal "RFL takes one reg argument (address)" 
+| _ -> Warn.fatal "RFL takes one reg argument (address)"
 
 let () =
   Hashtbl.add m_t "LWZ" lwz ;

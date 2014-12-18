@@ -24,6 +24,7 @@ module Make(V:Constant.S)(C:Config) =
 
 (* No addresses in code *)
     let extract_addrs _ins = StringSet.empty
+    let stable_regs _ins = A.RegSet.empty
 
 (************************)
 (* Template compilation *)
