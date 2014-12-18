@@ -28,6 +28,16 @@ module Make
     module C = T.C
     module Generic = Compile.Generic(A)
 
+(******************************)
+(* Compute observed locations *)
+(******************************)
+
+  let observed final locs =
+    A.LocSet.union
+      (C.locations final)
+      (A.LocSet.of_list (List.map fst locs))
+
+
     type t =
       | Test of A.Out.t
       | Global of string
@@ -82,15 +92,6 @@ module Make
         (fun a ty k -> (a,ty)::k)
         env []
 
-    let get_local proc f acc = function
-      | A.Location_reg (p, name) when p = proc -> f name acc
-      | A.Location_reg _
-      | A.Location_global _ -> acc
-
-    let get_locals proc =
-      let f acc (x, ty) = get_local proc (fun x -> Misc.cons (x, ty)) acc x in
-      List.fold_left f []
-
      let string_of_params =
        let f {CAst.param_name; param_ty; } = param_name,param_ty in
        List.map f
@@ -103,18 +104,17 @@ module Make
         code = code.CAst.body; }
 
 
-    let comp_code env procs =
+    let comp_code obs env procs =
       List.fold_left
         (fun acc -> function
            | CAst.Test code ->
                let proc = code.CAst.proc in
                let regs =
-                 A.LocMap.fold
-                   (fun loc t k -> match loc with
-                   | A.Location_reg (q,r) when q = proc ->
-                       (r,t)::k
+                 A.LocSet.fold
+                   (fun loc k -> match A.of_proc proc loc with
+                   | Some r -> (r,Generic.find_type loc env)::k
                    | _ -> k)
-                   env [] in
+                   obs [] in
                let final = List.map fst regs in
                let volatile = []
 (*
@@ -146,9 +146,10 @@ module Make
         } = t in
       let initenv = List.map (fun (x,(_,v)) -> x,v) init in
       let env = Generic.build_type_env init final locs in
+      let observed = observed final locs in
       { T.init = initenv;
         info = info;
-        code = comp_code env code;
+        code = comp_code observed env code;
         condition = final;
         globals = comp_globals env code;
         flocs = List.map fst locs;

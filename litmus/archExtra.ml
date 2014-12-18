@@ -37,6 +37,7 @@ module type S = sig
   module RegSet : MySet.S with type elt = I.arch_reg
   include Location.S
   with type loc_reg = I.arch_reg and type loc_global = string
+
   module Out : Template.S
   with type arch_reg = I.arch_reg
   module MapValue : MyMap.S with type key = Constant.v

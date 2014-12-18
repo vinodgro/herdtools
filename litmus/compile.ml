@@ -109,7 +109,9 @@ module Generic (A : Arch.Base) = struct
     | Constant.Concrete _ -> env
     | Constant.Symbolic a -> add_addr_type a base env
 
-(* Complete typing.... *)
+(********************)
+(* Complete typing  *)
+(********************)
 
 (* final, only default types *)
     let type_final final env =
@@ -138,6 +140,10 @@ module Generic (A : Arch.Base) = struct
     let env = type_locations flocs env in
     let env = type_init init env in
     env
+
+    let find_type loc env =
+      try A.LocMap.find loc env
+      with Not_found -> assert false
 end
 
 module Make
