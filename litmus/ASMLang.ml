@@ -39,7 +39,7 @@ module Make
       | Mode.Std -> sprintf "_a->%s[_i]"
       | Mode.PreSi -> sprintf "*%s"
 
-      and compile_addr_fun x = sprintf "*%s" x 
+      and compile_addr_fun x = sprintf "*%s" x
 
       and compile_val_inline = match O.mode with
       | Mode.Std -> Tmpl.dump_v
@@ -85,7 +85,7 @@ module Make
       let dump_stable_reg reg =
         sprintf "stable_%s"
           (Tmpl.clean_reg (A.reg_to_string reg))
-        
+
       let init_val reg test =
         try Some (List.assoc reg test.Tmpl.init)
         with Not_found -> None
@@ -250,7 +250,7 @@ module Make
             fprintf chan "%s%s = %s;\n" indent
               (compile_out_reg proc reg) (dump_stable_reg reg))
           (RegSet.inter stable finals)
-            
+
 
       let before_dump compile_out_reg compile_val compile_cpy
           chan indent env proc t trashed =
@@ -263,7 +263,7 @@ module Make
               indent ty (dump_trashed_reg reg))
           trashed ;
         List.iter
-          (fun reg -> 
+          (fun reg ->
             let ty =
               try List.assoc reg env
               with Not_found -> Compile.base in
@@ -274,7 +274,7 @@ module Make
               | None -> ""
               | Some v -> sprintf " = %s" (compile_val v)))
           t.Tmpl.stable ;
-            
+
         if O.cautious then begin
           dump_copies compile_out_reg compile_val compile_cpy chan
             indent env proc t
@@ -329,8 +329,8 @@ module Make
               else
                 Tmpl.compile_presi_out_reg proc reg in
 
-        do_dump 
-          compile_val_inline compile_addr_inline 
+        do_dump
+          compile_val_inline compile_addr_inline
           (fun x -> sprintf "_a->%s[_i]" (Tmpl.addr_cpy_name x proc))
           compile_out_reg
           chan indent env proc t
@@ -346,7 +346,7 @@ module Make
           | Constant.Concrete _ -> Tmpl.dump_v v)
 
       let compile_cpy_fun proc a = sprintf "*%s" (Tmpl.addr_cpy_name a proc)
-          
+
 
       let dump_fun chan env globEnv volatileEnv proc t =
         let addrs_proc = Tmpl.get_addrs t in
@@ -358,9 +358,9 @@ module Make
                 with Not_found -> assert false in
               let ty = SkelUtil.dump_global_type x ty in
               match O.memory with
-              | Memory.Direct ->  
+              | Memory.Direct ->
                   sprintf "%s *%s" ty x
-              | Memory.Indirect -> 
+              | Memory.Indirect ->
                   sprintf "%s **%s" ty x)
             addrs_proc in
         let cpys =
@@ -382,7 +382,7 @@ module Make
                 try List.assoc x env
                 with Not_found -> assert false in
               let x = Tmpl.dump_out_reg proc x in
-              sprintf "%s *%s" (CType.dump ty) x) t.Tmpl.final in          
+              sprintf "%s *%s" (CType.dump ty) x) t.Tmpl.final in
         let params =  String.concat "," (addrs@cpys@outs) in
         LangUtils.dump_code_def chan proc params ;
         do_dump
@@ -397,7 +397,7 @@ module Make
       let compile_addr_call x = sprintf "&_a->%s[_i]" x
       let compile_cpy_addr_call proc x =
         sprintf "&_a->%s[_i]" (Tmpl.addr_cpy_name x proc)
-      let compile_out_reg_call proc reg = 
+      let compile_out_reg_call proc reg =
         sprintf "&%s" (Tmpl.compile_out_reg proc reg)
 
       let dump_call chan indent env globEnv volatileEnv proc t =
