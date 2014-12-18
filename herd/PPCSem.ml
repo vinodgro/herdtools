@@ -326,6 +326,8 @@ module Make (C:Sem.Config)(V:Value.S)
     | PPC.Pblr
     | PPC.Pmtlr _
     | PPC.Pmflr _
+    | PPC.Pstmw _
+    | PPC.Plmw _
     | PPC.Pcomment _ ->
         Warn.fatal "Instruction %s not implemented"
           (PPC.dump_instruction ii.A.inst)

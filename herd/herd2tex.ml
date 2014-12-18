@@ -145,7 +145,8 @@ let rec tex_of_ins c = function
     fprintf c "\\entercomment\n";
     fprintf c "\\noindent %s\n" s;
     fprintf c "\\exitcomment\n"
-  | Include _|Call _|Enum _| Foreach _ | Debug _-> Warn.fatal "include/call/enum/foreach/debug in herd2tex"
+  | Include _|Call _|Enum _| Foreach _ | Debug _
+  | ProcedureTest _ -> Warn.fatal "include/call/enum/foreach/debug in herd2tex"
 
 and tex_of_inss c =
   List.iter (fprintf c "\\noindent %a\n\n" tex_of_ins)

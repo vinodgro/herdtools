@@ -689,8 +689,8 @@ include Pseudo.Make
         | Pld _
         | Pldx _
           -> 1
-        |Plmw (r1,_,_)
-        |Pstmw (r1,_,_)
+        |Plmw (_r1,_,_)
+        |Pstmw (_r1,_,_)
             -> 2 (* could be List.length (regs_interval r1), not that important *)
 
       let fold_labels k f = function
