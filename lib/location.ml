@@ -33,6 +33,7 @@ module type S = sig
   val pp_rval : location -> string
   val location_compare : location -> location -> int
   val of_proc : int -> location -> loc_reg option
+  val global : location -> loc_global option
 
   module LocSet : MySet.S with type elt = location
   module LocMap : MyMap.S with type key = location
@@ -52,6 +53,9 @@ with type loc_reg = A.arch_reg and type loc_global = A.arch_global =
     let of_proc p = function
       |  Location_reg (q,r) when p = q -> Some r
       | _ -> None
+    let global = function
+      | Location_global s -> Some s
+      | Location_reg _ -> None
 
     let pp_location l = match l with
     | Location_reg (proc,r) -> string_of_int proc ^ ":" ^ A.pp_reg r

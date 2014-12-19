@@ -93,7 +93,8 @@ module Make
       let dump_inputs compile_val chan t trashed =
         let stable = RegSet.of_list t.Tmpl.stable in
         let all = all_regs t in
-        let in_outputs = RegSet.union trashed  (RegSet.of_list t.Tmpl.final) in
+        let in_outputs =
+          RegSet.unions [trashed;stable;RegSet.of_list t.Tmpl.final;] in
 (*
   let pp_reg chan r = fprintf chan "%s" (A.reg_to_string r) in
   eprintf "Trashed in In: %a\n"
@@ -104,10 +105,7 @@ module Make
   in_outputs ;
 *)
         let dump_pair reg v =
-          let dump_v =
-            if RegSet.mem reg stable then
-              fun _ -> dump_stable_reg reg
-            else compile_val in
+          let dump_v = compile_val in
           let dump_v = (* catch those addresses that are saved in a variable *)
             if O.cautious then
               (fun v -> match v with
@@ -145,20 +143,23 @@ module Make
 
         fprintf chan ":%s\n" (String.concat "," (ins@rem))
 
+      let (@@) f k  = f k
       let dump_outputs compile_addr compile_out_reg chan proc t trashed =
         let stable = RegSet.of_list t.Tmpl.stable in
+        let final = RegSet.of_list t.Tmpl.final in
         let outs =
           String.concat ","
-            (List.map
+            (List.fold_right
                (match O.memory with
                | Memory.Direct ->
-                   (fun a -> sprintf "[%s] \"=m\" (%s)" a (compile_addr a))
+                   (fun a k -> sprintf "[%s] \"=m\" (%s)" a (compile_addr a)::k)
                | Memory.Indirect ->
-                   (fun a -> sprintf "[%s] \"=m\" (*%s)" a (compile_addr a)))
+                   (fun a k -> sprintf "[%s] \"=m\" (*%s)" a
+                       (compile_addr a)::k))
                t.Tmpl.addrs
-             @List.map
-                 (fun reg ->
-                   if O.cautious then
+             @@RegSet.fold
+                 (fun reg k ->
+                   (if O.cautious then
                      sprintf "%s \"%s\" (%s)"
                        (tag_reg_def reg)
                        (A.reg_class reg)
@@ -172,15 +173,22 @@ module Make
                      sprintf "%s \"%s\" (%s)"
                        (tag_reg_def reg)
                        (A.reg_class reg)
-                       (compile_out_reg proc reg))
-                 t.Tmpl.final
-             @RegSet.fold
+                       (compile_out_reg proc reg))::k)
+                 final
+             @@RegSet.fold
                  (fun reg k ->
                    sprintf "%s \"%s\" (%s)"
                      (tag_reg_def reg)
                      (A.reg_class reg)
                      (dump_trashed_reg reg)::k)
-                 trashed []) in
+                 trashed
+             @@RegSet.fold
+                 (fun reg k ->
+                   sprintf "%s \"%s\" (%s)"
+                     (tag_reg_def reg)
+                     (A.reg_class reg)
+                     (dump_stable_reg reg)::k)
+                 (RegSet.diff stable final) []) in
         fprintf chan ":%s\n" outs
 
       let dump_copies compile_out_reg compile_val compile_cpy chan indent env proc t =
