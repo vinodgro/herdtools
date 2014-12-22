@@ -258,7 +258,13 @@ module Make(V:Constant.S)(C:Config) =
         { empty_ins with memo = c; comment = true; }::k
 
     let extract_addrs _ins = StringSet.empty
-    let stable_regs _ins = assert false
+
+    let stable_regs ins = match ins with
+    | `Pstmw (r1,_,_)
+    | `Plmw (r1,_,_) ->
+        A.RegSet.of_list (A.regs_interval r1)
+    | _ -> A.RegSet.empty
+
     let compile_ins is_before ins = do_compile_ins is_before ins
 
     let branch_diffw r1 r2 lab k = cmpw r1 r2::bcc tr_nolab Ne lab::k

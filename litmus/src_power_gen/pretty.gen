@@ -68,8 +68,8 @@
 | `Pstwbrx (rS,rA,rB) -> sprintf "stwbrx %s,%s,%s" (pp_reg rS) (pp_reg rA) (pp_reg rB)
 | `Pldbrx (rT,rA,rB) -> sprintf "ldbrx %s,%s,%s" (pp_reg rT) (pp_reg rA) (pp_reg rB)
 | `Pstdbrx (rS,rA,rB) -> sprintf "stdbrx %s,%s,%s" (pp_reg rS) (pp_reg rA) (pp_reg rB)
-| `Plmw (rT,d,rA) -> sprintf "lmw %d,%d(%s)" rT d (pp_reg rA)
-| `Pstmw (rS,d,rA) -> sprintf "stmw %d,%d(%s)" rS d (pp_reg rA)
+| `Plmw (rT,d,rA) -> sprintf "lmw %s,%d(%s)" (pp_reg rT) d (pp_reg rA)
+| `Pstmw (rS,d,rA) -> sprintf "stmw %s,%d(%s)" (pp_reg rS) d (pp_reg rA)
 | `Plswi (rT,rA,nB) -> sprintf "lswi %d,%s,%d" rT (pp_reg rA) nB
 | `Plswx (rT,rA,rB) -> sprintf "lswx %s,%s,%s" (pp_reg rT) (pp_reg rA) (pp_reg rB)
 | `Pstswi (rS,rA,nB) -> sprintf "stswi %d,%s,%d" rS (pp_reg rA) nB

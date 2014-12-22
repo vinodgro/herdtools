@@ -60,8 +60,8 @@
   | `Pstwbrx of reg*reg*reg
   | `Pldbrx of reg*reg*reg
   | `Pstdbrx of reg*reg*reg
-  | `Plmw of k*k*reg
-  | `Pstmw of k*k*reg
+  | `Plmw of reg*k*reg
+  | `Pstmw of reg*k*reg
   | `Plswi of k*reg*k
   | `Plswx of reg*reg*reg
   | `Pstswi of k*reg*k

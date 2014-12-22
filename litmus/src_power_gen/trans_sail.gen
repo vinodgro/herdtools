@@ -432,16 +432,16 @@
         ("RB", IInt.Bvector (Some 5), IImp.num_to_bits 5 IInt.Bitv (Big_int.big_int_of_int (int_of_reg reg2)))],
        [(* always empty base effects*)]
       )
-  | `Plmw(k0, k1, reg2) -> 
+  | `Plmw(reg0, k1, reg2) -> 
       ("Lmw",
-       [("RT", IInt.Bvector (Some 5), IImp.num_to_bits 5 IInt.Bitv (Big_int.big_int_of_int k0));
+       [("RT", IInt.Bvector (Some 5), IImp.num_to_bits 5 IInt.Bitv (Big_int.big_int_of_int (int_of_reg reg0)));
         ("RA", IInt.Bvector (Some 5), IImp.num_to_bits 5 IInt.Bitv (Big_int.big_int_of_int (int_of_reg reg2)));
         ("D", IInt.Bvector (Some 16), IImp.num_to_bits 16 IInt.Bitv (Big_int.big_int_of_int k1))],
        [(* always empty base effects*)]
       )
-  | `Pstmw(k0, k1, reg2) -> 
+  | `Pstmw(reg0, k1, reg2) -> 
       ("Stmw",
-       [("RS", IInt.Bvector (Some 5), IImp.num_to_bits 5 IInt.Bitv (Big_int.big_int_of_int k0));
+       [("RS", IInt.Bvector (Some 5), IImp.num_to_bits 5 IInt.Bitv (Big_int.big_int_of_int (int_of_reg reg0)));
         ("RA", IInt.Bvector (Some 5), IImp.num_to_bits 5 IInt.Bitv (Big_int.big_int_of_int (int_of_reg reg2)));
         ("D", IInt.Bvector (Some 16), IImp.num_to_bits 16 IInt.Bitv (Big_int.big_int_of_int k1))],
        [(* always empty base effects*)]

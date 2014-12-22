@@ -155,6 +155,17 @@ open Printf
       try Some (List.assoc s parse_list)
       with Not_found -> None
 
+let regs_interval =
+  let iregs = List.map (fun (r,_) -> Ireg r) iregs in
+  let rec from_reg r = function
+    | [] -> assert false
+    | t::rem as rs ->
+        if  reg_compare r t = 0 then  rs
+      else from_reg r rem in
+  fun r -> match r with
+  | Ireg _ -> from_reg r iregs
+  | _ -> Warn.fatal "illegal regs_interval from %s" (pp_reg r)
+
 
 (************)
 (* Barriers *)
@@ -257,6 +268,8 @@ type instruction =
     let do_pp_instruction i = match i with
     (* extended mnemonics first *)
     | `Paddi (r1, Ireg GPR0, k) -> sprintf "li %s,%d" (pp_reg r1) k
+    | `Psync (0) -> "sync"
+    | `Psync (1) -> "lwsync"
     (* TODO: other extended mnemonics *)
  
     (* #include "src_power_gen/pretty.gen" *)

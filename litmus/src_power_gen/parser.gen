@@ -138,9 +138,9 @@
     { `Pldbrx ($2,$4,$6) }
   | STDBRX reg COMMA reg COMMA reg
     { `Pstdbrx ($2,$4,$6) }
-  | LMW k COMMA k LPAR reg RPAR
+  | LMW reg COMMA k LPAR reg RPAR
     { `Plmw ($2,$4,$6) }
-  | STMW k COMMA k LPAR reg RPAR
+  | STMW reg COMMA k LPAR reg RPAR
     { `Pstmw ($2,$4,$6) }
   | LSWI k COMMA reg COMMA k
     { `Plswi ($2,$4,$6) }
