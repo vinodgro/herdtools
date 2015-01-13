@@ -2,6 +2,7 @@
 /*                          Litmus                                   */
 /*                                                                   */
 /*     Jacques-Pascal Deplaix, INRIA Paris-Rocquencourt, France.     */
+/*     John Wickerson, Imperial College London, UK.                  */
 /*                                                                   */
 /*  Copyright 2010 Institut National de Recherche en Informatique et */
 /*  en Automatique and the authors. All rights reserved.             */

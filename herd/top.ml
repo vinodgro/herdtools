@@ -3,6 +3,7 @@
 (*                                                                   *)
 (* Luc Maranget, INRIA Paris-Rocquencourt, France.                   *)
 (* Jade Alglave, University College London, UK.                      *)
+(* John Wickerson, Imperial College London, UK.                      *)
 (*                                                                   *)
 (*  Copyright 2012 Institut National de Recherche en Informatique et *)
 (*  en Automatique and the authors. All rights reserved.             *)
