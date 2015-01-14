@@ -54,13 +54,14 @@ module Make
     let failed_requires_clauses = ref 0
 
     let run_interpret failed_requires_clause test conc m id vb_pp kont res =
-      match I.interpret failed_requires_clause test conc m id vb_pp with
-      | Some st ->
+      I.interpret failed_requires_clause test conc m id vb_pp
+        (fun st res ->
           if not O.strictskip || StringSet.equal st.I.skipped O.skipchecks then
             let vb_pp = lazy (I.show_to_vbpp st) in
             kont conc conc.S.fs vb_pp (Some (!failed_requires_clauses)) res
-          else res
-      | None -> res
+          else res)
+        res
+
 
     let check_event_structure test conc kont res =
       let prb = lazy (JU.make_procrels conc) in

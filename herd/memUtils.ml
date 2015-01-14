@@ -356,6 +356,7 @@ module Make(S : SemExtra.S) = struct
   and collect_stores es = collect_by_loc es E.is_store
   and collect_atomics es = collect_by_loc es E.is_atomic
   and collect_mutex_actions es = collect_by_loc es E.is_mutex_action
+(*
   and collect_sc_actions es = 
     (* horrible hack ahead -- we're collecting sc actions per location, 
        but associating them all with a sentinel location that's
@@ -363,7 +364,7 @@ module Make(S : SemExtra.S) = struct
        than one list per location. *)
     let random_loc = S.A.Location_global (V.intToV 0) in
     LocEnv.add random_loc (List.filter E.is_sc_action (E.EventSet.fold (fun e k -> e :: k) es.E.events [])) LocEnv.empty
-
+*)
 
 (* fr to init stores only *)
   let make_fr_partial conc =
@@ -529,7 +530,8 @@ module Make(S : SemExtra.S) = struct
 (* SC serialization candidate generator. *)
 (*****************************************)
 
-  let fold_sc_serialization_candidates conc (* vb *) _ kont res =
+(*
+  let fold_sc_serialization_candidates conc  kont res =
     let sc_actions = collect_sc_actions conc.S.str in
     let sc_orders : E.EventRel.t list list =
       LocEnv.fold
@@ -540,24 +542,28 @@ module Make(S : SemExtra.S) = struct
           List.map order_to_succ_rel orders::k)
         sc_actions [] in
     Misc.fold_cross_gen E.EventRel.union E.EventRel.empty sc_orders kont res
+*)
 
-(* With check *)
-  let apply_process_sc test conc process_sc res =
-     try
-       fold_sc_serialization_candidates
-         conc conc.S.pco process_sc res
-     with E.EventRel.Cyclic ->
-       if S.O.debug.Debug.barrier && S.O.PC.verbose > 2 then begin
-         let module PP = Pretty.Make(S) in
-           let legend =
-             sprintf "%s cyclic co or lo precursor"
-               test.Test.name.Name.name in
-           let pos = conc.S.pos in
-           prerr_endline legend ;
-           PP.show_legend test  legend conc
-             [ ("pos",S.rt pos); ("pco",S.rt conc.S.pco)]
-        end ;
-        res
+
+(* Call kont on all orders of the events of xs *)
+  let all_elements xs kont =
+    let rec do_rec k xs =
+      if E.EventSet.is_empty xs then kont k
+      else
+        E.EventSet.fold (fun x -> do_rec (x::k) (E.EventSet.remove x xs)) xs in
+    do_rec [] xs
+
+  let apply_process_sc _test conc kont res =
+    let sc_actions =
+      E.EventSet.filter E.is_sc_action conc.S.str.E.events in
+    all_elements sc_actions (fun xs -> kont (order_to_succ_rel xs)) res
+
+(* Generic toplogical order generator *)
+ let apply_orders es vb kfail kont res =
+   try
+     E.EventRel.all_topos_kont es vb
+       (fun k res -> kont (order_to_rel k) res) res
+   with E.EventRel.Cyclic -> kfail vb
 
 (*******************************************************)
 (* Saturate all memory accesses wrt atomicity classes  *)

@@ -68,7 +68,8 @@ and tex_of_op1 n c e op1 =
   | Int -> fprintf c "\\mathrm{int}(%a)" (tex_of_exp 0) e
   | NoId -> fprintf c "\\mathrm{noid}(%a)" (tex_of_exp 0) e
   | Set_to_rln -> fprintf c "[%a]" (tex_of_exp 0) e
-  | Comp _ -> fprintf c "\\neg %a" (tex_of_exp 3) e)
+  | Comp _ -> fprintf c "\\neg %a" (tex_of_exp 3) e
+  | SameLoc ->  fprintf c "\\mathrm{sameloc}(%a)" (tex_of_exp 0) e)
 
 and comma c () = fprintf c ","
 
@@ -159,7 +160,8 @@ let rec tex_of_ins c = function
     fprintf c "\\noindent %s\n" s;
     fprintf c "\\exitcomment\n"
   | Include _|Call _|Enum _| Foreach _ | Debug _
-  | ProcedureTest _ -> Warn.fatal "include/call/enum/foreach/debug in herd2tex"
+  | ProcedureTest _|ForOrder _
+    -> Warn.fatal "include/call/enum/foreach/debug in herd2tex"
 
 and tex_of_inss c =
   List.iter (fprintf c "\\noindent %a\n\n" tex_of_ins)

@@ -62,7 +62,7 @@ module type S =  sig
   val all_topos_kont :  Elts.t -> t -> (elt0 list -> 'a -> 'a) -> 'a -> 'a
 
 (* All toplogical orders, raises Cyclic in case of cycle
-   Enhancement: all_topos nodes edges still works
+  Enhancement: all_topos nodes edges still works
   when edges relates elts not in nodes *)
   
 
@@ -328,9 +328,9 @@ let transitive_closure r = M.of_map (M.tr (M.to_map r))
         else m)
       edges EMap.empty
 
-  let do_all_mem_topos trans set_preds kont =
+  let do_all_mem_topos set_preds kont =
 
-    let rec do_aux ws count_succ st pref res =
+    let rec do_aux ws count_succ pref res =
 (* ws is the working set, ie minimal nodes
    count_succ is a map elt -> count of its succs
    set_pred is a map elt -> set of its preds
@@ -342,39 +342,34 @@ let transitive_closure r = M.of_map (M.tr (M.to_map r))
       else
 	Elts.fold
 	  (fun n res -> (* a maximal node (no successor) *)
-	    match trans st n with
-	    | None -> res
-	    | Some st -> 
-		let ws = Elts.remove n ws in
-		let n_preds = find_pred n set_preds in
-		let count_succ,ws = 
-		  Elts.fold 
-		    (fun pred (c,ws) ->  
-		      let p_succ = find_count pred c - 1 in
-		      let _ = assert (p_succ >= 0) in 
-		      if p_succ > 0 then
-                        EMap.add pred p_succ c,ws
-		      else 
-			let c = EMap.remove pred c in
-			let ws = Elts.add pred ws in
-			c,ws) 
-		    n_preds (count_succ,ws) in
-		do_aux ws count_succ st (n::pref) res) ws res in
+	    let ws = Elts.remove n ws in
+	    let n_preds = find_pred n set_preds in
+	    let count_succ,ws = 
+	      Elts.fold 
+		(fun pred (c,ws) ->  
+		  let p_succ = find_count pred c - 1 in
+		  let _ = assert (p_succ >= 0) in 
+		  if p_succ > 0 then
+                    EMap.add pred p_succ c,ws
+		  else 
+		    let c = EMap.remove pred c in
+		    let ws = Elts.add pred ws in
+		    c,ws) 
+		n_preds (count_succ,ws) in
+	    do_aux ws count_succ (n::pref) res) ws res in
     do_aux
 
-  let fold_topos_ext st trans kont res nodes edges =
+  let fold_topos_ext kont res nodes edges =
     let count_succ = make_count nodes edges in
     let set_preds = make_preds nodes edges in 
     let ws = 
       Elts.filter (fun n -> find_count n count_succ = 0) nodes in
-    do_all_mem_topos trans set_preds kont ws count_succ st [] res 
-
-  let some_void = Some ()
-
-  let all_topos2 = fold_topos_ext () (fun () _n -> some_void) Misc.cons [] 
+    do_all_mem_topos set_preds kont ws count_succ [] res
 
   let all_topos_kont nodes edges kont res =
-    fold_topos_ext () (fun () _n -> some_void) kont res nodes edges
+    fold_topos_ext kont res nodes edges
+
+  let all_topos2 = fold_topos_ext Misc.cons []
 
   let all_topos verbose nodes edges =
     let nss = all_topos2 nodes edges in

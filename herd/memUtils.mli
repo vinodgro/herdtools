@@ -175,9 +175,14 @@ NOTICE: The generator takes care of placing stores to final state
           (S.event_rel -> 'a -> 'a) -> 'a -> 'a
 
 val apply_process_sc :
-S.test -> S.concrete -> (S.event_rel -> 'a -> 'a) -> 'a -> 'a
+    S.test -> S.concrete -> (S.event_rel -> 'a -> 'a) -> 'a -> 'a
 
 
+val apply_orders :
+    S.event_set ->  S.event_rel ->
+      (S.event_rel -> 'o) (* kont for failure *) ->
+        (S.event_rel -> 'o -> 'o) (* kont for one order *) ->
+          'o -> 'o
 (* fold over possibilities when saturating memory order wrt atomicity classes.
      'fold_saturated_mem_order es mem_order kont res'
      - es is the event structure for calculation

@@ -53,6 +53,7 @@ module LU = LexUtils.Make(O)
     | "undefined_unless" -> REQUIRES
     | "ext" -> EXT
     | "int" -> INT
+    | "sameloc" -> SAMELOC
     | "noid" -> NOID
     | "withco" -> WITHCO
     | "withoutco" ->  WITHOUTCO
@@ -71,6 +72,8 @@ module LU = LexUtils.Make(O)
     | "match" -> MATCH
     | "with" -> WITH
     | "foreach" -> FOREACH
+    | "fororder" -> FORORDER
+    | "from" -> FROM
     | "do" -> DO
     | x -> VAR x
 

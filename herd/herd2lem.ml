@@ -52,7 +52,7 @@ and lem_of_op1 args chan e = function
   | Set_to_rln -> fprintf chan "(stor %a)" (lem_of_exp args) e
   | Comp SET -> fprintf chan "(comps X %a)" (lem_of_exp args) e
   | Comp RLN -> fprintf chan "(compr X %a)" (lem_of_exp args) e
-
+  | _ -> Warn.fatal "Unknown operator in herd2lem"
 and lem_of_var args chan x = 
   match x with
   | "rf" | "asw" | "lo" ->
@@ -140,7 +140,9 @@ let lem_of_ins chan = function
     provides := (sprintf "%s.provides_clauses" file) :: (!provides);
     requires := (sprintf "%s.requires_clauses" file) :: (!requires);
     fprintf chan "open import %s" file
-  | ProcedureTest _|Procedure _|Call _|Enum _|Debug _|Foreach _ ->
+  | ProcedureTest _|Procedure _|Call _|Enum _|Debug _|Foreach _
+  | ForOrder _
+    ->
       Warn.fatal "procedure/call/enum/debug/foreach in herd2lem"
 
 let lem_of_prog chan prog = 
