@@ -3,6 +3,7 @@
 /*                                                                   */
 /* Luc Maranget, INRIA Paris-Rocquencourt, France.                   */
 /* Jade Alglave, University College London, UK.                      */
+/* John Wickerson, Imperial College London, UK.                      */
 /*                                                                   */
 /*  Copyright 2013 Institut National de Recherche en Informatique et */
 /*  en Automatique and the authors. All rights reserved.             */
@@ -49,12 +50,12 @@ let pp () =
 %token WITHCO WITHOUTCO WITHINIT WITHOUTINIT
 %token WITHSC WITHOUTSC
 /* Access direction */
-%token MM  MR  MW WM WW WR RM RW RR INT EXT NOID
+%token MM  MR  MW WM WW WR RM RW RR INT EXT NOID SAMELOC
 /* Plain/Atomic */
 %token AA AP PA PP
 %token ALT SEMI UNION INTER COMMA DIFF PLUSPLUS
 %token STAR PLUS OPT INV COMP NOT HAT TWO
-%token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN PROCEDURE CALL FOREACH DO CHECKCALL
+%token LET REC AND ACYCLIC IRREFLEXIVE TESTEMPTY EQUAL SHOW UNSHOW AS FUN IN PROCEDURE CALL FOREACH DO CHECKCALL FORORDER FROM
 %token REQUIRES
 %token ARROW
 %token SEQTEST
@@ -109,6 +110,8 @@ ins:
 | DEBUG exp { Debug (mk_loc (),$2) }
 | FOREACH VAR IN exp DO ins_list END
     { Foreach (mk_loc (),$2,$4,$6) }
+| FORORDER VAR IN exp FROM exp optional_name
+    { ForOrder (mk_loc (),$2,$4,$6,$7) }
 altopt:
 | ALT  { () }
 |      { () }
@@ -168,6 +171,8 @@ formalsN:
 exp:
 | LET pat_bind_list IN exp { Bind (mk_loc(),$2,$4) }
 | LET REC pat_bind_list IN exp { BindRec (mk_loc(),$3,$5) }
+| FUN VAR ARROW exp
+    { Fun (mk_loc(),[$2],$4,"*fun*",ASTUtils.free_body [$2] $4) }
 | FUN LPAR formals RPAR ARROW exp
     { Fun (mk_loc(),$3,$6,"*fun*",ASTUtils.free_body $3 $6) }
 | base { $1 }
@@ -272,3 +277,4 @@ select:
 | EXT { Ext }
 | INT { Int }
 | NOID { NoId }
+| SAMELOC { SameLoc }

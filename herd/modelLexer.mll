@@ -3,6 +3,7 @@
 (*                                                                   *)
 (* Luc Maranget, INRIA Paris-Rocquencourt, France.                   *)
 (* Jade Alglave, University College London, UK.                      *)
+(* John Wickerson, Imperial College London, UK.                      *)
 (*                                                                   *)
 (*  Copyright 2013 Institut National de Recherche en Informatique et *)
 (*  en Automatique and the authors. All rights reserved.             *)
@@ -52,6 +53,7 @@ module LU = LexUtils.Make(O)
     | "undefined_unless" -> REQUIRES
     | "ext" -> EXT
     | "int" -> INT
+    | "sameloc" -> SAMELOC
     | "noid" -> NOID
     | "withco" -> WITHCO
     | "withoutco" ->  WITHOUTCO
@@ -70,6 +72,8 @@ module LU = LexUtils.Make(O)
     | "match" -> MATCH
     | "with" -> WITH
     | "foreach" -> FOREACH
+    | "fororder" -> FORORDER
+    | "from" -> FROM
     | "do" -> DO
     | x -> VAR x
 

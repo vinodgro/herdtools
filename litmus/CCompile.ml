@@ -45,16 +45,27 @@ module Make
         -> s1 = s2
       | Array (s1,sz1),Array (s2,sz2) ->
           s1 = s2 && sz1 = sz2
-      | (Volatile t1|Atomic t1),_ -> compat t1 t2
-      | _,(Volatile t2|Atomic t2) -> compat t1 t2
-      | Pointer t1,Pointer t2 -> compat t1 t2
+      | (Volatile t1),_ -> compat t1 t2
+      | _,(Volatile t2) -> compat t1 t2
+      | (Atomic t1,Atomic t2)
+      | (Pointer t1,Pointer t2) -> compat t1 t2
       | _,_ -> false
+
+    let add_atomic tenv tparam = match tparam with
+    | CType.Atomic t ->
+        if compat tenv t then Some tparam
+        else None
+    | _ -> None
 
     let add_param {CAst.param_ty; param_name} env =
       let ty = CType.strip_volatile param_ty in
       try
         let oty = StringMap.find param_name env in
-        if compat oty ty then env
+(* add atomic qualifier, when appearing in parameters *)
+        let oty = match add_atomic oty ty with
+        | Some t -> t
+        | None -> oty in
+        if compat oty ty then StringMap.add param_name oty env
         else begin
           Warn.warn_always
             "Parameter %s, type mismatch %s vs. %s\n"

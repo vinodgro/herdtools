@@ -3,6 +3,7 @@
 (*                                                                   *)
 (* Luc Maranget, INRIA Paris-Rocquencourt, France.                   *)
 (* Jade Alglave, University College London, UK.                      *)
+(* John Wickerson, Imperial College London, UK.                      *)
 (*                                                                   *)
 (*  Copyright 2013 Institut National de Recherche en Informatique et *)
 (*  en Automatique and the authors. All rights reserved.             *)
@@ -50,7 +51,7 @@ module type S = sig
     V.env ->
     ks ->
     (StringMap.key * S.event_rel) list Lazy.t ->
-    st option
+    (st -> 'a -> 'a) -> 'a -> 'a
 end
 
 
@@ -417,7 +418,12 @@ module Make
         (E.EventRel.filter
            (fun (e1 ,e2) -> not (E.event_equal e1 e2))
            r)
-
+    let sameloc r =
+      Rel
+        (E.EventRel.filter
+           (fun (e1 ,e2) -> E.same_location e1 e2)
+           r)
+        
     let error_typ loc t0 t1  =
       error loc"type %s expected, %s found" (pp_typ t0) (pp_typ t1)
 
@@ -483,7 +489,9 @@ module Make
       | Plain -> fun e -> not (E.is_atomic e)
 
 (* interpreter *)
-    let interpret failed_requires_clause test conc m ks vb_pp =
+(* For all success call kont, accumulating results *)
+    let interpret
+        failed_requires_clause test conc m ks vb_pp kont res =
 
       let rec eval_loc env e = get_loc e,eval env e
 
@@ -588,6 +596,13 @@ module Make
             | Unv -> Rel (Lazy.force ks.id)
             | Set s ->  Rel (E.EventRel.set_to_rln s)
             | v -> error_set (get_loc e) v
+            end
+        | Op1 (_,SameLoc,e) ->
+            begin match eval env e with
+            | V.Empty -> V.Empty
+            | Unv -> sameloc (Lazy.force ks.unv)
+            | Rel r -> sameloc r
+            | v -> error_rel (get_loc e) v
             end
 (* One xplicit N-ary operator *)
         | ExplicitSet (loc,es) ->
@@ -931,6 +946,15 @@ module Make
           rt_loc x (as_rel (Lazy.force (StringMap.find x env.vals)))
         with Not_found -> E.EventRel.empty in
 
+      let doshowone x st =
+        if StringSet.mem x  S.O.PC.doshow then
+          let show =
+            lazy begin
+              StringMap.add x (find_show_rel st.env x) (Lazy.force st.show)
+            end in
+          { st with show;}
+        else st in
+
       let doshow bds st =
         let to_show =
           StringSet.inter S.O.PC.doshow (StringSet.of_list (List.map fst bds)) in
@@ -948,12 +972,12 @@ module Make
 
 (* Execute one instruction *)
 
-      let rec exec txt st i c =  match i with
+      let rec exec txt st i kont res =  match i with
       | Debug (_,e) ->
           let v = eval st.env e in
           eprintf "%a: value is %s\n"
             TxtLoc.pp (get_loc e) (pp_val v) ;
-          run txt st c
+          kont st res
       | Show (_,xs) ->
           let show = lazy begin
             List.fold_left
@@ -961,20 +985,20 @@ module Make
                 StringMap.add x (find_show_rel st.env x) show)
               (Lazy.force st.show) xs
           end in
-          run txt { st with show;} c
+          kont { st with show;} res
       | UnShow (_,xs) ->
           let show = lazy begin
             List.fold_left
               (fun show x -> StringMap.remove x show)
               (Lazy.force st.show) xs
           end in
-          run txt { st with show;} c
+          kont { st with show;} res
       | ShowAs (_,e,id) ->
           let show = lazy begin
             StringMap.add id
               (rt_loc id (eval_rel st.env e)) (Lazy.force st.show)
           end in
-          run txt { st with show; } c
+          kont { st with show; } res
       | ProcedureTest (loc,pname,es,name) ->
           let skip_this_check =
             match name with
@@ -986,14 +1010,12 @@ module Make
             let env0 = st.env in
             let p = eval_proc loc env0 pname in
             let env1 = add_args loc p.proc_args es env0 p.proc_env in
-            begin match run txt { st with env = env1; } p.proc_body with
-            | None -> None
-            | Some st_call ->
-                run txt { st_call with env = env0; } c
-            end
+            run txt  { st with env = env1; } p.proc_body
+              (fun st_call res ->  kont { st_call with env=env0;} res)
+              res
           else
-            let _ = W.warn "Skipping check %s" (Misc.as_some name) in
-            run txt st c
+            let () = W.warn "Skipping check %s" (Misc.as_some name) in
+            kont st res
       | Test (_,pos,t,e,name,test_type) ->
           (* If this is a provides-clause and we've previously
              seen a requires-clause, abort. *)
@@ -1021,13 +1043,13 @@ module Make
             | TestEmpty -> E.EventRel.is_empty in
             let ok = pred v in
             let ok = MU.check_through ok in
-            if ok then run txt st c
+            if ok then kont st res
             else if skip_this_check then begin
               assert O.strictskip ;
-              run txt
+              kont
                 { st with
                   skipped = StringSet.add (Misc.as_some name) st.skipped;}
-                c
+                res
             end else begin
               if (O.debug && O.verbose > 0) then begin
                 let pp = String.sub txt pos.pos pos.len in
@@ -1040,21 +1062,20 @@ module Make
                   | Some r -> ("CY",U.cycle_to_rel r)::k)
               end ;
               match test_type with
-              | Provides ->
-                  None
+              | Provides -> res
               | Requires ->
                   let () = failed_requires_clause () in
-                  run txt st c
+                  kont st res
             end
           else begin
             W.warn "Skipping check %s" (Misc.as_some name) ;
-            run txt st c
+            kont st res
           end
       | Let (_,bds) ->
           let env = eval_bds st.env bds in
           let st = { st with env; } in
           let st = doshow bds st in
-          run txt st c
+          kont st res
       | Rec (loc,bds) ->
           let env =
             env_rec loc
@@ -1062,7 +1083,7 @@ module Make
               bds st.env in
           let st = { st with env; } in
           let st = doshow bds st in
-          run txt st c
+          kont st res
       | Include (loc,fname) ->
           (* Run sub-model file *)
           let module P = ParseModel.Make(LexUtils.Default) in
@@ -1070,24 +1091,20 @@ module Make
             try P.parse fname
             with Misc.Fatal msg | Misc.UserError msg ->
               error loc "%s" msg  in
-          begin match run itxt st iprog with
-          | None -> None            (* Failure *)
-          | Some st -> run txt st c (* Go on *)
-          end
+          run itxt st iprog kont res
       | Procedure (_,name,args,body) ->
           let p =
             Proc { proc_args=args; proc_env=st.env; proc_body=body; } in
-          run txt { st with env = add_val name (lazy p) st.env } c
+          kont { st with env = add_val name (lazy p) st.env } res
       | Call (loc,name,es) ->
           let env0 = st.env
           and show0 = st.show in
           let p = eval_proc loc env0 name in
           let env1 = add_args loc p.proc_args es env0 p.proc_env in
-          begin match run txt { st with env = env1; } p.proc_body with
-          | None -> None
-          | Some st_call ->
-              run txt { st_call with env = env0; show=show0;} c
-          end
+          run txt { st with env = env1; } p.proc_body
+            (fun st_call res ->
+              kont { st_call with env = env0; show=show0;} res)
+            res
       | Enum (_loc,name,xs) ->
           let env = st.env in
           let tags =
@@ -1096,32 +1113,72 @@ module Make
               env.tags xs in
           let enums = StringMap.add name xs env.enums in
           let env = { env with tags; enums; } in
-          run txt { st with env;} c
+          kont { st with env;} res
       | Foreach (_loc,x,e,body) ->
           let env0 = st.env in
           let v = eval env0 e in
           begin match tag2set v with
-          | V.Empty -> run txt st c
+          | V.Empty -> kont st res
           | ValSet (_,set) ->
-              begin try
-                let st =
-                  ValSet.fold
-                    (fun v st ->
-                      let env = add_val x (lazy v) st.env in
-                      match run txt { st with env; } body with
-                      | None -> raise Exit
-                      | Some st -> { st with env=env0; })
-                    set st in
-                Some st
-              with Exit -> None
-              end
-          | _ -> error (get_loc e) "foreach instruction applied to non-set value"
+              let rec run_set st vs res =
+                if ValSet.is_empty vs then
+                  kont st res
+                else
+                  let v =
+                    try ValSet.choose vs
+                    with Not_found -> assert false in
+                  let env = add_val x (lazy v) env0 in
+                  run txt { st with env;} body
+                    (fun st res ->
+                      run_set { st with env=env0;} (ValSet.remove v vs) res)
+                    res in
+              run_set st set res
+          | _ ->
+              error (get_loc e) "foreach instruction applied to non-set value"
           end
-      | Latex _ -> run txt st c
+      | ForOrder (loc,x,e1,e2,name) ->
+          let env0 = st.env in
+          let es = eval_set env0 e1
+          and r = eval_rel env0 e2 in
+          U.apply_orders es r
+            (fun r ->
+              let skip_this_check =
+                match name with
+                | Some name -> StringSet.mem name O.skipchecks
+                | None -> false in
+              if skip_this_check then
+                let mk_o r =
+                  E.EventRel.filter
+                    (fun (e1,e2) ->
+                      E.EventSet.mem e1 es &&  E.EventSet.mem e2 es)
+                    (S.tr r) in
+                let env = add_val x (lazy (Rel (mk_o r))) env0 in
+                kont (doshowone x {st with env;}) res
+              else begin
+                if (O.debug && O.verbose > 0) then begin
+                  eprintf "%a: cyclic order\n" TxtLoc.pp loc ; 
+                  let cy = E.EventRel.get_cycle r in
+                  MU.pp_failure test conc
+                    (sprintf "%s: cyclic order" test.Test.name.Name.name)
+                    (let k = show_to_vbpp st in
+                    match cy with
+                    | None -> k
+                    | Some r -> ("CY",U.cycle_to_rel r)::k)
+                end ;
+                res
+              end)
+            (fun o res ->
+              let env = add_val x (lazy (Rel o)) env0 in
+              kont (doshowone x {st with env;}) res)
+            res
+      | Latex _ -> kont st res
 
-      and run txt st = function
-        | [] ->  Some st
-        | i::c -> exec txt st i c in
+      and run txt st c kont res = match c with
+      | [] ->  kont st res
+      | i::c ->
+          exec txt st i
+            (fun st res -> run txt st c kont res)
+            res in
 
       let show =
         lazy begin
@@ -1135,8 +1192,8 @@ module Make
         end in
       run txt {env=m; show=show;
                seen_requires_clause=false;
-               skipped=StringSet.empty;} prog
+               skipped=StringSet.empty;} prog kont res
 
 
 
-  end
+              end

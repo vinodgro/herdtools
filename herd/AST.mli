@@ -3,6 +3,7 @@
 (*                                                                   *)
 (* Luc Maranget, INRIA Paris-Rocquencourt, France.                   *)
 (* Jade Alglave, University College London, UK.                      *)
+(* John Wickerson, Imperial College London, UK.                      *)
 (*                                                                   *)
 (*  Copyright 2013 Institut National de Recherche en Informatique et *)
 (*  en Automatique and the authors. All rights reserved.             *)
@@ -36,6 +37,7 @@ type op1 =
   | Int  (** Internal subrelation (events from = threads) *)
   | NoId (** Irreflexive subrelation (<> events, aka r\id) *)
   | Set_to_rln (** Convert a set to a relation (viz. identity restricted to that set) *)
+  | SameLoc (* Identical locations *)
 type konst = Empty of set_or_rln
 type var = string
 type varset = StringSet.t
@@ -80,6 +82,8 @@ type ins =
   | Enum of TxtLoc.t * var * var list
   | Foreach of  TxtLoc.t * var * exp * ins list
   | Debug of TxtLoc.t * exp
+  | ForOrder of
+      TxtLoc.t * var * exp (* nodes *) * exp (* edges *) * string option
 
 (** Name X model definition *)
 type t = ModelOption.t * string * ins list

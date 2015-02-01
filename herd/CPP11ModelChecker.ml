@@ -3,6 +3,7 @@
 (*                                                                   *)
 (* Luc Maranget, INRIA Paris-Rocquencourt, France.                   *)
 (* Jade Alglave, University College London, UK.                      *)
+(* John Wickerson, Imperial College London, UK.                      *)
 (*                                                                   *)
 (*  Copyright 2013 Institut National de Recherche en Informatique et *)
 (*  en Automatique and the authors. All rights reserved.             *)
@@ -36,19 +37,23 @@ module Make
     let failed_requires_clauses = ref 0
 
     let run_interpret failed_requires_clause test conc m id vb_pp kont res =
-      match I.interpret failed_requires_clause test conc m id vb_pp with
-      | Some st ->
+      I.interpret
+        failed_requires_clause test conc m id vb_pp
+        (fun st res ->
           if not O.strictskip || StringSet.equal st.I.skipped O.skipchecks then
             let vb_pp = lazy (I.show_to_vbpp st) in
             kont conc conc.S.fs vb_pp (Some (!failed_requires_clauses)) res
-          else res
-      | None -> res
+          else res)
+        res
 
     let check_event_structure test conc kont res =
       let prb = JU.make_procrels conc in
       let pr = prb.JU.pr in
       let vb_pp = lazy (JU.vb_pp_procrels prb) in
-      let evts = conc.S.str.E.events in
+      let evts =
+         E.EventSet.filter
+          (fun e -> E.is_mem e || E.is_barrier e)
+          conc.S.str.E.events in
       let id =
         lazy begin
           E.EventRel.of_list
@@ -139,7 +144,7 @@ module Make
               let fr = U.make_fr conc co in
               let vb_pp =
                 lazy begin
-                  (if StringSet.mem "sc" S.O.PC.unshow
+                  (if StringSet.mem "S" S.O.PC.unshow
                    then [] else [("S",sc0)]) @
                   (if S.O.PC.showfr then [("fr",fr)] else []) @
                   (if StringSet.mem "co" S.O.PC.unshow

@@ -41,11 +41,13 @@ open AST
           | None -> StringSet.empty
           | Some e -> free e in
           StringSet.union (StringSet.union e eo) cls
-      | MatchSet (_,e1,e2,(_,_,e3)) ->
+      | MatchSet (_,e1,e2,(x,xs,e3)) ->
           let e1 = free e1
           and e2 = free e2
           and e3 = free e3 in
-          StringSet.union (StringSet.union e1 e2) e3
+          StringSet.union
+            (StringSet.union e1 e2)
+            (StringSet.remove x (StringSet.remove xs e3))
 
 and frees es = StringSet.unions (List.map free es)
 
