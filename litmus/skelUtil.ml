@@ -229,7 +229,8 @@ module Make
           O.f "#include \"%s\"" (MyName.outname doc.Name.file ".h") ;
           O.o "#endif" ;
           O.o "" ;
-          let dstring s =  EPF.fi "%s\n"  [String.escaped s] in
+          let dstring s =  EPF.fi "%s\n"
+              [Printf.sprintf "\"%s\"" (String.escaped s)] in
 (* Static information *)
           O.o "static void prelude(FILE *out) {" ;
           let title = sprintf "%% Results for %s %%" doc.Name.file in
