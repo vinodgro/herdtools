@@ -52,11 +52,6 @@ module Make(O:Model.Config) (S : SemExtra.S) (B:AllBarrier.S with type a = S.bar
     | Some a -> B.a_to_b a = b
     | None -> false
 
-    let is_strong_fence x =
-      is_that_fence B.SYNC x ||
-      is_that_fence B.DSB x ||
-      is_that_fence B.DMB x
-
     let sep_by_that_fence b po =
       let r1 =
         E.EventRel.restrict_domains E.is_mem (is_that_fence b) po

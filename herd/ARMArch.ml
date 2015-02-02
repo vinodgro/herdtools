@@ -15,7 +15,21 @@
 module Make (C:Arch.Config) (V:Value.S) =
   struct
     include ARMBase
-    
+
+    let is_barrier b1 b2 = barrier_compare b1 b2 = 0
+
+    let arch_sets =
+      [
+       "DMB",is_barrier (DMB SY);
+       "DSB",is_barrier (DSB SY);
+       "DMB.ST",is_barrier (DMB ST);
+       "DSB.ST",is_barrier (DSB ST);
+       "ISB", is_barrier ISB;
+     ]
+
+    let is_isync = is_barrier ISB
+    let pp_isync = "isb"
+
     module V = V
 
     include ArchExtra.Make(C)

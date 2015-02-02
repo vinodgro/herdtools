@@ -63,7 +63,6 @@ end
 module Make
     (O:Config)
     (S:Sem.Semantics)
-    (B:AllBarrier.S with type a = S.barrier)
     :
     (S with module S = S)
     =

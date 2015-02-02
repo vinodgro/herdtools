@@ -23,13 +23,11 @@ end
 module Make
     (O:Config)
     (S:Sem.Semantics)
-    (B:AllBarrier.S with type a = S.barrier)
     =
   struct
-    module I = Interpreter.Make(O)(S)(B)
+    module I = Interpreter.Make(O)(S)
     module E = S.E
     module U = MemUtils.Make(S)
-    module JU = JadeUtils.Make(O)(S)(B)
 
     let (pp,(opts,_,prog)) = O.m
 
@@ -62,11 +60,11 @@ module Make
           else res)
         res
 
+    module MU = ModelUtils.Make(O)(S)
 
     let check_event_structure test conc kont res =
-      let prb = lazy (JU.make_procrels conc) in
-      let pr = lazy ((Lazy.force  prb).JU.pr) in
-      let vb_pp = lazy (JU.vb_pp_procrels (Lazy.force prb)) in
+      let pr = lazy (MU.make_procrels (fun _ -> false) conc) in
+      let vb_pp = lazy (MU.pp_procrels "???" (Lazy.force pr)) in
       let evts = conc.S.str.E.events in
       let id =
         lazy begin

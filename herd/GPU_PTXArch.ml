@@ -16,6 +16,16 @@
 module Make (C:Arch.Config) (V:Value.S) = struct
     include GPU_PTXBase
 
+    let is_barrier b1 b2 = barrier_compare b1 b2 = 0
+
+    let arch_fences =
+      [
+       "membar.cta",is_barrier (Membar CTA_bar);
+       "membar.gl",is_barrier (Membar GL_bar);
+       "membar.sys",is_barrier (Membar SYS_bar);
+     ]
+
+
 (* Now global locations, that include reservations *)
     module V = V
 

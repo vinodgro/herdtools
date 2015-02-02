@@ -195,6 +195,7 @@ let pp_barrier b =
 
 let barrier_compare = Pervasives.compare
 
+
 (****************)
 (* Instructions *)
 (****************)

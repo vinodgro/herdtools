@@ -22,7 +22,8 @@ module Make : functor (S: SemExtra.S) -> sig
   val po_iico :  S.event_structure -> S.event_rel
 (* po union iico_data union iico_control *)
   val is_before_strict : S.event_structure -> S.event -> S.event -> bool
-
+(* Fence like relations *)
+  val po_fence_po : S.event_rel (* po *) -> (S.event -> bool) -> S.event_rel
 
 (* Lift relations to memory *)
   val trans_close_mem : S.event_rel -> S.event_rel

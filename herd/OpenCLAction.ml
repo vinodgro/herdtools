@@ -264,6 +264,11 @@ end = struct
      "memory_scope_all_svm_devices", OpenCLBase.S_all_svm_devices;
    ]
 
+  let arch_fences = []
+
+  let is_isync _ = assert false
+  let pp_isync = "???"
+
 (* Equations *)
 
     let undetermined_vars_in_action a =

@@ -16,6 +16,19 @@ module Make (C:Arch.Config)(V:Value.S) =
   struct
     include X86Base
 
+
+    let is_barrier b1 b2 = barrier_compare b1 b2 = 0
+
+    let arch_sets =
+      [
+       "MFENCE",is_barrier Mfence;
+       "SFENCE",is_barrier Sfence;
+       "LFENCE",is_barrier Lfence;
+     ]
+
+    let is_isync _ = false
+    let pp_isync = "???"
+
 (********************)
 (* global locations *)
 (********************)

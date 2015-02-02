@@ -24,7 +24,7 @@ show co
 (* a few additional shows *)
 show mfence, lfence, sfence
 show sync, lwsync, eieio
-show dmb, dsb, dsbst, dmbst
+show dmb, dsb, dsb.st, dmb.st
 show isb, isync
 
 (* uni check proper *)

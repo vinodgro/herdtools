@@ -14,7 +14,12 @@
 module Make (C:Arch.Config) (V:Value.S) =
   struct
     include MIPSBase
-    
+
+    let arch_sets = ["SYNC",(function Sync -> true);]
+
+    let is_isync _ = false
+    let pp_isync = "???"
+
     module V = V
 
     include ArchExtra.Make(C)
