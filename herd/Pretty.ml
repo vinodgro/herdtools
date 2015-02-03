@@ -492,13 +492,23 @@ let one_init = match PC.graph with
   let find_pair p m =
     try PairMap.find p m with Not_found -> []
   
-  let do_add_pair p i m =
+
+  let add_if_new p i m add =
     let old = find_pair p m in
-    PairMap.add p (i::old) m
+    if
+      List.exists
+        (fun {ikey=k} -> k = i.ikey)
+        old
+    then m
+    else
+      PairMap.add p (add i old) m
+
+  let do_add_pair p i m =
+    add_if_new p i m (fun i old -> i::old)
+
 
   let add_end p i m =
-    let old = find_pair p m in
-    PairMap.add p (old@[i]) m
+    add_if_new p i m (fun i old -> old@[i])
       
   let handle_symetric m =
     let yes,no =
