@@ -233,6 +233,11 @@ end = struct
      "na", mo_matches CPP11Base.NA;
    ]
 
+  let arch_fences = []
+
+  let is_isync _ = assert false
+  let pp_isync = "???"
+
 (* Equations *)
 
     let undetermined_vars_in_action a =

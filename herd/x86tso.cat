@@ -11,6 +11,9 @@ empty atom & (fre;coe)
 #ppo
 let po_ghb = WW(po) | RM(po)
 
+#mfence
+let mfence = (po & (_ * MFENCE)) ; po
+
 #implied barriers
 let poWR = WR(po)
 let i1 = PA(poWR)

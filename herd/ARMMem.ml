@@ -75,7 +75,7 @@ module S = S
             (struct
               let m = m
               include ModelConfig
-             end)(S)(AllBarrier.FromARM(B)) in
+             end)(S) in
         X.check_event_structure test
     | File _ -> assert false
   end

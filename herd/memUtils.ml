@@ -48,6 +48,14 @@ module Make(S : SemExtra.S) = struct
     E.EventRel.mem (e1,e2) es.E.intra_causality_control ||
     E.po_strict e1 e2
 
+(* Fence *)
+  let po_fence_po po pred =
+    let r1 =
+      E.EventRel.restrict_domains E.is_mem pred po
+    and r2 =
+      E.EventRel.restrict_domains pred E.is_mem po in
+    E.EventRel.sequence r1 r2
+
   let get_loc e =  match E.location_of e with
   | Some loc -> loc
   | None -> assert false

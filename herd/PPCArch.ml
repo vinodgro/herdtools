@@ -17,6 +17,19 @@ module Make (C:Arch.Config) (V:Value.S)
   struct
     include PPCBase
 
+    let is_barrier b1 b2 = barrier_compare b1 b2 = 0
+
+    let arch_sets =
+      [
+       "SYNC",is_barrier Sync;
+       "ISYNC",is_barrier Isync;
+       "LWSYNC",is_barrier Lwsync;
+       "EIEIO",is_barrier Eieio;
+     ]
+
+    let is_isync = is_barrier Isync
+    let pp_isync = "isync"
+
 (* Now global locations, that include reservations *)
     module V = V
 

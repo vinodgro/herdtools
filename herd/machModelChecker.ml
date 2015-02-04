@@ -21,13 +21,11 @@ end
 module Make
     (O:Config)
     (S:Sem.Semantics)
-    (B:AllBarrier.S with type a = S.barrier)
     =
   struct
-    module I = Interpreter.Make(O)(S)(B)
+    module I = Interpreter.Make(O)(S)
     module E = S.E
     module U = MemUtils.Make(S)
-    module JU = JadeUtils.Make(O)(S)(B)
 
     let (pp,(opts,_,prog)) = O.m
     let withco = opts.ModelOption.co
@@ -43,10 +41,11 @@ module Make
           else res)
         res
 
+    module MU = ModelUtils.Make(O)(S)
+
     let check_event_structure test conc kont res =
-      let prb = lazy (JU.make_procrels conc) in
-      let pr = lazy (Lazy.force prb).JU.pr in
-      let vb_pp = lazy (JU.vb_pp_procrels (Lazy.force prb)) in
+      let pr = lazy (MU.make_procrels E.is_isync conc) in
+      let vb_pp = lazy (MU.pp_procrels E.Act.pp_isync (Lazy.force pr)) in
       let evts =
         E.EventSet.filter
           (fun e -> E.is_mem e || E.is_barrier e)
@@ -81,27 +80,6 @@ module Make
            "rf", lazy (Lazy.force pr).S.rf;
            "rfe", lazy (U.ext (Lazy.force pr).S.rf);
            "rfi", lazy (U.internal (Lazy.force pr).S.rf);
-(* Power fences *)
-           "lwsync", (Lazy.force prb).JU.lwsync;
-           "eieio", (Lazy.force prb).JU.eieio;
-           "sync",  (Lazy.force prb).JU.sync;
-           "isync",  (Lazy.force prb).JU.isync;
-(* ARM fences *)
-           "dmb", (Lazy.force prb).JU.dmb;
-           "dsb", (Lazy.force prb).JU.dsb;
-           "dmbst", (Lazy.force prb).JU.dmbst;
-           "dmb.st", (Lazy.force prb).JU.dmbst;
-           "dsbst", (Lazy.force prb).JU.dsbst;
-           "dsb.st",(Lazy.force prb).JU.dsbst;
-           "isb",(Lazy.force prb).JU.isb;
-(* X86 fences *)
-           "mfence",(Lazy.force prb).JU.mfence;
-           "sfence",(Lazy.force prb).JU.sfence;
-           "lfence",(Lazy.force prb).JU.lfence;
-(* PTX fences *)
-	   "membar.cta", (Lazy.force prb).JU.membar_cta;
-	   "membar.gl", (Lazy.force prb).JU.membar_gl;
-	   "membar.sys", (Lazy.force prb).JU.membar_sys;
           ] @
           (match test.Test.scope_tree with
            | None -> []
@@ -137,6 +115,39 @@ module Make
              (fun (k,a) ->
                k,lazy (E.EventSet.filter (fun e -> a e.E.action) evts))
 	  E.Act.arch_sets) in
+     let m =
+       I.add_rels m         
+(* Define empty fence relation
+   (for the few models that apply to several archs) *)
+(* Power fences *)
+         [
+           "lwsync", lazy E.EventRel.empty;
+           "eieio", lazy E.EventRel.empty;
+           "sync", lazy E.EventRel.empty;
+           "isync", lazy E.EventRel.empty;
+(* ARM fences *)
+           "dmb", lazy E.EventRel.empty;
+           "dsb", lazy E.EventRel.empty;
+           "dmb.st", lazy E.EventRel.empty;
+           "dsb.st", lazy E.EventRel.empty;
+           "isb", lazy E.EventRel.empty;
+(* X86 fences *)
+           "mfence", lazy E.EventRel.empty;
+           "sfence", lazy E.EventRel.empty;
+           "lfence", lazy E.EventRel.empty;
+(* PTX fences *)
+	   "membar.cta",lazy E.EventRel.empty;
+	   "membar.gl", lazy E.EventRel.empty;
+	   "membar.sys",lazy E.EventRel.empty;
+       ] in
+(* Override arch specific fences *)
+      let m =
+        I.add_rels m
+          (List.map
+             (fun (k,p) ->
+               let pred e = p e.E.action in
+               k,lazy (U.po_fence_po conc.S.po pred))
+             E.Act.arch_fences) in
       if withco then
         let process_co co0 res =
           let co = S.tr co0 in

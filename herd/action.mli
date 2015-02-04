@@ -27,6 +27,11 @@ module type S = sig
    e.g. ["rmw", is_rmw; "ls", is_successful_lock]
  *)
   val arch_sets : (string * (action -> bool)) list
+(* architecture specific fences *)
+  val arch_fences : (string * (action -> bool)) list
+(* control fence *)
+  val is_isync : action -> bool
+  val pp_isync : string
 
 (**************************************)
 (* Access to sub_components of events *)

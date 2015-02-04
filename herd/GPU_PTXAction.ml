@@ -13,8 +13,11 @@
 
 (** Implementation of the action interface for GPU_PTX *)
 
-
-module Make (A : Arch.S) : sig
+module type A = sig
+  include Arch.S 
+  val arch_fences : (string * (barrier -> bool)) list
+end
+module Make (A : A) : sig
 
   type action =    
     | Access of
@@ -162,6 +165,19 @@ end = struct
      "wt", GPU_PTXBase.WT;
      "ncop", GPU_PTXBase.NCOP;
      ]
+
+  let arch_fences =
+    List.map
+      (fun (tag,p) ->
+        tag,
+        begin fun a -> match a with
+        | Barrier b -> p b
+        | _ -> false
+        end)
+      A.arch_fences
+
+  let is_isync _ = false
+  let pp_isync = "???"
 
 (* Equations *)
 

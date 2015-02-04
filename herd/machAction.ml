@@ -13,7 +13,15 @@
 
 (** Implementation of the action interface for machine models *)
 
-module Make (A : Arch.S) : sig
+module type A = sig
+  include Arch.S
+  val arch_sets : (string * (barrier -> bool)) list
+
+  val is_isync : barrier -> bool 
+  val pp_isync : string
+end
+
+module Make (A : A) : sig
 
   type action =    
     | Access of Dir.dirn * A.location * A.V.v * bool (* atomicity flag *)
@@ -142,7 +150,23 @@ end = struct
    let is_sc_action _ = false
 
 (* Architecture-specific sets *)
-   let arch_sets = []
+  let map_act tr_tag =
+     List.map
+       (fun (tag,p) ->
+         let p act = match act with
+         | Barrier b -> p b
+         | _ -> false in
+         tr_tag tag,p)
+
+  let arch_sets = map_act (fun tag -> tag) A.arch_sets
+
+  let arch_fences = map_act String.lowercase A.arch_sets
+
+  let is_isync act = match act with
+  | Barrier b -> A.is_isync b
+  | _ -> false
+
+  let pp_isync = A.pp_isync
 
 (* Equations *)
 

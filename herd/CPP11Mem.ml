@@ -42,7 +42,7 @@ module Make
             (struct
               let m = m
               include ModelConfig
-             end)(S)(AllBarrier.FromCPP11(B)) in
+             end)(S) in
         X.check_event_structure test
     | File _ -> assert false
     | m -> 
