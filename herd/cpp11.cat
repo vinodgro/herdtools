@@ -119,9 +119,10 @@ let rsco = (co ; [rmw] | coi) & (niw [!rmw])
 let rs = [crel]; fid; [A & W]; (((co ; [rmw]) | coi) & ~(coe ; [!rmw] ; co))?
 let swra = ext (rs; rf; [A]; idf; [cacq])
 let swul = ext ([ul]; lo; [lk])
+let sw = asw | swul | swra
 let pp_asw = asw \ (asw;po)
-(* show pp_asw *)
-let sw = pp_asw | swul | swra
+let pp_sw = pp_asw | swul | swra
+show pp_sw as sw
 
 (* C: no_consume_hb *)
 (* simple_hb applies to the programs that don't have consumes *)
@@ -141,7 +142,6 @@ let dob = (ext ([W]; rs; rf; [con])); cad?
 let ithbr = sw | dob | sw;po
 let ithb = (ithbr | po;ithbr)+
 let hb = po | ithb
-show sw
 show dob
 acyclic hb as hbAcyclic
 
