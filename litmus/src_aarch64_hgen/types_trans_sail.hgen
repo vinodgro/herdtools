@@ -1,0 +1,152 @@
+let translate_big_int bits (name : string) value =
+  (name, Bvector (Some bits), IInt.bit_list_of_integer bits value)
+
+let translate_int bits name value =
+  translate_big_int bits name (Big_int.big_int_of_int value)
+
+let translate_bool name value =
+  (name, Bit, [if value then Bitc_one else Bitc_zero])
+
+(* the following are tightly coupled with types.hgen. As it is not relevant
+   to herdtools I put it here and not in types.hgen *)
+
+let translate_reg_size name value =
+  match value with
+  | Set32 -> (name, Bvector (Some 32), IInt.bit_list_of_integer 32 Big_int.zero_big_int)
+  | Set64 -> (name, Bvector (Some 64), IInt.bit_list_of_integer 64 Big_int.unit_big_int)
+
+let translate_reg name value =
+  match value with
+  | Xreg _ | Wreg _ -> (name, Bvector (Some 5), bit_list_of_integer 5 (Big_int.big_int_of_int (reg_to_int value)))
+  | XZR | WZR | SP | WSP -> (name, Bvector (Some 5), bit_list_of_integer 5 (Big_int.big_int_of_int 31))
+
+let translate_reg_size_int = translate_big_int 64
+
+let translate_data_size name value =
+  match value with
+  | DataSize8 ->  (name, Bvector (Some 8),  IInt.bit_list_of_integer 8  (Big_int.big_int_of_int 8))
+  | DataSize16 -> (name, Bvector (Some 16), IInt.bit_list_of_integer 16 (Big_int.big_int_of_int 16))
+  | DataSize32 -> (name, Bvector (Some 32), IInt.bit_list_of_integer 32 (Big_int.big_int_of_int 32))
+  | DataSize64 -> (name, Bvector (Some 64), IInt.bit_list_of_integer 64 (Big_int.big_int_of_int 64))
+
+let translate_reg_index = translate_int 5
+
+let translate_boolean = translate_bool
+
+let translate_range0_7 = translate_int 3
+
+let translate_range0_63 = translate_int 6
+
+let translate_bit64 = translate_big_int 64
+
+let translate_bit4 = translate_int 4
+
+let translate_bit16 = translate_int 16
+
+let translate_bit = translate_bool
+
+let translate_range8_64 = translate_int 7
+
+let translate_integer = translate_int 63
+
+let translate_extendType name value =
+  match value with
+  | ExtendType_UXTB -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 0))
+  | ExtendType_UXTH -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 1))
+  | ExtendType_UXTW -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 2))
+  | ExtendType_UXTX -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 3))
+  | ExtendType_SXTB -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 4))
+  | ExtendType_SXTH -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 5))
+  | ExtendType_SXTW -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 6))
+  | ExtendType_SXTX -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 7))
+
+let translate_shiftType name value =
+  match value with
+  | ShiftType_LSL -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 0))
+  | ShiftType_LSR -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 1))
+  | ShiftType_ASR -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 2))
+  | ShiftType_ROR -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 3))
+
+let translate_logicalOp name value =
+  match value with
+  | LogicalOp_AND -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 0))
+  | LogicalOp_EOR -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 1))
+  | LogicalOp_ORR -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 2))
+
+let translate_branchType name value =
+  match value with
+  | BranchType_CALL      -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 0))
+  | BranchType_ERET      -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 1))
+  | BranchType_DBGEXIT   -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 2))
+  | BranchType_RET       -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 3))
+  | BranchType_JMP       -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 4))
+  | BranchType_EXCEPTION -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 5))
+  | BranchType_UNKNOWN   -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 6))
+
+let translate_countOp name value =
+  match value with
+  | CountOp_CLZ -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 0))
+  | CountOp_CLS -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 1))
+  | CountOp_CNT -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 2))
+
+let translate_memBarrierOp name value =
+  match value with
+  | MemBarrierOp_DSB -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 0))
+  | MemBarrierOp_DMB -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 1))
+  | MemBarrierOp_ISB -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 2))
+
+let translate_mBReqDomain name value =
+  match value with
+  | MBReqDomain_Nonshareable   -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 0))
+  | MBReqDomain_InnerShareable -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 1))
+  | MBReqDomain_OuterShareable -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 2))
+  | MBReqDomain_FullSystem     -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 3))
+
+let translate_mBReqTypes name value =
+  match value with
+  | MBReqTypes_Reads  -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 0))
+  | MBReqTypes_Writes -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 1))
+  | MBReqTypes_All    -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 2))
+
+let translate_systemHintOp name value =
+  match value with
+  | SystemHintOp_NOP   -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 0))
+  | SystemHintOp_YIELD -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 1))
+  | SystemHintOp_WFE   -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 2))
+  | SystemHintOp_WFI   -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 3))
+  | SystemHintOp_SEV   -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 4))
+  | SystemHintOp_SEVL  -> (name, Bvector (Some 3),  IInt.bit_list_of_integer 3 (Big_int.big_int_of_int 5))
+
+let translate_accType name value =
+  match value with
+  | AccType_NORMAL    -> (name, Bvector (Some 4),  IInt.bit_list_of_integer 4 (Big_int.big_int_of_int 0))
+  | AccType_VEC       -> (name, Bvector (Some 4),  IInt.bit_list_of_integer 4 (Big_int.big_int_of_int 1))
+  | AccType_STREAM    -> (name, Bvector (Some 4),  IInt.bit_list_of_integer 4 (Big_int.big_int_of_int 2))
+  | AccType_VECSTREAM -> (name, Bvector (Some 4),  IInt.bit_list_of_integer 4 (Big_int.big_int_of_int 3))
+  | AccType_ATOMIC    -> (name, Bvector (Some 4),  IInt.bit_list_of_integer 4 (Big_int.big_int_of_int 4))
+  | AccType_ORDERED   -> (name, Bvector (Some 4),  IInt.bit_list_of_integer 4 (Big_int.big_int_of_int 5))
+  | AccType_UNPRIV    -> (name, Bvector (Some 4),  IInt.bit_list_of_integer 4 (Big_int.big_int_of_int 6))
+  | AccType_IFETCH    -> (name, Bvector (Some 4),  IInt.bit_list_of_integer 4 (Big_int.big_int_of_int 7))
+  | AccType_PTW       -> (name, Bvector (Some 4),  IInt.bit_list_of_integer 4 (Big_int.big_int_of_int 8))
+  | AccType_DC        -> (name, Bvector (Some 4),  IInt.bit_list_of_integer 4 (Big_int.big_int_of_int 9))
+  | AccType_IC        -> (name, Bvector (Some 4),  IInt.bit_list_of_integer 4 (Big_int.big_int_of_int 10))
+  | AccType_AT        -> (name, Bvector (Some 4),  IInt.bit_list_of_integer 4 (Big_int.big_int_of_int 11))
+
+let translate_memOp name value =
+  match value with
+  | MemOp_LOAD     -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 0))
+  | MemOp_STORE    -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 1))
+  | MemOp_PREFETCH -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 2))
+
+let translate_moveWideOp name value =
+  match value with
+  | MoveWideOp_N -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 0))
+  | MoveWideOp_Z -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 1))
+  | MoveWideOp_K -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 2))
+
+let translate_revOp name value =
+  match value with
+  | RevOp_RBIT  -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 0))
+  | RevOp_REV16 -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 1))
+  | RevOp_REV32 -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 2))
+  | RevOp_REV64 -> (name, Bvector (Some 2),  IInt.bit_list_of_integer 2 (Big_int.big_int_of_int 3))

@@ -1,0 +1,328 @@
+| `AArch64AddSubCarry (d,n,m,sf,sub_op,setflags) ->
+      if sub_op && is_zero_reg n then
+        sprintf "%s %s, %s" (pp_withflags "NGC" setflags) (pp_regzr sf d) (pp_regzr sf m)
+      else if sub_op then
+        sprintf "%s %s, %s, %s" (pp_withflags "SBC" setflags) (pp_regzr sf d) (pp_regzr sf n) (pp_regzr sf m)
+      else
+        sprintf "%s %s, %s, %s" (pp_withflags "ADC" setflags) (pp_regzr sf d) (pp_regzr sf n) (pp_regzr sf m)
+
+| `AArch64AddSubExtendRegister (d,n,m,sf,sub_op,setflags,extend_type,shift) ->
+      if setflags && is_zero_reg d then
+      begin
+        if (is_sp_reg n) && ((sf = Set32 && extend_type = ExtendType_UXTW) || (sf = Set64 && extend_type = ExtendType_UXTX)) then
+          sprintf "%s %s, %s%s" (if sub_op then "CMP" else "CMN") (pp_regsp sf n) (pp_regzrbyext extend_type m)
+                                 (if shift = 0 then "" else (", LSL " ^ (pp_imm shift)))
+        else
+          sprintf "%s %s, %s, %s%s" (if sub_op then "CMP" else "CMN") (pp_regsp sf n) (pp_regzrbyext extend_type m) (pp_regext extend_type)
+                                     (pp_ifnz shift)
+      end
+      else if (is_sp_reg d || is_sp_reg n) && ((sf = Set32 && extend_type = ExtendType_UXTW) || (sf = Set64 && extend_type = ExtendType_UXTX)) then
+        sprintf "%s %s, %s, %s%s" (pp_addsub sub_op setflags) (if setflags then pp_regzr sf d else pp_regsp sf d) (pp_regsp sf n) (pp_regzrbyext extend_type m)
+                                  (if shift = 0 then "" else (", LSL " ^ (pp_imm shift)))
+      else
+        sprintf "%s %s, %s, %s, %s%s" (pp_addsub sub_op setflags) (if setflags then pp_regzr sf d else pp_regsp sf d) (pp_regsp sf n) (pp_regzrbyext extend_type m) (pp_regext extend_type) (pp_ifnz shift)
+
+| `AArch64AddSubImmediate (d,n,sf,sub_op,setflags,imm) ->
+      let (imm12,shift) =
+        if Big_int.extract_big_int imm 0 12 = Big_int.zero_big_int then
+          (Big_int.int_of_big_int (Big_int.shift_right_big_int imm 12),12)
+        else (Big_int.int_of_big_int imm,0) in
+      if (sub_op,setflags) = (false,false) && (is_sp_reg d || is_sp_reg n) && (shift = 0 && imm12 = 0) then
+        sprintf "MOV %s, %s" (pp_regsp sf d) (pp_regsp sf n)
+      else if setflags && is_zero_reg d then
+        sprintf "%s %s, %s%s" (if sub_op then "CMP" else "CMN") (pp_regsp sf n) (pp_imm imm12) (if shift = 0 then "" else ", LSL #12")
+      else
+        sprintf "%s %s, %s, %s%s" (pp_addsub sub_op setflags) (if setflags then pp_regzr sf d else pp_regsp sf d) (pp_regsp sf n) (pp_imm imm12) (if shift = 0 then "" else ", LSL #12")
+
+| `AArch64AddSubShiftedRegister (d,n,m,sf,sub_op,setflags,shift_type,shift_amount) ->
+      if setflags && is_zero_reg d then
+      begin
+        if shift_type = ShiftType_LSL && shift_amount = 0 then
+          sprintf "%s %s, %s" (if sub_op then "CMP" else "CMN") (pp_regzr sf n) (pp_regzr sf m)
+        else
+          sprintf "%s %s, %s, %s %s" (if sub_op then "CMP" else "CMN") (pp_regzr sf n) (pp_regzr sf m) (pp_shift shift_type) (pp_imm shift_amount)
+      end
+      else if sub_op && is_zero_reg n then
+      begin
+        if shift_type = ShiftType_LSL && shift_amount = 0 then
+          sprintf "%s %s, %s" (pp_withflags "NEG" setflags) (pp_regzr sf d) (pp_regzr sf m)
+        else
+          sprintf "%s %s, %s, %s %s" (pp_withflags "NEG" setflags) (pp_regzr sf d) (pp_regzr sf m) (pp_shift shift_type) (pp_imm shift_amount)
+      end
+      else if shift_type = ShiftType_LSL && shift_amount = 0 then
+        sprintf "%s %s, %s, %s" (pp_addsub sub_op setflags) (pp_regzr sf d) (pp_regzr sf n) (pp_regzr sf m)
+      else
+        sprintf "%s %s, %s, %s, %s %s" (pp_addsub sub_op setflags) (pp_regzr sf d) (pp_regzr sf n) (pp_regzr sf m) (pp_shift shift_type) (pp_imm shift_amount)
+
+| `AArch64Address (d,sf,page,imm) ->
+      sprintf "%s %s, %s" (if page then "ADRP" else "ADR") (pp_regzr sf d) (pp_label page imm)
+
+| `AArch64LogicalImmediate (d,n,sf,setflags,op,imm) ->
+      if op = LogicalOp_AND && setflags && is_zero_reg d then
+        sprintf "TST %s, %s" (pp_regzr sf n) (pp_big_imm imm)
+      else if op = LogicalOp_ORR && not setflags && is_zero_reg n && not (moveWidePreferred sf imm) then (* ARM: missing the check of n=ZR *)
+        sprintf "MOV %s, %s" (pp_regsp sf d) (pp_big_imm imm)
+      else sprintf "%s %s, %s, %s" (pp_logop op setflags false) (if setflags then pp_regzr sf d else pp_regsp sf d) (pp_regzr sf n) (pp_big_imm imm)
+
+| `AArch64LogicalShiftedRegister (d,n,m,sf,setflags,op,shift_type,shift_amount,invert) ->
+      if op = LogicalOp_AND && setflags && not invert && is_zero_reg d then
+      begin
+        if shift_type = ShiftType_LSL && shift_amount = 0 then
+          sprintf "TST %s, %s" (pp_regzr sf n) (pp_regzr sf m)
+        else
+          sprintf "TST %s, %s, %s %s" (pp_regzr sf n) (pp_regzr sf m) (pp_shift shift_type) (pp_imm shift_amount)
+      end
+      else if op = LogicalOp_ORR && not setflags && invert && is_zero_reg n then
+      begin
+        if shift_type = ShiftType_LSL && shift_amount = 0 then
+          sprintf "MVN %s, %s" (pp_regzr sf d) (pp_regzr sf m)
+        else
+          sprintf "MVN %s, %s, %s %s" (pp_regzr sf d) (pp_regzr sf m) (pp_shift shift_type) (pp_imm shift_amount)
+      end
+      else if op = LogicalOp_ORR && not setflags && not invert && is_zero_reg n && shift_type = ShiftType_LSL && shift_amount = 0 then
+        sprintf "MOV %s, %s" (pp_regzr sf d) (pp_regzr sf m)
+      else
+      begin
+        if shift_type = ShiftType_LSL && shift_amount = 0 then
+          sprintf "%s %s, %s, %s" (pp_logop op setflags invert) (pp_regzr sf d) (pp_regzr sf n) (pp_regzr sf m)
+        else
+          sprintf "%s %s, %s, %s, %s %s" (pp_logop op setflags invert) (pp_regzr sf d) (pp_regzr sf n) (pp_regzr sf m) (pp_shift shift_type) (pp_imm shift_amount)
+      end
+
+| `AArch64Shift (d,n,m,sf,shift_type) ->
+      sprintf "%s %s, %s, %s" (pp_shiftop shift_type) (pp_regzr sf d) (pp_regzr sf n) (pp_regzr sf m)
+
+| `AArch64BranchConditional (offset,condition) ->
+      sprintf "B.%s %s" (pp_cond condition) (pp_label false offset)
+
+| `AArch64BranchImmediate (_branch_type,offset) ->
+      sprintf "%s %s" (pp_branchimmediate _branch_type) (pp_label false offset)
+
+| `AArch64BitfieldMove (d,n,sf,inzero,extend,_R,_S,wmask,tmask) ->
+      if (inzero,extend) = (false,false) && _S < _R then
+        sprintf "BFI %s, %s, %s, %s" (pp_regzr sf d) (pp_regzr sf n) (pp_imm _R) (pp_imm (_S+1)) (* FIXME: I'm not sure this is the right translation of imms and immr *)
+      else if (inzero,extend) = (false,false) && _S >= _R then
+        sprintf "BFXIL %s, %s, %s, %s" (pp_regzr sf d) (pp_regzr sf n) (pp_imm _R) (pp_imm (_S-_R+1))
+      else if (inzero,extend) = (true,false) && sf = Set32 && _S <> 0b011111 && _S+1 = _R then
+        sprintf "LSL %s, %s, %s" (pp_regzr sf d) (pp_regzr sf n) (pp_imm (31-_S))
+      else if (inzero,extend) = (true,false) && sf = Set64 && _S <> 0b111111 && _S+1 = _R then
+        sprintf "LSL %s, %s, %s" (pp_regzr sf d) (pp_regzr sf n) (pp_imm (63-_S))
+      else if inzero && sf = Set32 && _S = 0b011111 then
+        sprintf "%s %s, %s, %s" (if extend then "ASR" else "LSR") (pp_regzr sf d) (pp_regzr sf n) (pp_imm _R)
+      else if inzero && sf = Set64 && _S = 0b111111 then
+        sprintf "%s %s, %s, %s" (if extend then "ASR" else "LSR") (pp_regzr sf d) (pp_regzr sf n) (pp_imm _R)
+      else if inzero && _S < _R then
+        sprintf "%s %s, %s, %s, %s" (if extend then "SBFIZ" else "UBFIZ") (pp_regzr sf d) (pp_regzr sf n) (pp_imm _R) (pp_imm (_S+1)) (* FIXME: -<lsb> MOD 32/64 *)
+      else if inzero && bFXPreferred sf (if extend then 0 else 1) _S _R then
+        sprintf "%s %s, %s, %s, %s" (if extend then "SBFX" else "UBFX") (pp_regzr sf d) (pp_regzr sf n) (pp_imm _R) (pp_imm (_S - _R + 1))
+      else if inzero && _R = 0 && _S = 0b000111 then
+        sprintf "%s %s, %s" (if extend then "SXTB" else "UXTB") (pp_regzr sf d) (pp_regzr Set32 n)
+      else if inzero && _R = 0 && _S = 0b001111 then
+        sprintf "%s %s, %s" (if extend then "SXTH" else "UXTH") (pp_regzr sf d) (pp_regzr Set32 n)
+      else if (inzero,extend) = (true,true) && _R = 0 && _S = 0b011111 then (* implicitly sf = Set64 *)
+        sprintf "SXTW %s, %s" (pp_regzr sf d) (pp_regzr Set32 n)
+      else
+        sprintf "%s %s, %s, %s, %s" (pp_bfm inzero extend) (pp_regzr sf d) (pp_regzr sf n) (pp_imm _R) (pp_imm _S)
+
+| `AArch64BranchRegister (n,_branch_type) ->
+      if _branch_type = BranchType_RET && n = Xreg GPR30 then
+        "RET"
+      else
+        sprintf "%s %s" (pp_branchregister _branch_type) (pp_regzr Set64 n)
+
+| `AArch64CompareAndBranch (t,sf,iszero,offset) ->
+      sprintf "%s %s, %s" (if iszero then "CBZ" else "CBNZ") (pp_regzr sf t) (pp_label false offset)
+
+| `AArch64ConditionalCompareImmediate (n,sf,sub_op,condition,flags,imm) ->
+      sprintf "%s %s, %s, %s, %s" (if sub_op then "CCMP" else "CCMN") (pp_regzr sf n) (pp_big_imm imm) (pp_imm flags) (pp_cond condition)
+
+| `AArch64ConditionalCompareRegister (n,m,sf,sub_op,condition,flags) ->
+      sprintf "%s %s, %s, %s, %s" (if sub_op then "CCMP" else "CCMN") (pp_regzr sf n) (pp_regzr sf m) (pp_imm flags) (pp_cond condition)
+
+| `AArch64ClearExclusiveMonitor (imm) ->
+      if imm = 15 then
+        sprintf "CLREX"
+      else
+        sprintf "CLREX %s" (pp_imm imm)
+
+| `AArch64CountLeading (d,n,sf,opcode) ->
+      sprintf "%s %s, %s" (pp_countop opcode) (pp_regzr sf d) (pp_regzr sf n)
+
+| `AArch64CRC (d,n,m,sf,size,crc32c) ->
+      sprintf "%s %s, %s, %s" (pp_crc size crc32c) (pp_regzr Set32 d) (pp_regzr Set32 n) (pp_regzr sf m)
+
+| `AArch64ConditionalSelect (d,n,m,sf,condition,else_inv,else_inc) ->
+      if not else_inv && else_inc && n = m && not (is_zero_reg n) && not (condition = 0b1110 || condition = 0b1111) then
+        sprintf "CINC %s, %s, %s" (pp_regzr sf d) (pp_regzr sf n) (pp_cond condition)
+      else if not else_inv && else_inc && n = m && is_zero_reg n && not (condition = 0b1110 || condition = 0b1111) then
+        sprintf "CSET %s, %s" (pp_regzr sf d) (pp_cond condition)
+      else if else_inv && not else_inc && n = m && not (is_zero_reg n) && not (condition = 0b1110 || condition = 0b1111) then
+        sprintf "CINV %s, %s, %s" (pp_regzr sf d) (pp_regzr sf n) (pp_cond condition)
+      else if else_inv && not else_inc && n = m && is_zero_reg n && not (condition = 0b1110 || condition = 0b1111) then
+        sprintf "CSETM %s, %s" (pp_regzr sf d) (pp_cond condition)
+      else if else_inv && else_inc && n = m && not (condition = 0b1110 || condition = 0b1111) then
+        sprintf "CNEG %s, %s, %s" (pp_regzr sf d) (pp_regzr sf n) (pp_cond condition)
+      else
+        sprintf "%s %s, %s, %s, %s" (pp_csel else_inv else_inc) (pp_regzr sf d) (pp_regzr sf n) (pp_regzr sf m) (pp_cond condition)
+
+| `AArch64Barrier (op,domain,types) ->
+      if op = MemBarrierOp_ISB && domain = MBReqDomain_FullSystem && types = MBReqTypes_All then
+        pp_barr op
+      else
+        sprintf "%s %s" (pp_barr op) (pp_barroption domain types)
+
+| `AArch64ExtractRegister (d,n,m,sf,lsb) ->
+      if n = m then
+        sprintf "ROR %s, %s, %s" (pp_regzr sf d) (pp_regzr sf n) (pp_imm lsb)
+      else
+        sprintf "EXTR %s, %s, %s, %s" (pp_regzr sf d) (pp_regzr sf n) (pp_regzr sf m) (pp_imm lsb)
+
+| `AArch64Hint (op) ->
+  begin
+      match op with
+      | SystemHintOp_NOP ->   "NOP"
+      | SystemHintOp_YIELD -> "YIELD"
+      | SystemHintOp_WFE ->   "WFE"
+      | SystemHintOp_WFI ->   "WFI"
+      | SystemHintOp_SEV ->   "SEV"
+      | SystemHintOp_SEVL ->  "SEVL"
+  end
+
+| `AArch64LoadStoreAcqExc (n,t,t2,s,acctype,excl,pair,memop,elsize,sf,df,datasize) ->
+      if pair && memop = MemOp_LOAD then
+        sprintf "%s %s, %s, [%s]" (pp_ldaxstlxp memop acctype excl pair datasize) (pp_regzr sf t) (pp_regzr sf t2) (pp_regsp Set64 n)
+      else if pair && memop = MemOp_STORE then
+        sprintf "%s %s, %s, %s, [%s]" (pp_ldaxstlxp memop acctype excl pair datasize) (pp_regzr sf s) (pp_regzr sf t) (pp_regzr sf t2) (pp_regsp Set64 n)
+      else if not pair && memop = MemOp_STORE && excl then
+        sprintf "%s %s, %s, [%s]" (pp_ldaxstlxp memop acctype excl pair datasize) (pp_regzr sf s) (pp_regzr sf t) (pp_regsp Set64 n)
+      else
+        sprintf "%s %s, [%s]" (pp_ldaxstlxp memop acctype excl pair datasize) (pp_regzr sf t) (pp_regsp Set64 n)
+
+| `AArch64LoadStorePair (wback,postindex,n,t,t2,acctype,memop,signed,scale,sf,df,datasize,offset) ->
+  begin
+      let inst = if signed then "LDPSW" else if memop = MemOp_LOAD then "LDP" else "STP" in
+      match (wback,postindex) with
+      | (true,true) ->
+          sprintf "%s %s, %s, [%s], %s" inst (pp_regzr sf t) (pp_regzr sf t2) (pp_regsp Set64 n) (pp_big_imm offset)
+      | (true,false) ->
+          sprintf "%s %s, %s, [%s, %s]!" inst (pp_regzr sf t) (pp_regzr sf t2) (pp_regsp Set64 n) (pp_big_imm offset)
+      | (false,false) ->
+          if offset = bit64_of_int 0 then
+            sprintf "%s %s, %s, [%s]" inst (pp_regzr sf t) (pp_regzr sf t2) (pp_regsp Set64 n)
+          else
+            sprintf "%s %s, %s, [%s, %s]" inst (pp_regzr sf t) (pp_regzr sf t2) (pp_regsp Set64 n) (pp_big_imm offset)
+  end
+
+| `AArch64LoadImediate (n,t,acctype,memop,signed,wback,postindex,offset,sf,df,datasize) ->
+  begin
+      if memop = MemOp_PREFETCH then
+      begin
+        (* the ast does not hold enough information to distinguish PRFM and PRFUM in some cases.
+           PRFM: <pimm> is a multiple of 8 in the range 0 to 32760
+           PRFUM: <simm> is in the range -256 to 255 *)
+        if offset = bit64_of_int 0 then
+          sprintf "PRFM %s, [%s]" (pp_prfop (reg_to_int t)) (pp_regsp Set64 n)
+        else if big_in_range offset (-256) 255 then
+          sprintf "PRFUM %s, [%s, %s]" (pp_prfop (reg_to_int t)) (pp_regsp Set64 n) (pp_big_imm offset)
+        else
+          sprintf "PRFM %s, [%s, %s]"  (pp_prfop (reg_to_int t)) (pp_regsp Set64 n) (pp_big_imm offset)
+      end
+      else
+      let inst =
+        (if memop = MemOp_LOAD then "LD" else "ST") ^
+        (if not wback && not postindex &&
+              Big_int.mod_big_int offset (Big_int.big_int_of_int (if sf = Set32 then 4 else 8)) <> Big_int.zero_big_int then
+        begin
+          if acctype=AccType_UNPRIV then "TR"
+          else "UR"
+        end
+        else "R") ^
+        (if signed then "S" else "") ^
+        (match datasize with
+        | 8 -> "B"
+        | 16 -> "H"
+        | 32 -> if sf = Set32 then "" else "W"
+        | 64 -> "") in
+      match (wback,postindex) with
+      | (true,true) ->
+          sprintf "%s %s, [%s], %s" inst (pp_regzr sf t) (pp_regsp Set64 n) (pp_big_imm offset)
+      | (true,false) ->
+          sprintf "%s %s, [%s, %s]!" inst (pp_regzr sf t) (pp_regsp Set64 n) (pp_big_imm offset)
+      | (false,false) ->
+          if offset = bit64_of_int 0 then
+            sprintf "%s %s, [%s]" inst (pp_regzr sf t) (pp_regsp Set64 n)
+          else
+            sprintf "%s %s, [%s, %s]" inst (pp_regzr sf t) (pp_regsp Set64 n) (pp_big_imm offset)
+  end
+
+| `AArch64LoadLiteral (t,memop,signed,sf,df,size,offset) ->
+      if memop = MemOp_PREFETCH then
+        sprintf "PRFM %s, %s" (pp_prfop (reg_to_int t)) (pp_label false offset)
+      else
+        sprintf "%s %s, %s" (if signed then "LDRSW" else "LDR") (pp_regzr sf t) (pp_label false offset)
+
+| `AArch64LoadRegister (n,t,m,acctype,memop,signed,wback,postindex,extend_type,shift,sf,df,datasize) ->
+  begin
+      if memop = MemOp_PREFETCH then
+      begin
+        if extend_type = ExtendType_UXTX && shift = 0 then
+          sprintf "PRFM %s, [%s, %s]" (pp_prfop (reg_to_int t)) (pp_regsp Set64 n) (pp_regzrbyext extend_type m)
+        else if extend_type = ExtendType_UXTX (* && shift <> 0 *) then
+          sprintf "PRFM %s, [%s, %s, LSL %s]" (pp_prfop (reg_to_int t)) (pp_regsp Set64 n) (pp_regzrbyext extend_type m) (pp_imm shift)
+        else
+          sprintf "PRFM %s, [%s, %s, %s]" (pp_prfop (reg_to_int t)) (pp_regsp Set64 n) (pp_regzrbyext extend_type m) (pp_regext extend_type)
+      end
+      else
+      let inst =
+        (if memop = MemOp_LOAD then "LDR" else "STR") ^
+        (if signed then "S" else "") ^
+        (match datasize with
+        | 8 -> "B"
+        | 16 -> "H"
+        | 32 -> if sf = Set32 then "" else "W"
+        | 64 -> "") in
+      if extend_type = ExtendType_UXTX && shift = 0 then
+        sprintf "%s %s, [%s, %s]" inst (pp_regzr sf t) (pp_regsp Set64 n) (pp_regzrbyext extend_type m)
+      else if extend_type = ExtendType_UXTX (* && shift <> 0 *) then
+        sprintf "%s %s, [%s, %s, LSL %s]" inst (pp_regzr sf t) (pp_regsp Set64 n) (pp_regzrbyext extend_type m) (pp_imm shift)
+      else
+        sprintf "%s %s, [%s, %s, %s]" inst (pp_regzr sf t) (pp_regsp Set64 n) (pp_regzrbyext extend_type m) (pp_regext extend_type)
+  end
+
+| `AArch64MultiplyAddSub (d,n,m,a,sf,sub_op) ->
+      if is_zero_reg a then
+        sprintf "%s %s, %s, %s" (if sub_op then "MNEG" else "MUL") (pp_regzr sf d) (pp_regzr sf n) (pp_regzr sf m)
+      else
+        sprintf "%s %s, %s, %s, %s" (if sub_op then "MSUB" else "MADD") (pp_regzr sf d) (pp_regzr sf n) (pp_regzr sf m) (pp_regzr sf a)
+
+| `AArch64MoveWide (d,sf,imm,pos,opcode) ->
+      if opcode = MoveWideOp_N && sf = Set32 && (not (imm = 0 && pos <> 0)) && not (imm = 0xffff) then
+        sprintf "MOV %s, %s" (pp_regzr sf d) (pp_imm (lnot (imm lsl (pos*16))))
+      else if opcode = MoveWideOp_N && sf = Set64 && (not (imm = 0 && pos <> 0)) then
+        sprintf "MOV %s, %s" (pp_regzr sf d) (pp_imm (lnot (imm lsl (pos*16))))
+      else if opcode = MoveWideOp_Z && (not (imm = 0 && pos <> 0)) then
+        sprintf "MOV %s, %s" (pp_regzr sf d) (pp_imm (imm lsl (pos*16)))
+      else if pos = 0 then
+        sprintf "%s %s, %s" (pp_movwide opcode) (pp_regzr sf d) (pp_imm imm)
+      else
+        sprintf "%s %s, %s, LSL %s" (pp_movwide opcode) (pp_regzr sf d) (pp_imm imm) (pp_imm pos)
+
+| `AArch64Reverse (d,n,sf,op) ->
+      sprintf "%s %s, %s" (pp_reverse sf op) (pp_regzr sf d) (pp_regzr sf n)
+
+| `AArch64Division (d,n,m,sf,unsigned) ->
+      sprintf "%s %s, %s, %s" (if unsigned then "UDIV" else "SDIV") (pp_regzr sf d) (pp_regzr sf n) (pp_regzr sf m)
+
+| `AArch64MultiplyAddSubLong (d,n,m,a,destsize,datasize,sub_op,unsigned) ->
+      if sub_op && is_zero_reg a then
+        sprintf "%s %s, %s, %s" (if unsigned then "UMNEGL" else "SMNEGL") (pp_regzr Set64 d) (pp_regzr Set32 n) (pp_regzr Set32 m)
+      else if not sub_op && is_zero_reg a then
+        sprintf "%s %s, %s, %s" (if unsigned then "UMULL" else "SMULL") (pp_regzr Set64 d) (pp_regzr Set32 n) (pp_regzr Set32 m)
+      else
+        sprintf "%s %s, %s, %s, %s" (pp_maddsubl sub_op unsigned) (pp_regzr Set64 d) (pp_regzr Set32 n) (pp_regzr Set32 m) (pp_regzr Set64 a)
+
+| `AArch64MultiplyHigh (d,n,m,a,sf,destsize,datasize,unsigned) ->
+      sprintf "%s %s, %s, %s" (if unsigned then "UMULH" else "SMULH") (pp_regzr sf d) (pp_regzr sf n) (pp_regzr sf m)
+
+| `AArch64TestBitAndBranch (t,sf,bit_pos,bit_val,offset) ->
+      sprintf "%s %s, %s, %s" (if bit_pos = 1 then "TBNZ" else "TBZ") (pp_regzr (if bit_pos > 31 then Set64 else Set32) t) (pp_imm bit_pos) (pp_label false offset)

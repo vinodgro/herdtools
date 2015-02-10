@@ -1,0 +1,151 @@
+| `AArch64AddSubImmediate ((Xreg d') as d,(Xreg n') as n,sf,sub_op,setflags,imm)
+| `AArch64AddSubImmediate ((Wreg d') as d,(Wreg n') as n,sf,sub_op,setflags,imm) ->
+    { empty_ins with
+      memo=
+        let (imm12,shift) =
+          if Big_int.extract_big_int imm 0 12 = Big_int.zero_big_int then
+            (Big_int.int_of_big_int (Big_int.shift_right_big_int imm 12),12)
+          else (Big_int.int_of_big_int imm,0) in
+        if (sub_op,setflags) = (false,false) && (is_sp_reg d || is_sp_reg n) && (shift = 0 && imm12 = 0) then
+          sprintf "MOV %s, %s" (output_reg sf 0) (input_reg sf 0)
+        else if setflags && is_zero_reg d then
+          sprintf "%s %s, %s%s" (if sub_op then "CMP" else "CMN") (input_reg sf 0) (pp_imm imm12) (if shift = 0 then "" else ", LSL #12")
+        else
+          sprintf "%s %s, %s, %s%s" (pp_addsub sub_op setflags) (output_reg sf 0) (input_reg sf n) (pp_imm imm12) (if shift = 0 then "" else ", LSL #12")
+      ;
+      inputs=[n'];
+      outputs=[d']; }::k
+
+| `AArch64LogicalImmediate ((Xreg d') as d,(Xreg n') as n,sf,setflags,op,imm)
+| `AArch64LogicalImmediate ((Wreg d') as d,(Wreg n') as n,sf,setflags,op,imm) ->
+    { empty_ins with
+      memo=
+        if op = LogicalOp_AND && setflags && is_zero_reg d then
+          sprintf "TST %s, %s" (input_reg sf 0) (pp_big_imm imm)
+        else if op = LogicalOp_ORR && not setflags && is_zero_reg n && not (moveWidePreferred sf imm) then (* ARM: missing the check of n=ZR *)
+          sprintf "MOV %s, %s" (output_reg sf 0) (pp_big_imm imm)
+        else sprintf "%s %s, %s, %s" (pp_logop op setflags false) (output_reg sf 0) (input_reg sf 0) (pp_big_imm imm)
+      ;
+      inputs=[n'];
+      outputs=[d']; }::k
+
+| `AArch64LogicalShiftedRegister ((Xreg d') as d,(Xreg n') as n,(Xreg m') as m,sf,setflags,op,shift_type,shift_amount,invert)
+| `AArch64LogicalShiftedRegister ((Wreg d') as d,(Wreg n') as n,(Wreg m') as m,sf,setflags,op,shift_type,shift_amount,invert) ->
+    { empty_ins with
+      memo=
+        if op = LogicalOp_AND && setflags && not invert && is_zero_reg d then
+        begin
+          if shift_type = ShiftType_LSL && shift_amount = 0 then
+            sprintf "TST %s, %s" (input_reg sf 0) (input_reg sf 1)
+          else
+            sprintf "TST %s, %s, %s %s" (input_reg sf 0) (input_reg sf 1) (pp_shift shift_type) (pp_imm shift_amount)
+        end
+        else if op = LogicalOp_ORR && not setflags && invert && is_zero_reg n then
+        begin
+          if shift_type = ShiftType_LSL && shift_amount = 0 then
+            sprintf "MVN %s, %s" (output_reg sf 0) (input_reg sf 1)
+          else
+            sprintf "MVN %s, %s, %s %s" (output_reg sf 0) (input_reg sf 1) (pp_shift shift_type) (pp_imm shift_amount)
+        end
+        else if op = LogicalOp_ORR && not setflags && not invert && is_zero_reg n && shift_type = ShiftType_LSL && shift_amount = 0 then
+          sprintf "MOV %s, %s" (output_reg sf 0) (input_reg sf 1)
+        else
+        begin
+          if shift_type = ShiftType_LSL && shift_amount = 0 then
+            sprintf "%s %s, %s, %s" (pp_logop op setflags invert) (output_reg sf 0) (input_reg sf 0) (input_reg sf 1)
+          else
+            sprintf "%s %s, %s, %s, %s %s" (pp_logop op setflags invert) (output_reg sf 0) (input_reg sf 0) (input_reg sf 1) (pp_shift shift_type) (pp_imm shift_amount)
+        end
+      ;
+      inputs=[n'; m'];
+      outputs=[d']; }::k
+
+| `AArch64MoveWide ((Xreg d') as d,sf,imm,pos,opcode)
+| `AArch64MoveWide ((Wreg d') as d,sf,imm,pos,opcode) ->
+    { empty_ins with
+      memo=
+        if opcode = MoveWideOp_N && sf = Set32 && (not (imm = 0 && pos <> 0)) && not (imm = 0xffff) then
+          sprintf "MOV %s, %s" (output_reg sf 0) (pp_imm (lnot (imm lsl (pos*16))))
+        else if opcode = MoveWideOp_N && sf = Set64 && (not (imm = 0 && pos <> 0)) then
+          sprintf "MOV %s, %s" (output_reg sf 0) (pp_imm (lnot (imm lsl (pos*16))))
+        else if opcode = MoveWideOp_Z && (not (imm = 0 && pos <> 0)) then
+          sprintf "MOV %s, %s" (output_reg sf 0) (pp_imm (imm lsl (pos*16)))
+        else if pos = 0 then
+          sprintf "%s %s, %s" (pp_movwide opcode) (output_reg sf 0) (pp_imm imm)
+        else
+          sprintf "%s %s, %s, LSL %s" (pp_movwide opcode) (output_reg sf 0) (pp_imm imm) (pp_imm pos)
+      ;
+      inputs=if opcode = MoveWideOp_K then [d'] else [];
+      outputs=[d']; }::k
+
+
+
+| `AArch64LoadImediate ((Xreg n') as n,(Xreg t') as t,acctype,MemOp_STORE,signed,false,postindex,offset,sf,df,datasize)
+| `AArch64LoadImediate ((Xreg n') as n,(Wreg t') as t,acctype,MemOp_STORE,signed,false,postindex,offset,sf,df,datasize) ->
+    { empty_ins with
+      memo=
+        begin
+          let inst =
+            (if memop = MemOp_LOAD then "LD" else "ST") ^
+            (if not wback && not postindex &&
+                  Big_int.mod_big_int offset (Big_int.big_int_of_int (if sf = Set32 then 4 else 8)) <> Big_int.zero_big_int then
+            begin
+              if acctype=AccType_UNPRIV then "TR"
+              else "UR"
+            end
+            else "R") ^
+            (if signed then "S" else "") ^
+            (match datasize with
+            | 8 -> "B"
+            | 16 -> "H"
+            | 32 -> if sf = Set32 then "" else "W"
+            | 64 -> "") in
+          match (wback,postindex) with
+          | (true,true) ->
+              sprintf "%s %s, [%s], %s" inst (input_reg sf 1) (input_reg Set64 0) (pp_big_imm offset)
+          | (true,false) ->
+              sprintf "%s %s, [%s, %s]!" inst (input_reg sf 1) (input_reg Set64 0) (pp_big_imm offset)
+          | (false,false) ->
+              if offset = bit64_of_int 0 then
+                sprintf "%s %s, [%s]" inst (input_reg sf 1) (input_reg Set64 0)
+              else
+                sprintf "%s %s, [%s, %s]" inst (input_reg sf 1) (input_reg Set64 0) (pp_big_imm offset)
+        end
+      ;
+      inputs=[n'; t'];
+      outputs=[]; }::k
+
+| `AArch64LoadImediate ((Xreg n') as n,(Xreg t') as t,acctype,MemOp_LOAD,signed,false,postindex,offset,sf,df,datasize)
+| `AArch64LoadImediate ((Xreg n') as n,(Wreg t') as t,acctype,MemOp_LOAD,signed,false,postindex,offset,sf,df,datasize) ->
+    { empty_ins with
+      memo=
+        begin
+          let inst =
+            (if memop = MemOp_LOAD then "LD" else "ST") ^
+            (if not wback && not postindex &&
+                  Big_int.mod_big_int offset (Big_int.big_int_of_int (if sf = Set32 then 4 else 8)) <> Big_int.zero_big_int then
+            begin
+              if acctype=AccType_UNPRIV then "TR"
+              else "UR"
+            end
+            else "R") ^
+            (if signed then "S" else "") ^
+            (match datasize with
+            | 8 -> "B"
+            | 16 -> "H"
+            | 32 -> if sf = Set32 then "" else "W"
+            | 64 -> "") in
+          match (wback,postindex) with
+          | (true,true) ->
+              sprintf "%s %s, [%s], %s" inst (output_reg sf 0) (input_reg Set64 0) (pp_big_imm offset)
+          | (true,false) ->
+              sprintf "%s %s, [%s, %s]!" inst (output_reg sf 0) (input_reg Set64 0) (pp_big_imm offset)
+          | (false,false) ->
+              if offset = bit64_of_int 0 then
+                sprintf "%s %s, [%s]" inst (output_reg sf 0) (input_reg Set64 0)
+              else
+                sprintf "%s %s, [%s, %s]" inst (output_reg sf 0) (input_reg Set64 0) (pp_big_imm offset)
+        end
+      ;
+      inputs=[n'];
+      outputs=[t']; }::k
