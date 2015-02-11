@@ -525,7 +525,6 @@ end = struct
             let module Arch' = struct
               let comment = match OX.sysarch with
               | `PPC -> PPCArch.comment
-              | `PPCGen -> PPCGenArch.comment
               | `X86 -> X86Arch.comment
               | `ARM -> ARMArch.comment
               | `MIPS -> MIPSArch.comment

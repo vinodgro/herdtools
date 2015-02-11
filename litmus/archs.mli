@@ -16,7 +16,6 @@ module System : sig
     [ `X86
     | `PPC
     | `ARM
-    | `PPCGen
     | `MIPS
     ]
 
@@ -36,7 +35,6 @@ val pp : t -> string
 val arm : t
 val ppc : t
 val x86 : t
-val ppcgen : t
 val c : t
 val mips : t
 
