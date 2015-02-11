@@ -43,19 +43,33 @@ module Make(V:Constant.S)(C:Config) =
       | Set64 -> sprintf "^o%d" i
 
     let do_compile_ins tr_lab (ins : A.instruction) k =
-      match tr_ins ins with
+      match ins with
       (* Generated fix-point instructions *)
-      (* #include "src_power_gen/compile.gen" *)
+      (* #include "src_aarch64_hgen/compile.hgen" *)
 
     let compile_ins tr_lab ins = do_compile_ins tr_lab ins
 
-    (* ???
+    let emit_loop k = k
+      (* FIXME:
+      let lbl1 = Label.next_label "L" in
+      let lbl2 = Label.next_label "L" in
+      cmpi loop_idx 0::
+      b no_tr lbl2::
+      emit_lbl lbl1::
+      k@
+      [ decr loop_idx 1;
+        emit_lbl lbl2 ;
+        bcc no_tr NE lbl1; ]
+      *)
+
+    (* FIXME: do we need these?
     let branch_neq r i lab k = cmpi r i::bcc no_tr NE lab::k
     let branch_eq r i lab k = cmpi r i::bcc no_tr EQ lab::k
 
     let signaling_write _i _k = Warn.fatal "no signaling write for ARM"
+    *)
 
     let emit_tb_wait _ = Warn.fatal "no time base for ARM"
-    *)
+
 
   end

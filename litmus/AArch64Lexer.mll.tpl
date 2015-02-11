@@ -40,8 +40,8 @@ rule token = parse
                          | _ -> BIG_NUM (Big_int.big_int_of_string x)}
 | 'P' (num as x)
     { PROC (int_of_string x) }
-| "%X" (name as name) { SYMB_XREG name }
-| "%W" (name as name) { SYMB_WREG name }
+| "X%" (name as name) { SYMB_XREG (X (Symbolic_reg name)) }
+| "W%" (name as name) { SYMB_WREG (W (Symbolic_reg name)) }
 | ';' { SEMI }
 | ',' { COMMA }
 | '|' { PIPE }
@@ -56,13 +56,16 @@ rule token = parse
     Hashtbl.find instruction_table x
     with Not_found ->
       match AArch64.parse_reg x with
-      | Some Xreg r -> ARCH_XREG (Xreg r)
-      | Some XZR ->    ARCH_XREG (XZR)
-      | Some SP ->     ARCH_XREG (SP)
-      | Some Wreg r -> ARCH_WREG (Wreg r)
-      | Some WZR ->    ARCH_WREG (WZR)
-      | Some WSP ->    ARCH_WREG (WSP)
-      | None ->        NAME x
+      | Some Ireg r -> ARCH_XREG (X (Ireg r))
+      | Some ZR ->     ARCH_XREG (X ZR)
+      | Some SP ->     ARCH_XREG (X SP)
+      | None -> begin
+          match AArch64.parse_wreg x with
+          | Some Ireg r -> ARCH_WREG (W (Ireg r))
+          | Some ZR ->     ARCH_WREG (W ZR)
+          | Some SP ->     ARCH_WREG (W SP)
+          | None ->        NAME x
+      end
   }
 | eof { EOF }
 | ""  { error "AArch64 lexer" lexbuf }

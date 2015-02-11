@@ -24,7 +24,7 @@
 
 | `AArch64AddSubImmediate (d,n,sf,sub_op,setflags,imm) ->
       let (imm12,shift) =
-        if Big_int.extract_big_int imm 0 12 = Big_int.zero_big_int then
+        if Big_int.eq_big_int (Big_int.extract_big_int imm 0 12) (Big_int.zero_big_int) then
           (Big_int.int_of_big_int (Big_int.shift_right_big_int imm 12),12)
         else (Big_int.int_of_big_int imm,0) in
       if (sub_op,setflags) = (false,false) && (is_sp_reg d || is_sp_reg n) && (shift = 0 && imm12 = 0) then
@@ -125,7 +125,7 @@
         sprintf "%s %s, %s, %s, %s" (pp_bfm inzero extend) (pp_regzr sf d) (pp_regzr sf n) (pp_imm _R) (pp_imm _S)
 
 | `AArch64BranchRegister (n,_branch_type) ->
-      if _branch_type = BranchType_RET && n = Xreg GPR30 then
+      if _branch_type = BranchType_RET && n = X (Ireg GPR30) then
         "RET"
       else
         sprintf "%s %s" (pp_branchregister _branch_type) (pp_regzr Set64 n)
@@ -207,7 +207,7 @@
       | (true,false) ->
           sprintf "%s %s, %s, [%s, %s]!" inst (pp_regzr sf t) (pp_regzr sf t2) (pp_regsp Set64 n) (pp_big_imm offset)
       | (false,false) ->
-          if offset = bit64_of_int 0 then
+          if eq_bit64 offset (bit64_of_int 0) then
             sprintf "%s %s, %s, [%s]" inst (pp_regzr sf t) (pp_regzr sf t2) (pp_regsp Set64 n)
           else
             sprintf "%s %s, %s, [%s, %s]" inst (pp_regzr sf t) (pp_regzr sf t2) (pp_regsp Set64 n) (pp_big_imm offset)
@@ -220,18 +220,20 @@
         (* the ast does not hold enough information to distinguish PRFM and PRFUM in some cases.
            PRFM: <pimm> is a multiple of 8 in the range 0 to 32760
            PRFUM: <simm> is in the range -256 to 255 *)
-        if offset = bit64_of_int 0 then
-          sprintf "PRFM %s, [%s]" (pp_prfop (reg_to_int t)) (pp_regsp Set64 n)
+        if eq_bit64 offset (bit64_of_int 0) then
+          sprintf "PRFM %s, [%s]" (pp_prfop (inst_reg_to_int t)) (pp_regsp Set64 n)
         else if big_in_range offset (-256) 255 then
-          sprintf "PRFUM %s, [%s, %s]" (pp_prfop (reg_to_int t)) (pp_regsp Set64 n) (pp_big_imm offset)
+          sprintf "PRFUM %s, [%s, %s]" (pp_prfop (inst_reg_to_int t)) (pp_regsp Set64 n) (pp_big_imm offset)
         else
-          sprintf "PRFM %s, [%s, %s]"  (pp_prfop (reg_to_int t)) (pp_regsp Set64 n) (pp_big_imm offset)
+          sprintf "PRFM %s, [%s, %s]"  (pp_prfop (inst_reg_to_int t)) (pp_regsp Set64 n) (pp_big_imm offset)
       end
       else
       let inst =
         (if memop = MemOp_LOAD then "LD" else "ST") ^
         (if not wback && not postindex &&
-              Big_int.mod_big_int offset (Big_int.big_int_of_int (if sf = Set32 then 4 else 8)) <> Big_int.zero_big_int then
+            not (Big_int.eq_big_int
+                  (Big_int.mod_big_int offset (Big_int.big_int_of_int (if sf = Set32 then 4 else 8)))
+                  (Big_int.zero_big_int)) then
         begin
           if acctype=AccType_UNPRIV then "TR"
           else "UR"
@@ -249,7 +251,7 @@
       | (true,false) ->
           sprintf "%s %s, [%s, %s]!" inst (pp_regzr sf t) (pp_regsp Set64 n) (pp_big_imm offset)
       | (false,false) ->
-          if offset = bit64_of_int 0 then
+          if eq_bit64 offset (bit64_of_int 0) then
             sprintf "%s %s, [%s]" inst (pp_regzr sf t) (pp_regsp Set64 n)
           else
             sprintf "%s %s, [%s, %s]" inst (pp_regzr sf t) (pp_regsp Set64 n) (pp_big_imm offset)
@@ -257,7 +259,7 @@
 
 | `AArch64LoadLiteral (t,memop,signed,sf,df,size,offset) ->
       if memop = MemOp_PREFETCH then
-        sprintf "PRFM %s, %s" (pp_prfop (reg_to_int t)) (pp_label false offset)
+        sprintf "PRFM %s, %s" (pp_prfop (inst_reg_to_int t)) (pp_label false offset)
       else
         sprintf "%s %s, %s" (if signed then "LDRSW" else "LDR") (pp_regzr sf t) (pp_label false offset)
 
@@ -266,11 +268,11 @@
       if memop = MemOp_PREFETCH then
       begin
         if extend_type = ExtendType_UXTX && shift = 0 then
-          sprintf "PRFM %s, [%s, %s]" (pp_prfop (reg_to_int t)) (pp_regsp Set64 n) (pp_regzrbyext extend_type m)
+          sprintf "PRFM %s, [%s, %s]" (pp_prfop (inst_reg_to_int t)) (pp_regsp Set64 n) (pp_regzrbyext extend_type m)
         else if extend_type = ExtendType_UXTX (* && shift <> 0 *) then
-          sprintf "PRFM %s, [%s, %s, LSL %s]" (pp_prfop (reg_to_int t)) (pp_regsp Set64 n) (pp_regzrbyext extend_type m) (pp_imm shift)
+          sprintf "PRFM %s, [%s, %s, LSL %s]" (pp_prfop (inst_reg_to_int t)) (pp_regsp Set64 n) (pp_regzrbyext extend_type m) (pp_imm shift)
         else
-          sprintf "PRFM %s, [%s, %s, %s]" (pp_prfop (reg_to_int t)) (pp_regsp Set64 n) (pp_regzrbyext extend_type m) (pp_regext extend_type)
+          sprintf "PRFM %s, [%s, %s, %s]" (pp_prfop (inst_reg_to_int t)) (pp_regsp Set64 n) (pp_regzrbyext extend_type m) (pp_regext extend_type)
       end
       else
       let inst =

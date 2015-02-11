@@ -73,4 +73,4 @@ type token_EXTEND = {txt : string; _type : extendType; inst : token_EXTEND_inst 
 
 type token_COND = int
 type token_BARROP = {domain : mBReqDomain; types : mBReqTypes}
-type token_PRFOP = reg (* this is an int that is encoded in a reg field *)
+type token_PRFOP = inst_reg (* this is an int that is encoded in a reg field *)

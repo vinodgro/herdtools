@@ -2,6 +2,7 @@ type reg_size = Set64 | Set32
 
 type reg_size_int = Big_int.big_int
 let reg_size_int_of_int = Big_int.big_int_of_int
+let eq_reg_size_int = Big_int.eq_big_int
 
 type data_size = DataSize64 | DataSize32 | DataSize16 | DataSize8
 
@@ -15,6 +16,7 @@ type range0_63 = int
 
 type bit64 = Big_int.big_int
 let bit64_of_int = Big_int.big_int_of_int
+let eq_bit64 = Big_int.eq_big_int
 
 type bit4 = int
 

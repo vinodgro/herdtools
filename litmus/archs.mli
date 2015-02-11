@@ -17,6 +17,7 @@ module System : sig
     | `PPC
     | `ARM
     | `MIPS
+    | `AArch64
     ]
 
   val tags : string list
@@ -37,4 +38,5 @@ val ppc : t
 val x86 : t
 val c : t
 val mips : t
+val aarch64 : t
 
