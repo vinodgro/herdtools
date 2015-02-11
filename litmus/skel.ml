@@ -115,7 +115,6 @@ end = struct
   let have_timebase = function
   | `AArch64 -> false (* FIXME: ??? *)
   | `ARM|`MIPS -> false
-  | `PPCGen
   | `PPC|`X86 -> true
   | _ -> false
 

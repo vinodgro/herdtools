@@ -40,7 +40,7 @@ module Insert (O:InsertConfig) :
 
     let dir = match O.sysarch with
     | `X86 -> "_x86"
-    | `PPC|`PPCGen -> "_ppc"
+    | `PPC -> "_ppc"
     | `ARM -> "_arm"
     | `MIPS -> "_mips"
     | `AArch64 -> "_aarch64"
@@ -129,7 +129,7 @@ module Make(O:Config)(Tar:Tar.S) =
       let fnames = match O.arch with
         | `C ->
             cpy' fnames "showC" "show" ".awk"
-        | `X86 | `ARM | `PPC | `PPCGen |`MIPS | `AArch64 ->
+        | `X86 | `ARM | `PPC | `MIPS | `AArch64 ->
             cpy fnames "show" ".awk"
       in
       let fnames = cpy fnames "litmus_rand" ".c" in
