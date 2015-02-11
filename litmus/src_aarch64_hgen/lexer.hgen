@@ -268,23 +268,23 @@
   "ST"    , BARROP {domain=MBReqDomain_FullSystem;     types=MBReqTypes_Writes} ;
   "SY"    , BARROP {domain=MBReqDomain_FullSystem;     types=MBReqTypes_All} ;
 
-  "PLDL1KEEP" , PRFOP (Xreg GPR0) ;
-  "PLDL1STRM" , PRFOP (Xreg GPR1) ;
-  "PLDL2KEEP" , PRFOP (Xreg GPR2) ;
-  "PLDL2STRM" , PRFOP (Xreg GPR3) ;
-  "PLDL3KEEP" , PRFOP (Xreg GPR4) ;
-  "PLDL3STRM" , PRFOP (Xreg GPR5) ;
+  "PLDL1KEEP" , PRFOP (X (Ireg GPR0)) ;
+  "PLDL1STRM" , PRFOP (X (Ireg GPR1)) ;
+  "PLDL2KEEP" , PRFOP (X (Ireg GPR2)) ;
+  "PLDL2STRM" , PRFOP (X (Ireg GPR3)) ;
+  "PLDL3KEEP" , PRFOP (X (Ireg GPR4)) ;
+  "PLDL3STRM" , PRFOP (X (Ireg GPR5)) ;
 
-  "PLIL1KEEP" , PRFOP (Xreg GPR8) ;
-  "PLIL1STRM" , PRFOP (Xreg GPR9) ;
-  "PLIL2KEEP" , PRFOP (Xreg GPR10) ;
-  "PLIL2STRM" , PRFOP (Xreg GPR11) ;
-  "PLIL3KEEP" , PRFOP (Xreg GPR12) ;
-  "PLIL3STRM" , PRFOP (Xreg GPR13) ;
+  "PLIL1KEEP" , PRFOP (X (Ireg GPR8)) ;
+  "PLIL1STRM" , PRFOP (X (Ireg GPR9)) ;
+  "PLIL2KEEP" , PRFOP (X (Ireg GPR10)) ;
+  "PLIL2STRM" , PRFOP (X (Ireg GPR11)) ;
+  "PLIL3KEEP" , PRFOP (X (Ireg GPR12)) ;
+  "PLIL3STRM" , PRFOP (X (Ireg GPR13)) ;
 
-  "PSTL1KEEP" , PRFOP (Xreg GPR16) ;
-  "PSTL1STRM" , PRFOP (Xreg GPR17) ;
-  "PSTL2KEEP" , PRFOP (Xreg GPR18) ;
-  "PSTL2STRM" , PRFOP (Xreg GPR19) ;
-  "PSTL3KEEP" , PRFOP (Xreg GPR20) ;
-  "PSTL3STRM" , PRFOP (Xreg GPR21) ;
+  "PSTL1KEEP" , PRFOP (X (Ireg GPR16)) ;
+  "PSTL1STRM" , PRFOP (X (Ireg GPR17)) ;
+  "PSTL2KEEP" , PRFOP (X (Ireg GPR18)) ;
+  "PSTL2STRM" , PRFOP (X (Ireg GPR19)) ;
+  "PSTL3KEEP" , PRFOP (X (Ireg GPR20)) ;
+  "PSTL3STRM" , PRFOP (X (Ireg GPR21)) ;

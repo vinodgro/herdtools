@@ -242,11 +242,11 @@
       else `AArch64Shift($2,$4,$6,Set64,$1.shift_type) }
 
   /* B.cond */
-
+/*
   | BCOND NAME
     { (* FIXME: calculate the label offset from PC *)
       `AArch64BranchConditional(Big_int.zero_big_int,$1.condition) }
-
+*/
   /* B/BL */
 /*
   | B NAME
@@ -379,18 +379,18 @@
     { (* ambiguous with (shifted register) *)
       if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Wn|WSP>, <Wm>{, <extend> {#<amount>}}" $1.txt
       else if not (issp $2) then error_arg "<Rn> must be WSP"
-      else `AArch64AddSubExtendRegister (WZR,$2,$4,Set32,$1.sub_op,true,ExtendType_UXTW,0) }
+      else `AArch64AddSubExtendRegister (W ZR,$2,$4,Set32,$1.sub_op,true,ExtendType_UXTW,0) }
   | CM wreg COMMA wreg COMMA EXTEND
     { if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Wn|WSP>, <Wm>{, <extend> {#<amount>}}" $1.txt
-      else `AArch64AddSubExtendRegister (WZR,$2,$4,Set32,$1.sub_op,true,$6._type,0) }
+      else `AArch64AddSubExtendRegister (W ZR,$2,$4,Set32,$1.sub_op,true,$6._type,0) }
   | CM wreg COMMA wreg COMMA SHIFT
     { if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Wn|WSP>, <Wm>{, <extend> {#<amount>}}" $1.txt
       else if not ($6.shift_type = ShiftType_LSL) then error_arg "<extend> must be one of UXTB,UXTH,UXTW,UXTX,SXTB,SXTH,SXTW,SXTX,LSL"
-      else `AArch64AddSubExtendRegister (WZR,$2,$4,Set32,$1.sub_op,true,ExtendType_UXTW,0) }
+      else `AArch64AddSubExtendRegister (W ZR,$2,$4,Set32,$1.sub_op,true,ExtendType_UXTW,0) }
   | CM wreg COMMA wreg COMMA EXTEND imm
     { if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Wn|WSP>, <Wm>{, <extend> {#<amount>}}" $1.txt
       else if not (0 <= $7 && $7 <= 4) then error_arg "<amount> must be in the range 0 to 4"
-      else `AArch64AddSubExtendRegister (WZR,$2,$4,Set32,$1.sub_op,true,$6._type,$7) }
+      else `AArch64AddSubExtendRegister (W ZR,$2,$4,Set32,$1.sub_op,true,$6._type,$7) }
   | CM wreg COMMA wreg COMMA SHIFT imm
     { if issp $2 then
       begin
@@ -398,7 +398,7 @@
         if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Wn|WSP>, <Wm>{, <extend> {#<amount>}}" $1.txt
         else if not ($6.shift_type = ShiftType_LSL) then error_arg "<extend> must be one of UXTB,UXTH,UXTW,UXTX,SXTB,SXTH,SXTW,SXTX,LSL"
         else if not (0 <= $7 && $7 <= 4) then error_arg "<amount> must be in the range 0 to 4"
-        else `AArch64AddSubExtendRegister (WZR,$2,$4,Set32,$1.sub_op,true,ExtendType_UXTW,$7)
+        else `AArch64AddSubExtendRegister (W ZR,$2,$4,Set32,$1.sub_op,true,ExtendType_UXTW,$7)
       end
       else
       begin
@@ -406,53 +406,53 @@
         if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Wn>, <Wm>{, <shift> #<amount>}" $1.txt
         else if $6.shift_type = ShiftType_ROR then error_arg "<shift> must be one of LSL,LSR,ASR"
         else if not (0 <= $7 && $7 <= 31) then error_arg "<amount> must be in the range 0 to 31"
-        else `AArch64AddSubShiftedRegister (WZR,$2,$4,Set32,$1.sub_op,true,$6.shift_type,$7)
+        else `AArch64AddSubShiftedRegister (W ZR,$2,$4,Set32,$1.sub_op,true,$6.shift_type,$7)
       end }
 
   | CM xreg COMMA xreg
     { (* ambiguous with (shifted register) *)
       if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Xn|SP>, <R><m>{, <extend> {#<amount>}}" $1.txt
       else if not (issp $2) then error_arg "<Rn> must be SP"
-      else `AArch64AddSubExtendRegister (XZR,$2,$4,Set64,$1.sub_op,true,ExtendType_UXTX,0) }
+      else `AArch64AddSubExtendRegister (X ZR,$2,$4,Set64,$1.sub_op,true,ExtendType_UXTX,0) }
   | CM xreg COMMA wreg COMMA EXTEND
     { if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Xn|SP>, <R><m>{, <extend> {#<amount>}}" $1.txt
       else if $6._type = ExtendType_UXTX || $6._type = ExtendType_SXTX then error_arg "<R> doesn't match <extend>"
-      else `AArch64AddSubExtendRegister (XZR,$2,$4,Set64,$1.sub_op,true,$6._type,0) }
+      else `AArch64AddSubExtendRegister (X ZR,$2,$4,Set64,$1.sub_op,true,$6._type,0) }
   | CM xreg COMMA wreg COMMA SHIFT
     { if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Xn|SP>, <R><m>{, <extend> {#<amount>}}" $1.txt
       else if not ($6.shift_type = ShiftType_LSL) then error_arg "<extend> must be one of UXTB,UXTH,UXTW,UXTX,SXTB,SXTH,SXTW,SXTX,LSL"
-      else `AArch64AddSubExtendRegister (XZR,$2,$4,Set64,$1.sub_op,true,ExtendType_UXTX,0) }
+      else `AArch64AddSubExtendRegister (X ZR,$2,$4,Set64,$1.sub_op,true,ExtendType_UXTX,0) }
   | CM xreg COMMA wreg COMMA EXTEND imm
     { if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Xn|SP>, <R><m>{, <extend> {#<amount>}}" $1.txt
       else if not (0 <= $7 && $7 <= 4) then error_arg "<amount> must be in the range 0 to 4."
       else if $6._type = ExtendType_UXTX || $6._type = ExtendType_SXTX then error_arg "<R> doesn't match <extend>"
-      else `AArch64AddSubExtendRegister (XZR,$2,$4,Set64,$1.sub_op,true,$6._type,$7) }
+      else `AArch64AddSubExtendRegister (X ZR,$2,$4,Set64,$1.sub_op,true,$6._type,$7) }
   | CM xreg COMMA wreg COMMA SHIFT imm
     { if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Xn|SP>, <R><m>{, <extend> {#<amount>}}" $1.txt
       else if not ($6.shift_type = ShiftType_LSL) then error_arg "<extend> must be one of UXTB,UXTH,UXTW,UXTX,SXTB,SXTH,SXTW,SXTX,LSL"
       else if not (0 <= $7 && $7 <= 4) then error_arg "<amount> must be in the range 0 to 4."
-      else `AArch64AddSubExtendRegister (XZR,$2,$4,Set64,$1.sub_op,true,ExtendType_UXTX,$7) }
+      else `AArch64AddSubExtendRegister (X ZR,$2,$4,Set64,$1.sub_op,true,ExtendType_UXTX,$7) }
   | CM xreg COMMA xreg COMMA EXTEND
     { if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Xn|SP>, <R><m>{, <extend> {#<amount>}}" $1.txt
       else if not ($6._type = ExtendType_UXTX || $6._type = ExtendType_SXTX) then error_arg "<R> doesn't match <extend>"
-      else `AArch64AddSubExtendRegister (XZR,$2,$4,Set64,$1.sub_op,true,$6._type,0) }
+      else `AArch64AddSubExtendRegister (X ZR,$2,$4,Set64,$1.sub_op,true,$6._type,0) }
   | CM xreg COMMA xreg COMMA SHIFT
     { if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Xn|SP>, <R><m>{, <extend> {#<amount>}}" $1.txt
       else if not ($6.shift_type = ShiftType_LSL) then error_arg "<extend> must be one of UXTB,UXTH,UXTW,UXTX,SXTB,SXTH,SXTW,SXTX,LSL"
-      else `AArch64AddSubExtendRegister (XZR,$2,$4,Set64,$1.sub_op,true,ExtendType_UXTX,0) }
+      else `AArch64AddSubExtendRegister (X ZR,$2,$4,Set64,$1.sub_op,true,ExtendType_UXTX,0) }
   | CM xreg COMMA xreg COMMA EXTEND imm
     { if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Xn|SP>, <R><m>{, <extend> {#<amount>}}" $1.txt
       else if not (0 <= $7 && $7 <= 4) then error_arg "<amount> must be in the range 0 to 4."
       else if not ($6._type = ExtendType_UXTX || $6._type = ExtendType_SXTX) then error_arg "<R> doesn't match <extend>"
-      else `AArch64AddSubExtendRegister (XZR,$2,$4,Set64,$1.sub_op,true,$6._type,$7) }
+      else `AArch64AddSubExtendRegister (X ZR,$2,$4,Set64,$1.sub_op,true,$6._type,$7) }
   | CM xreg COMMA xreg COMMA SHIFT imm
     { if issp $2 then
       begin
         (* (extended register) *)
-        if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Xn|SP>, <XZR>" $1.txt
+        if not (isregsp $2 && isregzr $4) then error_registers "expected %s <Xn|SP>, <X ZR>" $1.txt
         else if not ($6.shift_type = ShiftType_LSL) then error_arg "<extend> must be one of UXTB,UXTH,UXTW,UXTX,SXTB,SXTH,SXTW,SXTX,LSL"
         else if not (0 <= $7 && $7 <= 4) then error_arg "<amount> must be in the range 0 to 4."
-        else `AArch64AddSubExtendRegister (XZR,$2,$4,Set64,$1.sub_op,true,ExtendType_UXTX,$7)
+        else `AArch64AddSubExtendRegister (X ZR,$2,$4,Set64,$1.sub_op,true,ExtendType_UXTX,$7)
       end
       else
       begin
@@ -460,7 +460,7 @@
         if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Xn>, <Xm>{, <shift> #<amount>}" $1.txt
         else if $6.shift_type = ShiftType_ROR then error_arg "<shift> must be one of LSL,LSR,ASR"
         else if not (0 <= $7 && $7 <= 63) then error_arg "<amount> must be in the range 0 to 63"
-        else `AArch64AddSubShiftedRegister (XZR,$2,$4,Set64,$1.sub_op,true,$6.shift_type,$7)
+        else `AArch64AddSubShiftedRegister (X ZR,$2,$4,Set64,$1.sub_op,true,$6.shift_type,$7)
       end }
 
   /* CMN/CMP (immediate) alias of ADDS/SUBS (immediate) */
@@ -468,21 +468,21 @@
   | CM wreg COMMA imm
     { if not (isregsp $2) then error_registers "expected %s <Wn|WSP>, #<imm>{, <shift>}" $1.txt
       else if not (0 <= $4 && $4 <= 4095) then error_arg "<imm> must be in the range 0 to 4095"
-      else `AArch64AddSubImmediate (WZR,$2,Set32,$1.sub_op,true,reg_size_int_of_int $4) }
+      else `AArch64AddSubImmediate (W ZR,$2,Set32,$1.sub_op,true,reg_size_int_of_int $4) }
   | CM wreg COMMA imm COMMA SHIFT imm
     { if not (isregsp $2) then error_registers "expected %s <Wn|WSP>, #<imm>{, <shift>}" $1.txt
       else if not (0 <= $4 && $4 <= 4095) then error_arg "<imm> must be in the range 0 to 4095"
       else if not ($6.shift_type = ShiftType_LSL && ($7 = 0 || $7 = 12)) then error_arg "<shift> must be 'LSL #0' or 'LSL #12'"
-      else `AArch64AddSubImmediate (WZR,$2,Set32,$1.sub_op,true,reg_size_int_of_int ($4 lsl $7)) }
+      else `AArch64AddSubImmediate (W ZR,$2,Set32,$1.sub_op,true,reg_size_int_of_int ($4 lsl $7)) }
   | CM xreg COMMA imm
     { if not (isregsp $2) then error_registers "expected %s <Xn|SP>, #<imm>{, <shift>}" $1.txt
       else if not (0 <= $4 && $4 <= 4095) then error_arg "<imm> must be in the range 0 to 4095"
-      else `AArch64AddSubImmediate (XZR,$2,Set64,$1.sub_op,true,reg_size_int_of_int $4) }
+      else `AArch64AddSubImmediate (X ZR,$2,Set64,$1.sub_op,true,reg_size_int_of_int $4) }
   | CM xreg COMMA imm COMMA SHIFT imm
     { if not (isregsp $2) then error_registers "expected %s <Xn|SP>, #<imm>{, <shift>}" $1.txt
       else if not (0 <= $4 && $4 <= 4095) then error_arg "<imm> must be in the range 0 to 4095"
       else if not ($6.shift_type = ShiftType_LSL && ($7 = 0 || $7 = 12)) then error_arg "<shift> must be 'LSL #0' or 'LSL #12'"
-      else `AArch64AddSubImmediate (XZR,$2,Set64,$1.sub_op,true,reg_size_int_of_int ($4 lsl $7)) }
+      else `AArch64AddSubImmediate (X ZR,$2,Set64,$1.sub_op,true,reg_size_int_of_int ($4 lsl $7)) }
 
   /* CRC32B/CRC32H/CRC32W */
   /* CRC32CB/CRC32CH/CRC32CW */
@@ -511,11 +511,11 @@
   | CSET wreg COMMA COND
     { if not (isregzr $2) then error_registers "expected %s <Wd>, <cond>" $1.txt
       else if ($4 = 0b1110 || $4 = 0b1111) then error_arg "<cond> must not be AL or NV"
-      else `AArch64ConditionalSelect($2,WZR,WZR,Set32,$4,$1.else_inv,$1.else_inc) }
+      else `AArch64ConditionalSelect($2,W ZR,W ZR,Set32,$4,$1.else_inv,$1.else_inc) }
   | CSET xreg COMMA COND
     { if not (isregzr $2) then error_registers "expected %s <Xd>, <cond>" $1.txt
       else if ($4 = 0b1110 || $4 = 0b1111) then error_arg "<cond> must not be AL or NV"
-      else `AArch64ConditionalSelect($2,XZR,XZR,Set64,$4,$1.else_inv,$1.else_inc) }
+      else `AArch64ConditionalSelect($2,X ZR,X ZR,Set64,$4,$1.else_inv,$1.else_inc) }
 
   /* DMB/DSB */
 
@@ -599,51 +599,51 @@
 
   | LDAXR wreg COMMA LBRK xreg RBRK
     { if not (isregzr $2 && isregsp $5) then error_registers "expected %s <Wt>, [<Xn|SP>{,#0}]" $1.txt
-      else `AArch64LoadStoreAcqExc($5,$2,WZR (* ARM: 0b11111 *),WZR (* ARM: 0b11111 *),$1.acctype,$1.excl,false,$1.memop,$1.var32.elsize,Set32,$1.var32.df,$1.var32.datasize) }
+      else `AArch64LoadStoreAcqExc($5,$2,W ZR (* ARM: 0b11111 *),W ZR (* ARM: 0b11111 *),$1.acctype,$1.excl,false,$1.memop,$1.var32.elsize,Set32,$1.var32.df,$1.var32.datasize) }
   | LDAXR wreg COMMA LBRK xreg COMMA imm RBRK
     { if not (isregzr $2 && isregsp $5 && $7 = 0) then error_registers "expected %s <Wt>, [<Xn|SP>{,#0}]" $1.txt
-      else `AArch64LoadStoreAcqExc($5,$2,WZR (* ARM: 0b11111 *),WZR (* ARM: 0b11111 *),$1.acctype,$1.excl,false,$1.memop,$1.var32.elsize,Set32,$1.var32.df,$1.var32.datasize) }
+      else `AArch64LoadStoreAcqExc($5,$2,W ZR (* ARM: 0b11111 *),W ZR (* ARM: 0b11111 *),$1.acctype,$1.excl,false,$1.memop,$1.var32.elsize,Set32,$1.var32.df,$1.var32.datasize) }
   | LDAXR xreg COMMA LBRK xreg RBRK
     { if not $1.var64 then error_arg "unrecognised instruction"
       else if not (isregzr $2 && isregsp $5) then error_registers "expected %s <Xt>, [<Xn|SP>{,#0}]" $1.txt
-      else `AArch64LoadStoreAcqExc($5,$2,XZR (* ARM: 0b11111 *),XZR (* ARM: 0b11111 *),$1.acctype,$1.excl,false,$1.memop,64,Set64,DataSize64,64) }
+      else `AArch64LoadStoreAcqExc($5,$2,X ZR (* ARM: 0b11111 *),X ZR (* ARM: 0b11111 *),$1.acctype,$1.excl,false,$1.memop,64,Set64,DataSize64,64) }
   | LDAXR xreg COMMA LBRK xreg COMMA imm RBRK
     { if not $1.var64 then error_arg "unrecognised instruction"
       else if not (isregzr $2 && isregsp $5 && $7 = 0) then error_registers "expected %s <Xt>, [<Xn|SP>{,#0}]" $1.txt
-      else `AArch64LoadStoreAcqExc($5,$2,XZR (* ARM: 0b11111 *),XZR (* ARM: 0b11111 *),$1.acctype,$1.excl,false,$1.memop,64,Set64,DataSize64,64) }
+      else `AArch64LoadStoreAcqExc($5,$2,X ZR (* ARM: 0b11111 *),X ZR (* ARM: 0b11111 *),$1.acctype,$1.excl,false,$1.memop,64,Set64,DataSize64,64) }
 
   /* STXR/STXRB/STXRH */
   /* STLXR/STLXRB/STLXRH */
 
   | STLXR wreg COMMA wreg COMMA LBRK xreg RBRK
     { if not (isregzr $2 && isregzr $4 && isregsp $7) then error_registers "expected %s <Ws>, <Wt>, [<Xn|SP>{,#0}]" $1.txt
-      else `AArch64LoadStoreAcqExc($7,$4,WZR (* ARM: 0b11111 *),$2,$1.acctype,true,false,MemOp_STORE,$1.var32.elsize,Set32,$1.var32.df,$1.var32.datasize) }
+      else `AArch64LoadStoreAcqExc($7,$4,W ZR (* ARM: 0b11111 *),$2,$1.acctype,true,false,MemOp_STORE,$1.var32.elsize,Set32,$1.var32.df,$1.var32.datasize) }
   | STLXR wreg COMMA wreg COMMA LBRK xreg COMMA imm RBRK
     { if not (isregzr $2 && isregzr $4 && isregsp $7 && $9 = 0) then error_registers "expected %s <Ws>, <Wt>, [<Xn|SP>{,#0}]" $1.txt
-      else `AArch64LoadStoreAcqExc($7,$4,WZR (* ARM: 0b11111 *),$2,$1.acctype,true,false,MemOp_STORE,$1.var32.elsize,Set32,$1.var32.df,$1.var32.datasize) }
+      else `AArch64LoadStoreAcqExc($7,$4,W ZR (* ARM: 0b11111 *),$2,$1.acctype,true,false,MemOp_STORE,$1.var32.elsize,Set32,$1.var32.df,$1.var32.datasize) }
   | STLXR wreg COMMA xreg COMMA LBRK xreg RBRK
     { if not $1.var64 then error_arg "unrecognised instruction"
       else if not (isregzr $2 && isregzr $4 && isregsp $7) then error_registers "expected %s <Ws>, <Xt>, [<Xn|SP>{,#0}]" $1.txt
-      else `AArch64LoadStoreAcqExc($7,$4,XZR (* ARM: 0b11111 *),$2,$1.acctype,true,false,MemOp_STORE,64,Set64,DataSize64,64) }
+      else `AArch64LoadStoreAcqExc($7,$4,X ZR (* ARM: 0b11111 *),$2,$1.acctype,true,false,MemOp_STORE,64,Set64,DataSize64,64) }
   | STLXR wreg COMMA xreg COMMA LBRK xreg COMMA imm RBRK
     { if not $1.var64 then error_arg "unrecognised instruction"
       else if not (isregzr $2 && isregzr $4 && isregsp $7 && $9 = 0) then error_registers "expected %s <Ws>, <Xt>, [<Xn|SP>{,#0}]" $1.txt
-      else `AArch64LoadStoreAcqExc($7,$4,XZR (* ARM: 0b11111 *),$2,$1.acctype,true,false,MemOp_STORE,64,Set64,DataSize64,64) }
+      else `AArch64LoadStoreAcqExc($7,$4,X ZR (* ARM: 0b11111 *),$2,$1.acctype,true,false,MemOp_STORE,64,Set64,DataSize64,64) }
 
   /* LDAXP/LDXP */
 
   | LDXP wreg COMMA wreg COMMA LBRK xreg RBRK
     { if not (isregzr $2 && isregzr $4 && isregsp $7) then error_registers "expected %s <Wt1>, <Wt2>, [<Xn|SP>{,#0}]" $1.txt
-      else `AArch64LoadStoreAcqExc($7,$2,$4,WZR (* ARM: 0b11111 *),$1.acctype,true,true,MemOp_LOAD,32,Set32,DataSize32,32) }
+      else `AArch64LoadStoreAcqExc($7,$2,$4,W ZR (* ARM: 0b11111 *),$1.acctype,true,true,MemOp_LOAD,32,Set32,DataSize32,32) }
   | LDXP wreg COMMA wreg COMMA LBRK xreg COMMA imm RBRK
     { if not (isregzr $2 && isregzr $4 && isregsp $7 && $9 = 0) then error_registers "expected %s <Wt1>, <Wt2>, [<Xn|SP>{,#0}]" $1.txt
-      else `AArch64LoadStoreAcqExc($7,$2,$4,WZR (* ARM: 0b11111 *),$1.acctype,true,true,MemOp_LOAD,32,Set32,DataSize32,32) }
+      else `AArch64LoadStoreAcqExc($7,$2,$4,W ZR (* ARM: 0b11111 *),$1.acctype,true,true,MemOp_LOAD,32,Set32,DataSize32,32) }
   | LDXP xreg COMMA xreg COMMA LBRK xreg RBRK
     { if not (isregzr $2 && isregzr $4 && isregsp $7) then error_registers "expected %s <Xt1>, <Xt2>, [<Xn|SP>{,#0}]" $1.txt
-      else `AArch64LoadStoreAcqExc($7,$2,$4,XZR (* ARM: 0b11111 *),$1.acctype,true,true,MemOp_LOAD,64,Set64,DataSize64,64) }
+      else `AArch64LoadStoreAcqExc($7,$2,$4,X ZR (* ARM: 0b11111 *),$1.acctype,true,true,MemOp_LOAD,64,Set64,DataSize64,64) }
   | LDXP xreg COMMA xreg COMMA LBRK xreg COMMA imm RBRK
     { if not (isregzr $2 && isregzr $4 && isregsp $7 && $9 = 0) then error_registers "expected %s <Xt1>, <Xt2>, [<Xn|SP>{,#0}]" $1.txt
-      else `AArch64LoadStoreAcqExc($7,$2,$4,XZR (* ARM: 0b11111 *),$1.acctype,true,true,MemOp_LOAD,64,Set64,DataSize64,64) }
+      else `AArch64LoadStoreAcqExc($7,$2,$4,X ZR (* ARM: 0b11111 *),$1.acctype,true,true,MemOp_LOAD,64,Set64,DataSize64,64) }
 
   /* STLXP/STXP */
 
@@ -944,10 +944,10 @@
 
   | MUL wreg COMMA wreg COMMA wreg
     { if not (isregzr $2 && isregzr $4 && isregzr $6) then error_registers "expected %s <Wd>, <Wn>, <Wm>" $1.txt
-      else `AArch64MultiplyAddSub($2,$4,$6,WZR,Set32,$1.sub_op) }
+      else `AArch64MultiplyAddSub($2,$4,$6,W ZR,Set32,$1.sub_op) }
   | MUL xreg COMMA xreg COMMA xreg
     { if not (isregzr $2 && isregzr $4 && isregzr $6) then error_registers "expected %s <Xd>, <Xn>, <Xm>" $1.txt
-      else `AArch64MultiplyAddSub($2,$4,$6,XZR,Set32,$1.sub_op) }
+      else `AArch64MultiplyAddSub($2,$4,$6,X ZR,Set32,$1.sub_op) }
 
   /* MOV (to/from SP) alias of ADD (immediate) */
 
@@ -965,7 +965,7 @@
       begin
         (* bitmask immediate *)
         match encodeBitMasks 32 (Big_int.big_int_of_int $4) with
-        | Some _ -> `AArch64LogicalImmediate($2,WZR,Set32,false,LogicalOp_ORR,reg_size_int_of_int $4)
+        | Some _ -> `AArch64LogicalImmediate($2,W ZR,Set32,false,LogicalOp_ORR,reg_size_int_of_int $4)
         | None -> error_arg "<imm> can not be encoded"
       end
       else if not (iskbituimm 32 $4) then error_arg "<imm> must be a 32-bit unsigned immediate"
@@ -984,14 +984,14 @@
       else
         (* bitmask immediate *)
         match encodeBitMasks 32 (Big_int.big_int_of_int $4) with
-        | Some _ -> `AArch64LogicalImmediate($2,WZR,Set32,false,LogicalOp_ORR,reg_size_int_of_int $4)
+        | Some _ -> `AArch64LogicalImmediate($2,W ZR,Set32,false,LogicalOp_ORR,reg_size_int_of_int $4)
         | None -> error_arg "<imm> can not be encoded" }
   | MOV xreg COMMA big_imm
     { if issp $2 then
       begin
         (* bitmask immediate *)
         match encodeBitMasks 64 $4 with
-        | Some _ -> `AArch64LogicalImmediate($2,XZR,Set64,false,LogicalOp_ORR,$4)
+        | Some _ -> `AArch64LogicalImmediate($2,X ZR,Set64,false,LogicalOp_ORR,$4)
         | None -> error_arg "<imm> can not be encoded"
       end
       else if not (big_iskbituimm 64 $4) then error_arg "<imm> must be a 64-bit unsigned immediate"
@@ -1029,7 +1029,7 @@
         else
           (* bitmask immediate *)
           match encodeBitMasks 64 $4 with
-          | Some _ -> `AArch64LogicalImmediate($2,XZR,Set64,false,LogicalOp_ORR,$4)
+          | Some _ -> `AArch64LogicalImmediate($2,X ZR,Set64,false,LogicalOp_ORR,$4)
           | None -> error_arg "<imm> can not be encoded"
       end}
 
@@ -1037,10 +1037,10 @@
 
   | MOV wreg COMMA wreg
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Wd>, <Wm>" $1.txt
-      else `AArch64LogicalShiftedRegister($2,WZR,$4,Set32,false,LogicalOp_ORR,ShiftType_LSL,0,false) }
+      else `AArch64LogicalShiftedRegister($2,W ZR,$4,Set32,false,LogicalOp_ORR,ShiftType_LSL,0,false) }
   | MOV xreg COMMA xreg
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Xd>, <Xm>" $1.txt
-      else `AArch64LogicalShiftedRegister($2,XZR,$4,Set64,false,LogicalOp_ORR,ShiftType_LSL,0,false) }
+      else `AArch64LogicalShiftedRegister($2,X ZR,$4,Set64,false,LogicalOp_ORR,ShiftType_LSL,0,false) }
 
   /* MOVK/MOVN/MOVZ */
 
@@ -1069,46 +1069,46 @@
 
   | MVN wreg COMMA wreg
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Wd>, <Wm>{, <shift> #<amount>}" $1.txt
-      else `AArch64LogicalShiftedRegister($2,WZR,$4,Set32,false,LogicalOp_ORR,ShiftType_LSL,0,true) }
+      else `AArch64LogicalShiftedRegister($2,W ZR,$4,Set32,false,LogicalOp_ORR,ShiftType_LSL,0,true) }
   | MVN wreg COMMA wreg COMMA SHIFT imm
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Wd>, <Wm>{, <shift> #<amount>}" $1.txt
       else if not (0 <= $7 && $7 <= 31) then error_arg "<amount> must be in the range 0 to 31"
-      else `AArch64LogicalShiftedRegister($2,WZR,$4,Set32,false,LogicalOp_ORR,$6.shift_type,$7,true) }
+      else `AArch64LogicalShiftedRegister($2,W ZR,$4,Set32,false,LogicalOp_ORR,$6.shift_type,$7,true) }
   | MVN xreg COMMA xreg
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Xd>, <Xm>{, <shift> #<amount>}" $1.txt
-      else `AArch64LogicalShiftedRegister($2,XZR,$4,Set64,false,LogicalOp_ORR,ShiftType_LSL,0,true) }
+      else `AArch64LogicalShiftedRegister($2,X ZR,$4,Set64,false,LogicalOp_ORR,ShiftType_LSL,0,true) }
   | MVN xreg COMMA xreg COMMA SHIFT imm
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Xd>, <Xm>{, <shift> #<amount>}" $1.txt
       else if not (0 <= $7 && $7 <= 63) then error_arg "<amount> must be in the range 0 to 63"
-      else `AArch64LogicalShiftedRegister($2,XZR,$4,Set64,false,LogicalOp_ORR,$6.shift_type,$7,true) }
+      else `AArch64LogicalShiftedRegister($2,X ZR,$4,Set64,false,LogicalOp_ORR,$6.shift_type,$7,true) }
 
   /* NEG/NEGS (shifted register) alias of SUB/SUBS (shifted register) */
 
   | NEG wreg COMMA wreg
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Wd>, <Wm>{, <shift> #<amount>}" $1.txt
-      else `AArch64AddSubShiftedRegister($2,WZR,$4,Set32,true,$1.setflags,ShiftType_LSL,0) }
+      else `AArch64AddSubShiftedRegister($2,W ZR,$4,Set32,true,$1.setflags,ShiftType_LSL,0) }
   | NEG wreg COMMA wreg COMMA SHIFT imm
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Wd>, <Wm>{, <shift> #<amount>}" $1.txt
       else if $6.shift_type = ShiftType_ROR then error_arg "<shift> must be one of LSL,LSR,ASR"
       else if not (0 <= $7 && $7 <= 31) then error_arg "<amount> must be in the range 0 to 31"
-      else `AArch64AddSubShiftedRegister($2,WZR,$4,Set32,true,$1.setflags,$6.shift_type,0) }
+      else `AArch64AddSubShiftedRegister($2,W ZR,$4,Set32,true,$1.setflags,$6.shift_type,0) }
   | NEG xreg COMMA xreg
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Xd>, <Xm>{, <shift> #<amount>}" $1.txt
-      else `AArch64AddSubShiftedRegister($2,XZR,$4,Set64,true,$1.setflags,ShiftType_LSL,0) }
+      else `AArch64AddSubShiftedRegister($2,X ZR,$4,Set64,true,$1.setflags,ShiftType_LSL,0) }
   | NEG xreg COMMA xreg COMMA SHIFT imm
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Xd>, <Xm>{, <shift> #<amount>}" $1.txt
       else if $6.shift_type = ShiftType_ROR then error_arg "<shift> must be one of LSL,LSR,ASR"
       else if not (0 <= $7 && $7 <= 63) then error_arg "<amount> must be in the range 0 to 63"
-      else `AArch64AddSubShiftedRegister($2,XZR,$4,Set64,true,$1.setflags,$6.shift_type,$7) }
+      else `AArch64AddSubShiftedRegister($2,X ZR,$4,Set64,true,$1.setflags,$6.shift_type,$7) }
 
   /* NGC/NGCS alias of SBC/SBCS */
 
   | NGC wreg COMMA wreg
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Wd>, <Wm>" $1.txt
-      else `AArch64AddSubCarry ($2,WZR,$4,Set32,true,$1.setflags) }
+      else `AArch64AddSubCarry ($2,W ZR,$4,Set32,true,$1.setflags) }
   | NGC xreg COMMA xreg
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Xd>, <Xm>" $1.txt
-      else `AArch64AddSubCarry ($2,XZR,$4,Set64,true,$1.setflags) }
+      else `AArch64AddSubCarry ($2,X ZR,$4,Set64,true,$1.setflags) }
 
   /* NOP alias of HINT */
 
@@ -1128,13 +1128,13 @@
   | PRFM imm COMMA LBRK xreg RBRK
     { if not (isregsp $5) then error_registers "expected %s <prfop>, [<Xn|SP>{, #<pimm>}]" $1.txt
       else if not ($2 = 6 || $2 = 7 || $2 = 14 || $2 = 15 || (22 <= $2 && $2 <= 31)) then error_arg "<prfop> must be one of 6,7,14,15,22-31"
-      else `AArch64LoadImediate($5,xreg_of_int $2,AccType_NORMAL,MemOp_PREFETCH,false,false,false,bit64_of_int 0,Set64,DataSize64,64) }
+      else `AArch64LoadImediate($5,X (Ireg (ireg_of_int $2)),AccType_NORMAL,MemOp_PREFETCH,false,false,false,bit64_of_int 0,Set64,DataSize64,64) }
   | PRFM imm COMMA LBRK xreg COMMA imm RBRK
     { if not (isregsp $5) then error_registers "expected %s <prfop>, [<Xn|SP>{, #<pimm>}]" $1.txt
       else if not ($2 = 6 || $2 = 7 || $2 = 14 || $2 = 15 || (22 <= $2 && $2 <= 31)) then error_arg "<prfop> must be one of 6,7,14,15,22-31"
       else if not (0 <= $7 && $7 <= 32760) then error_arg "<pimm> must be in the range 0 to 32760"
       else if not ($7 mod 8 = 0) then error_arg "<pimm> must be a multiple of 8"
-      else `AArch64LoadImediate($5,xreg_of_int $2,AccType_NORMAL,MemOp_PREFETCH,false,false,false,bit64_of_int $7,Set64,DataSize64,64) }
+      else `AArch64LoadImediate($5,X (Ireg (ireg_of_int $2)),AccType_NORMAL,MemOp_PREFETCH,false,false,false,bit64_of_int $7,Set64,DataSize64,64) }
 
   /* PRFM (literal) */
 
@@ -1144,7 +1144,7 @@
   | PRFM imm COMMA NAME
     { if not ($2 = 6 || $2 = 7 || $2 = 14 || $2 = 15 || (22 <= $2 && $2 <= 31)) then error_arg "<prfop> must be one of 6,7,14,15,22-31"
       (* FIXME: label *)
-      else `AArch64LoadLiteral(xreg_of_int $2,MemOp_PREFETCH,false,Set32,DataSize32,0,Big_int.zero_big_int) }
+      else `AArch64LoadLiteral(X (Ireg (ireg_of_int $2)),MemOp_PREFETCH,false,Set32,DataSize32,0,Big_int.zero_big_int) }
 
   /* PRFM (register) */
 
@@ -1173,27 +1173,27 @@
     { if not (isregsp $5 && isregzr $7) then error_registers "expected %s <prfop>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
       else if not ($2 = 6 || $2 = 7 || $2 = 14 || $2 = 15 || (22 <= $2 && $2 <= 31)) then error_arg "<prfop> must be one of 6,7,14,15,22-31"
       else if not ($9._type = ExtendType_UXTW || $9._type = ExtendType_SXTW) then error_arg "<extend> must be one of UXTW,SXTW"
-      else `AArch64LoadRegister($5,xreg_of_int $2,$7,AccType_NORMAL,MemOp_PREFETCH,false,false,false,$9._type,0,Set32,DataSize64,64) }
+      else `AArch64LoadRegister($5,X (Ireg (ireg_of_int $2)),$7,AccType_NORMAL,MemOp_PREFETCH,false,false,false,$9._type,0,Set32,DataSize64,64) }
   | PRFM imm COMMA LBRK xreg COMMA xreg RBRK
     { if not (isregsp $5 && isregzr $7) then error_registers "expected %s <prfop>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
       else if not ($2 = 6 || $2 = 7 || $2 = 14 || $2 = 15 || (22 <= $2 && $2 <= 31)) then error_arg "<prfop> must be one of 6,7,14,15,22-31"
-      else `AArch64LoadRegister($5,xreg_of_int $2,$7,AccType_NORMAL,MemOp_PREFETCH,false,false,false,ExtendType_UXTX,0,Set32,DataSize64,64) }
+      else `AArch64LoadRegister($5,X (Ireg (ireg_of_int $2)),$7,AccType_NORMAL,MemOp_PREFETCH,false,false,false,ExtendType_UXTX,0,Set32,DataSize64,64) }
   | PRFM imm COMMA LBRK xreg COMMA xreg COMMA EXTEND RBRK
     { if not (isregsp $5 && isregzr $7) then error_registers "expected %s <prfop>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
       else if not ($2 = 6 || $2 = 7 || $2 = 14 || $2 = 15 || (22 <= $2 && $2 <= 31)) then error_arg "<prfop> must be one of 6,7,14,15,22-31"
       else if not ($9._type = ExtendType_SXTX) then error_arg "<extend> must be one of LSL,SXTX"
-      else `AArch64LoadRegister($5,xreg_of_int $2,$7,AccType_NORMAL,MemOp_PREFETCH,false,false,false,$9._type,0,Set32,DataSize64,64) }
+      else `AArch64LoadRegister($5,X (Ireg (ireg_of_int $2)),$7,AccType_NORMAL,MemOp_PREFETCH,false,false,false,$9._type,0,Set32,DataSize64,64) }
   | PRFM imm COMMA LBRK xreg COMMA xreg COMMA SHIFT RBRK
     { if not (isregsp $5 && isregzr $7) then error_registers "expected %s <prfop>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
       else if not ($2 = 6 || $2 = 7 || $2 = 14 || $2 = 15 || (22 <= $2 && $2 <= 31)) then error_arg "<prfop> must be one of 6,7,14,15,22-31"
       else if not ($9.shift_type = ShiftType_LSL) then error_arg "<extend> must be one of LSL,SXTX"
-      else `AArch64LoadRegister($5,xreg_of_int $2,$7,AccType_NORMAL,MemOp_PREFETCH,false,false,false,ExtendType_UXTX,0,Set32,DataSize64,64) }
+      else `AArch64LoadRegister($5,X (Ireg (ireg_of_int $2)),$7,AccType_NORMAL,MemOp_PREFETCH,false,false,false,ExtendType_UXTX,0,Set32,DataSize64,64) }
   | PRFM imm COMMA LBRK xreg COMMA xreg COMMA SHIFT imm RBRK
     { if not (isregsp $5 && isregzr $7) then error_registers "expected %s <prfop>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
       else if not ($2 = 6 || $2 = 7 || $2 = 14 || $2 = 15 || (22 <= $2 && $2 <= 31)) then error_arg "<prfop> must be one of 6,7,14,15,22-31"
       else if not ($9.shift_type = ShiftType_LSL) then error_arg "<extend> must be one of LSL,SXTX"
       else if not ($10 = 0 || $10 = 3) then error_arg "<amount> must be one of 0,3"
-      else `AArch64LoadRegister($5,xreg_of_int $2,$7,AccType_NORMAL,MemOp_PREFETCH,false,false,false,ExtendType_UXTX,$10,Set32,DataSize64,64) }
+      else `AArch64LoadRegister($5,X (Ireg (ireg_of_int $2)),$7,AccType_NORMAL,MemOp_PREFETCH,false,false,false,ExtendType_UXTX,$10,Set32,DataSize64,64) }
 
   /* PRFUM */
 
@@ -1207,17 +1207,17 @@
   | PRFUM imm COMMA LBRK xreg RBRK
     { if not (isregsp $5) then error_registers "expected %s <prfop>, [<Xn|SP>{, #<simm>}]" $1.txt
       else if not ($2 = 6 || $2 = 7 || $2 = 14 || $2 = 15 || (22 <= $2 && $2 <= 31)) then error_arg "<prfop> must be one of 6,7,14,15,22-31"
-      else `AArch64LoadImediate($5,xreg_of_int $2,AccType_NORMAL,MemOp_PREFETCH,false,false,false,bit64_of_int 0,Set64,DataSize64,64) }
+      else `AArch64LoadImediate($5,X (Ireg (ireg_of_int $2)),AccType_NORMAL,MemOp_PREFETCH,false,false,false,bit64_of_int 0,Set64,DataSize64,64) }
   | PRFUM imm COMMA LBRK xreg COMMA imm RBRK
     { if not (isregsp $5) then error_registers "expected %s <prfop>, [<Xn|SP>{, #<simm>}]" $1.txt
       else if not ($2 = 6 || $2 = 7 || $2 = 14 || $2 = 15 || (22 <= $2 && $2 <= 31)) then error_arg "<prfop> must be one of 6,7,14,15,22-31"
       else if not (-256 <= $7 && $7 <= 255) then error_arg "<simm> must be in the range -256 to 255"
-      else `AArch64LoadImediate($5,xreg_of_int $2,AccType_NORMAL,MemOp_PREFETCH,false,false,false,bit64_of_int $7,Set64,DataSize64,64) }
+      else `AArch64LoadImediate($5,X (Ireg (ireg_of_int $2)),AccType_NORMAL,MemOp_PREFETCH,false,false,false,bit64_of_int $7,Set64,DataSize64,64) }
 
   /* RET */
 
   | RET
-    { `AArch64BranchRegister(Xreg GPR30,BranchType_RET) }
+    { `AArch64BranchRegister(X (Ireg GPR30),BranchType_RET) }
   | RET xreg
     { if not (isregzr $2) then error_registers "expected %s {<Xn>}" $1.txt
       else `AArch64BranchRegister($2,BranchType_RET) }
@@ -1287,19 +1287,19 @@
 
   | MNEGL xreg COMMA wreg COMMA wreg
     { if not (isregzr $2 && isregzr $4 && isregzr $6) then error_registers "expected %s <Xd>, <Wn>, <Wm>" $1.txt
-      else `AArch64MultiplyAddSubLong($2,$4,$6,XZR,64,32,true,$1.unsigned) }
+      else `AArch64MultiplyAddSubLong($2,$4,$6,X ZR,64,32,true,$1.unsigned) }
 
   /* SMULH/UMULH */
 
   | MULH xreg COMMA xreg COMMA xreg
     { if not (isregzr $2 && isregzr $4 && isregzr $6) then error_registers "expected %s <Xd>, <Xn>, <Xm>" $1.txt
-      else `AArch64MultiplyHigh($2,$4,$6,XZR,Set64,64,64,$1.unsigned) }
+      else `AArch64MultiplyHigh($2,$4,$6,X ZR,Set64,64,64,$1.unsigned) }
 
   /* SMULL/UMULL alias of SMADDL/UMADDL */
 
   | MULL xreg COMMA xreg COMMA xreg
     { if not (isregzr $2 && isregzr $4 && isregzr $6) then error_registers "expected %s <Xd>, <Wn>, <Wm>" $1.txt
-      else `AArch64MultiplyAddSubLong($2,$4,$6,XZR,64,32,false,$1.unsigned) }
+      else `AArch64MultiplyAddSubLong($2,$4,$6,X ZR,64,32,false,$1.unsigned) }
 
   /* SXTB/SXTH/SXTW alias of SBFM
      UXTB/UXTH alias of UBFM */
@@ -1340,28 +1340,28 @@
     { if not (isregzr $2) then error_registers "expected %s <Wd>, #<imm>" $1.txt
       else match encodeBitMasks 32 $4 with
       | None -> error_arg "<imm> can not be encoded as bitmask"
-      | _ -> `AArch64LogicalImmediate(WZR,$2,Set32,true,LogicalOp_AND,$4) }
+      | _ -> `AArch64LogicalImmediate(W ZR,$2,Set32,true,LogicalOp_AND,$4) }
   | TST xreg COMMA big_imm
     { if not (isregzr $2) then error_registers "expected %s <Xd>, #<imm>" $1.txt
       else match encodeBitMasks 64 $4 with
       | None -> error_arg "<imm> can not be encoded as bitmask"
-      | _ -> `AArch64LogicalImmediate(XZR,$2,Set64,true,LogicalOp_AND,$4) }
+      | _ -> `AArch64LogicalImmediate(X ZR,$2,Set64,true,LogicalOp_AND,$4) }
 
   /* TST (shifted register) alias of ANDS (shifted register) */
 
   | TST wreg COMMA wreg
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Wn>, <Wm>{, <shift> #<amount>}" $1.txt
-      else `AArch64LogicalShiftedRegister(WZR,$2,$4,Set32,true,LogicalOp_AND,ShiftType_LSL,0,false) }
+      else `AArch64LogicalShiftedRegister(W ZR,$2,$4,Set32,true,LogicalOp_AND,ShiftType_LSL,0,false) }
   | TST wreg COMMA wreg COMMA SHIFT imm
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Wn>, <Wm>{, <shift> #<amount>}" $1.txt
       else if not (0 <= $7 && $7 <= 31) then error_arg "<amount> must be in the range 0 to 31"
-      else `AArch64LogicalShiftedRegister(WZR,$2,$4,Set32,true,LogicalOp_AND,$6.shift_type,$7,false) }
+      else `AArch64LogicalShiftedRegister(W ZR,$2,$4,Set32,true,LogicalOp_AND,$6.shift_type,$7,false) }
 
   | TST xreg COMMA xreg
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Xn>, <Xm>{, <shift> #<amount>}" $1.txt
-      else `AArch64LogicalShiftedRegister(XZR,$2,$4,Set64,true,LogicalOp_AND,ShiftType_LSL,0,false) }
+      else `AArch64LogicalShiftedRegister(X ZR,$2,$4,Set64,true,LogicalOp_AND,ShiftType_LSL,0,false) }
   | TST xreg COMMA xreg COMMA SHIFT imm
     { if not (isregzr $2 && isregzr $4) then error_registers "expected %s <Xn>, <Xm>{, <shift> #<amount>}" $1.txt
       else if not (0 <= $7 && $7 <= 63) then error_arg "<amount> must be in the range 0 to 63"
-      else `AArch64LogicalShiftedRegister(XZR,$2,$4,Set64,true,LogicalOp_AND,$6.shift_type,$7,false) }
+      else `AArch64LogicalShiftedRegister(X ZR,$2,$4,Set64,true,LogicalOp_AND,$6.shift_type,$7,false) }
 

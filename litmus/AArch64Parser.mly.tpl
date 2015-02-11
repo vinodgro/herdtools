@@ -14,8 +14,8 @@
 module AArch64 = AArch64Base
 open AArch64
 
-let issp r = match r with SP | WSP -> true | _ -> false
-let iszr r = match r with XZR | WZR -> true | _ -> false
+let issp r = match r with X SP | W SP -> true | _ -> false
+let iszr r = match r with X ZR | W ZR -> true | _ -> false
 let isregzr r = not (issp r)
 let isregsp r = not (iszr r)
 
@@ -27,11 +27,11 @@ let error_not_instruction txt = failwith "%s is not an instruction" txt
 
 %token EOF
 
-%token <AArch64Base.reg> ARCH_XREG
-%token <AArch64Base.reg> ARCH_WREG
+%token <AArch64Base.inst_reg> ARCH_XREG
+%token <AArch64Base.inst_reg> ARCH_WREG
 
-%token <string> SYMB_XREG
-%token <string> SYMB_WREG
+%token <AArch64Base.inst_reg> SYMB_XREG
+%token <AArch64Base.inst_reg> SYMB_WREG
 %token <int> NUM
 %token <Big_int.big_int> BIG_NUM
 %token <string> NAME
@@ -82,11 +82,11 @@ instr:
 
 wreg:
 | ARCH_WREG { $1 }
-| SYMB_WREG { Symbolic_reg $1 }
+| SYMB_WREG { $1 }
 
 xreg:
 | ARCH_XREG { $1 }
-| SYMB_XREG { Symbolic_reg $1 }
+| SYMB_XREG { $1 }
 
 imm:
 | NUM { $1 }

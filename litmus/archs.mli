@@ -18,6 +18,7 @@ module System : sig
     | `ARM
     | `PPCGen
     | `MIPS
+    | `AArch64
     ]
 
   val tags : string list
@@ -39,4 +40,5 @@ val x86 : t
 val ppcgen : t
 val c : t
 val mips : t
+val aarch64 : t
 

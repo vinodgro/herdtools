@@ -178,6 +178,7 @@ let get_default arch = match arch with
 | `X86 -> x86opt
 | `PPCGen
 | `PPC -> ppcopt
+| `AArch64
 | `ARM -> armopt
 | `MIPS -> mipsopt
 | `C -> copt

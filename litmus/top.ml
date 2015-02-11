@@ -475,6 +475,20 @@ end = struct
             X.compile cycles hash_env
               name in_chan out_chan splitted
       in
+      let do_aarch64 () =
+        let module Arch' = AArch64Arch.Make(OC)(V) in
+        let module LexParse = struct
+          type instruction = Arch'.pseudo
+          type token = AArch64Parser.token
+          module Lexer = AArch64Lexer.Make(LexConfig)
+          let lexer = Lexer.token
+          let parser = AArch64Parser.main
+        end in
+            let module Compile = AArch64Compile.Make(V)(OC) in
+            let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
+            X.compile cycles hash_env
+              name in_chan out_chan splitted
+      in
       let aux = function
         | `PPC ->
             begin match OT.usearch with
@@ -508,6 +522,7 @@ end = struct
             let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
             X.compile cycles hash_env
               name in_chan out_chan splitted
+        | `AArch64 -> do_aarch64 ()
         | `MIPS ->
             let module Arch' = MIPSArch.Make(OC)(V) in
             let module LexParse = struct

@@ -38,7 +38,7 @@ type ireg =
   | GPR24 | GPR25 | GPR26 | GPR27
   | GPR28 | GPR29 | GPR30
 
-type reg =
+(*type reg =
   | Xreg of ireg (* 64bit general purpose registers *)
   | XZR          (* 64bit zero register *)
   | SP           (* 64bit stack pointer *)
@@ -48,7 +48,20 @@ type reg =
 (*   | PC (* FIXME: do we need this *) *)
   | Symbolic_reg of string
 (* Internal regs *)
+  | Internal of int*)
+
+type reg =
+  | Ireg of ireg
+  | ZR
+  | SP
+(*   | PC (* FIXME: do we need this *) *)
+  | Symbolic_reg of string
+(* Internal regs *)
   | Internal of int
+
+type inst_reg =
+  | X of reg
+  | W of reg
 
 (* FIXME: do we need these *)
 let base =  Internal 0
@@ -59,7 +72,7 @@ let loop_idx = Internal 4
 
 (* let pc = PC	   *)
 
-let regs =
+(*let regs =
   [
    Xreg GPR0,  "X0"  ; Xreg GPR1,  "X1"  ; Xreg GPR2,  "X2"  ; Xreg GPR3,  "X3"  ;
    Xreg GPR4,  "X4"  ; Xreg GPR5,  "X5"  ; Xreg GPR6,  "X6"  ; Xreg GPR7,  "X7"  ;
@@ -79,14 +92,47 @@ let regs =
    Wreg GPR24, "X24" ; Wreg GPR25, "X25" ; Wreg GPR26, "X26" ; Wreg GPR27, "X27" ;
    Wreg GPR28, "X28" ; Wreg GPR29, "X29" ; Wreg GPR30, "X30" ;
    WZR, "WZR" ; WSP, "WSP" ;
- ]
+ ]*)
+let regs =
+  [
+    Ireg GPR0,  "X0"  ; Ireg GPR1,  "X1"  ; Ireg GPR2,  "X2"  ; Ireg GPR3,  "X3"  ;
+    Ireg GPR4,  "X4"  ; Ireg GPR5,  "X5"  ; Ireg GPR6,  "X6"  ; Ireg GPR7,  "X7"  ;
+    Ireg GPR8,  "X8"  ; Ireg GPR9,  "X9"  ; Ireg GPR10, "X10" ; Ireg GPR11, "X11" ;
+    Ireg GPR12, "X12" ; Ireg GPR13, "X13" ; Ireg GPR14, "X14" ; Ireg GPR15, "X15" ;
+    Ireg GPR16, "X16" ; Ireg GPR17, "X17" ; Ireg GPR18, "X18" ; Ireg GPR19, "X19" ;
+    Ireg GPR20, "X20" ; Ireg GPR21, "X21" ; Ireg GPR22, "X22" ; Ireg GPR23, "X23" ;
+    Ireg GPR24, "X24" ; Ireg GPR25, "X25" ; Ireg GPR26, "X26" ; Ireg GPR27, "X27" ;
+    Ireg GPR28, "X28" ; Ireg GPR29, "X29" ; Ireg GPR30, "X30" ;
+    ZR, "XZR" ; SP, "SP" ;
+  ]
+
+let wregs =
+  [
+    Ireg GPR0,  "W0"  ; Ireg GPR1,  "W1"  ; Ireg GPR2,  "W2"  ; Ireg GPR3,  "W3"  ;
+    Ireg GPR4,  "W4"  ; Ireg GPR5,  "W5"  ; Ireg GPR6,  "W6"  ; Ireg GPR7,  "W7"  ;
+    Ireg GPR8,  "W8"  ; Ireg GPR9,  "W9"  ; Ireg GPR10, "W10" ; Ireg GPR11, "W11" ;
+    Ireg GPR12, "W12" ; Ireg GPR13, "W13" ; Ireg GPR14, "W14" ; Ireg GPR15, "W15" ;
+    Ireg GPR16, "W16" ; Ireg GPR17, "W17" ; Ireg GPR18, "W18" ; Ireg GPR19, "W19" ;
+    Ireg GPR20, "W20" ; Ireg GPR21, "W21" ; Ireg GPR22, "W22" ; Ireg GPR23, "W23" ;
+    Ireg GPR24, "W24" ; Ireg GPR25, "W25" ; Ireg GPR26, "W26" ; Ireg GPR27, "W27" ;
+    Ireg GPR28, "W28" ; Ireg GPR29, "W29" ; Ireg GPR30, "W30" ;
+    ZR, "WZR" ; SP, "WSP" ;
+  ]
+
 let parse_list =
   List.map (fun (r,s) -> s,r) regs
-    
+
+let parse_wlist =
+  List.map (fun (r,s) -> s,r) wregs
+
 let parse_reg s =
   try Some (List.assoc s parse_list)
   with Not_found -> None
-      
+
+let parse_wreg s =
+  try Some (List.assoc s parse_wlist)
+  with Not_found -> None
+
 let pp_reg r =
   match r with
   | Symbolic_reg r -> "%" ^ r
@@ -96,8 +142,8 @@ let pp_reg r =
 
 let reg_compare = Pervasives.compare
 
-let is_zero_reg r = (r = XZR || r = WZR)
-let is_sp_reg r = (r = SP || r = WSP)
+let is_zero_reg r = (r = X ZR || r = W ZR)
+let is_sp_reg r = (r = X SP || r = W SP)
 
 let ireg_to_int r =
   match r with
@@ -106,18 +152,27 @@ let ireg_to_int r =
   | GPR16 -> 16 | GPR17 -> 17 | GPR18 -> 18 | GPR19 -> 19 | GPR20 -> 20 | GPR21 -> 21 | GPR22 -> 22 | GPR23 -> 23
   | GPR24 -> 24 | GPR25 -> 25 | GPR26 -> 26 | GPR27 -> 27 | GPR28 -> 28 | GPR29 -> 29 | GPR30 -> 30
 
-let reg_to_int r =
+let ireg_of_int i =
+  match i with
+  | 0 -> GPR0   | 1 -> GPR1   | 2 -> GPR2   | 3 -> GPR3   | 4 -> GPR4   | 5 -> GPR5   | 6 -> GPR6   | 7 -> GPR7
+  | 8 -> GPR8   | 9 -> GPR9   | 10 -> GPR10 | 11 -> GPR11 | 12 -> GPR12 | 13 -> GPR13 | 14 -> GPR14 | 15 -> GPR15
+  | 16 -> GPR16 | 17 -> GPR17 | 18 -> GPR18 | 19 -> GPR19 | 20 -> GPR20 | 21 -> GPR21 | 22 -> GPR22 | 23 -> GPR23
+  | 24 -> GPR24 | 25 -> GPR25 | 26 -> GPR26 | 27 -> GPR27 | 28 -> GPR28 | 29 -> GPR29 | 30 -> GPR30
+
+let inst_reg_to_int r =
   match r with
-  | Xreg r' | Wreg r' -> ireg_to_int r'
-  | XZR | SP | WZR | WSP -> 31
+  | X (Ireg r') | W (Ireg r') -> ireg_to_int r'
+  | X ZR | X SP | W ZR | W SP -> 31
   (* TODO: do we need to handle the other regs? *)
 
-let xreg_of_int i =
+(*let xreg_of_int i =
   match i with
   | 0 -> Xreg GPR0   | 1 -> Xreg GPR1   | 2 -> Xreg GPR2   | 3 -> Xreg GPR3   | 4 -> Xreg GPR4   | 5 -> Xreg GPR5   | 6 -> Xreg GPR6   | 7 -> Xreg GPR7
   | 8 -> Xreg GPR8   | 9 -> Xreg GPR9   | 10 -> Xreg GPR10 | 11 -> Xreg GPR11 | 12 -> Xreg GPR12 | 13 -> Xreg GPR13 | 14 -> Xreg GPR14 | 15 -> Xreg GPR15
   | 16 -> Xreg GPR16 | 17 -> Xreg GPR17 | 18 -> Xreg GPR18 | 19 -> Xreg GPR19 | 20 -> Xreg GPR20 | 21 -> Xreg GPR21 | 22 -> Xreg GPR22 | 23 -> Xreg GPR23
-  | 24 -> Xreg GPR24 | 25 -> Xreg GPR25 | 26 -> Xreg GPR26 | 27 -> Xreg GPR27 | 28 -> Xreg GPR28 | 29 -> Xreg GPR29 | 30 -> Xreg GPR30
+  | 24 -> Xreg GPR24 | 25 -> Xreg GPR25 | 26 -> Xreg GPR26 | 27 -> Xreg GPR27 | 28 -> Xreg GPR28 | 29 -> Xreg GPR29 | 30 -> Xreg GPR30*)
+
+
 
 (************)
 (* Barriers *)
@@ -192,20 +247,35 @@ let pp_withflags inst setflags =
   if setflags then (inst ^ "S")
   else inst
 
-let pp_regzr sf r = pp_reg r
-  (*match sf with
-  | Set32 -> if is_31 r then "WZR" else ("W" ^ Big_int.string_of_big_int r)
-  | Set64 -> if is_31 r then "XZR" else ("X" ^ Big_int.string_of_big_int r)*)
+let pp_regzr sf r = (*pp_reg r*)
+  match r with
+  | X ZR -> "XZR"
+  | X (Ireg i) -> sprintf "X%d" (ireg_to_int i)
+  | X (Symbolic_reg s) -> "X" ^ s
+  | W ZR -> "WZR"
+  | W (Ireg i) -> sprintf "W%d" (ireg_to_int i)
+  | W (Symbolic_reg s) -> "W" ^ s
 
-let pp_regsp sf r = pp_reg r
-  (*match sf with
-  | Set32 -> if is_31 r then "WSP" else ("W" ^ Big_int.string_of_big_int r)
-  | Set64 -> if is_31 r then  "SP" else ("X" ^ Big_int.string_of_big_int r)*)
+let pp_regsp sf r = (*pp_reg r*)
+  match r with
+  | X SP -> "SP"
+  | X (Ireg i) -> sprintf "X%d" (ireg_to_int i)
+  | X (Symbolic_reg s) -> "X" ^ s
+  | W SP -> "WSP"
+  | W (Ireg i) -> sprintf "W%d" (ireg_to_int i)
+  | W (Symbolic_reg s) -> "W" ^ s
 
-let pp_regzrbyext extend_type r = pp_reg r
+let pp_regzrbyext extend_type r = (*pp_reg r*)
   (*match extend_type with
   | ExtendType_UXTX | ExtendType_SXTX -> pp_regzr Set64 r
   | _ -> pp_regzr Set32 r*)
+  match r with
+  | X ZR -> "XZR"
+  | X (Ireg i) -> sprintf "X%d" (ireg_to_int i)
+  | X (Symbolic_reg s) -> "X" ^ s
+  | W ZR -> "WZR"
+  | W (Ireg i) -> sprintf "W%d" (ireg_to_int i)
+  | W (Symbolic_reg s) -> "W" ^ s
 
 let pp_regext ext =
   match ext with
@@ -400,24 +470,6 @@ let dump_instruction = do_pp_instruction
 (****************************)
 
 (*let allowed_for_symb =
-  [ Xreg X0  ; Xreg X1  ; Xreg X2  ; Xreg X3  ;
-    Xreg X4  ; Xreg X5  ; Xreg X6  ; Xreg X7  ;
-    Xreg X8  ; Xreg X9  ; Xreg X10 ; Xreg X11 ;
-    Xreg X12 ; Xreg X13 ; Xreg X14 ; Xreg X15 ;
-    Xreg X16 ; Xreg X17 ; Xreg X18 ; Xreg X19 ;
-    Xreg X20 ; Xreg X21 ; Xreg X22 ; Xreg X23 ;
-    Xreg X24 ; Xreg X25 ; Xreg X26 ; Xreg X27 ;
-    Xreg X28 ; Xreg X29 ; Xreg X30 ;
-    Wreg W0  ; Wreg W1  ; Wreg W2  ; Wreg W3  ;
-    Wreg W4  ; Wreg W5  ; Wreg W6  ; Wreg W7  ;
-    Wreg W8  ; Wreg W9  ; Wreg W10 ; Wreg W11 ;
-    Wreg W12 ; Wreg W13 ; Wreg W14 ; Wreg W15 ;
-    Wreg W16 ; Wreg W17 ; Wreg W18 ; Wreg W19 ;
-    Wreg W20 ; Wreg W21 ; Wreg W22 ; Wreg W23 ;
-    Wreg W24 ; Wreg W25 ; Wreg W26 ; Wreg W27 ;
-    Wreg W28 ; Wreg W29 ; Wreg W30 ]*)
-
-let allowed_for_symb =
   [ Xreg GPR0  ; Xreg GPR1  ; Xreg GPR2  ; Xreg GPR3  ;
     Xreg GPR4  ; Xreg GPR5  ; Xreg GPR6  ; Xreg GPR7  ;
     Xreg GPR8  ; Xreg GPR9  ; Xreg GPR10 ; Xreg GPR11 ;
@@ -433,13 +485,26 @@ let allowed_for_symb =
     Wreg GPR16 ; Wreg GPR17 ; Wreg GPR18 ; Wreg GPR19 ;
     Wreg GPR20 ; Wreg GPR21 ; Wreg GPR22 ; Wreg GPR23 ;
     Wreg GPR24 ; Wreg GPR25 ; Wreg GPR26 ; Wreg GPR27 ;
-    Wreg GPR28 ; Wreg GPR29 ; Wreg GPR30 ]
+    Wreg GPR28 ; Wreg GPR29 ; Wreg GPR30 ]*)
+let allowed_for_symb =
+  [ Ireg GPR0  ; Ireg GPR1  ; Ireg GPR2  ; Ireg GPR3  ;
+    Ireg GPR4  ; Ireg GPR5  ; Ireg GPR6  ; Ireg GPR7  ;
+    Ireg GPR8  ; Ireg GPR9  ; Ireg GPR10 ; Ireg GPR11 ;
+    Ireg GPR12 ; Ireg GPR13 ; Ireg GPR14 ; Ireg GPR15 ;
+    Ireg GPR16 ; Ireg GPR17 ; Ireg GPR18 ; Ireg GPR19 ;
+    Ireg GPR20 ; Ireg GPR21 ; Ireg GPR22 ; Ireg GPR23 ;
+    Ireg GPR24 ; Ireg GPR25 ; Ireg GPR26 ; Ireg GPR27 ;
+    Ireg GPR28 ; Ireg GPR29 ; Ireg GPR30 ]
+
 let fold_regs (f_reg,f_sreg) =
   (* Let us have a functional style... *)
   let fold_reg reg (y_reg,y_sreg) =
     match reg with
-    | Symbolic_reg s -> y_reg, f_sreg s y_sreg
-    | Xreg _ | XZR | SP | Wreg _ | WZR | WSP -> f_reg reg y_reg, y_sreg
+    | X (Symbolic_reg s)
+    | W (Symbolic_reg s) -> y_reg, f_sreg s y_sreg
+(*     | Xreg _ | XZR | SP | Wreg _ | WZR | WSP -> f_reg reg y_reg, y_sreg *)
+    | X ((Ireg _) as reg') | X (ZR as reg') | X (SP as reg')
+    | W ((Ireg _) as reg') | W (ZR as reg') | W (SP as reg') -> f_reg reg' y_reg, y_sreg
     | _ -> y_reg, y_sreg in
 
   fun (y_reg,y_sreg as c) ins ->
@@ -451,8 +516,11 @@ let fold_regs (f_reg,f_sreg) =
 let map_regs f_reg f_symb =
   let map_reg reg =
     match reg with
-    | Symbolic_reg s -> f_symb s
-    | Xreg _ | XZR | SP | Wreg _ | WZR | WSP -> f_reg reg
+    | X (Symbolic_reg s) -> X (f_symb s)
+    | W (Symbolic_reg s) -> W (f_symb s)
+    (*| Xreg _ | XZR | SP | Wreg _ | WZR | WSP -> f_reg reg*)
+    | X ((Ireg _) as reg') | X (ZR as reg') | X (SP as reg') -> X (f_reg reg')
+    | W ((Ireg _) as reg') | W (ZR as reg') | W (SP as reg') -> W (f_reg reg')
     | _ -> reg in
 
   fun ins ->

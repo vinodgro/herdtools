@@ -16,9 +16,7 @@ let translate_reg_size name value =
   | Set64 -> (name, Bvector (Some 64), IInt.bit_list_of_integer 64 Big_int.unit_big_int)
 
 let translate_reg name value =
-  match value with
-  | Xreg _ | Wreg _ -> (name, Bvector (Some 5), bit_list_of_integer 5 (Big_int.big_int_of_int (reg_to_int value)))
-  | XZR | WZR | SP | WSP -> (name, Bvector (Some 5), bit_list_of_integer 5 (Big_int.big_int_of_int 31))
+  (name, Bvector (Some 5), bit_list_of_integer 5 (Big_int.big_int_of_int (inst_reg_to_int value)))
 
 let translate_reg_size_int = translate_big_int 64
 
