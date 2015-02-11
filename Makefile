@@ -7,3 +7,6 @@ default: all
 luc all install clean:
 	for d in $(SRC) ; \
 	do $(MAKE) $(MFLAGS) PREFIX=$(PREFIX) OCBOPT="$(OCBOPT)" -C $$d $@ ; done
+
+home:
+	$(MAKE) PREFIX=$$HOME luc
