@@ -1,0 +1,64 @@
+type reg_size = Set64 | Set32
+
+type reg_size_int = Big_int.big_int
+let reg_size_int_of_int = Big_int.big_int_of_int
+let eq_reg_size_int = Big_int.eq_big_int
+
+type data_size = DataSize64 | DataSize32 | DataSize16 | DataSize8
+
+type reg_index = int
+
+type boolean = bool
+
+type range0_7 = int
+
+type range0_63 = int
+
+type bit64 = Big_int.big_int
+let bit64_of_int = Big_int.big_int_of_int
+let eq_bit64 = Big_int.eq_big_int
+
+type bit4 = int
+
+type bit16 = int
+
+type bit = bool
+
+type range8_64 = int
+
+type integer = int
+
+type extendType = ExtendType_UXTB | ExtendType_UXTH | ExtendType_UXTW | ExtendType_UXTX |
+                  ExtendType_SXTB | ExtendType_SXTH | ExtendType_SXTW | ExtendType_SXTX
+
+type shiftType = ShiftType_LSL | ShiftType_LSR | ShiftType_ASR | ShiftType_ROR
+
+type logicalOp = LogicalOp_AND | LogicalOp_EOR | LogicalOp_ORR
+
+type branchType = BranchType_CALL | BranchType_ERET | BranchType_DBGEXIT |
+                  BranchType_RET | BranchType_JMP | BranchType_EXCEPTION |
+                  BranchType_UNKNOWN
+
+type countOp = CountOp_CLZ | CountOp_CLS | CountOp_CNT
+
+type memBarrierOp = MemBarrierOp_DSB | MemBarrierOp_DMB | MemBarrierOp_ISB
+
+type mBReqDomain = MBReqDomain_Nonshareable | MBReqDomain_InnerShareable |
+                   MBReqDomain_OuterShareable | MBReqDomain_FullSystem
+
+type mBReqTypes = MBReqTypes_Reads | MBReqTypes_Writes | MBReqTypes_All
+
+type systemHintOp = SystemHintOp_NOP | SystemHintOp_YIELD |
+                    SystemHintOp_WFE | SystemHintOp_WFI |
+                    SystemHintOp_SEV | SystemHintOp_SEVL
+
+type accType = AccType_NORMAL    | AccType_VEC    | AccType_STREAM |
+               AccType_VECSTREAM | AccType_ATOMIC | AccType_ORDERED |
+               AccType_UNPRIV    | AccType_IFETCH | AccType_PTW |
+               AccType_DC        | AccType_IC     | AccType_AT
+
+type memOp = MemOp_LOAD | MemOp_STORE | MemOp_PREFETCH
+
+type moveWideOp = MoveWideOp_N | MoveWideOp_Z | MoveWideOp_K
+
+type revOp = RevOp_RBIT | RevOp_REV16 | RevOp_REV32 | RevOp_REV64
