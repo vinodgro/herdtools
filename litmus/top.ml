@@ -543,6 +543,7 @@ end = struct
               | `PPC -> PPCArch.comment
               | `X86 -> X86Arch.comment
               | `ARM -> ARMArch.comment
+              | `AArch64 -> ARMArch.comment
               | `MIPS -> MIPSArch.comment
             end in
             let module X = Make'(Cfg)(Arch') in
