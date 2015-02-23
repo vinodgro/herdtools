@@ -85,6 +85,7 @@ let set_logicalprocs s =
 
 (* Direct references *)
 let crossrun = ref Crossrun.No
+let adbdir = ref "/data/local/tmp"
 let index = ref None
 let hexa = ref false
 let limit = ref true
