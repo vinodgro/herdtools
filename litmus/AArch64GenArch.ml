@@ -14,7 +14,7 @@
 let comment = '#' (* AArch64.comment ??? *)
 
 module Make(O:Arch.Config)(V:Constant.S) = struct
-  include AArch64Base
+  include AArch64GenBase
   module V =
     struct
       type v = Constant.v
@@ -22,7 +22,7 @@ module Make(O:Arch.Config)(V:Constant.S) = struct
       let maybevToV c = c
     end
 
-  let reg_to_string = AArch64Base.pp_reg
+  let reg_to_string = AArch64GenBase.pp_reg
 
   include
       ArchExtra.Make(O)

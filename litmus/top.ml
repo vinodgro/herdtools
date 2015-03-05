@@ -477,15 +477,15 @@ end = struct
               name in_chan out_chan splitted
       in
       let do_aarch64 () =
-        let module Arch' = AArch64Arch.Make(OC)(V) in
+        let module Arch' = AArch64GenArch.Make(OC)(V) in
         let module LexParse = struct
           type instruction = Arch'.pseudo
-          type token = AArch64Parser.token
-          module Lexer = AArch64Lexer.Make(LexConfig)
+          type token = AArch64GenParser.token
+          module Lexer = AArch64GenLexer.Make(LexConfig)
           let lexer = Lexer.token
-          let parser = AArch64Parser.main
+          let parser = AArch64GenParser.main
         end in
-            let module Compile = AArch64Compile.Make(V)(OC) in
+            let module Compile = AArch64GenCompile.Make(V)(OC) in
             let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
             X.compile cycles hash_env
               name in_chan out_chan splitted

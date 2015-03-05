@@ -14,8 +14,8 @@
 module Make(O:LexUtils.Config) = struct
 open Lexing
 open LexMisc
-open AArch64Parser
-module AArch64 = AArch64Base
+open AArch64GenParser
+module AArch64 = AArch64GenBase
 module LU = LexUtils.Make(O)
 
 let instruction_table = Hashtbl.create 300

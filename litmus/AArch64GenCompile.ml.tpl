@@ -19,7 +19,7 @@ end
 
 module Make(V:Constant.S)(C:Config) =
   struct
-    module A = AArch64Arch.Make(C)(V)
+    module A = AArch64GenArch.Make(C)(V)
     open A
     open A.Out
     open Printf
