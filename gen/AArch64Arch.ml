@@ -8,13 +8,50 @@
 (*  under the terms of the Lesser GNU General Public License.        *)
 (*********************************************************************)
 
-open Printf
 open Code
 
 module Make(V:Constant.S) =
   struct
     include AArch64Base
-    include MachAtom
+
+(* AArch64 has more atoms that others *)
+    type atom = Acq | Rel | Atomic
+
+    let default_atom = Atomic
+
+    let applies_atom a d = match a,d with
+    | Acq,R
+    | Rel,W
+    | Atomic,(R|W)
+        -> true
+    | _ -> false
+
+    let applies_atom_rmw = function
+      | None -> true
+      | Some _ -> false
+
+    let sig_of_atom = function
+      | Acq -> 'A'
+      | Rel -> 'B'
+      | Atomic -> 'C'
+
+    let pp_as_a = None
+
+    let pp_atom = function
+      | Atomic -> "A"
+      | Rel -> "Rel"
+      | Acq -> "Acq"
+
+    let compare_atom = Pervasives.compare
+
+    let fold_atom f r =  f Acq (f Rel (f Atomic r))
+
+    let worth_final = function
+      | Atomic -> true
+      | Acq|Rel -> false
+
+(* End of atoms *)
+
     module V = V
 
 (**********)
@@ -67,7 +104,7 @@ module Make(V:Constant.S) =
     | (DSB (_,FULL)|DMB (_,FULL)),_,_ -> true
     | (DSB (_,ST)|DMB (_,ST)),W,W -> true
     | (DSB (_,ST)|DMB (_,ST)),_,_ -> false
-    | (DSB (_,LD)|DMB (_,LD)),R,(W|R) -> true
+    | (DSB (_,LD)|DMB (_,LD)),Code.R,(W|Code.R) -> true
     | (DSB (_,LD)|DMB (_,LD)),_,_ -> false
 
 
@@ -80,7 +117,7 @@ module Make(V:Constant.S) =
       | ADDR -> "Addr"
       | DATA -> "Data"
       | CTRL -> "Ctrl"
-      | CTRLISYNC -> "CtrlIsbc"
+      | CTRLISYNC -> "CtrlIsb"
 
     include
         ArchExtra.Make

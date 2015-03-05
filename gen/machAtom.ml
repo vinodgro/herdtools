@@ -9,6 +9,7 @@
 (*********************************************************************)
 
 (* Atomicity of events *)
+
 type atom = Atomic | Reserve
 
 let default_atom = Atomic

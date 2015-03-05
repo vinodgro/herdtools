@@ -194,7 +194,8 @@ type lbl = Label.t
 type condition = NE | EQ
 type op = ADD | EOR | SUBS
 type variant = V32 | V64
-type kr = K of k | R of variant * reg
+type kr = K of k | RV of variant * reg
+let k0 = K 0
 
 type instruction =
 (* Branches *)
@@ -204,9 +205,12 @@ type instruction =
   | I_CBNZ of variant * reg * lbl
 (* Load and Store *)
   | I_LDR of variant * reg * reg * kr
+  | I_LDAR of variant * reg * reg
   | I_STR of variant * reg * reg * kr
+  | I_STLR of variant * reg * reg
 (* Operations *)
   | I_MOV of variant * reg * k
+  | I_STXW of reg * reg
   | I_OP2 of variant * op * reg * reg * k
   | I_OP3 of variant * op * reg * reg * reg
 (* Barrier *)
@@ -257,7 +261,7 @@ let do_pp_instruction m =
   let pp_kr kr = match kr with
   | K 0 -> ""
   | K k -> "," ^ m.pp_k k
-  | R (v,r) ->
+  | RV (v,r) ->
       "," ^ pp_vreg v r ^
       (match v with V32 -> ",sxtw" | V64 -> "") in
 
@@ -278,11 +282,17 @@ let do_pp_instruction m =
 (* Load and Store *)
   | I_LDR (v,r1,r2,k) ->
       pp_mem "LDR" v r1 r2 k
+  | I_LDAR (v,r1,r2) ->
+      pp_mem "LDAR" v r1 r2 k0
   | I_STR (v,r1,r2,k) ->
       pp_mem "STR" v r1 r2 k
+  | I_STLR (v,r1,r2) ->
+      pp_mem "STLR" v r1 r2 k0
 (* Operations *)
   | I_MOV (v,r,k) ->
       pp_ri "MOV" v r k
+  | I_STXW (r1,r2) ->
+      sprintf "STXW %s,%s" (pp_xreg r1) (pp_wreg r2)
   | I_OP2 (v,SUBS,ZR,r,k) ->
       pp_ri "CMP" v r k
   | I_OP2 (v,op,r1,r2,k) ->
@@ -323,6 +333,8 @@ let fold_regs (f_regs,f_sregs) =
   | I_CBZ (_,r,_) | I_CBNZ (_,r,_) | I_MOV (_,r,_)
     -> fold_reg r c
   | I_OP2 (_,_,r1,r2,_) | I_LDR (_,r1,r2,_) | I_STR (_,r1,r2,_)
+  | I_LDAR (_,r1,r2) | I_STLR (_,r1,r2)
+  | I_STXW (r1,r2)
     -> fold_reg r1 (fold_reg r2 c)
   | I_OP3 (_,_,r1,r2,r3)
     -> fold_reg r1 (fold_reg r2 (fold_reg r3 c))
@@ -347,11 +359,17 @@ let map_regs f_reg f_symb =
 (* Load and Store *)
   | I_LDR (v,r1,r2,k) ->
      I_LDR (v,map_reg r1,map_reg r2,k)
+  | I_LDAR (v,r1,r2) ->
+     I_LDAR (v,map_reg r1,map_reg r2)
   | I_STR (v,r1,r2,k) ->
       I_STR (v,map_reg r1,map_reg r2,k)
+  | I_STLR (v,r1,r2) ->
+      I_STLR (v,map_reg r1,map_reg r2)
 (* Operations *)
   | I_MOV (v,r,k) ->
       I_MOV (v,map_reg r,k)
+  | I_STXW (r1,r2) ->
+      I_STXW (map_reg r1,map_reg r2)
   | I_OP2 (v,op,r1,r2,k) ->
       I_OP2 (v,op,map_reg r1,map_reg r2,k)
   | I_OP3 (v,op,r1,r2,r3) ->
@@ -376,7 +394,10 @@ let get_next = function
       -> [Label.Next; Label.To lbl;]
   | I_LDR _
   | I_STR _
+  | I_LDAR _
+  | I_STLR _
   | I_MOV _
+  | I_STXW _
   | I_OP2 _
   | I_OP3 _
   | I_FENCE _
@@ -388,14 +409,15 @@ include Pseudo.Make
       type reg_arg = reg
 
       let get_naccesses = function
-        | I_LDR _
-        | I_STR _
+        | I_LDR _ | I_LDAR _
+        | I_STR _ | I_STLR _
           -> 1
         | I_B _
         | I_BC _
         | I_CBZ _
         | I_CBNZ _
         | I_MOV _
+        | I_STXW _
         | I_OP2 _
         | I_OP3 _
         | I_FENCE _
