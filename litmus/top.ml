@@ -45,6 +45,7 @@ module type CommonConfig = sig
   val sleep : int
   val driver : Driver.t
   val crossrun : Crossrun.t
+  val adbdir : string
   val gcc : string
   val c11 : bool
   val c11_fence : bool
@@ -542,6 +543,7 @@ end = struct
               | `PPC -> PPCArch.comment
               | `X86 -> X86Arch.comment
               | `ARM -> ARMArch.comment
+              | `AArch64 -> ARMArch.comment
               | `MIPS -> MIPSArch.comment
             end in
             let module X = Make'(Cfg)(Arch') in

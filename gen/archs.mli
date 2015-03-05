@@ -16,6 +16,7 @@ type t =
   | PPC
   | ARM
   | MIPS
+  | AArch64
   | C
   | CPP
 
@@ -29,3 +30,4 @@ val arm : t
 val ppc : t
 val x86 : t
 val mips : t
+val aarch64 : t

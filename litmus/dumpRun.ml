@@ -24,6 +24,7 @@ module type Config = sig
   val stdio : bool
   val index : string option
   val crossrun : Crossrun.t
+  val adbdir : string
   val sleep : int
   val tarname : string
   val driver : Driver.t
@@ -203,7 +204,7 @@ let dump_shell names =
       begin match Cfg.crossrun with
       | Crossrun.No -> ()
       | Crossrun.Adb  ->
-          fprintf out_chan "RDIR=%s\n" "/data/tmp" ;
+          fprintf out_chan "RDIR=%s\n" Cfg.adbdir ;
           fprintf out_chan "adb shell mkdir $RDIR >/dev/null 2>&1\n" ;
           fprintf out_chan "dorun () {\n" ;
           fprintf out_chan "  EXE=$1\n" ;

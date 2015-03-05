@@ -476,6 +476,7 @@ let user2_barrier_def () =
         | `PPCGen
         | `PPC
         | `X86
+        | `AArch64
         | `MIPS -> sprintf "barrier%s.c" lab_ext
         | `ARM ->
             begin match Cfg.morearch with
@@ -485,7 +486,6 @@ let user2_barrier_def () =
             | _ -> ()
             end ;
             sprintf "barrier%s.c" lab_ext
-        | `AArch64 -> Warn.fatal "???" (* FIXME: ??? *)
         in
     Insert.insert O.o (fname Cfg.sysarch)
 
