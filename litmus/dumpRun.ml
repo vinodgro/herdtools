@@ -162,10 +162,12 @@ let run_tests names out_chan =
             | Misc.Exit -> "None"
             | Misc.Fatal msg
             | Misc.UserError msg ->
-                Pos.pp_pos0 stderr name ;
-                Printf.eprintf "%s\n%!" msg ;
+                eprintf "%a %s\n%!" Pos.pp_pos0 name msg ;
                 msg
-            | e -> raise e  in
+            | e -> 
+                let msg = sprintf "exception %s"  (Printexc.to_string e) in
+                eprintf "%a %s\n%!" Pos.pp_pos0 name msg ;
+                msg in
             report_failure name msg out_chan ;
             a,docs,srcs,cycles,hash_env)
       names (`X86,[],[],StringSet.empty,StringMap.empty) in

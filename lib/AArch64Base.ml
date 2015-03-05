@@ -168,7 +168,6 @@ let fold_barrier f k =
   k
   
 let pp_option d t = match d,t with
-| SY,(ST|LD) -> pp_type t
 | SY,FULL    -> pp_domain d
 | _,_ -> pp_domain d ^ pp_type t
 

@@ -34,7 +34,7 @@ module Make(V:Constant.S)(C:Config) =
 (************************)
     let input_reg sf i =
       match sf with
-      | Set32 -> sprintf "^wi%d" i
+      | Set32 -> sprintf "^wi%d" i 
       | Set64 -> sprintf "^i%d" i
 
     let output_reg sf i =
@@ -42,7 +42,7 @@ module Make(V:Constant.S)(C:Config) =
       | Set32 -> sprintf "^wo%d" i
       | Set64 -> sprintf "^o%d" i
 
-    let do_compile_ins tr_lab (ins : A.instruction) k =
+     let do_compile_ins tr_lab (ins : A.instruction) k =
       match ins with
       (* Generated fix-point instructions *)
       (* #include "src_aarch64_hgen/compile.hgen" *)

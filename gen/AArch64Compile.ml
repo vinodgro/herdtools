@@ -8,7 +8,6 @@
 (*  under the terms of the Lesser GNU General Public License.        *)
 (*********************************************************************)
 
-open Printf
 open Code
 
 module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
@@ -43,7 +42,7 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
     let pseudo = List.map (fun i -> Instruction i)
 
 let tempo1 st = A.alloc_trashed_reg "T1" st (* May be used for address *)
-let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
+let _tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
 
 (******************)
 (* Idiosyncrasies *)
@@ -71,7 +70,7 @@ let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
 (* Compute address in tempo1 *)
     let stxw r k = match vloc with
     | V64 -> k
-    | V32 -> I_STXW (r,r)::k
+    | V32 -> stxw r r::k
 
     let sum_addr st rA idx =
       let r,st = tempo1 st in
@@ -186,7 +185,7 @@ let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
           init,[Instruction (S.store rA rB)],st
 
         let emit_store st p init x v =
-          let rA,st = tempo2 st in
+          let rA,st = next_reg st in
           let init,cs,st = emit_store_reg st p init x rA in
           init,Instruction (mov rA v)::cs,st
 
@@ -196,7 +195,7 @@ let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
           init,pseudo ins,st
 
         let emit_store_idx st p init x idx v =
-          let rA,st = tempo2 st in
+          let rA,st = next_reg st in
           let init,cs,st = emit_store_idx_reg st p init x idx rA in
           init,Instruction (mov rA v)::cs,st
       end
