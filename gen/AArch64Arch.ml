@@ -30,11 +30,6 @@ module Make(V:Constant.S) =
       | None -> true
       | Some _ -> false
 
-    let sig_of_atom = function
-      | Acq -> 'A'
-      | Rel -> 'B'
-      | Atomic -> 'C'
-
     let pp_as_a = None
 
     let pp_atom = function
@@ -69,24 +64,6 @@ module Make(V:Constant.S) =
     let strong = DMB (SY,FULL)
 
     let pp_fence f = do_pp_barrier "." f
-
-    let sig_of_domain = function
-      | NSH -> 0
-      | ISH -> 1
-      | OSH -> 2
-      | SY -> 3
-
-    let sig_of_type = function
-      | LD -> 0
-      | ST -> 1
-      | FULL -> 2
-
-    let sig_of_options d t = 3 * sig_of_domain d + sig_of_type t
-
-    let sig_of_fence = function
-      | DSB (d,t) -> Char.chr (128 + 2 * (sig_of_options d t))  
-      | DMB (d,t) -> Char.chr (128 + 2 * (sig_of_options d t)+1)
-      | ISB -> 'I'
 
     let fold_cumul_fences f k = do_fold_dmb_dsb f k
 

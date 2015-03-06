@@ -24,10 +24,6 @@ let applies_atom_rmw = function
   | None -> true
   | Some _ -> false
 
-let sig_of_atom = function
-  | Atomic -> 'A'
-  | Reserve -> 'B'
-
 let pp_as_a = None
 
 let pp_atom = function

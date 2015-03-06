@@ -61,8 +61,11 @@ module Make(V:Constant.S)(C:Config) =
         branch=[Next; Branch lbl] ; }
 
 (* Load and Store *)
-        
-    let emit_load memo v rD rA kr = match v,kr with
+
+    let ldr_memo t = String.lowercase (ldr_memo t)
+    let str_memo t = String.lowercase (str_memo t)
+
+    let load memo v rD rA kr = match v,kr with
       | V32,K 0 ->
           { empty_ins with
             memo= sprintf "%s ^wo0,[^i0]" memo;
@@ -100,7 +103,7 @@ module Make(V:Constant.S)(C:Config) =
             outputs=[rD]; }
       | V32,RV (V64,_) -> assert false
 
-    let emit_store memo v rA rB kr = match v,kr with
+    let store memo v rA rB kr = match v,kr with
       | V32,K 0 ->
           { empty_ins with
             memo=memo ^ " ^wi0,[^i1]";
@@ -131,7 +134,17 @@ module Make(V:Constant.S)(C:Config) =
             inputs=[rA; rB; rC;]; }
       | V32,RV (V64,_) -> assert false
 
-
+    let stxr memo v r1 r2 r3 = match v with
+    | V32 ->
+        { empty_ins with
+          memo = sprintf "%s ^wo0,^wi0,[^i1]" memo ;
+          inputs = [r2;r3;];
+          outputs = [r1;]; }
+    | V64 ->
+        { empty_ins with
+          memo = sprintf "%s ^wo0,^i0,[^i1]" memo ;
+          inputs = [r2;r3;];
+          outputs = [r1;]; }
 (* Arithmetic *)
 
     let movk v r k =
@@ -215,10 +228,11 @@ module Make(V:Constant.S)(C:Config) =
     | I_CBZ (v,r,lbl) -> cbz tr_lab "cbz" v r lbl::k
     | I_CBNZ (v,r,lbl) -> cbz tr_lab "cbnz" v r lbl::k
 (* Load and Store *)
-    | I_LDR (v,r1,r2,kr) -> emit_load "ldr" v r1 r2 kr::k
-    | I_LDAR (v,r1,r2) -> emit_load "ldar" v r1 r2 k0::k
-    | I_STR (v,r1,r2,kr) -> emit_store "str" v r1 r2 kr::k
-    | I_STLR (v,r1,r2) -> emit_store "stlr" v r1 r2 k0::k
+    | I_LDR (v,r1,r2,kr) -> load "ldr" v r1 r2 kr::k
+    | I_LDAR (v,t,r1,r2) -> load (ldr_memo t) v r1 r2 k0::k
+    | I_STR (v,r1,r2,kr) -> store "str" v r1 r2 kr::k
+    | I_STLR (v,r1,r2) -> store "stlr" v r1 r2 k0::k
+    | I_STXR (v,t,r1,r2,r3) -> stxr (str_memo t) v r1 r2 r3::k
 (* Arithmetic *)
     | I_MOV (v,r,i) ->  movk v r i::k
     | I_SXTW (r1,r2) -> sxtw r1 r2::k

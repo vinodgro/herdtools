@@ -27,8 +27,12 @@ let check_name name = match name with
 (* Memory *)
 | "ldr"|"LDR" -> LDR
 | "ldar"|"LDAR" -> LDAR
+| "ldxr"|"LDXR" -> LDXR
+| "ldaxr"|"LDAXR" -> LDAXR
 | "str"|"STR" -> STR
 | "stlr"|"STLR" -> STLR
+| "stxr"|"STXR" -> STXR
+| "stlxr"|"STLXR" -> STLXR
 (* Operations *)
 | "sxtw"|"SXTW" -> SXTW
 | "mov"|"MOV" -> MOV
@@ -75,7 +79,7 @@ rule token = parse
 | 'P' (num as x)
     { PROC (int_of_string x) }
 | ['w''W']'%' (name as name) { SYMB_WREG name }
-| ['x''X']'%' (name as name) { SYMB_XREG name }
+| ['x''X']?'%' (name as name) { SYMB_XREG name }
 | ';' { SEMI }
 | ',' { COMMA }
 | '|' { PIPE }
@@ -84,7 +88,7 @@ rule token = parse
 | ':' { COLON }
 | name as x  { check_name x }
 | eof { EOF }
-| ""  { error "ARM lexer" lexbuf }
+| ""  { error "AArch64 lexer" lexbuf }
 
 {
 let token lexbuf =

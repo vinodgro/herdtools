@@ -59,7 +59,7 @@ let _tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
     let add64 r1 r2 r3 = I_OP3 (V64,ADD,r1,r2,RV (vloc,r3))
 
     let ldr r1 r2 = I_LDR (vloc,r1,r2,K 0)
-    let ldar r1 r2 = I_LDAR (vloc,r1,r2)
+    let ldar r1 r2 = I_LDAR (vloc,AA,r1,r2)
     let sxtw r1 r2 = I_SXTW (r1,r2)
     let ldr_idx r1 r2 idx = I_LDR (vloc,r1,r2,RV (vloc,idx))
 

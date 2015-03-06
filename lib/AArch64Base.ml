@@ -197,6 +197,20 @@ type variant = V32 | V64
 type kr = K of k | RV of variant * reg
 let k0 = K 0
 
+type ld_type = AA | XX | AX
+
+let ldr_memo = function
+  | AA -> "LDAR"
+  | XX -> "LDXR"
+  | AX -> "LDAXR"
+
+type st_type = YY | LY
+
+let str_memo = function
+  | YY -> "STXR"
+  | LY -> "STLXR"
+
+
 type instruction =
 (* Branches *)
   | I_B of lbl
@@ -205,9 +219,10 @@ type instruction =
   | I_CBNZ of variant * reg * lbl
 (* Load and Store *)
   | I_LDR of variant * reg * reg * kr
-  | I_LDAR of variant * reg * reg
+  | I_LDAR of variant * ld_type * reg * reg
   | I_STR of variant * reg * reg * kr
   | I_STLR of variant * reg * reg
+  | I_STXR of variant * st_type * reg * reg * reg
 (* Operations *)
   | I_MOV of variant * reg * k
   | I_SXTW of reg * reg
@@ -279,6 +294,12 @@ let do_pp_instruction m =
       pp_xreg r2 ^ pp_kr true kr
   | V32,RV (V64,_) -> assert false in
 
+  let pp_stxr memo v r1 r2 r3 =
+    pp_memo memo ^ " " ^
+    pp_wreg r1 ^"," ^
+    pp_vreg v r2 ^ ",[" ^
+    pp_xreg r3 ^ "]" in
+
   fun i -> match i with
 (* Branches *)
   | I_B lbl ->
@@ -292,12 +313,14 @@ let do_pp_instruction m =
 (* Load and Store *)
   | I_LDR (v,r1,r2,k) ->
       pp_mem "LDR" v r1 r2 k
-  | I_LDAR (v,r1,r2) ->
-      pp_mem "LDAR" v r1 r2 k0
+  | I_LDAR (v,t,r1,r2) ->
+      pp_mem (ldr_memo t) v r1 r2 k0
   | I_STR (v,r1,r2,k) ->
       pp_mem "STR" v r1 r2 k
   | I_STLR (v,r1,r2) ->
       pp_mem "STLR" v r1 r2 k0
+  | I_STXR (v,t,r1,r2,r3) ->
+      pp_stxr (str_memo t) v r1 r2 r3
 (* Operations *)
   | I_MOV (v,r,k) ->
       pp_ri "MOV" v r k
@@ -346,12 +369,15 @@ let fold_regs (f_regs,f_sregs) =
     -> c
   | I_CBZ (_,r,_) | I_CBNZ (_,r,_) | I_MOV (_,r,_)
     -> fold_reg r c
-  | I_LDAR (_,r1,r2) | I_STLR (_,r1,r2)
+  | I_LDAR (_,_,r1,r2) | I_STLR (_,r1,r2)
   | I_SXTW (r1,r2)
     -> fold_reg r1 (fold_reg r2 c)
   | I_LDR (_,r1,r2,kr) | I_STR (_,r1,r2,kr)
   | I_OP3 (_,_,r1,r2,kr)
     -> fold_reg r1 (fold_reg r2 (fold_kr kr c))
+  | I_STXR (_,_,r1,r2,r3)
+    -> fold_reg r1 (fold_reg r2 (fold_reg r3 c))
+
 
 let map_regs f_reg f_symb =
 
@@ -377,12 +403,14 @@ let map_regs f_reg f_symb =
 (* Load and Store *)
   | I_LDR (v,r1,r2,kr) ->
      I_LDR (v,map_reg r1,map_reg r2,map_kr kr)
-  | I_LDAR (v,r1,r2) ->
-     I_LDAR (v,map_reg r1,map_reg r2)
+  | I_LDAR (t,v,r1,r2) ->
+     I_LDAR (t,v,map_reg r1,map_reg r2)
   | I_STR (v,r1,r2,k) ->
       I_STR (v,map_reg r1,map_reg r2,k)
   | I_STLR (v,r1,r2) ->
       I_STLR (v,map_reg r1,map_reg r2)
+  | I_STXR (v,t,r1,r2,r3) ->
+      I_STXR (v,t,map_reg r1,map_reg r2,map_reg r3)
 (* Operations *)
   | I_MOV (v,r,k) ->
       I_MOV (v,map_reg r,k)
@@ -412,6 +440,7 @@ let get_next = function
   | I_STR _
   | I_LDAR _
   | I_STLR _
+  | I_STXR _
   | I_MOV _
   | I_SXTW _
   | I_OP3 _
@@ -425,7 +454,7 @@ include Pseudo.Make
 
       let get_naccesses = function
         | I_LDR _ | I_LDAR _
-        | I_STR _ | I_STLR _
+        | I_STR _ | I_STLR _ | I_STXR _
           -> 1
         | I_B _
         | I_BC _

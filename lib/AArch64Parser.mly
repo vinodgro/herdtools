@@ -27,7 +27,7 @@ open AArch64Base
 
 /* Instructions */
 %token B BEQ BNE CBZ CBNZ
-%token LDR STR LDAR STLR
+%token LDR STR LDAR LDXR LDAXR STLR STXR STLXR
 %token MOV ADD EOR SUBS
 %token DMB DSB ISB
 %token SY ST LD
@@ -110,11 +110,20 @@ instr:
 | LDR reg COMMA LBRK xreg kr0 RBRK
   { let v,r = $2 in I_LDR (v,r,$5,$6) }
 | LDAR reg COMMA LBRK xreg RBRK
-  { let v,r = $2 in I_LDAR (v,r,$5) }
+  { let v,r = $2 in I_LDAR (v,AA,r,$5) }
+| LDXR reg COMMA LBRK xreg RBRK
+  { let v,r = $2 in I_LDAR (v,XX,r,$5) }
+| LDAXR reg COMMA LBRK xreg RBRK
+  { let v,r = $2 in I_LDAR (v,AX,r,$5) }
 | STR reg COMMA LBRK xreg kr0 RBRK
   { let v,r = $2 in I_STR (v,r,$5,$6) }
 | STLR reg COMMA LBRK xreg RBRK
   { let v,r = $2 in I_STLR (v,r,$5) }
+| STXR wreg COMMA reg COMMA LBRK xreg RBRK
+  { let v,r = $4 in I_STXR (v,YY,$2,r,$7) }
+| STLXR wreg COMMA reg COMMA LBRK xreg RBRK
+  { let v,r = $4 in I_STXR (v,LY,$2,r,$7) }
+
 /* Operations */
 | MOV reg COMMA k
   { let v,r = $2 in I_MOV (v,r,$4) }
