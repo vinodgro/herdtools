@@ -51,16 +51,16 @@ let _tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
     let vloc = V32
 
     let mov r i = I_MOV (vloc,r,i)
-    let cmpi r i = I_OP2 (vloc,SUBS,ZR,r,i)
-    let cmp r1 r2 = I_OP3 (vloc,SUBS,ZR,r1,r2)
-    let eor r1 r2 r3 = I_OP3 (vloc,EOR,r1,r2,r3)
-    let addi r1 r2 k = I_OP2 (vloc,ADD,r1,r2,k)
+    let cmpi r i = I_OP3 (vloc,SUBS,ZR,r,K i)
+    let cmp r1 r2 = I_OP3 (vloc,SUBS,ZR,r1,RV (vloc,r2))
+    let eor r1 r2 r3 = I_OP3 (vloc,EOR,r1,r2,RV (vloc,r3))
+    let addi r1 r2 k = I_OP3 (vloc,ADD,r1,r2,K k)
 (*    let add r1 r2 r3 = I_OP3 (vloc,ADD,r1,r2,r3) *)
-    let add64 r1 r2 r3 = I_OP3 (V64,ADD,r1,r2,r3)
+    let add64 r1 r2 r3 = I_OP3 (V64,ADD,r1,r2,RV (vloc,r3))
 
     let ldr r1 r2 = I_LDR (vloc,r1,r2,K 0)
     let ldar r1 r2 = I_LDAR (vloc,r1,r2)
-    let stxw r1 r2 = I_STXW (r1,r2)
+    let sxtw r1 r2 = I_SXTW (r1,r2)
     let ldr_idx r1 r2 idx = I_LDR (vloc,r1,r2,RV (vloc,idx))
 
     let str r1 r2 = I_STR (vloc,r1,r2,K 0)
@@ -68,13 +68,13 @@ let _tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
     let str_idx r1 r2 idx = I_STR (vloc,r1,r2,RV (vloc,idx))
 
 (* Compute address in tempo1 *)
-    let stxw r k = match vloc with
+    let _sxtw r k = match vloc with
     | V64 -> k
-    | V32 -> stxw r r::k
+    | V32 -> sxtw r r::k
 
     let sum_addr st rA idx =
       let r,st = tempo1 st in
-      r,stxw idx [add64 r rA idx],st
+      r,[add64 r rA idx],st
 
 (************)
 (* loads    *)
@@ -126,7 +126,7 @@ let _tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
           pseudo
             [
              L.load rA rB; cmp rA ;
-             I_BC (NE,out); I_OP2 (vloc,SUBS,rC,rC,1) ;
+             I_BC (NE,out); I_OP3 (vloc,SUBS,rC,rC,K 1) ;
              I_CBNZ (vloc,rC,lab) ;
            ]@
           [Label (out,Nop)],
@@ -239,6 +239,7 @@ let _tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
     let emit_sta_idx st p init x idx v = assert false
 
     let emit_sta_reg st p init x rA = assert false
+
 (**********)
 (* Access *)
 (**********)

@@ -335,8 +335,8 @@ end = struct
         type reg = string
 
         let vToName = function
-            | Constant.Concrete i -> "addr_" ^ string_of_int i
-            | Constant.Symbolic s -> s
+          | Constant.Concrete i -> "addr_" ^ string_of_int i
+          | Constant.Symbolic s -> s
 
         module Internal = struct
           type arch_reg = reg
@@ -449,54 +449,34 @@ end = struct
         end
       end in
       let module Cfg = OX in
-      let do_ppc () =             
-        let module Arch' = PPCArch.Make(OC)(V) in
-        let module LexParse = struct
-          type instruction = Arch'.pseudo
-          type token = PPCParser.token
-          module Lexer = PPCLexer.Make(LexConfig)
-          let lexer = Lexer.token
-          let parser = PPCParser.main
-        end in
-        let module Compile = PPCCompile.Make(V)(OC) in
-        let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
-        X.compile cycles hash_env name in_chan out_chan splitted
-      in
-      let do_ppcgen () =
-        let module Arch' = PPCGenArch.Make(OC)(V) in
-        let module LexParse = struct
-          type instruction = Arch'.pseudo
-          type token = PPCGenParser.token
-          module Lexer = PPCGenLexer.Make(LexConfig)
-          let lexer = Lexer.token
-          let parser = PPCGenParser.main
-        end in
-            let module Compile = PPCGenCompile.Make(V)(OC) in
-            let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
-            X.compile cycles hash_env
-              name in_chan out_chan splitted
-      in
-      let do_aarch64 () =
-        let module Arch' = AArch64GenArch.Make(OC)(V) in
-        let module LexParse = struct
-          type instruction = Arch'.pseudo
-          type token = AArch64GenParser.token
-          module Lexer = AArch64GenLexer.Make(LexConfig)
-          let lexer = Lexer.token
-          let parser = AArch64GenParser.main
-        end in
-            let module Compile = AArch64GenCompile.Make(V)(OC) in
-            let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
-            X.compile cycles hash_env
-              name in_chan out_chan splitted
-      in
       let aux = function
         | `PPC ->
             begin match OT.usearch with
-            | UseArch.Trad -> do_ppc ()
-            | UseArch.Gen -> do_ppcgen ()
+            | UseArch.Trad ->
+                let module Arch' = PPCArch.Make(OC)(V) in
+                let module LexParse = struct
+                  type instruction = Arch'.pseudo
+                  type token = PPCParser.token
+                  module Lexer = PPCLexer.Make(LexConfig)
+                  let lexer = Lexer.token
+                  let parser = PPCParser.main
+                end in
+                let module Compile = PPCCompile.Make(V)(OC) in
+                let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
+                X.compile
+            | UseArch.Gen ->
+                let module Arch' = PPCGenArch.Make(OC)(V) in
+                let module LexParse = struct
+                  type instruction = Arch'.pseudo
+                  type token = PPCGenParser.token
+                  module Lexer = PPCGenLexer.Make(LexConfig)
+                  let lexer = Lexer.token
+                  let parser = PPCGenParser.main
+                end in
+                let module Compile = PPCGenCompile.Make(V)(OC) in
+                let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
+                X.compile
             end
-        | `PPCGen -> do_ppcgen ()
         | `X86 ->
             let module Arch' = X86Arch.Make(OC)(V) in
             let module LexParse = struct
@@ -508,8 +488,7 @@ end = struct
             end in
             let module Compile = X86Compile.Make(V)(OC) in
             let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
-            X.compile cycles hash_env
-              name in_chan out_chan splitted
+            X.compile
         | `ARM ->
             let module Arch' = ARMArch.Make(OC)(V) in
             let module LexParse = struct
@@ -521,9 +500,34 @@ end = struct
             end in
             let module Compile = ARMCompile.Make(V)(OC) in
             let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
-            X.compile cycles hash_env
-              name in_chan out_chan splitted
-        | `AArch64 -> do_aarch64 ()
+            X.compile
+        | `AArch64 ->
+            begin match OT.usearch with
+            | UseArch.Trad ->
+                let module Arch' = AArch64Arch.Make(OC)(V) in
+                let module LexParse = struct
+                  type instruction = Arch'.pseudo
+                  type token = AArch64Parser.token
+                  module Lexer = AArch64Lexer.Make(LexConfig)
+                  let lexer = Lexer.token
+                  let parser = AArch64Parser.main
+                end in
+                let module Compile = AArch64Compile.Make(V)(OC) in
+                let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
+                X.compile
+            | UseArch.Gen ->
+                let module Arch' = AArch64GenArch.Make(OC)(V) in
+                let module LexParse = struct
+                  type instruction = Arch'.pseudo
+                  type token = AArch64GenParser.token
+                  module Lexer = AArch64GenLexer.Make(LexConfig)
+                  let lexer = Lexer.token
+                  let parser = AArch64GenParser.main
+                end in
+                let module Compile = AArch64GenCompile.Make(V)(OC) in
+                let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
+                X.compile
+            end
         | `MIPS ->
             let module Arch' = MIPSArch.Make(OC)(V) in
             let module LexParse = struct
@@ -535,8 +539,7 @@ end = struct
             end in
             let module Compile = MIPSCompile.Make(V)(OC) in
             let module X = Make(Cfg)(Arch')(LexParse)(Compile) in
-            X.compile cycles hash_env
-              name in_chan out_chan splitted
+            X.compile
         | `C ->
             let module Arch' = struct
               let comment = match OX.sysarch with
@@ -547,10 +550,9 @@ end = struct
               | `MIPS -> MIPSArch.comment
             end in
             let module X = Make'(Cfg)(Arch') in
-            X.compile cycles hash_env
-              name in_chan out_chan splitted
+            X.compile
       in
-      aux arch
+      aux arch cycles hash_env name in_chan out_chan splitted
     end else begin (* Excluded explicitely, (check_tname), do not warn *)
       Absent arch
     end

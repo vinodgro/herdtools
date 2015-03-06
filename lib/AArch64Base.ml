@@ -85,9 +85,11 @@ let parse_list =
 let parse_wlist =
   List.map (fun (r,s) -> s,r) wregs
 
-let parse_reg s =
+let parse_xreg s =
   try Some (List.assoc s parse_list)
   with Not_found -> None
+
+let parse_reg s = parse_xreg s
 
 let parse_wreg s =
   try Some (List.assoc s parse_wlist)
@@ -162,6 +164,7 @@ let do_fold_dmb_dsb f k =
       (fun d t k -> f (DSB (d,t)) k)
       k in
   k
+
 let fold_barrier f k =
   let k = do_fold_dmb_dsb f k in
   let k = f ISB k in
@@ -169,8 +172,8 @@ let fold_barrier f k =
   
 let pp_option d t = match d,t with
 | SY,FULL    -> pp_domain d
+| SY,(LD|ST) -> pp_type t
 | _,_ -> pp_domain d ^ pp_type t
-
 
 let do_pp_barrier tag b = match b with
   | DMB (d,t) -> "DMB" ^ tag ^ pp_option d t
@@ -180,8 +183,6 @@ let do_pp_barrier tag b = match b with
 let pp_barrier b = do_pp_barrier " " b
 
 let barrier_compare = Pervasives.compare
-
-
 
 (****************)
 (* Instructions *)
@@ -209,9 +210,8 @@ type instruction =
   | I_STLR of variant * reg * reg
 (* Operations *)
   | I_MOV of variant * reg * k
-  | I_STXW of reg * reg
-  | I_OP2 of variant * op * reg * reg * k
-  | I_OP3 of variant * op * reg * reg * reg
+  | I_SXTW of reg * reg
+  | I_OP3 of variant * op * reg * reg * kr
 (* Barrier *)
   | I_FENCE of barrier
 
@@ -227,6 +227,7 @@ let pp_hash m = match m with
 let pp_k m v = pp_hash m ^ string_of_int v
 
 type basic_pp = { pp_k : k -> string; }
+
 
 let pp_memo memo = memo
 
@@ -257,16 +258,26 @@ let do_pp_instruction m =
   and pp_rr memo v r1 r2 =
     pp_memo memo ^ " " ^ pp_vreg v r1 ^ "," ^  pp_vreg v r2 in
 
-  let pp_kr kr = match kr with
-  | K 0 -> ""
+  let pp_kr showzero kr = match kr with
+  | K 0 when not showzero -> ""
   | K k -> "," ^ m.pp_k k
   | RV (v,r) ->
       "," ^ pp_vreg v r ^
-      (match v with V32 -> ",sxtw" | V64 -> "") in
+      (match v with V32 -> ",SXTW" | V64 -> "") in
 
   let pp_mem memo v rt ra kr =
-    pp_memo memo ^ " " ^ pp_vreg v rt ^ ",[" ^ pp_xreg ra ^ pp_kr kr ^ "]"
-  in
+    pp_memo memo ^ " " ^ pp_vreg v rt ^
+    ",[" ^ pp_xreg ra ^ pp_kr false kr ^ "]" in
+
+  let pp_rrkr memo v r1 r2 kr = match v,kr with
+  | _,K k -> pp_rri memo v r1 r2 k
+  | V32,RV (V32,r3)
+  | V64,RV (V64,r3) -> pp_rrr memo v r1 r2 r3
+  | V64,RV (V32,_) ->
+      pp_memo memo ^ " " ^
+      pp_xreg r1  ^ "," ^
+      pp_xreg r2 ^ pp_kr true kr
+  | V32,RV (V64,_) -> assert false in
 
   fun i -> match i with
 (* Branches *)
@@ -290,16 +301,16 @@ let do_pp_instruction m =
 (* Operations *)
   | I_MOV (v,r,k) ->
       pp_ri "MOV" v r k
-  | I_STXW (r1,r2) ->
-      sprintf "STXW %s,%s" (pp_xreg r1) (pp_wreg r2)
-  | I_OP2 (v,SUBS,ZR,r,k) ->
+  | I_SXTW (r1,r2) ->
+      sprintf "SXTW %s,%s" (pp_xreg r1) (pp_wreg r2)
+  | I_OP3 (v,SUBS,ZR,r,K k) ->
       pp_ri "CMP" v r k
-  | I_OP2 (v,op,r1,r2,k) ->
-      pp_rri (pp_op op) v r1 r2 k
-  | I_OP3 (v,SUBS,ZR,r2,r3) ->
+  | I_OP3 (v,SUBS,ZR,r2,RV (v3,r3)) when v=v3->
       pp_rr "CMP" v r2 r3
-  | I_OP3 (v,op,r1,r2,r3) ->
-      pp_rrr (pp_op op) v r1 r2 r3
+  | I_OP3 (v,op,r1,r2,K k) ->
+      pp_rri (pp_op op) v r1 r2 k
+  | I_OP3 (v,op,r1,r2,kr) ->
+      pp_rrkr (pp_op op) v r1 r2 kr
 (* Barrier *)
   | I_FENCE b ->
       pp_barrier b
@@ -326,17 +337,21 @@ let fold_regs (f_regs,f_sregs) =
   | Symbolic_reg reg ->  y_reg,f_sregs reg y_sreg
   | Internal _|ZR -> y_reg,y_sreg in
 
+  let fold_kr kr y = match kr with
+  | K _ -> y
+  | RV (_,r) -> fold_reg r y in
+
   fun c ins -> match ins with
   | I_B _ | I_BC _ | I_FENCE _
     -> c
   | I_CBZ (_,r,_) | I_CBNZ (_,r,_) | I_MOV (_,r,_)
     -> fold_reg r c
-  | I_OP2 (_,_,r1,r2,_) | I_LDR (_,r1,r2,_) | I_STR (_,r1,r2,_)
   | I_LDAR (_,r1,r2) | I_STLR (_,r1,r2)
-  | I_STXW (r1,r2)
+  | I_SXTW (r1,r2)
     -> fold_reg r1 (fold_reg r2 c)
-  | I_OP3 (_,_,r1,r2,r3)
-    -> fold_reg r1 (fold_reg r2 (fold_reg r3 c))
+  | I_LDR (_,r1,r2,kr) | I_STR (_,r1,r2,kr)
+  | I_OP3 (_,_,r1,r2,kr)
+    -> fold_reg r1 (fold_reg r2 (fold_kr kr c))
 
 let map_regs f_reg f_symb =
 
@@ -344,6 +359,10 @@ let map_regs f_reg f_symb =
   | Ireg _ -> f_reg reg
   | Symbolic_reg reg -> f_symb reg
   | Internal _|ZR -> reg in
+
+  let map_kr kr = match kr with
+  | K _ -> kr
+  | RV (v,r) -> RV (v,map_reg r) in
 
   fun ins -> match ins with
 (* Branches *)
@@ -356,8 +375,8 @@ let map_regs f_reg f_symb =
   | I_CBNZ (v,r,lbl) ->
       I_CBNZ (v,map_reg r,lbl)
 (* Load and Store *)
-  | I_LDR (v,r1,r2,k) ->
-     I_LDR (v,map_reg r1,map_reg r2,k)
+  | I_LDR (v,r1,r2,kr) ->
+     I_LDR (v,map_reg r1,map_reg r2,map_kr kr)
   | I_LDAR (v,r1,r2) ->
      I_LDAR (v,map_reg r1,map_reg r2)
   | I_STR (v,r1,r2,k) ->
@@ -367,12 +386,10 @@ let map_regs f_reg f_symb =
 (* Operations *)
   | I_MOV (v,r,k) ->
       I_MOV (v,map_reg r,k)
-  | I_STXW (r1,r2) ->
-      I_STXW (map_reg r1,map_reg r2)
-  | I_OP2 (v,op,r1,r2,k) ->
-      I_OP2 (v,op,map_reg r1,map_reg r2,k)
-  | I_OP3 (v,op,r1,r2,r3) ->
-      I_OP3 (v,op,map_reg r1,map_reg r2,map_reg r3)
+  | I_SXTW (r1,r2) ->
+      I_SXTW (map_reg r1,map_reg r2)
+  | I_OP3 (v,op,r1,r2,kr) ->
+      I_OP3 (v,op,map_reg r1,map_reg r2,map_kr kr)
 
 (* No addresses burried in ARM code *)
 let fold_addrs _f c _ins = c
@@ -396,8 +413,7 @@ let get_next = function
   | I_LDAR _
   | I_STLR _
   | I_MOV _
-  | I_STXW _
-  | I_OP2 _
+  | I_SXTW _
   | I_OP3 _
   | I_FENCE _
       -> [Label.Next;]
@@ -416,8 +432,7 @@ include Pseudo.Make
         | I_CBZ _
         | I_CBNZ _
         | I_MOV _
-        | I_STXW _
-        | I_OP2 _
+        | I_SXTW _
         | I_OP3 _
         | I_FENCE _
           -> 0
@@ -439,3 +454,9 @@ include Pseudo.Make
     end)
 
 let get_macro _name = raise Not_found
+
+let base =  Internal 0
+and max_idx = Internal 1
+and idx = Internal 2
+and ephemeral = Internal 3
+let loop_idx = Internal 4
