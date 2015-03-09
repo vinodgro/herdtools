@@ -20,11 +20,13 @@ module Make(V:Constant.S) =
     | Atomic,W -> true
     | _,_ -> false
 
-    let applies_atom_rmw = function
-      | None -> true
-      | Some _ -> false
-
     let compare_atom = Pervasives.compare
+
+    let applies_atom_rmw ar aw = match ar,aw with
+      | None,None -> true
+      | _ -> false
+
+
 
     let pp_as_a = None
     let pp_atom = function

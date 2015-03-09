@@ -49,6 +49,7 @@ module type S = sig
   val fold_pp_edges : (string -> 'a -> 'a) -> 'a -> 'a
 
   val pp_tedge : tedge -> string
+  val pp_atom_option : atom option -> string
   val pp_edge : edge -> string
   val compare_atomo : atom option -> atom option -> int
   val compare : edge -> edge -> int
@@ -144,6 +145,7 @@ and type atom = F.atom = struct
   let pp_a = function
     | None -> Code.plain
     | Some a -> F.pp_atom a
+  let pp_atom_option = pp_a
 
   let pp_aa a1 a2 = match a1, a2 with
   | None,None -> ""
@@ -297,8 +299,8 @@ let fold_tedges f r =
                      if a1 = None && a2=None then
                        f {a1; a2; edge=te;} k
                      else k
-                 | Rmw -> (* identical sources and target atomicity for RMW *)
-                     if a1 = a2 then
+                 | Rmw -> (* Allowed source and target atomicity for wrm *)
+                     if F.applies_atom_rmw a1 a2 then
                        f {a1; a2; edge=te;} k
                      else k
                  | _ ->

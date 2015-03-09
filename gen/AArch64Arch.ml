@@ -26,16 +26,16 @@ module Make(V:Constant.S) =
         -> true
     | _ -> false
 
-    let applies_atom_rmw = function
-      | None -> true
-      | Some _ -> false
+    let applies_atom_rmw ar aw = match ar,aw with
+    | (Some Acq|None),(Some Rel|None) -> true
+    | _ -> false
 
     let pp_as_a = None
 
     let pp_atom = function
-      | Atomic -> "A"
-      | Rel -> "Rel"
-      | Acq -> "Acq"
+      | Atomic -> "X"
+      | Rel -> "L"
+      | Acq -> "A"
 
     let compare_atom = Pervasives.compare
 
