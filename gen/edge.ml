@@ -42,12 +42,14 @@ module type S = sig
   
   val fold_atomo : (atom option -> 'a -> 'a) -> 'a -> 'a
   val fold_edges : (edge -> 'a -> 'a) -> 'a -> 'a
+  val sig_of : (char -> unit) -> edge -> unit
   val iter_edges : (edge -> unit) -> unit
 
 
   val fold_pp_edges : (string -> 'a -> 'a) -> 'a -> 'a
 
   val pp_tedge : tedge -> string
+  val pp_atom_option : atom option -> string
   val pp_edge : edge -> string
   val compare_atomo : atom option -> atom option -> int
   val compare : edge -> edge -> int
@@ -143,6 +145,7 @@ and type atom = F.atom = struct
   let pp_a = function
     | None -> Code.plain
     | Some a -> F.pp_atom a
+  let pp_atom_option = pp_a
 
   let pp_aa a1 a2 = match a1, a2 with
   | None,None -> ""
@@ -296,8 +299,8 @@ let fold_tedges f r =
                      if a1 = None && a2=None then
                        f {a1; a2; edge=te;} k
                      else k
-                 | Rmw -> (* identical sources and target atomicity for RMW *)
-                     if a1 = a2 then
+                 | Rmw -> (* Allowed source and target atomicity for wrm *)
+                     if F.applies_atom_rmw a1 a2 then
                        f {a1; a2; edge=te;} k
                      else k
                  | _ ->
@@ -309,6 +312,43 @@ let fold_tedges f r =
                      if applies_atom a1 d1 && applies_atom a2 d2 then
                        f {a1; a2; edge=te;} k
                      else k *)
+
+  let dir_tgt e = do_dir_tgt e.edge
+  and dir_src e = do_dir_src e.edge
+
+(******************)
+(* New signatures *)
+(******************)
+
+  module Map =
+    MyMap.Make
+      (struct
+        type t = edge
+        let compare = compare
+      end)
+
+  let dir_is_set e = match dir_src e,dir_tgt e with
+  | (Irr,_)|(_,Irr) -> false
+  | _ -> true
+
+  let nedges,sig_map =
+    fold_edges
+      (fun e (c,m as st) ->
+        if dir_is_set e then c+1,Map.add e c m else st)
+      (0,Map.empty)
+
+  let () =
+    if nedges > 0xffff then
+      Warn.warn_always
+        "Signatures for are more than 2 bytes, expect duplicates"
+
+  let sig_of out e =
+    let s =
+      try Map.find e sig_map with Not_found -> assert false in
+    let c1 = s land 0xff in
+    let c2 = (s lsr 8) land 0xff in
+    out (Char.chr c1) ;
+    out (Char.chr c2)
 
   let iter_edges f = fold_edges (fun e () -> f e) ()
 
@@ -383,12 +423,10 @@ let fold_tedges f r =
     try Hashtbl.find t s
     with Not_found -> Warn.fatal "Bad edge: %s" s
 
-let parse_edges s = List.map parse_edge (LexUtil.just_split s)
+  let parse_edges s = List.map parse_edge (LexUtil.just_split s)
 
-let pp_edges es = String.concat " " (List.map pp_edge es)
+  let pp_edges es = String.concat " " (List.map pp_edge es)
 
-let dir_tgt e = do_dir_tgt e.edge
-and dir_src e = do_dir_src e.edge
 
 
 let do_set_tgt d e = match e  with
@@ -409,7 +447,7 @@ and do_set_src d e = match e with
 let set_tgt d e = { e with edge = do_set_tgt d e.edge ; }
 and set_src d e = { e with edge = do_set_src d e.edge ; }
 
-let loc_sd e = match e.edge with
+  let loc_sd e = match e.edge with
   | Fr _|Ws _|Rf _|RfStar _|Hat|Rmw|Detour _|DetourWs _ -> Same
   | Po (sd,_,_) | Fenced (_,sd,_,_) | Dp (_,sd,_) -> sd
   | Store -> Same
@@ -525,22 +563,22 @@ let loc_sd e = match e.edge with
     let e = set_tgt tgt (set_src src e1) in
     { e with a1 = merge_atom e1.a1 e2.a1; a2 = merge_atom e1.a2 e2.a2; }
 
- 
+      
   let resolve_edges es = match es with
   | []|[_] -> es
   | fst::es ->
-     let rec do_rec p = function
-     | [] -> 
-         let p,fst = resolve_pair p fst in
-         fst,p,[]
-     | e::es ->
-         let p,e = resolve_pair p e in
-         let fst,q,es = do_rec e es in
-         fst,p,q::es in
-     let fst1,fst2,es = do_rec fst es in
-     let fst = merge_pair fst1 fst2 in
-     fst::es
-     
+      let rec do_rec p = function
+        | [] -> 
+            let p,fst = resolve_pair p fst in
+            fst,p,[]
+        | e::es ->
+            let p,e = resolve_pair p e in
+            let fst,q,es = do_rec e es in
+            fst,p,q::es in
+      let fst1,fst2,es = do_rec fst es in
+      let fst = merge_pair fst1 fst2 in
+      fst::es
+             
 (* compact *)
   let seq_sd e1 e2 = match loc_sd e1,loc_sd e2 with
   | Same,Same -> Same

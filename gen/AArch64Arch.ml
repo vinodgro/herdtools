@@ -8,13 +8,45 @@
 (*  under the terms of the Lesser GNU General Public License.        *)
 (*********************************************************************)
 
-open Printf
 open Code
 
 module Make(V:Constant.S) =
   struct
     include AArch64Base
-    include MachAtom
+
+(* AArch64 has more atoms that others *)
+    type atom = Acq | Rel | Atomic
+
+    let default_atom = Atomic
+
+    let applies_atom a d = match a,d with
+    | Acq,R
+    | Rel,W
+    | Atomic,(R|W)
+        -> true
+    | _ -> false
+
+    let applies_atom_rmw ar aw = match ar,aw with
+    | (Some Acq|None),(Some Rel|None) -> true
+    | _ -> false
+
+    let pp_as_a = None
+
+    let pp_atom = function
+      | Atomic -> "X"
+      | Rel -> "L"
+      | Acq -> "A"
+
+    let compare_atom = Pervasives.compare
+
+    let fold_atom f r =  f Acq (f Rel (f Atomic r))
+
+    let worth_final = function
+      | Atomic -> true
+      | Acq|Rel -> false
+
+(* End of atoms *)
+
     module V = V
 
 (**********)
@@ -33,24 +65,6 @@ module Make(V:Constant.S) =
 
     let pp_fence f = do_pp_barrier "." f
 
-    let sig_of_domain = function
-      | NSH -> 0
-      | ISH -> 1
-      | OSH -> 2
-      | SY -> 3
-
-    let sig_of_type = function
-      | LD -> 0
-      | ST -> 1
-      | FULL -> 2
-
-    let sig_of_options d t = 3 * sig_of_domain d + sig_of_type t
-
-    let sig_of_fence = function
-      | DSB (d,t) -> Char.chr (128 + 2 * (sig_of_options d t))  
-      | DMB (d,t) -> Char.chr (128 + 2 * (sig_of_options d t)+1)
-      | ISB -> 'I'
-
     let fold_cumul_fences f k = do_fold_dmb_dsb f k
 
     let fold_all_fences f k = fold_barrier f k
@@ -67,7 +81,7 @@ module Make(V:Constant.S) =
     | (DSB (_,FULL)|DMB (_,FULL)),_,_ -> true
     | (DSB (_,ST)|DMB (_,ST)),W,W -> true
     | (DSB (_,ST)|DMB (_,ST)),_,_ -> false
-    | (DSB (_,LD)|DMB (_,LD)),R,(W|R) -> true
+    | (DSB (_,LD)|DMB (_,LD)),Code.R,(W|Code.R) -> true
     | (DSB (_,LD)|DMB (_,LD)),_,_ -> false
 
 
@@ -80,7 +94,7 @@ module Make(V:Constant.S) =
       | ADDR -> "Addr"
       | DATA -> "Data"
       | CTRL -> "Ctrl"
-      | CTRLISYNC -> "CtrlIsbc"
+      | CTRLISYNC -> "CtrlIsb"
 
     include
         ArchExtra.Make

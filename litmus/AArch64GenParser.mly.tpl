@@ -11,7 +11,7 @@
 /**************************************************************************/
 
 %{
-module AArch64 = AArch64Base
+module AArch64 = AArch64GenBase
 open AArch64
 
 let issp r = match r with X SP | W SP -> true | _ -> false
@@ -27,11 +27,11 @@ let error_not_instruction txt = failwith "%s is not an instruction" txt
 
 %token EOF
 
-%token <AArch64Base.inst_reg> ARCH_XREG
-%token <AArch64Base.inst_reg> ARCH_WREG
+%token <AArch64GenBase.inst_reg> ARCH_XREG
+%token <AArch64GenBase.inst_reg> ARCH_WREG
 
-%token <AArch64Base.inst_reg> SYMB_XREG
-%token <AArch64Base.inst_reg> SYMB_WREG
+%token <AArch64GenBase.inst_reg> SYMB_XREG
+%token <AArch64GenBase.inst_reg> SYMB_WREG
 %token <int> NUM
 %token <Big_int.big_int> BIG_NUM
 %token <string> NAME
@@ -41,7 +41,7 @@ let error_not_instruction txt = failwith "%s is not an instruction" txt
 
 /* #include "./src_aarch64_hgen/tokens.hgen" */
 
-%type <int list * (AArch64Base.pseudo) list list * MiscParser.gpu_data option> main
+%type <int list * (AArch64GenBase.pseudo) list list * MiscParser.gpu_data option> main
 %start  main
 
 %nonassoc SEMI

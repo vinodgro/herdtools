@@ -12,14 +12,6 @@ open Printf
 (* Memory order *)
 open MemOrder  
 
-let sig_of_mem_order = function
-  | Acq -> 'D'
-  | Rel -> 'E'
-  | Acq_Rel -> 'F'
-  | SC -> 'G'
-  | Rlx -> 'H'
-  | Con -> 'I'
-
 (* Atoms *)
 open Code
 type atom = MemOrder.t
@@ -29,12 +21,17 @@ let applies_atom a d = match a,d with
 | (Rel|Acq_Rel),R -> false
 | _,_ -> true
 
-let applies_atom_rmw = function
-  | Some Con|None -> false
-  | Some _ -> true
-
 let compare_atom = Pervasives.compare
-let sig_of_atom = sig_of_mem_order
+
+let applies_atom_rmw ar aw = match ar,aw with
+  | (Some Con,_)
+  | (None,_)
+  | (_,Some Con)
+  | (_,None)
+    -> false
+  | Some a1,Some a2 -> compare_atom a1 a2 = 0
+
+
 let pp_as_a = Some SC
 let pp_atom = pp_mem_order_short
 
@@ -60,8 +57,6 @@ let strong = SC
 
 let pp_fence f = sprintf "Fence%s" (pp_mem_order_short f)
 
-
-let sig_of_fence f = sig_of_mem_order f
 
 let do_fold_fence f k =
   let k = f Acq k in
@@ -181,7 +176,6 @@ let rec is_nop = function
 type dp
 
 let pp_dp _ = assert false
-let sig_of_dp _ = assert false
 let fold_dpr  _f k = k
 let fold_dpw _f k = k
 
