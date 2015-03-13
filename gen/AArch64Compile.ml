@@ -43,6 +43,7 @@ module Make(V:Constant.S)(Cfg:CompileCommon.Config) : XXXCompile.S =
 
 let tempo1 st = A.alloc_trashed_reg "T1" st (* May be used for address *)
 let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
+let tempo3 st = A.alloc_trashed_reg "T3" st (* May be used for STRX flag *)
 
 (******************)
 (* Idiosyncrasies *)
@@ -70,8 +71,8 @@ let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
     let str r1 r2 = I_STR (vloc,r1,r2,K 0)
     let stlr r1 r2 = I_STLR (vloc,r1,r2)
     let str_idx r1 r2 idx = I_STR (vloc,r1,r2,RV (vloc,idx))
-    let strx r1 r2 r3 = I_STXR (vloc,YY,r1,r2,r3)
-    let strlx r1 r2 r3 = I_STXR (vloc,LY,r1,r2,r3)
+    let stxr r1 r2 r3 = I_STXR (vloc,YY,r1,r2,r3)
+    let stlxr r1 r2 r3 = I_STXR (vloc,LY,r1,r2,r3)
 
 (* Compute address in tempo1 *)
     let _sxtw r k = match vloc with
@@ -225,7 +226,7 @@ let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
           pseudo
             [mov rV v ;
              S.strex t2 rV rA;
-             cbz t2 (Label.fail p);],
+             cbnz t2 (Label.fail p);],
           st
 
         let emit_one_strex st p init x v =
@@ -238,7 +239,7 @@ let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
         (struct
           let store = str
           let store_idx st rA rB idx = [str_idx rA rB idx],st
-          let strex = strx
+          let strex = stxr
         end)
 
     module STLR =
@@ -248,30 +249,113 @@ let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
           let store_idx  st rA rB idx =
             let r,ins,st = sum_addr st rB idx in
             ins@[stlr rA r],st
-          let strex = strlx
+          let strex = stlxr
         end)
 
 
 
+(***************************)
+(* Atomic loads and stores *)
+(***************************)
+
+    let get_xload = function
+      | PP|PL -> ldxr
+      | AP|AL -> ldaxr
+
+    and get_xstore = function
+      | PP|AP -> stxr
+      | PL|AL -> stlxr
+
+    let emit_loop_pair rw _p st rR rW rA =
+      let lbl = Label.next_label "Loop" in
+      let r,st = tempo3 st in
+      let cs =
+        [
+         Label (lbl,Instruction (get_xload rw rR rA));
+         Instruction (get_xstore rw r rW rA);
+         Instruction (cbnz r lbl);
+       ] in
+      cs,st
+
+    let emit_one_pair rw p r rR rW rA k =
+      Instruction (get_xload rw rR rA)::
+      Instruction (get_xstore rw r rW rA)::
+      Instruction (cbnz r (Label.fail p))::k
+
+    let emit_unroll_pair u rw p st rR rW rA =
+      let r,st = tempo3 st in      
+      let cs =
+        if u <= 0 then
+          pseudo
+            [get_xload rw rR rA;
+             get_xstore rw r rW rA;]
+        else if u = 1 then
+          emit_one_pair rw p r rR rW rA []
+        else
+          let out = Label.next_label "Go" in
+          let rec do_rec = function
+            | 1 ->
+                emit_one_pair
+                  rw p r rR rW rA [Label (out,Nop)]
+            | u ->
+                Instruction (get_xload rw rR rA)::
+                Instruction (get_xstore rw r rW rA)::
+                Instruction (cbz r out)::
+                do_rec (u-1) in
+          do_rec u in
+      cs,st
+
+    let emit_pair = match Cfg.unrollatomic with
+    | None -> emit_loop_pair
+    | Some u -> emit_unroll_pair u
+
+    let emit_lda_reg rw st p rA =
+      let rR,st = next_reg st in
+      let cs,st = emit_pair rw p st rR rR rA in
+      rR,cs,st
+
+    let emit_lda rw st p init loc =
+      let rA,init,st = next_init st p init loc in
+      let r,cs,st =  emit_lda_reg rw st p rA in
+      r,init,cs,st
+
+    let emit_lda_idx rw st p init loc idx =
+      let rA,init,st = next_init st p init loc in
+      let rA,cs1,st = sum_addr st rA idx in
+      let r,cs2,st =  emit_lda_reg rw st p rA in
+      r,init,pseudo cs1@cs2,st
+
+
+    let do_emit_sta rw st p rW rA =
+      let rR,st = next_reg st in
+      let cs,st = emit_pair rw p st rR rW rA in
+      rR,cs,st
+
+    let emit_sta rw st p init loc v =
+      let rA,init,st = next_init st p init loc in
+      let rW,st = next_reg st in
+      let rR,cs,st = do_emit_sta rw st p rW rA in
+      rR,init,Instruction (mov rW v)::cs,st
+
+    let emit_sta_reg rw st p init loc rW =
+      let rA,init,st = next_init st p init loc in
+      let rR,cs,st = do_emit_sta rw st p rW rA in
+      rR,init,cs,st
+
+    let emit_sta_idx rw st p init loc idx v =
+      let rA,init,st = next_init st p init loc in
+      let rA,cs1,st = sum_addr st rA idx in
+      let rW,st = next_reg st in
+      let rR,cs2,st = do_emit_sta rw st p rW rA in
+      rR,init,Instruction (mov rW v)::pseudo cs1@cs2,st
+
 
 (* No FNO yet *)
+    let emit_fno _st _p _init _x = assert false
     let emit_fno2 _st _p _init _x = assert false
     and emit_open_fno _st _p _init _x = assert false
     and emit_close_fno _st _p _init _lab _r _x = assert false
 
-(* Load exclusive *)
-
-    let emit_fno _st _p _init _x = assert false
-
-    let emit_fno_idx _st _p _init _x _idx = assert false
-
-(* Store conditional *)
-
-    let emit_sta _st _p _init _x _v = assert false
-
-    let emit_sta_idx _st _p _init _x _idx _v = assert false
-
-    let emit_sta_reg _st _p _init _x _rA = assert false
 
 (**********)
 (* Access *)
@@ -286,8 +370,8 @@ let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
         Some r,init,cs,st
     | R,Some Rel ->
         Warn.fatal "No load release"
-    | R,Some Atomic ->
-        let r,init,cs,st = emit_fno st p init e.loc  in
+    | R,Some Atomic rw ->
+        let r,init,cs,st = emit_lda rw st p init e.loc  in
         Some r,init,cs,st
     | W,None ->
         let init,cs,st = STR.emit_store st p init e.loc e.v in
@@ -296,13 +380,13 @@ let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
         let init,cs,st = STLR.emit_store st p init e.loc e.v in
         None,init,cs,st
     | W,Some Acq -> Warn.fatal "No store acquire"
-    | W,Some Atomic ->
-        let ro,init,cs,st = emit_sta st p init e.loc e.v in
-        ro,init,cs,st
+    | W,Some Atomic rw ->
+        let r,init,cs,st = emit_sta rw st p init e.loc e.v in
+        Some r,init,cs,st
 
     let emit_exch st p init er ew =
       let emit_load = match er.C.atom with
-      | Some Acq -> LDAR. emit_ldrex
+      | Some Acq -> LDAR.emit_ldrex
       | None -> LDR.emit_ldrex
       | a -> Warn.fatal "bad R atomicity in rmw, %s" (E.pp_atom_option a)
       and emit_store = match ew.C.atom with
@@ -334,8 +418,8 @@ let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
           Some r,init, Instruction c::cs,st
       | R,Some Rel ->
           Warn.fatal "No load release"
-      | R,Some Atomic ->
-          let r,init,cs,st = emit_fno_idx st p init e.loc r2 in
+      | R,Some Atomic rw ->
+          let r,init,cs,st = emit_lda_idx rw st p init e.loc r2 in
           Some r,init, Instruction c::cs,st
       | W,None ->
           let init,cs,st = STR.emit_store_idx st p init e.loc r2 e.v in
@@ -344,9 +428,9 @@ let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
           let init,cs,st = STLR.emit_store_idx st p init e.loc r2 e.v in
           None,init,Instruction c::cs,st
       | W,Some Acq -> Warn.fatal "No store acquire"
-      | W,Some Atomic ->
-          let ro,init,cs,st = emit_sta_idx st p init e.loc r2 e.v in
-          ro,init,Instruction c::cs,st
+      | W,Some Atomic rw ->
+          let r,init,cs,st = emit_sta_idx rw st p init e.loc r2 e.v in
+          Some r,init,Instruction c::cs,st
 
     let emit_exch_dep_addr st p init er ew rd =
       let r2,st = next_reg st in
@@ -382,9 +466,9 @@ let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
           | Some Rel ->
               let init,cs,st = STLR.emit_store_reg st p init e.loc r2 in
               None,init,cs2@cs,st
-          | Some Atomic ->
-              let ro,init,cs,st = emit_sta_reg st p init e.loc r2 in
-              ro,init,cs2@cs,st        
+          | Some Atomic rw ->
+              let r,init,cs,st = emit_sta_reg rw st p init e.loc r2 in
+              Some r,init,cs2@cs,st        
           | Some Acq ->
               Warn.fatal "No store acquire"
           end
