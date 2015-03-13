@@ -24,6 +24,7 @@ let applies_atom_rmw ar aw = match ar,aw with
 | None,None -> true
 | _,_ -> false
 
+let pp_plain = Code.plain
 let pp_as_a = None
 
 let pp_atom = function

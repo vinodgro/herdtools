@@ -30,6 +30,7 @@ module Make(V:Constant.S) =
     | (Some Acq|None),(Some Rel|None) -> true
     | _ -> false
 
+    let pp_plain = "P"
     let pp_as_a = None
 
     let pp_atom = function

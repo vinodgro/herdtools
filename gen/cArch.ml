@@ -31,7 +31,7 @@ let applies_atom_rmw ar aw = match ar,aw with
     -> false
   | Some a1,Some a2 -> compare_atom a1 a2 = 0
 
-
+let pp_plain = Code.plain
 let pp_as_a = Some SC
 let pp_atom = pp_mem_order_short
 

@@ -28,9 +28,13 @@ module Make(V:Constant.S) =
 
 
 
+    let pp_plain = Code.plain
+
     let pp_as_a = None
+
     let pp_atom = function
       | Atomic -> "A"
+
     let fold_atom f k = f Atomic k
 
     let worth_final _ = true

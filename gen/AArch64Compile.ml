@@ -261,17 +261,17 @@ let tempo2 st = A.alloc_trashed_reg "T2" st (* May be used for data *)
 
 (* Load exclusive *)
 
-    let emit_fno st p init x = assert false
+    let emit_fno _st _p _init _x = assert false
 
-    let emit_fno_idx st p init x idx = assert false
+    let emit_fno_idx _st _p _init _x _idx = assert false
 
 (* Store conditional *)
 
-    let emit_sta  st p init x v = assert false
+    let emit_sta _st _p _init _x _v = assert false
 
-    let emit_sta_idx st p init x idx v = assert false
+    let emit_sta_idx _st _p _init _x _idx _v = assert false
 
-    let emit_sta_reg st p init x rA = assert false
+    let emit_sta_reg _st _p _init _x _rA = assert false
 
 (**********)
 (* Access *)
