@@ -212,19 +212,19 @@ let () =
   let module T = Top.Make(Co) in
   let f = match !Config.arch with
   | PPC ->
-      let module M = Make(T(PPCCompile.Make(V)(C)(PPCArch.Config)))(Co) in
+      let module M = Make(T(PPCCompile.Make(C)(PPCArch.Config)))(Co) in
     M.go
   | X86 ->
-    let module M = Make(T(X86Compile.Make(V)(C)))(Co) in
+    let module M = Make(T(X86Compile.Make(C)))(Co) in
     M.go
   | ARM ->
-      let module M = Make(T(ARMCompile.Make(V)(C)))(Co) in
+      let module M = Make(T(ARMCompile.Make(C)))(Co) in
       M.go
   | AArch64 ->
-      let module M = Make(T(AArch64Compile.Make(V)(C)))(Co) in
+      let module M = Make(T(AArch64Compile.Make(C)))(Co) in
       M.go
   | MIPS ->
-      let module M = Make(T(MIPSCompile.Make(V)(C)))(Co) in
+      let module M = Make(T(MIPSCompile.Make(C)))(Co) in
       M.go
   | C|CPP ->
       let module CoC = struct
