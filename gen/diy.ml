@@ -142,7 +142,6 @@ let exec_conf s =
   ()
 
 let () =
-  let module V = SymbConstant in
   Arg.parse (Config.speclist) get_arg Config.usage_msg;
   begin
   match !Config.conf with

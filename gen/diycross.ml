@@ -211,7 +211,6 @@ let () =
       let allow_back = false
       let cpp = match !Config.arch with Archs.CPP -> true | _ -> false
     end in
-    let module V = SymbConstant in
     let open Archs in
     let module T = Top.Make(C) in
     begin match !Config.arch with

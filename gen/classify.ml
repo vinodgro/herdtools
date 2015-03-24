@@ -130,7 +130,6 @@ let () =
     (fun _ -> raise (Arg.Bad  "No argument"))
 
 let () =
-  let module V = SymbConstant in
   let module Co = struct
     let diyone = !diyone
     let uniq = !uniq

@@ -106,7 +106,6 @@ let () =
 let pp_es = List.rev !pp_es
 
 let () =
-  let module V = SymbConstant in
   (match !arch with
   | X86 ->
       let module M = Make(X86Arch) in

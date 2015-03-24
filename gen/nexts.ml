@@ -74,7 +74,6 @@ let () =
     (fun _ -> raise (Arg.Bad  "No argument"))
 
 let () =
-  let module V = SymbConstant in
   let module Co = struct
     let verbose = !verbose
     let nacc = match !n with
