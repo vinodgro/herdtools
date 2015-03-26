@@ -384,18 +384,24 @@ let tempo3 st = A.alloc_trashed_reg "T3" st (* May be used for STRX flag *)
         let r,init,cs,st = emit_sta rw st p init e.loc e.v in
         Some r,init,cs,st
 
+    let tr_a ar aw = match ar,aw with
+    | None,None -> PP
+    | Some Acq,None -> AP
+    | None,Some Rel -> PL
+    | Some Acq,Some Rel -> AL
+    | _,_ ->
+        Warn.fatal
+          "bad atomicity in rmw, %s%s"
+          (E.pp_atom_option ar)
+          (E.pp_atom_option aw)
+
     let emit_exch st p init er ew =
-      let emit_load = match er.C.atom with
-      | Some Acq -> LDAR.emit_ldrex
-      | None -> LDR.emit_ldrex
-      | a -> Warn.fatal "bad R atomicity in rmw, %s" (E.pp_atom_option a)
-      and emit_store = match ew.C.atom with
-      | Some Rel -> STLR.emit_one_strex
-      | None -> STR.emit_one_strex
-      | a -> Warn.fatal "bad W atomicity in rmw, %s" (E.pp_atom_option a) in
-      let r,init,csr,st = emit_load st p init er.loc  in
-      let init,csw,st = emit_store st p init ew.loc ew.v in
-      r,init,csr@csw,st
+      let rA,init,st = next_init st p init er.loc in
+      let rR,st = next_reg st in
+      let rW,st = next_reg st in
+      let arw = tr_a er.C.atom ew.C.atom in
+      let cs,st = emit_pair arw p st rR rW rA in
+      rR,init,Instruction (mov rW ew.v)::cs,st
 
 (* Fences *)
 
@@ -437,19 +443,13 @@ let tempo3 st = A.alloc_trashed_reg "T3" st (* May be used for STRX flag *)
       let c = eor r2 rd rd in
       let rA,init,st = next_init st p init er.loc in
       let rA,csum,st = sum_addr st rA r2 in
-      let emit_load = match er.C.atom with
-      | Some Acq -> LDAR. emit_ldrex_reg
-      | None -> LDR.emit_ldrex_reg
-      | a -> Warn.fatal "bad R atomicity in rmw, %s" (E.pp_atom_option a)
-      and emit_store = match ew.C.atom with
-      | Some Rel -> STLR.emit_one_strex_reg
-      | None -> STR.emit_one_strex_reg
-      | a -> Warn.fatal "bad W atomicity in rmw, %s" (E.pp_atom_option a) in
-      let r,init,csr,st = emit_load st p init rA  in
-      let init,csw,st = emit_store st p init rA ew.v in
-      r,init,pseudo (c::csum)@csr@csw,st
-
-
+      let rR,st = next_reg st in
+      let rW,st = next_reg st in
+      let arw = tr_a er.C.atom ew.C.atom in
+      let cs,st = emit_pair arw p st rR rW rA in
+      rR,init,
+      Instruction (mov rW ew.v)::pseudo (c::csum)@cs,
+      st
 
     let emit_access_dep_data st p init e  r1 =
       match e.dir with
