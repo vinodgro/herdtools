@@ -229,10 +229,10 @@ let rec compile_proc chk loc_writes st p ro_prev init ns = match ns with
     | _ ->
         let o,init,i,st = emit_access ro_prev st p init n in
         let nchk,add_check =
-          match O.docheck,o,ns with
-          | true,Some r,_::_ ->
+          match O.docheck,n.C.evt.C.dir,o,ns with
+          | true,R,Some r,_::_ ->
               true,Comp.check_load p r n.C.evt
-          | _,_,_ -> chk,Misc.identity  in
+          | _ -> chk,Misc.identity  in
         let init,is,finals,st =
           compile_proc nchk loc_writes
             st p (edge_to_prev_load o n.C.edge)
