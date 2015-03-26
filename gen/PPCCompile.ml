@@ -497,7 +497,7 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
         [PPC.Label (Label.exit p,PPC.Nop)],
         st
       else if does_exit p cs then
-        init,cs@[Label (Label.exit p,Nop)],st
+        init,cs@[PPC.Label (Label.exit p,PPC.Nop)],st
       else init,cs,st
 
 
