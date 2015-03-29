@@ -248,6 +248,7 @@ type instruction =
       | SetCR0 -> memo ^ "."
       | DontSetCR0 -> memo in
       ppi_index_mode2 memo rD rA
+    let pp_ds ds = sprintf "%i" (ds lsl 2)
 
     let pp_cond cond = match cond with
     | Eq -> "eq" | Ne -> "ne"
