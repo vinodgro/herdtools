@@ -35,7 +35,6 @@ let opts =
 module type Config = sig  
   include DumpAll.Config
   val varatom : bool
-  val sta : bool
   val unrollatomic : int option
 end
 
@@ -194,7 +193,6 @@ let () =
          (match cond with
          | Config.Unicond -> true
          | _ -> false)
-      let sta = !Config.sta
       let unrollatomic = !Config.unrollatomic
       let list_edges = !Config.list_edges
       let overload = !Config.overload
@@ -202,7 +200,6 @@ let () =
       let docheck = !Config.docheck
       let optcoherence = !Config.optcoherence
       let optcond = !Config.optcond
-      let fno = !Config.fno
       let obs_type = !Config.obs_type
       let do_observers = !Config.do_observers
       let eprocs = !Config.eprocs
@@ -211,25 +208,24 @@ let () =
       let allow_back = false
       let cpp = match !Config.arch with Archs.CPP -> true | _ -> false
     end in
-    let module V = SymbConstant in
     let open Archs in
     let module T = Top.Make(C) in
     begin match !Config.arch with
     | X86 ->
-        let module M = Make(C)(T(X86Compile.Make(V)(C))) in
+        let module M = Make(C)(T(X86Compile.Make(C))) in
         M.zyva
     | PPC -> 
         let module PPCConf = struct let eieio = !use_eieio end in
-        let module M = Make(C)(T(PPCCompile.Make(V)(C)(PPCConf))) in
+        let module M = Make(C)(T(PPCCompile.Make(C)(PPCConf))) in
         M.zyva
     | ARM ->
-        let module M = Make(C)(T(ARMCompile.Make(V)(C))) in
+        let module M = Make(C)(T(ARMCompile.Make(C))) in
         M.zyva
     | AArch64 ->
-        let module M = Make(C)(T(AArch64Compile.Make(V)(C))) in
+        let module M = Make(C)(T(AArch64Compile.Make(C))) in
         M.zyva
     | MIPS ->
-        let module M = Make(C)(T(MIPSCompile.Make(V)(C))) in
+        let module M = Make(C)(T(MIPSCompile.Make(C))) in
         M.zyva
     | C|CPP ->
         let module CoC = struct

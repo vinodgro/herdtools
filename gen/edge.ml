@@ -36,7 +36,6 @@ module type S = sig
     | Back  of com (* Return to thread *)
 (* fancy *)
     | Hat
-    | RfStar of ie
     | Rmw
 
   type edge = { edge: tedge;  a1:atom option; a2: atom option; }
@@ -44,7 +43,6 @@ module type S = sig
   
   val fold_atomo : (atom option -> 'a -> 'a) -> 'a -> 'a
   val fold_edges : (edge -> 'a -> 'a) -> 'a -> 'a
-  val sig_of : (char -> unit) -> edge -> unit
   val iter_edges : (edge -> unit) -> unit
 
 
@@ -99,9 +97,9 @@ module type S = sig
   val is_store : edge -> bool
   val is_ext : edge -> bool
 
-(* Set *)
+(* Set/Map *)
   module Set : MySet.S with type elt = edge
-
+  module Map : MyMap.S with type key = edge
 
 end
 
@@ -134,7 +132,6 @@ and type atom = F.atom = struct
     | Leave of com
     | Back of com
     | Hat
-    | RfStar of ie
     | Rmw
 
  type edge = { edge: tedge;  a1:atom option; a2: atom option; }
@@ -192,7 +189,6 @@ and type atom = F.atom = struct
 
   let pp_tedge = function
     | Rf ie -> sprintf "Rf%s" (pp_ie ie)
-    | RfStar ie -> sprintf "Rf*%s" (pp_ie ie)
     | Fr ie -> sprintf "Fr%s" (pp_ie ie)
     | Ws ie -> sprintf "Ws%s" (pp_ie ie)
     | Detour d -> sprintf "Detour%s" (pp_extr d)
@@ -253,7 +249,7 @@ let pp_dp_default tag sd e = sprintf "%s%s%s" tag (pp_sd sd) (pp_extr e)
 
   let do_dir_tgt e = match e with
   | Po(_,_,e)| Fenced(_,_,_,e)|Dp (_,_,e) -> e
-  | Rf _| RfStar _ | Hat | Detour _ -> Dir R
+  | Rf _| Hat | Detour _ -> Dir R
   | Ws _|Fr _|Rmw|DetourWs _ -> Dir W
   | Store -> Dir W
   | Leave c|Back c -> do_dir_tgt_com c
@@ -261,7 +257,7 @@ let pp_dp_default tag sd e = sprintf "%s%s%s" tag (pp_sd sd) (pp_extr e)
   and do_dir_src e = match e with
   | Po(_,e,_)| Fenced(_,_,e,_) | Detour e | DetourWs e -> e
   | Dp _|Fr _|Hat|Rmw -> Dir R
-  | Ws _|Rf _|RfStar _ -> Dir W
+  | Ws _|Rf _ -> Dir W
   | Store -> Dir W
   | Leave c|Back c -> do_dir_src_com c
 
@@ -269,7 +265,6 @@ let pp_dp_default tag sd e = sprintf "%s%s%s" tag (pp_sd sd) (pp_extr e)
 
 let fold_tedges f r =
   let r = fold_ie (fun ie -> f (Rf ie)) r in
-  let r = fold_ie (fun ie -> f (RfStar ie)) r in
   let r = fold_ie (fun ie -> f (Fr ie)) r in
   let r = fold_ie (fun ie -> f (Ws ie)) r in
   let r = f Rmw r in
@@ -329,39 +324,9 @@ let fold_tedges f r =
   let dir_tgt e = do_dir_tgt e.edge
   and dir_src e = do_dir_src e.edge
 
-(******************)
-(* New signatures *)
-(******************)
-
-  module Map =
-    MyMap.Make
-      (struct
-        type t = edge
-        let compare = compare
-      end)
-
-  let dir_is_set e = match dir_src e,dir_tgt e with
-  | (Irr,_)|(_,Irr) -> false
-  | _ -> true
-
-  let nedges,sig_map =
-    fold_edges
-      (fun e (c,m as st) ->
-        if dir_is_set e then c+1,Map.add e c m else st)
-      (0,Map.empty)
-
-  let () =
-    if nedges > 0xffff then
-      Warn.warn_always
-        "Signatures for are more than 2 bytes, expect duplicates"
-
-  let sig_of out e =
-    let s =
-      try Map.find e sig_map with Not_found -> assert false in
-    let c1 = s land 0xff in
-    let c2 = (s lsr 8) land 0xff in
-    out (Char.chr c1) ;
-    out (Char.chr c2)
+(**********)
+(* Lexing *)
+(**********)
 
   let iter_edges f = fold_edges (fun e () -> f e) ()
 
@@ -452,7 +417,7 @@ let do_set_tgt d e = match e  with
   | Po(sd,src,_) -> Po (sd,src,Dir d)
   | Fenced(f,sd,src,_) -> Fenced(f,sd,src,Dir d)
   | Dp (dp,sd,_) -> Dp (dp,sd,Dir d) 
-  | Rf _ |RfStar _ | Hat
+  | Rf _ | Hat
   | Ws _|Fr _|Rmw|Detour _|DetourWs _|Store|Leave _|Back _-> e
 
 and do_set_src d e = match e with
@@ -461,20 +426,20 @@ and do_set_src d e = match e with
   | Detour _ -> Detour (Dir d)
   | DetourWs _ -> DetourWs (Dir d)
   | Fr _|Hat|Dp _
-  | Ws _|Rf _|RfStar _|Rmw|Store|Leave _|Back _ -> e
+  | Ws _|Rf _|Rmw|Store|Leave _|Back _ -> e
 
 let set_tgt d e = { e with edge = do_set_tgt d e.edge ; }
 and set_src d e = { e with edge = do_set_src d e.edge ; }
 
   let loc_sd e = match e.edge with
-  | Fr _|Ws _|Rf _|RfStar _|Hat|Rmw|Detour _|DetourWs _ -> Same
+  | Fr _|Ws _|Rf _|Hat|Rmw|Detour _|DetourWs _ -> Same
   | Po (sd,_,_) | Fenced (_,sd,_,_) | Dp (_,sd,_) -> sd
   | Store -> Same
   | Leave _|Back _ -> Same
 
   let get_ie e = match e.edge with
   | Po _|Dp _|Fenced _|Rmw|Detour _|DetourWs _ -> Int
-  | Rf ie|RfStar ie|Fr ie|Ws ie -> ie
+  | Rf ie|Fr ie|Ws ie -> ie
   | Store -> Int
   | Leave _|Back _|Hat -> Ext
 
@@ -523,7 +488,7 @@ and set_src d e = { e with edge = do_set_src d e.edge ; }
 
   let do_expand_edge e f =
     match e.edge with
-    | Rf _ | RfStar _ | Fr _ | Ws _ | Hat |Rmw|Dp _|Store|Leave _|Back _
+    | Rf _ | Fr _ | Ws _ | Hat |Rmw|Dp _|Store|Leave _|Back _
       -> f e
     | Detour d ->
         expand_dir d (fun d -> f { e with edge=Detour d;})
@@ -674,5 +639,11 @@ and set_src d e = { e with edge = do_set_src d e.edge ; }
         let compare = compare
       end)
 
+  module Map =
+    MyMap.Make
+      (struct
+        type t = edge
+        let compare = compare
+      end)
 
 end

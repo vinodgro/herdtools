@@ -23,9 +23,9 @@ module type Config = sig
   val obs_type : Config.obs_type
   val optcond : bool
   val overload : int option
-  val fno : Config.fno
   val poll : bool
   val optcoherence : bool
+  val docheck : bool
 end
 
 module Make (O:Config) (Comp:XXXCompile.S) : Builder.S 
@@ -47,6 +47,11 @@ module Make (O:Config) (Comp:XXXCompile.S) : Builder.S
   type node = C.node
 
   module F = Final.Make(O)(Comp)
+
+  let add_init_check chk p o init =
+    match chk,o with
+    | true,Some r -> (A.Reg (p,r),"-1")::init
+    | _,_ -> init
 
   type test =
       {
@@ -127,26 +132,12 @@ module U = TopUtils.Make(O)(Comp)
     | _ -> init,[],st in
     let o,init,i,st = match ro_prev with
     | No ->
-        let open Config in
-        begin match
-          O.fno,n.C.evt.C.dir,n.C.prev.C.prev.C.edge.E.edge,
-          n.C.prev.C.edge.E.edge,
-          n.C.edge.E.edge
-        with
-        | (FnoPrev|FnoBoth|FnoOnly),R,_,Rf _, E.Fenced _->
-            let r,init,i,st = Comp.emit_fno st p init n.C.evt.C.loc in
-            Some r,init,i,st
-        | (FnoBoth|FnoOnly),R,Rf _, E.Fenced _,_->
-            let r,init,i,st = Comp.emit_fno st p init n.C.evt.C.loc in
-            Some r,init,i,st
-        | _ ->
-            if U.do_poll n then
-              let r,init,i,st =
-                Comp.emit_load_one st p init n.C.evt.C.loc in
-              Some r,init,i,st
-            else
-              call_emit_access st p init n
-        end
+        if U.do_poll n then
+          let r,init,i,st =
+            Comp.emit_load_one st p init n.C.evt.C.loc in
+          Some r,init,i,st
+        else
+          call_emit_access st p init n
     | Yes (dp,r1) -> call_emit_access_dep st p init n dp r1 in
     o,init,ip@i,st
 
@@ -159,15 +150,9 @@ let edge_to_prev_load o e = match o with
     end
 
 let get_fence n =
-  let open Config in 
-  match O.fno,n.C.edge.E.edge with
-  | FnoOnly,E.Fenced (fe,_,_,_) ->
-      begin match n.C.evt.C.dir,n.C.next.C.evt.C.dir with
-      | R,R -> None
-      | _,_ -> Some fe
-      end
-  | _, E.Fenced (fe,_,_,_) ->  Some fe
-  | _,_ -> None
+  match n.C.edge.E.edge with
+  | E.Fenced (fe,_,_,_) ->  Some fe
+  | _ -> None
         
 let rec compile_stores st p i ns k = match ns with
 | [] -> i,k,st
@@ -180,61 +165,29 @@ let rec compile_stores st p i ns k = match ns with
       let i,k,st = compile_stores st p i ns k in
       i,(c@k),st
 
-let rec compile_proc loc_writes st p ro_prev init ns = match ns with
+let rec compile_proc chk loc_writes st p ro_prev init ns = match ns with
 | [] -> init,[],(C.EventMap.empty,[]),st
 | n::ns ->
-    let open Config in
-    begin match
-      O.fno,
-      n.C.evt.C.dir,n.C.prev.C.edge.E.edge,
-      n.C.next.C.evt.C.dir,ns with
-    | FnoAll,R,_,_,_ ->
-        begin match  ro_prev with
-        | No -> ()
-        | Yes _ -> Warn.fatal "Dependency to fno"
-        end ;
-        let o,init,i,st = Comp.emit_fno st p init n.C.evt.C.loc in
+    let o,init,i,st = emit_access ro_prev st p init n in
+        let nchk,add_check =
+          match O.docheck,n.C.evt.C.dir,o,ns with
+          | true,R,Some r,_::_ ->
+              true,Comp.check_load p r n.C.evt
+          | _ -> chk,Misc.identity  in
         let init,is,finals,st =
-          compile_proc loc_writes
-            st p (edge_to_prev_load (Some o) n.C.edge)
-            init ns in
-        init,
-        i@(match get_fence n with Some fe -> Comp.emit_fence fe::is  | _ -> is),
-        (if StringSet.mem n.C.evt.C.loc loc_writes then
-          F.add_final p (Some o) n finals
-        else finals),
-        st
-    | (FnoRf,R,Rf _,d,m::ns)
-    | (_,R,RfStar _,d,m::ns) ->
-        let o1,init,i1,lab,st = Comp.emit_open_fno st p init n.C.evt.C.loc in
-        let o2,init,i2,st =
-          emit_access (edge_to_prev_load (Some o1) n.C.edge) st p init m in
-        let init,i3,st = Comp.emit_close_fno st p init lab o1 n.C.evt.C.loc in
-        let init,is,finals,st =
-          compile_proc loc_writes
-            st p (edge_to_prev_load o2 m.C.edge)
-            init ns in
-        init,
-        i1@
-        (match  get_fence n  with Some fe -> [Comp.emit_fence fe] | _ -> [])@
-        (match d with R -> i2@i3@is | W -> i3@i2@is),
-        F.add_final p (Some o1) n (F.add_final p o2 m finals),
-        st
-    | _ ->
-        let o,init,i,st = emit_access ro_prev st p init n in
-        let init,is,finals,st =
-          compile_proc loc_writes
+          compile_proc nchk loc_writes
             st p (edge_to_prev_load o n.C.edge)
             init ns in
-        init,
-        i@(match get_fence n with Some fe -> Comp.emit_fence fe::is  | _ -> is),
+        add_init_check chk p o init,
+        i@
+        add_check
+          (match get_fence n with Some fe -> Comp.emit_fence fe::is  | _ -> is),
         (if
           StringSet.mem n.C.evt.C.loc loc_writes && not (U.do_poll n)
         then
           F.add_final p o n finals
         else finals),
         st
-    end
 
 
 (*************)
@@ -541,7 +494,7 @@ let min_max xs =
     let rec do_rec p i = function
       | [] -> List.rev i,[],(C.EventMap.empty,[]),[]
       | n::ns ->
-          let i,c,(m,f),st = compile_proc loc_writes A.st0 p No i n in
+          let i,c,(m,f),st = compile_proc false loc_writes A.st0 p No i n in
           let i,c,st = compile_stores st p i n c in
           let i,c,f,st =
             match O.cond with

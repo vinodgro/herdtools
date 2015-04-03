@@ -10,12 +10,11 @@
 
 open Code
 
-module Make(V:Constant.S)(C:CompileCommon.Config) : XXXCompile.S =
+module Make(C:CompileCommon.Config) : XXXCompile.S =
 
 struct
-  let do_sta = !Config.sta
 
-  module X86 = X86Arch.Make(V)
+  module X86 = X86Arch
   include CompileCommon.Make(C)(X86)
 
 (******)
@@ -55,6 +54,10 @@ struct
     I_CMP
       (Effaddr_rm32 (Rm32_reg r), Operand_immediate 1)
 
+  and emit_cmp_int_ins r i =
+    I_CMP
+      (Effaddr_rm32 (Rm32_reg r), Operand_immediate i)
+
   and emit_je_ins lab = I_JCC (C_EQ,lab)
 
   and emit_jne_ins lab = I_JCC (C_NE,lab)
@@ -93,14 +96,6 @@ struct
   let emit_load_not_eq  st =  emit_load_not st
   let emit_load_not_value  st = emit_load_not st
 
-  let emit_fno  _st _p _init _x =  Warn.fatal "FNO is irrelevant for X86"
-
-  let emit_fno2 = emit_fno
-
-  let emit_open_fno = emit_fno
-  and emit_close_fno _st _p _init _lab _r _x =
-    Warn.fatal "FNO is irrelevant for X86"
-
 
   let emit_access st _p init e = match e.C.dir with
   |R ->
@@ -113,7 +108,6 @@ struct
       end
   |W ->
       if
-        do_sta ||
         (match e.C.atom with Some Atomic -> true | None -> false)
       then
         let rX,st = next_reg st in
@@ -156,6 +150,29 @@ struct
 
   let stronger_fence = MFence
 
-  let postlude st _p init cs = init,cs,st
+(* Check load *)
+  let check_load p r e =
+    let lab = Label.exit p in
+    fun k ->
+      Instruction (emit_cmp_int_ins r e.C.v)::
+      Instruction (emit_jne_ins lab)::
+      k
+(* Postlude *)
+
+  let does_jump lab cs =
+      List.exists
+        (fun i -> match i with
+        | Instruction (I_JMP lab0|I_JCC (_,lab0)) ->
+            (lab0:string) = lab
+        | _ -> false)
+        cs
+
+  let does_exit p cs =  does_jump (Label.exit p) cs
+
+  let postlude st p init cs =
+    if does_exit p cs then
+      init,cs@[Label (Label.exit p,Nop)],st
+    else init,cs,st
+
         
 end
