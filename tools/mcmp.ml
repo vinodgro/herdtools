@@ -35,28 +35,30 @@ module Make(O:Opt) = struct
 
   let read_logs fnames = LL.read_names_simple fnames
 
-  let diff pp t1 t2 =
-    LS.simple_diff
-      (fun n _ -> pp n ; true)
-      t1 t2 false
 
   let cmp_logs fname t1 t2 = match fname with
   | Some fname ->
       Misc.output_protect
-        (fun chan -> diff (fprintf chan "%s\n") t1 t2) fname
-  | None -> false
+        (fun chan ->
+          LS.simple_diff_not_empty
+            (fun n _ -> fprintf chan "%s\n" n ; true)
+            t1 t2 false) fname
+  | None -> false 
+
+  let simple_diff pp t1 t2 =
+    LS.simple_diff
+      (fun n _ -> pp n ; true)
+      t1 t2 false
 
   let run f1 f2 =
     match read_logs [f1;f2;] with
-    | [t1;t2] -> begin match O.pos,O.neg with
-      | None,None ->
-          diff (printf "%s\n") t1 t2
-      | _,_ ->
-          (* Arguments are reversed, ie t1 is second argument.. *)
-          let b1 = cmp_logs O.pos t1 t2 in
-          let b2 = cmp_logs O.neg t2 t1 in
-          b1 || b2
-    end
+    | [t1;t2] ->
+        let b0 =
+          simple_diff
+            (if O.quiet then (fun _ -> ()) else printf "%s\n") t1 t2 in
+        let b1 = cmp_logs O.pos t1 t2 in
+        let b2 = cmp_logs O.neg t2 t1 in
+        b0 || b1 || b2
     | _ -> assert false
 end
 
