@@ -59,7 +59,7 @@ module Make(Opt:Config) = struct
           end else if c > 0 then
             do_rec idx_nks (idx_ts+1)
           else (* c=0 *) match k with
-          | None -> 
+          | None ->
               out (n,Some t.LogState.kind,t.LogState.loop) ;
               do_rec (idx_nks+1) (idx_ts+1)
           | Some k1 ->
@@ -125,7 +125,7 @@ module Make(Opt:Config) = struct
 
   module Cond = struct
 
-    type info = 
+    type info =
      { cond : LogConstr.constr option ; unsure : bool ; kind : LogState.kind;}
 
 
@@ -147,12 +147,12 @@ module Make(Opt:Config) = struct
 
     let add_col t1 =
       Array.map
-        (fun t ->          
+        (fun t ->
           let _k,c =
             let c,from_log =
               try
                 Some (TblRename.find_value Opt.conds t.tname),false
-              with Not_found ->  t.condition,true in 
+              with Not_found ->  t.condition,true in
             try
               let k = TblRename.find_value Opt.kinds t.tname in
               k,change_condition k c
