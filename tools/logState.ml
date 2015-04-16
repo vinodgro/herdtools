@@ -67,6 +67,22 @@ let is_reliable k = match k with
 
 type validation = Undef | Ok | No | DontKnow | Run
 
+let tr_validate kref k v = match kref with
+| (Allow|Forbid) ->
+    begin match k,v with
+    | (Allow,Ok)
+    | (Forbid,No)
+    | (Require,No)
+      -> Some Allow
+    | (Allow,No)
+    | (Forbid,Ok)
+    | (Require,Ok)
+      -> Some Forbid
+    | _ -> None
+    end
+| _ -> None
+
+
 
 type test =
  { tname : string ;      (* name of the test, aka key *)

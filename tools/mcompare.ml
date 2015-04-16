@@ -101,13 +101,14 @@ let options =
    "<"^ runopts.do_show ^
    "> show control, argument is a string of
        * v (validation), V (verbose validation),
+       * k (validation in Allow/Forbid format)
        * r (revalidation against conditions found in first file),
        * w (witnesses), W (kind-oriented witnesses),
        * s (states),
        * d (state differences),
        * t (timing),
        * p (productivity),
-       * X special, for nice, informative, tables");
+       * X,Y,Z special, for nice, informative, tables");
    ("-show_litmus_summary", Arg.Bool (delay_ro (fun b ro -> {ro with show_litmus_summary = b})),
     "<"^ string_of_bool runopts.show_litmus_summary ^ 
     "> show a summary of litmus logs passed in (roughly show V+W), and optionally any memevents log show V");
@@ -546,7 +547,8 @@ module Make (Opt:Config) = struct
     | _,_ -> DontKnow
   end
 
-  let show_validate tnames ts =
+
+  let show_validate as_kinds tnames ts =
     let keys = K.Kind.add tnames ts in
     let module B =
       Matrix.Build
@@ -560,7 +562,16 @@ module Make (Opt:Config) = struct
               [sprintf "%s (%s)" 
                  (LS.pp_validation t.validation)
                  (LS.pp_kind t.kind)]
-          | _ -> [LS.pp_validation t.validation]
+          | k ->
+              if as_kinds then
+                begin match LogState.tr_validate k t.kind t.validation with
+                | Some k -> [LS.pp_kind k]
+                | None ->
+                    [sprintf "%s (%s)"
+                       (LS.pp_validation t.validation)
+                       (LS.pp_kind t.kind)]
+              end else
+                [LS.pp_validation t.validation]
 
           include ValidateAdd
 
@@ -572,8 +583,11 @@ module Make (Opt:Config) = struct
         keys
         m
     else
-      let sum = B.sum keys (List.map (fun _ -> Ok) ts) ts in
-      let sum = List.map LS.pp_validation sum in    
+      let sum =
+        if as_kinds then []
+        else
+          let sum = B.sum keys (List.map (fun _ -> Ok) ts) ts in
+          List.map LS.pp_validation sum in
       dump ts "Validation" true
         (List.map (fun t -> 1,pp_name t.name) ts) sum
         keys
@@ -1310,7 +1324,8 @@ let format_int_string s =
 
     let t = Hashtbl.create 17 in
     let add c f = Hashtbl.add t c f in
-    add 'v' (show_validate tnames) ;
+    add 'v' (show_validate false tnames) ;
+    add 'k' (show_validate true tnames) ;
     add 'V' (show_validate_verbose tnames) ;
     add 'r' show_revalidate ;
     add 'X' (show_XYZ X) ;
