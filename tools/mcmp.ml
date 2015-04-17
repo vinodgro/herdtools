@@ -43,7 +43,7 @@ module Make(O:Opt) = struct
           LS.simple_diff_not_empty
             (fun n _ -> fprintf chan "%s\n" n ; true)
             t1 t2 false) fname
-  | None -> false 
+  | None -> false
 
   let simple_diff pp t1 t2 =
     LS.simple_diff
@@ -84,7 +84,7 @@ let options =
    ("-names",
     Arg.String
       (fun s -> names := s :: !names),
-    "<name> specify  selected name file, can be repeated") ;       
+    "<name> specify  selected name file, can be repeated") ;
    ("-select",
     Arg.String
       (fun s -> select := s :: !select),
@@ -147,6 +147,3 @@ let () =
     exit 1
   else
     exit 0
-
-
-     
