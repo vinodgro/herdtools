@@ -11,10 +11,11 @@
 
 open Printf
 
-(* let comment = '@' *)
-let comment = '#'
+module Make(O:sig include Arch.Config val asmcomment : string option end)(V:Constant.S) = struct
+  let comment = match O.asmcomment with
+  | Some c -> c.[0]
+  | None -> '#'
 
-module Make(O:Arch.Config)(V:Constant.S) = struct
   include AArch64Base
   module V =
     struct

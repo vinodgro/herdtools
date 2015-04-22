@@ -89,6 +89,8 @@ module type TopConfig = sig
   val mode : Mode.t
 (* usearch *)
   val usearch : UseArch.t
+(* Hum *)
+  val asmcomment : string option
 end
 
 module type Config = sig
@@ -436,6 +438,7 @@ end = struct
         let memory = OT.memory
         let morearch = OT.morearch
         let cautious = OT.cautious
+        let asmcomment = OT.asmcomment
       end in
       let module OX = struct
         include OT
