@@ -11,7 +11,7 @@ let po-tso = WW(po) | RM(po) | mfence
 
 (* TSP global-happens-before *)
 let ghb = po-tso | com-tso
-show mfence ghb
+show mfence,ghb
 acyclic ghb as tso
 
 
