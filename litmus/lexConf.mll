@@ -90,6 +90,8 @@ rule main = parse
     { set_bool_withfun set_gas arg ; main lexbuf }
 | "asmcomment" arg
     { set_stringo asmcomment arg ; main lexbuf }
+| "asmcommentaslabel" arg
+    { set_bool asmcommentaslabel arg ; main lexbuf }
 | "barrier" arg
     { let module P = LexTag(Barrier) in
     P.lexfun "barrier" barrier arg ; main lexbuf }

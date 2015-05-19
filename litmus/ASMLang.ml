@@ -13,6 +13,7 @@ module type Config = sig
   val memory : Memory.t
   val cautious : bool
   val mode : Mode.t
+  val asmcommentaslabel : bool
 end
 
 module type I = sig
@@ -293,13 +294,14 @@ module Make
         let rec dump_ins k ts = match ts with
         | [] -> ()
         | t::ts ->
-            begin match t.Tmpl.label with
-            | Some _ ->
-                fprintf chan "\"%s_litmus_P%i_%i\\n\"\n" Tmpl.comment proc k
-            | None ->
-                fprintf chan "\"%s_litmus_P%i_%i\\n%s\"\n"
-                  Tmpl.comment proc k
-                  (if t.Tmpl.comment then "" else "\\t")
+            begin if not O.asmcommentaslabel then
+              match t.Tmpl.label with
+              | Some _ ->
+                  fprintf chan "\"%s_litmus_P%i_%i\\n\"\n" Tmpl.comment proc k
+              | None ->
+                  fprintf chan "\"%s_litmus_P%i_%i\\n%s\"\n"
+                    Tmpl.comment proc k
+                    (if t.Tmpl.comment then "" else "\\t")
             end ;
             fprintf chan "\"%s\\n\"\n" (Tmpl.to_string t) ;
 (*
@@ -311,13 +313,25 @@ module Make
         before_dump
           compile_out_reg compile_val compile_cpy chan indent env proc t trashed;
         fprintf chan "asm __volatile__ (\n" ;
-        fprintf chan "\"\\n\"\n" ;
-        fprintf chan "\"%s\\n\"\n" (LangUtils.start_comment Tmpl.comment proc) ;
+        fprintf chan "\"\\n\"\n" ;        
+        begin if O.asmcommentaslabel then
+          fprintf chan "\"%s:\\n\"\n"
+             (LangUtils.start_label proc)
+        else
+          fprintf chan "\"%s\\n\"\n"
+            (LangUtils.start_comment Tmpl.comment proc)
+        end ;
         begin match t.Tmpl.code with
         | [] -> fprintf chan "\"\"\n"
         | code -> dump_ins 0 code
         end ;
-        fprintf chan "\"%s\\n\\t\"\n" (LangUtils.end_comment Tmpl.comment proc) ;
+        begin if O.asmcommentaslabel then
+          fprintf chan "\"%s:\\n\"\n"
+            (LangUtils.end_label proc)
+        else
+          fprintf chan "\"%s\\n\\t\"\n"
+            (LangUtils.end_comment Tmpl.comment proc)
+        end ;
         dump_outputs compile_addr compile_out_reg chan proc t trashed ;
         dump_inputs compile_val chan t trashed ;
         dump_clobbers chan t  ;
