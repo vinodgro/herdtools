@@ -2289,7 +2289,9 @@ let user2_barrier_def () =
 (*********************)
 (* Spawn experiments *)
 (*********************)
-    O.oi "pthread_t th[n_exe];" ;
+    O.oi "hist_t *hist = NULL;" ; (* Place holder for last zyva call result *)
+    O.oi "int n_th = n_exe-1;" ;
+    O.oi "pthread_t th[n_th];" ;
     O.oi "zyva_t zarg[n_exe];" ;
     O.oi "pm_t *p_mutex = pm_create();" ;
     O.oi "pb_t *p_barrier = pb_create(n_exe);" ;
@@ -2334,7 +2336,11 @@ let user2_barrier_def () =
       O.oiii "}" ;
       O.oii "}"
     end ;
-    O.oii "launch(&th[k],zyva,p);" ;
+    O.oii "if (k < n_th) {" ;
+    O.oiii "launch(&th[k],zyva,p);" ;
+    O.oii "} else {" ;
+    O.oiii "hist = (hist_t *)zyva(p);" ;
+    O.oii "}" ;
     O.oi "}" ;
 (* end of loop *)
 
@@ -2343,10 +2349,8 @@ let user2_barrier_def () =
 (********)
     O.o "" ;
     O.oi "count_t n_outs = prm.size_of_test; n_outs *= prm.max_run;" ;
-(* join first thread *)
-    O.oi "hist_t *hist = (hist_t *)join(&th[0]);" ;
 (* join loop *)
-    O.oi "for (int k=1 ; k < n_exe ; k++) {" ;
+    O.oi "for (int k=0 ; k < n_th ; k++) {" ;
     O.oii "hist_t *hk = (hist_t *)join(&th[k]);" ;
     check_speedcheck indent2
       (fun i ->
