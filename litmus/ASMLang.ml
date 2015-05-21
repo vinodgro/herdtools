@@ -260,14 +260,21 @@ module Make
               (compile_out_reg proc reg) (dump_stable_reg reg))
           (RegSet.inter stable finals)
 
+      let all_reg_addrs ts =
+        RegSet.unions
+          (List.rev_map
+             (fun t -> RegSet.of_list t.Tmpl.reg_addrs)
+             ts)
 
       let before_dump compile_out_reg compile_val compile_cpy
           chan indent env proc t trashed =
+        let reg_addrs = all_reg_addrs t.Tmpl.code in
         RegSet.iter
           (fun reg ->
             let ty = match A.internal_init reg with
             | Some (_,ty) -> ty
-            | None -> "int" in
+            | None ->
+                if RegSet.mem reg reg_addrs then "void *" else "int" in
             fprintf chan "%s%s %s;\n"
               indent ty (dump_trashed_reg reg))
           trashed ;
