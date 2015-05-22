@@ -566,6 +566,9 @@ let user2_barrier_def () =
     O.o "/*************************/" ;
     Insert.insert O.o "cache.c"
 
+  let do_dump_cache_def = match Cfg.preload with
+  |  NoPL|RandomPL -> false
+  |  CustomPL|StaticPL|StaticNPL _ -> true
 
   let preload_def = match Cfg.preload with
   | NoPL|RandomPL -> fun _test -> ()
@@ -2125,6 +2128,13 @@ let user2_barrier_def () =
     O.o "static void run(cmd_t *cmd,cpus_t *def_all_cpus,FILE *out) {" ;
 (* Prelude *)
     if do_vp then O.oi "if (cmd->prelude) prelude(out);" ;
+(* Void cache operation to avoid warnings *)
+    if do_dump_cache_def then begin
+      O.o "/* Void cache operation to avoid warnings */" ;
+      O.oi "cache_flush(cmd);" ;
+      O.oi "cache_touch(cmd);" ;
+      O.oi "cache_touch_store(cmd);" ;
+    end ;
 (* Starting time *)
     O.oi "tsc_t start = timeofday();" ;
 (* Parameters recorded in param_t structure *)
