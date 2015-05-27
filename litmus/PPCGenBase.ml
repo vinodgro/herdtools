@@ -201,6 +201,8 @@ type cond =
 type crindex = int (* in fact [0..7] *)
 type crmask = int (* in fact [0..127] *)
 
+type ds = int
+
 type setcr0 = SetCR0 | DontSetCR0
 type setsoov = SetSOOV | DontSetSOOV
 type setaa = SetAA | DontSetAA
