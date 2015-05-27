@@ -234,8 +234,23 @@ type instruction =
     let do_pp_instruction i = match i with
     (* extended mnemonics first *)
     | `Paddi (r1, Ireg GPR0, k) -> sprintf "li %s,%d" (pp_reg r1) k
+
     | `Psync (0) -> "sync"
     | `Psync (1) -> "lwsync"
+
+    | `Pcmp (0,0,r1,r2) -> 
+        sprintf "cmpw %s,%s" (pp_reg r1) (pp_reg r2)
+    | `Pcmp (bF,0,r1,r2) -> 
+        sprintf "cmpw %d,%s,%s" bF (pp_reg r1) (pp_reg r2)
+    | `Pcmpi (0,0,r,k) -> 
+        sprintf "cmpwi %s,%d" (pp_reg r) k
+    | `Pcmpi (bF,0,r,k) -> 
+        sprintf "cmpwi %d,%s,%d" bF (pp_reg r) k
+
+    | `Por (DontSetCR0,r1,r2,r3) ->
+        if r2 = r3 then sprintf "mr %s,%s" (pp_reg r1) (pp_reg r2)
+        else sprintf "or %s,%s,%s" (pp_reg r1) (pp_reg r2) (pp_reg r3)
+
     (* TODO: other extended mnemonics *)
  
     (* #include "src_power_gen/pretty.gen" *)
