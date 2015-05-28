@@ -103,12 +103,12 @@ type expression =
 | Eregister of reg
 | Eassign of reg * expression
 | Eop of Op.op * expression * expression
-| Estore  of expression * expression * mem_order * mem_scope
-| Eexchange  of expression * expression * mem_order * mem_scope
-| Efetch  of Op.op * expression * expression * mem_order * mem_scope
-| Eload   of expression * mem_order * mem_scope
-| Ecas    of expression * expression * expression * mem_order * mem_order *  mem_scope * bool
-| Efence  of gpu_memory_space list * mem_order * mem_scope
+| Estore  of expression * expression * mem_order * mem_scope * bool (* is remote *)
+| Eexchange  of expression * expression * mem_order * mem_scope * bool (* is remote *)
+| Efetch  of Op.op * expression * expression * mem_order * mem_scope * bool (* is remote *)
+| Eload   of expression * mem_order * mem_scope * bool (* is remote *)
+| Ecas    of expression * expression * expression * mem_order * mem_order *  mem_scope * bool * bool (* is remote *)
+| Efence  of gpu_memory_space list * mem_order * mem_scope * bool (* is remote *)
 | Ecomma of expression * expression
 | Eparen of expression
 
@@ -153,49 +153,61 @@ let dump_key op =
   | _ -> assert false
 
 let rec dump_expression e = match e with
-  | Estore(loc,e,mo,ms) ->
+  | Estore(loc,e,mo,ms,rem) ->
     (match mo with 
     | NA -> sprintf "*%s = %s"  (pp_addr loc) (dump_expression e)
-    | SC -> sprintf("atomic_store(%s,%s)") 
-		  (dump_expression loc) (dump_expression e)
-    | _ -> sprintf("atomic_store_explicit(%s,%s,%s,%s)") 
+    | SC -> sprintf("atomic_store%s(%s,%s)") 
+		   (if rem then "_remote" else "")
+		   (dump_expression loc) (dump_expression e)
+    | _ -> sprintf("atomic_store_explicit%s(%s,%s,%s,%s)")
+		  (if rem then "_remote" else "")
 		  (dump_expression loc) (dump_expression e)
                   (pp_mem_order_short mo) (pp_mem_scope ms))
-  | Eexchange(loc,e,mo,ms) ->
+  | Eexchange(loc,e,mo,ms,rem) ->
     (match mo with 
     | NA -> assert false
-    | SC -> sprintf("atomic_exchange(%s,%s)") 
+    | SC -> sprintf("atomic_exchange%s(%s,%s)")
+		   (if rem then "_remote" else "")
 		  (dump_expression loc) (dump_expression e)
-    | _ -> sprintf("atomic_exchange_explicit(%s,%s,%s,%s)") 
+    | _ -> sprintf("atomic_exchange_explicit%s(%s,%s,%s,%s)")
+		  (if rem then "_remote" else "")
 		  (dump_expression loc) (dump_expression e)
                   (pp_mem_order_short mo) (pp_mem_scope ms))
-  | Efetch(op,loc,e,mo,ms) ->
+  | Efetch(op,loc,e,mo,ms,rem) ->
     (match mo with 
     | NA -> assert false
     | SC -> 
-        sprintf("atomic_fetch_%s(%s,%s)") 
-	  (dump_key op) (dump_expression loc) (dump_expression e)
+        sprintf("atomic_fetch_%s%s(%s,%s)") 
+	       (dump_key op) (if rem then "_remote" else "")
+	       (dump_expression loc) (dump_expression e)
     | _ ->
-        sprintf("atomic_fetch_%s_explicit(%s,%s,%s,%s)") 
-	  (dump_key op) (dump_expression loc)
+        sprintf("atomic_fetch_%s_explicit%s(%s,%s,%s,%s)") 
+	       (dump_key op) (if rem then "_remote" else "")
+	       (dump_expression loc)
           (dump_expression e) (pp_mem_order_short mo)
           (pp_mem_scope ms))  
-  | Eload(loc,mo,ms) ->
+  | Eload(loc,mo,ms,rem) ->
     (match mo with 
     | NA -> sprintf("*%s") 
 		   (pp_addr loc)
-    | SC -> sprintf("atomic_load(%s)") 
-		  (dump_expression loc)
-    | _ -> sprintf("atomic_load_explicit(%s,%s,%s)") 
+    | SC -> sprintf("atomic_load%s(%s)") 
+		   (if rem then "_remote" else "")
+		   (dump_expression loc)
+    | _ -> sprintf("atomic_load_explicit%s(%s,%s,%s)") 
+		  (if rem then "_remote" else "")
 		  (dump_expression loc) (pp_mem_order_short mo)
                   (pp_mem_scope ms))
-  | Ecas(obj,exp,des,mo_success,mo_failure,ms,strong) ->
-    sprintf("%sCAS(%s,%s,%s,%s,%s,%s)") 
-      (if strong then "S" else "W")
+  | Ecas(obj,exp,des,mo_success,mo_failure,ms,strong,rem) ->
+    sprintf("%sCAS%s(%s,%s,%s,%s,%s,%s)") 
+	   (if strong then "S" else "W")
+	   (if rem then "_remote" else "")
       (dump_expression obj) (dump_expression exp) (dump_expression des) 
       (pp_mem_order_short mo_success) (pp_mem_order_short mo_failure)
       (pp_mem_scope ms)
-  | Efence (spaces, mo, ms) -> sprintf("atomic_work_item_fence(%s,%s,%s)") (pp_gpu_memory_spaces spaces) (pp_mem_order_short mo) (pp_mem_scope ms)
+  | Efence (spaces, mo, ms,rem) ->
+     sprintf("atomic_work_item_fence%s(%s,%s,%s)")
+	    (if rem then "_remote" else "") (pp_gpu_memory_spaces spaces)
+	    (pp_mem_order_short mo) (pp_mem_scope ms)
   | Econstant i -> pp_sop i
   | Eregister reg -> pp_reg reg
   | Eassign(reg,e) -> sprintf "%s = %s" (pp_reg reg) (dump_expression e)

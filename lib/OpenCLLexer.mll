@@ -68,6 +68,20 @@ let tr_name = function
 | "atomic_intmax_t" -> ATOMIC_TYPE "__INTMAX_TYPE__"
 | "atomic_uintmax_t" -> ATOMIC_TYPE "__UINTMAX_TYPE__"
 | "NULL" -> NULL
+| "atomic_exchange" -> EXC 
+| "atomic_exchange_remote" -> EXC_REMOTE 
+| "atomic_exchange_explicit" -> EXC_EXPLICIT 
+| "atomic_exchange_explicit_remote" -> EXC_EXPLICIT_REMOTE 
+| "atomic_compare_exchange_weak"  -> WCAS 
+| "atomic_compare_exchange_weak_remote"  -> WCAS_REMOTE 
+| "atomic_compare_exchange_strong"  -> SCAS 
+| "atomic_compare_exchange_strong_remote"  -> SCAS_REMOTE 
+| "atomic_compare_exchange_weak_explicit"  -> WCAS_EXPLICIT 
+| "atomic_compare_exchange_weak_explicit_remote"  -> WCAS_EXPLICIT_REMOTE 
+| "atomic_compare_exchange_strong_explicit"  -> SCAS_EXPLICIT 
+| "atomic_compare_exchange_strong_explicit_remote"  -> SCAS_EXPLICIT_REMOTE 
+| "lock"  -> LOCK 
+| "unlock"    -> UNLOCK 
 (* Atomic fetch *)
 | "atomic_fetch_add" -> ATOMIC_FETCH Op.Add
 | "atomic_fetch_add_explicit" -> ATOMIC_FETCH_EXPLICIT Op.Add
@@ -79,6 +93,17 @@ let tr_name = function
 | "atomic_fetch_xor_explicit" -> ATOMIC_FETCH_EXPLICIT Op.Xor
 | "atomic_fetch_and" -> ATOMIC_FETCH Op.And
 | "atomic_fetch_and_explicit" -> ATOMIC_FETCH_EXPLICIT Op.And
+(* Atomic fetch - remote versions *)
+| "atomic_fetch_add_remote" -> ATOMIC_FETCH_REMOTE Op.Add
+| "atomic_fetch_add_explicit_remote" -> ATOMIC_FETCH_EXPLICIT_REMOTE Op.Add
+| "atomic_fetch_sub_remote" -> ATOMIC_FETCH_REMOTE Op.Add
+| "atomic_fetch_sub_explicit_remote" -> ATOMIC_FETCH_EXPLICIT_REMOTE Op.Add
+| "atomic_fetch_or_remote" -> ATOMIC_FETCH_REMOTE Op.Or
+| "atomic_fetch_or_explicit_remote" -> ATOMIC_FETCH_EXPLICIT_REMOTE Op.Or
+| "atomic_fetch_xor_remote" -> ATOMIC_FETCH_REMOTE Op.Xor
+| "atomic_fetch_xor_explicit_remote" -> ATOMIC_FETCH_EXPLICIT_REMOTE Op.Xor
+| "atomic_fetch_and_remote" -> ATOMIC_FETCH_REMOTE Op.And
+| "atomic_fetch_and_explicit_remote" -> ATOMIC_FETCH_EXPLICIT_REMOTE Op.And
 |  x -> IDENTIFIER x
 }
 let digit = ['0'-'9']
@@ -146,18 +171,15 @@ rule token deep = parse
 | "memory_order_relaxed" | "mo_rlx" {MEMORDER (OpenCLBase.Rlx)}
 | "barrier" | "work_group_barrier" { BARRIER }
 | "fence" | "atomic_work_item_fence" { FENCE }
+| "fence_remote" | "atomic_work_item_fence_remote" { FENCE_REMOTE }
 | "atomic_load" | "load" { LD }
+| "atomic_load_remote" | "load_remote" { LD_REMOTE }
 | "atomic_store" | "store" { ST }
+| "atomic_store_remote" | "store_remote" { ST_REMOTE }
 | "atomic_load_explicit" | "load_exp" { LD_EXPLICIT }
+| "atomic_load_explicit_remote" | "load_exp_remote" { LD_EXPLICIT_REMOTE }
 | "atomic_store_explicit" | "store_exp" { ST_EXPLICIT }
-| "atomic_exchange" { EXC }
-| "atomic_exchange_explicit" { EXC_EXPLICIT }
-| "atomic_compare_exchange_weak"  { WCAS }
-| "atomic_compare_exchange_strong"  { SCAS }
-| "atomic_compare_exchange_weak_explicit"  { WCAS_EXPLICIT }
-| "atomic_compare_exchange_strong_explicit"  { SCAS_EXPLICIT }
-| "lock"  { LOCK }
-| "unlock"    { UNLOCK }
+| "atomic_store_explicit_remote" | "store_exp_remote" { ST_EXPLICIT_REMOTE }
 | name as x   { tr_name x  }
 | eof { EOF }
 | "" { LexMisc.error "OpenCL lexer" lexbuf }

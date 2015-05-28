@@ -47,10 +47,15 @@ open CType
 %token <MemSpaceMap.gpu_memory_space> MEMREGION
 %token GLOBAL LOCAL
 %token SCOPETREE DEVICE KERNEL CTA WARP THREAD
-%token LD LD_EXPLICIT ST ST_EXPLICIT EXC EXC_EXPLICIT FENCE LOCK UNLOCK BARRIER
+%token LD LD_EXPLICIT ST ST_EXPLICIT EXC EXC_EXPLICIT FENCE
+%token LD_REMOTE LD_EXPLICIT_REMOTE ST_REMOTE ST_EXPLICIT_REMOTE EXC_REMOTE EXC_EXPLICIT_REMOTE FENCE_REMOTE
 %token SCAS WCAS SCAS_EXPLICIT WCAS_EXPLICIT
+%token SCAS_REMOTE WCAS_REMOTE SCAS_EXPLICIT_REMOTE WCAS_EXPLICIT_REMOTE
+%token LOCK UNLOCK BARRIER
 %token <Op.op> ATOMIC_FETCH
+%token <Op.op> ATOMIC_FETCH_REMOTE
 %token <Op.op> ATOMIC_FETCH_EXPLICIT
+%token <Op.op> ATOMIC_FETCH_EXPLICIT_REMOTE
 %type <(int * OpenCLBase.pseudo list) list * MiscParser.gpu_data option> deep_main 
 %start deep_main
 %%
@@ -112,53 +117,71 @@ primary_expression:
 | LPAR expression RPAR 
   { Eparen $2 }
 
+rem_ST: ST {false} | ST_REMOTE {true}
+rem_ST_EXPLICIT: ST_EXPLICIT {false} | ST_EXPLICIT_REMOTE {true}
+rem_LD: LD {false} | LD_REMOTE {true}
+rem_LD_EXPLICIT: LD_EXPLICIT {false} | LD_EXPLICIT_REMOTE {true}
+rem_EXC: EXC {false} | EXC_REMOTE {true}
+rem_EXC_EXPLICIT: EXC_EXPLICIT {false} | EXC_EXPLICIT_REMOTE {true}
+rem_WCAS: WCAS {false} | WCAS_REMOTE {true}
+rem_WCAS_EXPLICIT: WCAS_EXPLICIT {false} | WCAS_EXPLICIT_REMOTE {true}						
+rem_SCAS: WCAS {false} | SCAS_REMOTE {true}
+rem_SCAS_EXPLICIT: SCAS_EXPLICIT {false} | SCAS_EXPLICIT_REMOTE {true}
+rem_FENCE: FENCE {false} | FENCE_REMOTE {true}
+												     
 postfix_expression:
 | primary_expression 
   { $1 }
-| ST LPAR assignment_expression COMMA assignment_expression RPAR
-  { Estore ($3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices) }
-| ST_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
-  { Estore ($3, $5, $7, OpenCLBase.S_all_svm_devices) }
-| ST_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
-  { Estore ($3, $5, $7, $9) }
-| EXC LPAR assignment_expression COMMA assignment_expression RPAR
-  { Eexchange ($3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices) }
-| EXC_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
-  { Eexchange ($3, $5, $7, OpenCLBase.S_all_svm_devices) }
-| EXC_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
-  { Eexchange ($3, $5, $7, $9) }
+| rem_ST LPAR assignment_expression COMMA assignment_expression RPAR
+  { Estore ($3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices, $1) }
+| rem_ST_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
+  { Estore ($3, $5, $7, OpenCLBase.S_all_svm_devices, $1) }
+| rem_ST_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Estore ($3, $5, $7, $9, $1) }
+| rem_EXC LPAR assignment_expression COMMA assignment_expression RPAR
+  { Eexchange ($3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices, $1) }
+| rem_EXC_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
+  { Eexchange ($3, $5, $7, OpenCLBase.S_all_svm_devices, $1) }
+| rem_EXC_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Eexchange ($3, $5, $7, $9, $1) }
 | ATOMIC_FETCH LPAR assignment_expression COMMA assignment_expression RPAR
-  { Efetch ($1, $3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices) }
+  { Efetch ($1, $3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices, false) }
 | ATOMIC_FETCH_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
-  { Efetch ($1, $3, $5, $7, OpenCLBase.S_all_svm_devices) }
+  { Efetch ($1, $3, $5, $7, OpenCLBase.S_all_svm_devices, false) }
 | ATOMIC_FETCH_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
-  { Efetch ($1, $3, $5, $7, $9) }
-| LD LPAR assignment_expression RPAR
-  { Eload ($3, OpenCLBase.SC, OpenCLBase.S_all_svm_devices) }
-| LD_EXPLICIT LPAR assignment_expression COMMA MEMORDER RPAR
-  { Eload ($3, $5, OpenCLBase.S_all_svm_devices) }
-| LD_EXPLICIT LPAR assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
-  { Eload ($3, $5, $7) }
-| FENCE LPAR fence_flags COMMA MEMORDER COMMA MEMSCOPE RPAR
-  { Efence ($3,$5,$7) }
-| WCAS LPAR assignment_expression COMMA assignment_expression COMMA assignment_expression RPAR
-  { Ecas ($3,$5,$7,OpenCLBase.SC,OpenCLBase.SC,OpenCLBase.S_all_svm_devices,false) }
-| SCAS LPAR assignment_expression COMMA  assignment_expression COMMA assignment_expression RPAR
-  { Ecas ($3,$5,$7,OpenCLBase.SC,OpenCLBase.SC,OpenCLBase.S_all_svm_devices,true) }
-| WCAS_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
-  { Ecas ($3,$5,$7,$9,$11,OpenCLBase.S_all_svm_devices,false) }
-| SCAS_EXPLICIT LPAR assignment_expression COMMA  assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
-  { Ecas ($3,$5,$7,$9,$11,OpenCLBase.S_all_svm_devices,true) }
-| WCAS_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER COMMA MEMSCOPE RPAR
-  { Ecas ($3,$5,$7,$9,$11,$13,false) }
-| SCAS_EXPLICIT LPAR assignment_expression COMMA  assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER COMMA MEMSCOPE RPAR
-  { Ecas ($3,$5,$7,$9,$11,$13,true) }
+  { Efetch ($1, $3, $5, $7, $9, false) }
+| ATOMIC_FETCH_REMOTE LPAR assignment_expression COMMA assignment_expression RPAR
+  { Efetch ($1, $3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices, true) }
+| ATOMIC_FETCH_EXPLICIT_REMOTE LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
+  { Efetch ($1, $3, $5, $7, OpenCLBase.S_all_svm_devices, true) }
+| ATOMIC_FETCH_EXPLICIT_REMOTE LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Efetch ($1, $3, $5, $7, $9, true) }
+| rem_LD LPAR assignment_expression RPAR
+  { Eload ($3, OpenCLBase.SC, OpenCLBase.S_all_svm_devices, $1) }
+| rem_LD_EXPLICIT LPAR assignment_expression COMMA MEMORDER RPAR
+  { Eload ($3, $5, OpenCLBase.S_all_svm_devices, $1) }
+| rem_LD_EXPLICIT LPAR assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Eload ($3, $5, $7, $1) }
+| rem_FENCE LPAR fence_flags COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Efence ($3,$5,$7, $1) }
+| rem_WCAS LPAR assignment_expression COMMA assignment_expression COMMA assignment_expression RPAR
+  { Ecas ($3,$5,$7,OpenCLBase.SC,OpenCLBase.SC,OpenCLBase.S_all_svm_devices,false, $1) }
+| rem_SCAS LPAR assignment_expression COMMA  assignment_expression COMMA assignment_expression RPAR
+  { Ecas ($3,$5,$7,OpenCLBase.SC,OpenCLBase.SC,OpenCLBase.S_all_svm_devices,true, $1) }
+| rem_WCAS_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
+  { Ecas ($3,$5,$7,$9,$11,OpenCLBase.S_all_svm_devices,false, $1) }
+| rem_SCAS_EXPLICIT LPAR assignment_expression COMMA  assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
+  { Ecas ($3,$5,$7,$9,$11,OpenCLBase.S_all_svm_devices,true, $1) }
+| rem_WCAS_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Ecas ($3,$5,$7,$9,$11,$13,false, $1) }
+| rem_SCAS_EXPLICIT LPAR assignment_expression COMMA  assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER COMMA MEMSCOPE RPAR
+  { Ecas ($3,$5,$7,$9,$11,$13,true, $1) }
 
 unary_expression:
 | postfix_expression 
   { $1 }
 | STAR unary_expression
-  { Eload ($2, OpenCLBase.NA, OpenCLBase.S_workitem) }
+  { Eload ($2, OpenCLBase.NA, OpenCLBase.S_workitem, false) }
 
 cast_expression:
 | unary_expression { $1 }
@@ -223,7 +246,7 @@ assignment_expression:
 | IDENTIFIER assignment_operator assignment_expression
   { Eassign ($1, $3) }
 | STAR IDENTIFIER assignment_operator assignment_expression
-  { Estore (Eregister $2, $4, OpenCLBase.NA, OpenCLBase.S_workitem) }
+  { Estore (Eregister $2, $4, OpenCLBase.NA, OpenCLBase.S_workitem, false) }
 
 assignment_operator:
 | EQ { () }

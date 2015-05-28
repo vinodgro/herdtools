@@ -34,19 +34,19 @@ module Make (C:Sem.Config)(V:Value.S)
     let (>>!) = M.(>>!)
     let (>>>) = M.(>>>)
 		       
-    let read_loc b s mo = M.read_loc (fun loc v -> Act.Access (Dir.R, loc, v, mo, s, b))
-    let read_exchange vstored s mo =
-      M.read_loc (fun loc v -> Act.RMW (loc,v,vstored,mo,s))
-    let read_reg r ii = read_loc false OpenCL.S_workitem OpenCL.NA (A.Location_reg (ii.A.proc,r)) ii
-    let read_mem b s mo a = read_loc b s mo (A.Location_global a)
+    let read_loc b rem s mo = M.read_loc (fun loc v -> Act.Access (Dir.R, loc, v, mo, s, b, rem))
+    let read_exchange vstored rem s mo =
+      M.read_loc (fun loc v -> Act.RMW (loc,v,vstored,mo,s,rem))
+    let read_reg r ii = read_loc false false OpenCL.S_workitem OpenCL.NA (A.Location_reg (ii.A.proc,r)) ii
+    let read_mem b rem s mo a = read_loc b rem s mo (A.Location_global a)
 
-    let write_loc s mo loc v ii =
-      M.mk_singleton_es (Act.Access (Dir.W, loc, v, mo, s, false)) ii >>! v
-    let write_reg r v ii = write_loc OpenCL.S_workitem OpenCL.NA (A.Location_reg (ii.A.proc,r)) v ii
-    let write_mem s mo a  = write_loc s mo (A.Location_global a) 	     
+    let write_loc rem s mo loc v ii =
+      M.mk_singleton_es (Act.Access (Dir.W, loc, v, mo, s, false, rem)) ii >>! v
+    let write_reg r v ii = write_loc false OpenCL.S_workitem OpenCL.NA (A.Location_reg (ii.A.proc,r)) v ii
+    let write_mem rem s mo a  = write_loc rem s mo (A.Location_global a) 	     
 		 
-    let fetch_op op v s mo loc =
-      M.fetch op v (fun v vstored -> Act.RMW (loc,v,vstored,mo,s))
+    let fetch_op op v rem s mo loc =
+      M.fetch op v (fun v vstored -> Act.RMW (loc,v,vstored,mo,s,rem))
 
     let rec build_semantics_expr e ii : V.v M.t = match e with
       | OpenCL.Econstant v -> 	
@@ -66,50 +66,50 @@ module Make (C:Sem.Config)(V:Value.S)
         build_semantics_expr e2 ii >>= fun (v1,v2) ->
         M.op op v1 v2
 
-      | OpenCL.Estore(loc,e,mo,ms) ->
+      | OpenCL.Estore(loc,e,mo,ms,rem) ->
           build_semantics_expr loc ii >>| 
           build_semantics_expr e ii >>= fun (loc,v) ->
-          write_mem ms mo loc v ii 
+          write_mem rem ms mo loc v ii 
 
-      | OpenCL.Eexchange(loc,e,mo,ms) ->
+      | OpenCL.Eexchange(loc,e,mo,ms,rem) ->
           build_semantics_expr loc ii >>| 
           build_semantics_expr e ii >>= fun (loc,v) ->
-            read_exchange v ms mo (A.Location_global loc) ii
+            read_exchange v rem ms mo (A.Location_global loc) ii
 
-      | OpenCL.Efetch (op,loc,e,mo,ms) ->
+      | OpenCL.Efetch (op,loc,e,mo,ms,rem) ->
           build_semantics_expr loc ii >>| 
           build_semantics_expr e ii >>= fun (loc,v) ->
-            fetch_op op v ms mo (A.Location_global loc) ii
+            fetch_op op v rem ms mo (A.Location_global loc) ii
 
-      | OpenCL.Eload(loc,mo,ms) ->
+      | OpenCL.Eload(loc,mo,ms,rem) ->
           build_semantics_expr loc ii >>= fun loc ->
-          read_mem false ms mo loc ii 
+          read_mem false rem ms mo loc ii 
 
-      | OpenCL.Ecas(obj,exp,des,success,failure,ms,strong) ->
+      | OpenCL.Ecas(obj,exp,des,success,failure,ms,strong,rem) ->
        (* Obtain location of "expected" value *)
         build_semantics_expr exp ii >>= fun loc_exp ->
        (* Obtain location of object *)
         build_semantics_expr obj ii >>= fun loc_obj ->
        (* Non-atomically read the value at "expected" location *)
-        read_mem false OpenCL.S_all_svm_devices OpenCL.NA loc_exp ii >>*= fun v_exp ->
+        read_mem false false OpenCL.S_all_svm_devices OpenCL.NA loc_exp ii >>*= fun v_exp ->
  (* Non-deterministic choice *)
         M.altT
-           (read_mem true ms failure loc_obj ii >>*= fun v_obj ->
+           (read_mem true rem ms failure loc_obj ii >>*= fun v_obj ->
            (* For "strong" cas: fail only when v_obj != v_exp *)
-           (if strong then M.neqT v_obj v_exp else M.unitT ()) >>= fun () -> 
+           (if strong then M.neqT v_obj v_exp else M.unitT ()) (* >>= fun () -> 
            (* Non-atomically write that value into the "expected" location *)
-           write_mem OpenCL.S_all_svm_devices OpenCL.NA loc_exp v_obj ii >>!
+           write_mem OpenCL.S_all_svm_devices OpenCL.NA loc_exp v_obj ii *) >>!
            V.intToV 0)
           (* Obtain "desired" value *)
           (build_semantics_expr des ii >>= fun v_des -> 
            (* Do RMW action on "object", to change its value from "expected"
               to "desired", using memory order "success" *)
            M.mk_singleton_es
-             (Act.RMW (A.Location_global loc_obj,v_exp,v_des,success,ms)) ii >>!
+             (Act.RMW (A.Location_global loc_obj,v_exp,v_des,success,ms,rem)) ii >>!
            V.intToV 1)
 
-      | OpenCL.Efence(rs,mo,ms) ->
-	M.mk_singleton_es (Act.Fence (rs,mo,ms,Act.Normal_fence)) ii >>! V.intToV 0
+      | OpenCL.Efence(rs,mo,ms,rem) ->
+	M.mk_singleton_es (Act.Fence (rs,mo,ms,Act.Normal_fence,rem)) ii >>! V.intToV 0
 
       | OpenCL.Ecomma(e1,e2) ->
         build_semantics_expr e1 ii >>= fun _v ->
@@ -130,13 +130,13 @@ module Make (C:Sem.Config)(V:Value.S)
       | OpenCL.Pbarrier(lbl,r,ms) ->
         let lbl = Printf.sprintf "%s-%i" lbl ii.A.unroll_count in
         M.mk_singleton_es 
-          (Act.Fence (r,OpenCL.Rel,ms,Act.Entry_fence lbl)) ii 
+          (Act.Fence (r,OpenCL.Rel,ms,Act.Entry_fence lbl, false)) ii 
         >>> fun _ ->
 	let ii' = 
           {ii with A.program_order_index = A.next_po_index ii.A.program_order_index;} 
         in 
         M.mk_singleton_es 
-          (Act.Fence (r,OpenCL.Acq,ms,Act.Exit_fence lbl)) ii' 
+          (Act.Fence (r,OpenCL.Acq,ms,Act.Exit_fence lbl, false)) ii' 
         >>> fun _ ->
         M.unitT (A.next_po_index ii'.A.program_order_index, B.Next)
       
