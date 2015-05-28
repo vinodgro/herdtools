@@ -8,3 +8,9 @@ To compile and install in your home directory (binaries -> $HOME/bin,
 library files -> $HOME/lib), just type "make luc" at the root of
 the source tree. Then, provided you have $HOME/bin in your path,
 all diy commands (such as litmus, diy etc.) can be invoked.
+
+Requirements:
+* Ocaml, version at least 4.00
+  (Ocaml is available from http://caml.inria.fr/ocaml/)
+
+* Ghostview, for the GUI components to work
