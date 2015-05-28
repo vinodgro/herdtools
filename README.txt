@@ -13,4 +13,4 @@ Requirements:
 * Ocaml, version at least 4.00
   (Ocaml is available from http://caml.inria.fr/ocaml/)
 
-* Ghostview, for the GUI components to work
+* Ghostscript, for the GUI components to work
