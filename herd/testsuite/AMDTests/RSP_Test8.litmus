@@ -1,0 +1,49 @@
+OpenCL RSP_Test8
+                        
+{
+  [w]=0;
+  [x]=0;
+  [y]=0;
+  [z]=0;
+  [zero]=0;
+}
+
+P0 (global atomic_int* w, global atomic_int* x, global atomic_int* y, global atomic_int* z, global atomic_int* zero) {
+
+  // JW: This takes about 3 minutes for Herd to simulate!
+   
+  int r0 = atomic_compare_exchange_strong_explicit
+    (y, zero, 1, memory_order_acquire, memory_order_acquire, memory_scope_work_group);
+  if (1 == r0) {
+    *x = 53;
+    *z = 1;
+    atomic_store_explicit
+      (y, 0, memory_order_release, memory_scope_work_group);
+  }
+}
+
+P1 (global atomic_int* w, global atomic_int* x, global atomic_int* y, global atomic_int* z, global atomic_int* zero) {
+  int r1 = atomic_compare_exchange_strong_explicit_remote
+    (y, zero, 1, memory_order_acquire, memory_order_acquire, memory_scope_all_svm_devices);
+  int r2 = -1;
+  if (1 == r1) {
+    r2 = *z;
+    *w = 1;
+    atomic_store_explicit_remote
+      (y, 0, memory_order_release, memory_scope_all_svm_devices);
+  }
+}
+
+P2 (global atomic_int* w, global atomic_int* x, global atomic_int* y, global atomic_int* z, global atomic_int* zero) {
+  int r3 = atomic_compare_exchange_strong_explicit
+    (y, zero, 1, memory_order_acquire, memory_order_acquire, memory_scope_work_group);
+  int r4 = -1;
+  int r5 = -1;
+  if (1 == r3) {
+    r4 = *w;
+    r5 = *x;
+  }
+}
+
+scopeTree (device (work_group P0 P2) (work_group P1))
+exists (0:r0=1 /\ 1:r1=1 /\ 2:r3=1 /\ 1:r2=1 /\ 2:r4=1 /\ ~(2:r5=53))

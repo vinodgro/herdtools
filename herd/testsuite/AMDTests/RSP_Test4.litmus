@@ -1,0 +1,37 @@
+OpenCL RSP_Test4
+                        
+{ 
+  [x]=0;
+  [y]=0;
+  [u]=0;
+}
+
+P0 (global atomic_int* x, global atomic_int* y, global atomic_int* u) {
+  *x = 53; // JW: This can race with line 21
+  atomic_store_explicit
+    (y, 1, memory_order_release, memory_scope_work_group);
+}
+
+P1 (global atomic_int* x, global atomic_int* y, global atomic_int* u) {
+  int r1 = atomic_load_explicit
+    (y, memory_order_acquire, memory_scope_work_group);
+  int r2 = -1;
+  int r3 = -1;
+  if (0 == r1) {
+    r2 = *x; // JW: This can race with line 10
+    r3 = *u;
+  }
+}
+
+P2 (global atomic_int* x, global atomic_int* y, global atomic_int* u) {
+  int r0 = atomic_load_explicit_remote
+    (y, memory_order_acquire, memory_scope_all_svm_devices);
+  if (1 == r0) {
+    *u = 42;
+    atomic_store_explicit_remote
+      (y, 0, memory_order_release, memory_scope_all_svm_devices);
+  }
+}
+
+scopeTree (device (work_group P0 P1)) (device (work_group P2))
+exists (2:r0=1 /\ 1:r1=1 /\ 1:r3=42 /\ ~ (1:r2=53))

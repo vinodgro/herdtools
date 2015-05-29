@@ -1,0 +1,41 @@
+OpenCL WSQ1
+
+// ./herd -model opencl_rem.cat -initwrites true -show all -gv -graph columns -showinitwrites false -squished true -scale 2 -symetric dr amdtests/WSQ1.litmus
+                        
+{
+  [q]=0;
+  [t]=0;
+}
+
+P0 (global atomic_int* q, global atomic_int* t) {
+
+
+  // PUSH
+
+  // Store the task at the tail of the queue
+  *q = 1;
+
+  // Write back the new tail index
+  atomic_store_explicit(t, 1, memory_order_release, memory_scope_work_group);
+	
+}
+
+P1 (global atomic_int* q, global atomic_int* t) {
+
+  // STEAL
+  
+  // Read the current tail 
+  localTail = atomic_load_explicit_remote(t, memory_order_acquire, memory_scope_device);
+
+  // If the tail index is not greater than the head index, then the
+  // queue is empty and there is nothing to steal.
+  if (localTail == 0) {}
+  else
+  {
+    // Obtain the element at the head of the task queue
+    ret = *q; 
+  }
+}
+
+scopeTree (device (work_group P0) (work_group P1))
+exists (1:localTail=1 /\ 1:ret=0)

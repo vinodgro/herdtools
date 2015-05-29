@@ -1,0 +1,36 @@
+OpenCL RSP_Test5
+                        
+{ 
+  [x]=0;
+  [y]=0;
+  [z]=0;
+}
+
+P0 (global atomic_int* x, global atomic_int* y, global atomic_int* z) {
+  *x = 53;
+  atomic_store_explicit
+    (y, 1, memory_order_release, memory_scope_work_group);
+}
+
+P1 (global atomic_int* x, global atomic_int* y, global atomic_int* z) {
+  int r0 = atomic_load_explicit
+    (y, memory_order_acquire, memory_scope_work_group);
+  int r1 = -1;
+  if (1 == r0) {
+    r1 = *x;
+    atomic_store_explicit
+      (z, 1, memory_order_release, memory_scope_all_svm_devices);
+  }
+}
+
+P2 (global atomic_int* x, global atomic_int* y, global atomic_int* z) {
+  int r2 = atomic_load_explicit
+    (z, memory_order_acquire, memory_scope_all_svm_devices);
+  int r3 = -1;
+  if (1 == r2) {
+    r3 = *x;
+  }
+}
+
+scopeTree (device (work_group P0 P1)) (device (work_group P2))
+exists (1:r0=1 /\ 2:r2=1 /\ (~ (1:r1=53) \/ ~ (2:r3=53)))

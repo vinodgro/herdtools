@@ -1,0 +1,48 @@
+OpenCL RSP_Test9
+                        
+{
+  [w]=0;
+  [x]=0;
+  [y]=0;
+  [z]=0;
+  [zero]=0;
+}
+
+P0 (global atomic_int* w, global atomic_int* x, global atomic_int* y, global atomic_int* z, global atomic_int* zero) {
+
+  *z = 53; // JW: This write to z can race.
+  int r0 = atomic_compare_exchange_strong_explicit_remote
+    (y, zero, 1, memory_order_acquire, memory_order_acquire, memory_scope_all_svm_devices);
+  if (1 == r0) {
+    *x = 1;
+    atomic_store_explicit_remote
+      (y, 0, memory_order_release, memory_scope_all_svm_devices); // JW: I changed this from memory_scope_work_group
+  }
+}
+
+P1 (global atomic_int* w, global atomic_int* x, global atomic_int* y, global atomic_int* z, global atomic_int* zero) {
+  int r1 = atomic_compare_exchange_strong_explicit_remote
+    (y, zero, 1, memory_order_acquire, memory_order_acquire, memory_scope_all_svm_devices);
+  if (1 == r1) {
+    *w = 1;
+    atomic_store_explicit_remote
+      (y, 0, memory_order_release, memory_scope_all_svm_devices);
+  }
+}
+
+P2 (global atomic_int* w, global atomic_int* x, global atomic_int* y, global atomic_int* z, global atomic_int* zero) {
+  int r2 = atomic_compare_exchange_strong_explicit
+    (y, zero, 1, memory_order_acquire, memory_order_acquire, memory_scope_work_group);
+  int r3 = -1;
+  int r4 = -1;
+  int r5 = -1;
+  if (1 == r2) {
+    r3 = *w;
+    r4 = *x;
+    r5 = *z; // JW: This read of z can race. Sequence: P2 does the CAS succesfully first, then
+             // reads w and x and z all at their initial values, meanwhile P0 writes z at 53.
+  }
+}
+
+scopeTree (device (work_group P0) (work_group P1) (work_group P2))
+exists (0:r0=1 /\ 1:r1=1 /\ 2:r2=1 /\ 2:r3=1 /\ 2:r4=1 /\ ~(2:r5=53))

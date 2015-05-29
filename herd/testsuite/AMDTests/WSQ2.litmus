@@ -1,0 +1,63 @@
+OpenCL WSQ2
+
+// ./herd -model opencl_rem.cat -initwrites true -show all -gv -graph columns -showinitwrites false -squished true -scale 2 -symetric dr amdtests/WSQ2.litmus
+                        
+{
+  [h]=0;
+  [t]=0;
+  [zero0]=0;
+  [zero1]=0;
+}
+
+P0 (global atomic_int* h, global atomic_int* t, global atomic_int* dummy_sync_flag, global atomic_int* zero0, global atomic_int* zero1) {
+
+  // POP
+
+  // If there is exactly one task remaining in the queue, then attempt
+  // to 'steal' it, by modifying the head index. By taking the task
+  // from the head of the queue (stealing) rather than from the tail
+  // (popping), we prevent anybody else stealing concurrently. If we
+  // fail to modify the head of the queue, then a stealer got in
+  // before us.
+  
+  r0 = atomic_compare_exchange_strong_explicit(h,
+          zero0, 1,
+	  memory_order_acq_rel,
+	  memory_order_relaxed, // memory_order_acquire?
+	  memory_scope_work_group);
+  if (r0 == 1) {}	  
+  else {
+    // atomic_store_explicit(dummy_sync_flag, 0,
+    //    memory_order_release,
+    //    memory_scope_work_group);
+
+    // PUSH
+
+    // Store the task at the tail of the queue
+    *t = 1;
+
+  }
+	
+}
+
+P1 (global atomic_int* h, global atomic_int* t, global atomic_int* dummy_sync_flag, global atomic_int* zero0, global atomic_int* zero1) {
+
+  // STEAL 
+
+  // Obtain the element at the head of the task queue
+  val = *t;
+
+  // Attempt to increment the head index. 
+  if (atomic_compare_exchange_strong_explicit_remote(h, zero1, 1,
+	      memory_order_acq_rel,
+	      memory_order_relaxed,
+	      memory_scope_device) == 1) {
+    // atomic_store_explicit _rem(dummy_sync_flag, 0,
+    //       memory_order_release,
+    //       memory_scope_device);
+  }
+
+}
+
+scopeTree (device (work_group P0) (work_group P1))
+exists (0:r0=1 /\ 1:val=1)
