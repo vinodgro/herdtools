@@ -80,7 +80,7 @@ module Make(O:Config) = struct
         let sz =
           if cur_pos + sz >= last_pos then last_pos - cur_pos
           else sz in
-        Bytes.blit_string b.b b.pos buff p sz ;
+        String.blit b.b b.pos buff p sz ;
         b.pos <- cur_pos + sz ;
         sz
       end
