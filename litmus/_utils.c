@@ -35,13 +35,14 @@ void seterrlog(FILE *chan) {
 }
 
 int log_error(const char *fmt, ...) {
-    int result;
-    va_list args;
-    va_start(args, fmt);
-    checkerrlog() ;
-    result = vfprintf(errlog, fmt, args);
-    va_end(args);
-    return result;
+  int result;
+  va_list args;
+  va_start(args, fmt);
+  checkerrlog() ;
+  result = vfprintf(errlog, fmt, args);
+  fflush(errlog);
+  va_end(args);
+  return result;
 }
 
 void fatal(char *msg) {
