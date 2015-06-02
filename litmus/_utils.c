@@ -46,12 +46,14 @@ int log_error(const char *fmt, ...) {
 
 void fatal(char *msg) {
   log_error("Failure: %s\n", msg) ;
+  fclose(errlog);
   fprintf(stdout,"Failure: %s\n", msg) ;
   exit(1) ;
 }
 
 void errexit(char *msg,int err) {
   log_error("%s: %s\n",msg,strerror(err)) ;
+  fclose(errlog);
   exit(2) ;
 }
 
