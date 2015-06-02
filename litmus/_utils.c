@@ -17,20 +17,41 @@
 #include <limits.h>
 #include <errno.h>
 #include <stdint.h>
+#include <stdarg.h>
 #include "utils.h"
 
 /********/
 /* Misc */
 /********/
 
+FILE *errlog ;
+
+static void checkerrlog(void) {
+  if (!errlog) errlog = stderr ;
+}
+
+void seterrlog(FILE *chan) {
+  errlog = chan ;
+}
+
+int log_error(const char *fmt, ...) {
+    int result;
+    va_list args;
+    va_start(args, fmt);
+    checkerrlog() ;
+    result = vfprintf(errlog, fmt, args);
+    va_end(args);
+    return result;
+}
+
 void fatal(char *msg) {
-  fprintf(stderr,"Failure: %s\n", msg) ;
+  log_error("Failure: %s\n", msg) ;
   fprintf(stdout,"Failure: %s\n", msg) ;
   exit(1) ;
 }
 
 void errexit(char *msg,int err) {
-  fprintf(stderr,"%s: %s\n",msg,strerror(err)) ;
+  log_error("%s: %s\n",msg,strerror(err)) ;
   exit(2) ;
 }
 
@@ -39,8 +60,7 @@ void *malloc_check(size_t sz) {
   void *p = malloc(sz) ;
   if (!p) { 
     if (!errno) errno = ENOMEM ;
-    perror("malloc") ;
-    exit(2) ;
+    errexit("malloc",errno) ;
   }
   return p ;
 }
@@ -388,82 +408,82 @@ void custom_affinity (st_t *st,cpus_t *cm,int **color,int *diff,cpus_t *aff_cpus
 /* usage */
 
 static void usage(char *prog, cmd_t *d) {
-  fprintf(stderr,"usage: %s (options)*\n",prog) ;
-  fprintf(stderr,"  -v      be verbose\n") ;
-  fprintf(stderr,"  -q      be quiet\n") ;
-  fprintf(stderr,"  -a <n>  run maximal number of tests for n available processors (default %i)\n",d->avail) ;
-  fprintf(stderr,"  -n <n>  run n tests concurrently\n") ;
-  fprintf(stderr,"  -r <n>  perform n runs (default %i)\n",d->max_run) ;
-  fprintf(stderr,"  -fr <f> multiply run number per f\n") ;
-  fprintf(stderr,"  -s <n>  outcomes per run (default %i)\n",d->size_of_test) ;
+  log_error("usage: %s (options)*\n",prog) ;
+  log_error("  -v      be verbose\n") ;
+  log_error("  -q      be quiet\n") ;
+  log_error("  -a <n>  run maximal number of tests for n available processors (default %i)\n",d->avail) ;
+  log_error("  -n <n>  run n tests concurrently\n") ;
+  log_error("  -r <n>  perform n runs (default %i)\n",d->max_run) ;
+  log_error("  -fr <f> multiply run number per f\n") ;
+  log_error("  -s <n>  outcomes per run (default %i)\n",d->size_of_test) ;
   if (d->stride > 0) {
-    fprintf(stderr,"  -st <n> stride (default %i)\n",d->stride) ;
+    log_error("  -st <n> stride (default %i)\n",d->stride) ;
   }
-  fprintf(stderr,"  -fs <f> multiply outcomes per f\n") ;
-  fprintf(stderr,"  -f <f>  multiply outcomes per f, divide run number by f\n") ;
+  log_error("  -fs <f> multiply outcomes per f\n") ;
+  log_error("  -f <f>  multiply outcomes per f, divide run number by f\n") ;
   if (d->aff_mode != aff_none) {
-    fprintf(stderr,"  -i <n>  increment for allocating logical processors, -i 0 disables affinity mode") ;
+    log_error("  -i <n>  increment for allocating logical processors, -i 0 disables affinity mode") ;
     if (d->aff_mode == aff_incr) {
-      fprintf(stderr," (default %i)\n",d->aff_incr) ;
+      log_error(" (default %i)\n",d->aff_incr) ;
     } else {
-      fprintf(stderr,"\n") ;
+      log_error("\n") ;
     }
-    fprintf(stderr,"  -p <ns> specify logical processors (default '") ;
-    cpus_dump(stderr,d->aff_cpus) ;
-    fprintf(stderr,"')\n") ;
-    fprintf(stderr,"  +ra     randomise affinity%s\n",d->aff_mode == aff_random ? " (default)" : "") ;
+    log_error("  -p <ns> specify logical processors (default '") ;
+    cpus_dump(errlog,d->aff_cpus) ;
+    log_error("')\n") ;
+    log_error("  +ra     randomise affinity%s\n",d->aff_mode == aff_random ? " (default)" : "") ;
     if (d->aff_custom_enabled) {
-      fprintf(stderr,"  +ca     enable custom affinity%s\n",d->aff_mode == aff_custom ? " (default)" : "") ;
+      log_error("  +ca     enable custom affinity%s\n",d->aff_mode == aff_custom ? " (default)" : "") ;
     } else {
-      fprintf(stderr,"  +ca     alias for +ra\n") ;
+      log_error("  +ca     alias for +ra\n") ;
     }
     if (d->aff_scan_enabled) {
-      fprintf(stderr,"  +sa     enable scanning affinity%s\n",d->aff_mode == aff_scan ? " (default)" : "") ;
-      fprintf(stderr,"  +ta <topo> set topology affinity\n") ;
+      log_error("  +sa     enable scanning affinity%s\n",d->aff_mode == aff_scan ? " (default)" : "") ;
+      log_error("  +ta <topo> set topology affinity\n") ;
     } else {
-      fprintf(stderr,"  +sa     alias for +ra\n") ;
+      log_error("  +sa     alias for +ra\n") ;
     }
   }
   if (d->shuffle >= 0) {
-    fprintf(stderr,"  +rm     randomise memory accesses%s\n",d->shuffle ? " (default)" : "") ;
-    fprintf(stderr,"  -rm     do not randomise memory accesses%s\n",!d->shuffle ? " (default)" : "") ;
+    log_error("  +rm     randomise memory accesses%s\n",d->shuffle ? " (default)" : "") ;
+    log_error("  -rm     do not randomise memory accesses%s\n",!d->shuffle ? " (default)" : "") ;
   }
   if (d->speedcheck >= 0) {
-    fprintf(stderr,"  +sc     stop as soon as possible%s\n",d->speedcheck ? " (default)" : "") ;
-    fprintf(stderr,"  -sc     run test completly%s\n",!d->speedcheck ? " (default)" : "") ;
+    log_error("  +sc     stop as soon as possible%s\n",d->speedcheck ? " (default)" : "") ;
+    log_error("  -sc     run test completly%s\n",!d->speedcheck ? " (default)" : "") ;
   }   
   if (!d->fix) {
-    fprintf(stderr,"  +fix    fix thread launch order\n") ;
+    log_error("  +fix    fix thread launch order\n") ;
   }
   if (d->delta_tb) {
-    fprintf(stderr,"  -tb <list> set timebase delays, default '") ;    
-    ints_dump(stderr,d->delta_tb) ;
-    fprintf(stderr,"'\n") ;
-    fprintf(stderr,"    List syntax is comma separated proc:delay\n") ;
-    fprintf(stderr,"  -ta <n>    set all timebase delays\n") ;
+    log_error("  -tb <list> set timebase delays, default '") ;    
+    ints_dump(errlog,d->delta_tb) ;
+    log_error("'\n") ;
+    log_error("    List syntax is comma separated proc:delay\n") ;
+    log_error("  -ta <n>    set all timebase delays\n") ;
   }
   if (d->verbose_barrier >= 0) {
-    fprintf(stderr,"  +vb     show iteration timings%s\n",d->verbose_barrier ? " (default)" : "") ;
-    fprintf(stderr,"  -vb     do not show iteration timings%s\n",!d->verbose_barrier ? " (default)" : "") ;
+    log_error("  +vb     show iteration timings%s\n",d->verbose_barrier ? " (default)" : "") ;
+    log_error("  -vb     do not show iteration timings%s\n",!d->verbose_barrier ? " (default)" : "") ;
   }
   if (d->prefetch) {
-    fprintf(stderr,"  -pra (I|F|T|W) set all prefetch\n") ;
-    fprintf(stderr,"  -prf <list> set prefetch, default '") ;
-    prefetch_dump(stderr,d->prefetch) ;
-    fprintf(stderr,"'\n") ;
-    fprintf(stderr,"    List syntax is comma separated proc:name=(I|F|T|W)\n") ;
+    log_error("  -pra (I|F|T|W) set all prefetch\n") ;
+    log_error("  -prf <list> set prefetch, default '") ;
+    prefetch_dump(errlog,d->prefetch) ;
+    log_error("'\n") ;
+    log_error("    List syntax is comma separated proc:name=(I|F|T|W)\n") ;
   }
   if (d->static_prefetch >= 0) {
-    fprintf(stderr,"  -prs <n> prefetch probability is 1/n, -prs 0 disables feature, default %i\n",d->static_prefetch) ;
+    log_error("  -prs <n> prefetch probability is 1/n, -prs 0 disables feature, default %i\n",d->static_prefetch) ;
   }
   if (d->max_loop > 0) {
-    fprintf(stderr,"  -l <n>  measure time by running assembly in a loop of size <n> (default %i)\n",d->max_loop) ;
+    log_error("  -l <n>  measure time by running assembly in a loop of size <n> (default %i)\n",d->max_loop) ;
   }  
   if (d->prelude > 0) {
-    fprintf(stderr,"  -vp     no verbose prelude\n") ;
+    log_error("  -vp     no verbose prelude\n") ;
   }
   if (d->sync_n > 0) {
-    fprintf(stderr,"  -k <n>  undocumented (default %i)\n",d->sync_n) ;
+    log_error("  -k <n>  undocumented (default %i)\n",d->sync_n) ;
   }
   exit(2) ;
 }
@@ -585,7 +605,7 @@ int parse_prefetch(char *p, prfdirs_t *r) {
     *p = '\0' ;
     prfone_t *loc_slot = get_name_slot(&r->t[proc],p0) ;
     if (loc_slot == NULL) { 
-      fprintf(stderr,"Proc %i does not access variable %s\n",proc,p0) ;
+      log_error("Proc %i does not access variable %s\n",proc,p0) ;
       *p = '=' ;
       return 0 ;
     }

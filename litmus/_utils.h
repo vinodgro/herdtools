@@ -23,6 +23,10 @@
 /* Misc */
 /********/
 
+void seterrlog(FILE *chan) ;
+
+int log_error(const char *fmt,...) ;
+
 void fatal(char *msg) ;
 /* e is errno */
 void errexit(char *msg,int e) ;
