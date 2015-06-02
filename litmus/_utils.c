@@ -61,7 +61,7 @@ void errexit(char *msg,int err) {
 void *malloc_check(size_t sz) {
   if (sz == 0) return NULL ;
   void *p = malloc(sz) ;
-  if (!p) { 
+  if (!p) {
     if (!errno) errno = ENOMEM ;
     errexit("malloc",errno) ;
   }
@@ -213,7 +213,7 @@ cpus_t *coremap_seq(int navail, int nways) {
   int ncores = navail / nways ;
   int i = 0 ;
   for (int c = 0 ; c < ncores ; c++) {
-    for (int k = 0 ; k < nways ; k++) {  
+    for (int k = 0 ; k < nways ; k++) {
       r->cpu[i++] = c ;
     }
   }
@@ -316,10 +316,10 @@ static int ok_one_color(int *cm,int *d,int *a,int n, int p, int c) {
     int op = a[k] ;
     if (op >= 0) {
       if (d[n*p+k]) {
-	int oc = cm[op] ;
-	if (oc == c) {
-	  return 0 ;
-	} 
+        int oc = cm[op] ;
+        if (oc == c) {
+          return 0 ;
+        }
       }
     }
   }
@@ -454,12 +454,12 @@ static void usage(char *prog, cmd_t *d) {
   if (d->speedcheck >= 0) {
     log_error("  +sc     stop as soon as possible%s\n",d->speedcheck ? " (default)" : "") ;
     log_error("  -sc     run test completly%s\n",!d->speedcheck ? " (default)" : "") ;
-  }   
+  }
   if (!d->fix) {
     log_error("  +fix    fix thread launch order\n") ;
   }
   if (d->delta_tb) {
-    log_error("  -tb <list> set timebase delays, default '") ;    
+    log_error("  -tb <list> set timebase delays, default '") ;
     ints_dump(errlog,d->delta_tb) ;
     log_error("'\n") ;
     log_error("    List syntax is comma separated proc:delay\n") ;
@@ -481,7 +481,7 @@ static void usage(char *prog, cmd_t *d) {
   }
   if (d->max_loop > 0) {
     log_error("  -l <n>  measure time by running assembly in a loop of size <n> (default %i)\n",d->max_loop) ;
-  }  
+  }
   if (d->prelude > 0) {
     log_error("  -vp     no verbose prelude\n") ;
   }
@@ -493,7 +493,7 @@ static void usage(char *prog, cmd_t *d) {
 
 static long my_add (long x, long y) {
   long r = x+y ;
-  if (r < x || r < y) { errno = ERANGE ; fatal("overflow") ; } 
+  if (r < x || r < y) { errno = ERANGE ; fatal("overflow") ; }
   return r ;
 }
 
@@ -537,7 +537,7 @@ static cpus_t *argcpus(char *prog,char *p0,cmd_t *d) {
     if (x < 0 || *p == '\0' || (*q != '\0' && *q != ','))  usage(prog,d) ;
     sz++ ;
     if (*q == '\0') break ;
-    p = q+1 ;    
+    p = q+1 ;
   }
   cpus_t *r = cpus_create(sz) ;
   p = p0 ;
@@ -587,7 +587,7 @@ static void argoneprefetch(char *prog,cmd_t *d, char *p, prfdirs_t *r) {
     break ;
   case 'W':
     dir = touch_store ;
-    break ;    
+    break ;
   }
   set_prefetch(r,dir) ;
 }
@@ -607,7 +607,7 @@ int parse_prefetch(char *p, prfdirs_t *r) {
     }
     *p = '\0' ;
     prfone_t *loc_slot = get_name_slot(&r->t[proc],p0) ;
-    if (loc_slot == NULL) { 
+    if (loc_slot == NULL) {
       log_error("Proc %i does not access variable %s\n",proc,p0) ;
       *p = '=' ;
       return 0 ;
@@ -657,33 +657,33 @@ void parse_cmd(int argc, char **argv, cmd_t *d, cmd_t *p) {
     char fst = **argv ;
     if (fst != '-' && fst != '+') break ;
     if (strcmp(*argv,"-q") == 0) p->verbose=0 ;
-    else if (strcmp(*argv,"-v") == 0) p->verbose++ ;   
+    else if (strcmp(*argv,"-v") == 0) p->verbose++ ;
     else if (strcmp(*argv,"-r") == 0) {
       --argc ; ++argv ;
       if (!*argv) usage(prog,d) ;
-      p->max_run = argint(prog,argv[0],d) ;   
+      p->max_run = argint(prog,argv[0],d) ;
     } else if (strcmp(*argv,"-fr") == 0) {
       --argc ; ++argv ;
       if (!*argv) usage(prog,d) ;
-      p->max_run *= argdouble(prog,argv[0],d) ;   
+      p->max_run *= argdouble(prog,argv[0],d) ;
     } else if (strcmp(*argv,"-s") == 0) {
       --argc ; ++argv ;
       if (!*argv) usage(prog,d) ;
-      p->size_of_test = argint(prog,argv[0],d) ;   
+      p->size_of_test = argint(prog,argv[0],d) ;
     } else if (d->stride > 0 && strcmp(*argv,"-st") == 0) {
       --argc ; ++argv ;
       if (!*argv) usage(prog,d) ;
-      p->stride = argint(prog,argv[0],d) ;   
+      p->stride = argint(prog,argv[0],d) ;
       if (p->stride <= 0) p->stride = 1 ;
     } else if (strcmp(*argv,"-fs") == 0) {
       --argc ; ++argv ;
       if (!*argv) usage(prog,d) ;
-      p->size_of_test *= argdouble(prog,argv[0],d) ;   
+      p->size_of_test *= argdouble(prog,argv[0],d) ;
     } else if (strcmp(*argv,"-f") == 0) {
       --argc ; ++argv ;
       if (!*argv) usage(prog,d) ;
       double f = argdouble(prog,argv[0],d) ;
-      p->size_of_test *= f ;     
+      p->size_of_test *= f ;
       p->max_run /= f ;
     } else if (strcmp(*argv,"-n") == 0) {
       --argc ; ++argv ;
@@ -702,7 +702,7 @@ void parse_cmd(int argc, char **argv, cmd_t *d, cmd_t *p) {
       p->sync_n = a < 0 ? 0 : a ;
     } else if (d->aff_mode != aff_none && strcmp(*argv,"-i") == 0) {
       --argc ; ++argv ;
-      if (!*argv) usage(prog,d) ;      
+      if (!*argv) usage(prog,d) ;
       int i = argint(prog,argv[0],d) ;
       p->aff_mode = aff_incr ;
       p->aff_incr = i < 0 ? 0 : i ;
@@ -1088,13 +1088,13 @@ static int int_cmp(const void *_p, const void *_q) {
 
 int check_shuffle(int **t, int *min, int sz) {
   int *idx = malloc_check(sizeof(*idx)*sz) ;
-  for (int k=0 ; k < sz ; k++) {  
+  for (int k=0 ; k < sz ; k++) {
     idx[k] = (int)(t[k] - min) ;
     //    fprintf(stderr," %i",idx[k]) ;
   }
   //  fprintf(stderr,"\n") ;
   qsort(&idx[0],sz, sizeof(idx[0]), int_cmp) ;
-  for (int k=0 ; k < sz ; k++) {  
+  for (int k=0 ; k < sz ; k++) {
     if (idx[k] != k) {
       free(idx) ;
       return 0 ;
@@ -1113,7 +1113,7 @@ int check_shuffle(int **t, int *min, int sz) {
 
 tsc_t timeofday(void) {
   struct timeval tv ;
-  if (gettimeofday(&tv,NULL)) errexit("gettimeoday",errno) ;  
+  if (gettimeofday(&tv,NULL)) errexit("gettimeoday",errno) ;
   return tv.tv_sec * ((tsc_t)1000000) + tv.tv_usec ;
 }
 
@@ -1136,4 +1136,3 @@ int find_string(char *t[], int sz, char *s) {
   }
   return -1 ;
 }
-
