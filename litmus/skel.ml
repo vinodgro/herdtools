@@ -326,7 +326,7 @@ module Insert =
     O.f "#define N %i" n ;
     if do_staticalloc then begin
       let nexe =
-        match Cfg.avail  with 
+        match Cfg.avail  with
         | None -> 1
         | Some a -> if a < n then 1 else a / n in
       O.f "#define NEXE %i" nexe ;
@@ -595,7 +595,7 @@ let user2_barrier_def () =
       O.o "inline static void mcautious(void) { mbar(); }" ;
       O.o ""
     end
-      
+
 (* All of them *)
 
   let dump_threads test =
@@ -737,12 +737,12 @@ let user2_barrier_def () =
        O.f "static %s %s[SIZE_OF_MEM];"
          (CType.dump t)
          (A.Out.dump_out_reg proc reg))
-     test    
+     test
 
   let fmt_outcome locs env =
     U.fmt_outcome
       (fun t -> match Compile.get_fmt Cfg.hexa t with
-      | CType.Direct fmt -> 
+      | CType.Direct fmt ->
           if Cfg.hexa then "0x%" ^ fmt else "%" ^ fmt
       | CType.Macro fmt ->
           (if Cfg.hexa then "0x%\"" else "%\"") ^ fmt ^ "\"")
@@ -767,7 +767,7 @@ let user2_barrier_def () =
           type t = Constant.v
           let compare = A.V.compare
           let dump = function
-            | Concrete i -> 
+            | Concrete i ->
                 if Cfg.hexa then sprintf "0x%x"i
                 else sprintf "%i" i
             | Symbolic s -> dump_val_param s
@@ -825,7 +825,7 @@ let user2_barrier_def () =
 (* Outcome type definition *)
     let outs = U.get_final_locs test in
     let nitems =
-      let map = 
+      let map =
         A.LocSet.fold
           (fun loc ->
             A.LocMap.add loc (SkelUtil.nitems (U.find_type loc env)))
@@ -1414,7 +1414,7 @@ let user2_barrier_def () =
               U.do_store t
                 (sprintf "_a->mem_%s[_i]" a) (dump_a_v v)
           | _,_ ->
-*)  
+*)
             begin match t with
               | CType.Array (_,sz) ->
                   let pp_a = tag a
@@ -1855,7 +1855,7 @@ let user2_barrier_def () =
     choose_proc_prelude indent2 ;
     if Cfg.cautious then O.oiii "mbar();" ;
     if do_detached then
-      O.oiii "op[_p] = launch_detached(fun[_p],&parg[_p]);" 
+      O.oiii "op[_p] = launch_detached(fun[_p],&parg[_p]);"
     else
       O.oiii "launch(&thread[_p],fun[_p],&parg[_p]);" ;
     loop_proc_postlude indent2 ;
@@ -2301,7 +2301,7 @@ let user2_barrier_def () =
       if mk_dsa test then begin
         O.oi "} else if (cmd->aff_mode == aff_topo) {" ;
         O.oii "int *from = &cpu_scan[ntopo * SCANLINE];" ;
-        O.oii "for (int k = 0 ; k < aff_cpus_sz ; k++) {" ;        
+        O.oii "for (int k = 0 ; k < aff_cpus_sz ; k++) {" ;
         O.oiii "aff_cpus[k] = *from++;" ;
         O.oii "}" ;
       end ;
