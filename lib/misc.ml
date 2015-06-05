@@ -306,6 +306,8 @@ let lines_of_prog m =
     m ;
   List.rev !r
 
+let dump_symbolic s = "%" ^ s
+
 (******)
 (* IO *)
 (******)

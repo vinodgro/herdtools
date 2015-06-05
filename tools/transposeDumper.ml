@@ -20,7 +20,7 @@ module type I = sig
 
   type state
   val dump_global_state : prog -> state -> string
-  val dump_proc_state : int -> state -> string
+  val dump_proc_state : int -> A.pseudo list -> state -> string
 
   type constr
   val dump_constr : constr -> string
@@ -84,7 +84,7 @@ end = struct
     List.iter
       (fun (p,code) ->
         dump_sep chan (sprintf "Process %i" p) ;
-        fprintf chan "%s\n" (dump_proc_state p t.init) ;
+        fprintf chan "%s\n" (dump_proc_state p code t.init) ;
         fprintf chan "***\n" ;
         let code = clean_code code in
         List.iter (fun i -> fprintf chan "%s\n" (fmt_io i)) code ;
