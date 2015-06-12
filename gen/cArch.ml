@@ -95,21 +95,18 @@ let of_loc loc = Loc loc
 
 type tbase = TypBase.t
 
-let dump_tbase t =
-  let open TypBase in
-  match t with
-  | LongLong -> "long long"
-  | Long -> "long"
-  | Int -> "int"
-  | Short -> "short"
-  | Char -> "char"
+let dump_tbase t = TypBase.pp t
 
 type typ = Plain of tbase | Atomic of tbase
 
+let is_default = function
+  | Plain t|Atomic t -> TypBase.is_default t
+
+
 let dump_typ = function
   | Plain t -> dump_tbase t
-  | Atomic TypBase.LongLong -> "atomic_llong"
-  | Atomic t -> sprintf "atomic_%s" (dump_tbase t)
+  | Atomic TypBase.Int -> "atomic_int"
+  | Atomic t -> sprintf "_Atomic %s" (dump_tbase t)
 
 type exp =
   | Load of location
