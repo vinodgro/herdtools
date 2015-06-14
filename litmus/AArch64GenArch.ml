@@ -10,9 +10,12 @@
 (*  Public License.                                                       *)
 (**************************************************************************)
 
+module AArch64 = AArch64GenBase
+
+let comment = "#" (* AArch64.comment ??? *)
 
 module Make(O:Arch.Config)(V:Constant.S) = struct
-  include AArch64GenBase
+  include AArch64
   module V =
     struct
       type v = Constant.v
@@ -20,7 +23,7 @@ module Make(O:Arch.Config)(V:Constant.S) = struct
       let maybevToV c = c
     end
 
-  let reg_to_string = AArch64GenBase.pp_reg
+  let reg_to_string = AArch64.pp_reg
 
   include
       ArchExtra.Make(O)
@@ -39,7 +42,7 @@ module Make(O:Arch.Config)(V:Constant.S) = struct
           else if reg_compare r loop_idx = 0 then Some ("_a->_p->max_loop","int")
           else None
         let reg_class _ = "=&r"
-        let comment = AArch64Arch.comment
+        let comment = comment
       end)
 
 end

@@ -1,71 +1,80 @@
-| `AArch64AddSubCarry(d,n,m,sf,sub_op,setflags) ->
+| `AArch64ImplementationDefinedStopFetching ->
+    ("ImplementationDefinedStopFetching",
+      [],
+      [])
+
+| `AArch64ImplementationDefinedTestBeginEnd(isEnd) ->
+    ("ImplementationDefinedTestBeginEnd",
+      [translate_boolean "isEnd" isEnd],
+      [])
+
+| `AArch64AddSubCarry(d,n,m,datasize,sub_op,setflags) ->
     ("AddSubCarry",
       [translate_reg "d" d;
         translate_reg "n" n;
         translate_reg "m" m;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_boolean "sub_op" sub_op;
         translate_boolean "setflags" setflags],
       [])
 
-| `AArch64AddSubExtendRegister (d,n,m,sf,sub_op,setflags,extend_type,shift) ->
+| `AArch64AddSubExtendRegister (d,n,m,datasize,sub_op,setflags,extend_type,shift) ->
     ("AddSubExtendRegister",
       [translate_reg "d" d;
         translate_reg "n" n;
         translate_reg "m" m;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_boolean "sub_op" sub_op;
         translate_boolean "setflags" setflags;
         translate_extendType "extend_type" extend_type;
         translate_range0_7 "shift" shift],
       [])
 
-| `AArch64AddSubShiftedRegister (d,n,m,sf,sub_op,setflags,shift_type,shift_amount) ->
+| `AArch64AddSubShiftedRegister (d,n,m,datasize,sub_op,setflags,shift_type,shift_amount) ->
     ("AddSubShiftedRegister",
       [translate_reg "d" d;
         translate_reg "n" n;
         translate_reg "m" m;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_boolean "sub_op" sub_op;
         translate_boolean "setflags" setflags;
         translate_shiftType "shift_type" shift_type;
         translate_range0_63 "shift_amount" shift_amount],
       [])
 
-| `AArch64AddSubImmediate (d,n,sf,sub_op,setflags,imm) ->
+| `AArch64AddSubImmediate (d,n,datasize,sub_op,setflags,imm) ->
     ("AddSubImmediate",
       [translate_reg "d" d;
         translate_reg "n" n;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_boolean "sub_op" sub_op;
         translate_boolean "setflags" setflags;
-        translate_reg_size_int "imm" imm],
+        translate_reg_size_bits "imm" imm],
       [])
 
-| `AArch64Address (d,sf,page,imm) ->
+| `AArch64Address (d,page,imm) ->
     ("Address",
       [translate_reg "d" d;
-        translate_reg_size "sf" sf;
         translate_boolean "page" page;
         translate_bit64 "imm" imm],
       [])
 
-| `AArch64LogicalImmediate (d,n,sf,setflags,op,imm) ->
+| `AArch64LogicalImmediate (d,n,datasize,setflags,op,imm) ->
     ("LogicalImmediate",
       [translate_reg "d" d;
         translate_reg "n" n;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_boolean "setflags" setflags;
         translate_logicalOp "op" op;
-        translate_reg_size_int "imm" imm],
+        translate_reg_size_bits "imm" imm],
       [])
 
-| `AArch64LogicalShiftedRegister (d,n,m,sf,setflags,op,shift_type,shift_amount,invert) ->
+| `AArch64LogicalShiftedRegister (d,n,m,datasize,setflags,op,shift_type,shift_amount,invert) ->
   ("LogicalShiftedRegister",
     [translate_reg "d" d;
       translate_reg "n" n;
       translate_reg "m" m;
-      translate_reg_size "sf" sf;
+      translate_reg_size "datasize" datasize;
       translate_boolean "setflags" setflags;
       translate_logicalOp "op" op;
       translate_shiftType "shift_type" shift_type;
@@ -73,12 +82,12 @@
       translate_boolean "invert" invert],
     [])
 
-| `AArch64Shift (d,n,m,sf,shift_type) ->
+| `AArch64Shift (d,n,m,datasize,shift_type) ->
     ("Shift",
       [translate_reg "d" d;
         translate_reg "n" n;
         translate_reg "m" m;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_shiftType "shift_type" shift_type],
       [])
 
@@ -94,17 +103,17 @@
         translate_bit64 "offset" offset],
       [])
 
-| `AArch64BitfieldMove (d,n,sf,inzero,extend,_R,_S,wmask,tmask) ->
+| `AArch64BitfieldMove (d,n,datasize,inzero,extend,_R,_S,wmask,tmask) ->
     ("BitfieldMove",
       [translate_reg "d" d;
         translate_reg "n" n;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_boolean "inzero" inzero;
         translate_boolean "extend" extend;
         translate_integer "_R" _R;
         translate_integer "_S" _S;
-        translate_reg_size_int "wmask" wmask;
-        translate_reg_size_int "tmask" tmask],
+        translate_reg_size_bits "wmask" wmask;
+        translate_reg_size_bits "tmask" tmask],
       [])
 
 | `AArch64BranchRegister (n,_branch_type) ->
@@ -113,29 +122,29 @@
         translate_branchType "_branch_type" _branch_type],
       [])
 
-| `AArch64CompareAndBranch (t,sf,iszero,offset) ->
+| `AArch64CompareAndBranch (t,datasize,iszero,offset) ->
     ("CompareAndBranch",
       [translate_reg "t" t;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_boolean "iszero" iszero;
         translate_bit64 "offset" offset],
       [])
 
-| `AArch64ConditionalCompareImmediate (n,sf,sub_op,condition,flags,imm) ->
+| `AArch64ConditionalCompareImmediate (n,datasize,sub_op,condition,flags,imm) ->
     ("ConditionalCompareImmediate",
       [translate_reg "n" n;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_boolean "sub_op" sub_op;
         translate_bit4 "condition" condition;
         translate_bit4 "flags" flags;
-        translate_reg_size_int "imm" imm],
+        translate_reg_size_bits "imm" imm],
       [])
 
-| `AArch64ConditionalCompareRegister (n,m,sf,sub_op,condition,flags) ->
+| `AArch64ConditionalCompareRegister (n,m,datasize,sub_op,condition,flags) ->
     ("ConditionalCompareRegister",
       [translate_reg "n" n;
         translate_reg "m" m;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_boolean "sub_op" sub_op;
         translate_bit4 "condition" condition;
         translate_bit4 "flags" flags],
@@ -146,30 +155,29 @@
       [translate_integer "imm" imm],
       [])
 
-| `AArch64CountLeading (d,n,sf,opcode) ->
+| `AArch64CountLeading (d,n,datasize,opcode) ->
     ("CountLeading",
       [translate_reg "d" d;
         translate_reg "n" n;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_countOp "opcode" opcode],
       [])
 
-| `AArch64CRC (d,n,m,sf,size,crc32c) ->
+| `AArch64CRC (d,n,m,size,crc32c) ->
     ("CRC",
       [translate_reg "d" d;
         translate_reg "n" n;
         translate_reg "m" m;
-        translate_reg_size "sf" sf;
-        translate_range8_64 "size" size;
+        translate_data_size "size" size;
         translate_boolean "crc32c" crc32c],
       [])
 
-| `AArch64ConditionalSelect (d,n,m,sf,condition,else_inv,else_inc) ->
+| `AArch64ConditionalSelect (d,n,m,datasize,condition,else_inv,else_inc) ->
     ("ConditionalSelect",
       [translate_reg "d" d;
         translate_reg "n" n;
         translate_reg "m" m;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_bit4 "condition" condition;
         translate_boolean "else_inv" else_inv;
         translate_boolean "else_inc" else_inc],
@@ -182,12 +190,12 @@
         translate_mBReqTypes "types" types],
       [])
 
-| `AArch64ExtractRegister (d,n,m,sf,lsb) ->
+| `AArch64ExtractRegister (d,n,m,datasize,lsb) ->
     ("ExtractRegister",
       [translate_reg "d" d;
         translate_reg "n" n;
         translate_reg "m" m;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_integer "lsb" lsb],
       [])
 
@@ -196,7 +204,7 @@
     [translate_systemHintOp "op" op],
     [])
 
-| `AArch64LoadStoreAcqExc (n,t,t2,s,acctype,excl,pair,memop,elsize,sf,df,datasize) ->
+| `AArch64LoadStoreAcqExc (n,t,t2,s,acctype,excl,pair,memop,elsize,regsize,datasize) ->
     ("LoadStoreAcqExc",
       [translate_reg "n" n;
         translate_reg "t" t;
@@ -207,12 +215,11 @@
         translate_boolean "pair" pair;
         translate_memOp "memop" memop;
         translate_integer "elsize" elsize;
-        translate_reg_size "sf" sf;
-        translate_data_size "df" df;
-        translate_integer "datasize" datasize],
+        translate_reg_size "regsize" regsize;
+        translate_data_size "datasize" datasize],
       [])
 
-| `AArch64LoadStorePair (wback,postindex,n,t,t2,acctype,memop,signed,scale,sf,df,datasize,offset) ->
+| `AArch64LoadStorePair (wback,postindex,n,t,t2,acctype,memop,signed,scale,datasize,offset) ->
     ("LoadStorePair",
       [translate_boolean "wback" wback;
         translate_boolean "postindex" postindex;
@@ -223,14 +230,12 @@
         translate_memOp "memop" memop;
         translate_boolean "signed" signed;
         translate_integer "scale" scale;
-        translate_reg_size "sf" sf;
-        translate_data_size "df" df;
-        translate_integer "datasize" datasize;
+        translate_data_size "datasize" datasize;
         translate_bit64 "offset" offset],
       [])
 
-| `AArch64LoadImediate (n,t,acctype,memop,signed,wback,postindex,offset,sf,df,datasize) ->
-    ("LoadImediate",
+| `AArch64LoadImmediate (n,t,acctype,memop,signed,wback,postindex,offset,regsize,datasize) ->
+    ("LoadImmediate",
       [translate_reg "n" n;
         translate_reg "t" t;
         translate_accType "acctype" acctype;
@@ -239,23 +244,21 @@
         translate_boolean "wback" wback;
         translate_boolean "postindex" postindex;
         translate_bit64 "offset" offset;
-        translate_reg_size "sf" sf;
-        translate_data_size "df" df;
-        translate_integer "datasize" datasize],
+        translate_reg_size "regsize" regsize;
+        translate_data_size "datasize" datasize],
       [])
 
-| `AArch64LoadLiteral (t,memop,signed,sf,df,size,offset) ->
+| `AArch64LoadLiteral (t,memop,signed,size,offset,datasize) ->
     ("LoadLiteral",
       [translate_reg "t" t;
         translate_memOp "memop" memop;
         translate_boolean "signed" signed;
-        translate_reg_size "sf" sf;
-        translate_data_size "df" df;
         translate_integer "size" size;
-        translate_bit64 "offset" offset],
+        translate_bit64 "offset" offset;
+        translate_data_size "datasize" datasize;],
       [])
 
-| `AArch64LoadRegister (n,t,m,acctype,memop,signed,wback,postindex,extend_type,shift,sf,df,datasize) ->
+| `AArch64LoadRegister (n,t,m,acctype,memop,signed,wback,postindex,extend_type,shift,regsize,datasize) ->
     ("LoadRegister",
       [translate_reg "n" n;
         translate_reg "t" t;
@@ -267,44 +270,44 @@
         translate_boolean "postindex" postindex;
         translate_extendType "extend_type" extend_type;
         translate_integer "shift" shift;
-        translate_reg_size "sf" sf;
-        translate_data_size "df" df;
-        translate_integer "datasize" datasize],
+        translate_reg_size "regsize" regsize;
+        translate_data_size "datasize" datasize],
       [])
 
-| `AArch64MultiplyAddSub (d,n,m,a,sf,sub_op) ->
+| `AArch64MultiplyAddSub (d,n,m,a,destsize,datasize,sub_op) ->
     ("MultiplyAddSub",
       [translate_reg "d" d;
         translate_reg "n" n;
         translate_reg "m" m;
         translate_reg "a" a;
-        translate_reg_size "sf" sf;
+        translate_reg_size "destsize" destsize;
+        translate_data_size "datasize" datasize;
         translate_boolean "sub_op" sub_op],
       [])
 
-| `AArch64MoveWide (d,sf,imm,pos,opcode) ->
+| `AArch64MoveWide (d,datasize,imm,pos,opcode) ->
     ("MoveWide",
       [translate_reg "d" d;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_bit16 "imm" imm;
         translate_integer "pos" pos;
         translate_moveWideOp "opcode" opcode],
       [])
 
-| `AArch64Reverse (d,n,sf,op) ->
+| `AArch64Reverse (d,n,datasize,op) ->
     ("Reverse",
       [translate_reg "d" d;
         translate_reg "n" n;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_revOp "op" op],
       [])
 
-| `AArch64Division (d,n,m,sf,unsigned) ->
+| `AArch64Division (d,n,m,datasize,unsigned) ->
     ("Division",
       [translate_reg "d" d;
         translate_reg "n" n;
         translate_reg "m" m;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_boolean "unsigned" unsigned],
       [])
 
@@ -314,29 +317,45 @@
         translate_reg "n" n;
         translate_reg "m" m;
         translate_reg "a" a;
-        translate_integer "destsize" destsize;
-        translate_integer "datasize" datasize;
+        translate_reg_size "destsize" destsize;
+        translate_data_size "datasize" datasize;
         translate_boolean "sub_op" sub_op;
         translate_boolean "unsigned" unsigned],
       [])
 
-| `AArch64MultiplyHigh (d,n,m,a,sf,destsize,datasize,unsigned) ->
+| `AArch64MultiplyHigh (d,n,m,a,destsize,datasize,unsigned) ->
     ("MultiplyHigh",
       [translate_reg "d" d;
         translate_reg "n" n;
         translate_reg "m" m;
         translate_reg "a" a;
-        translate_reg_size "sf" sf;
-        translate_integer "destsize" destsize;
-        translate_integer "datasize" datasize;
+        translate_reg_size "destsize" destsize;
+        translate_data_size "datasize" datasize;
         translate_boolean "unsigned" unsigned],
       [])
 
-| `AArch64TestBitAndBranch (t,sf,bit_pos,bit_val,offset) ->
+| `AArch64TestBitAndBranch (t,datasize,bit_pos,bit_val,offset) ->
     ("TestBitAndBranch",
       [translate_reg "t" t;
-        translate_reg_size "sf" sf;
+        translate_reg_size "datasize" datasize;
         translate_integer "bit_pos" bit_pos;
         translate_bit "bit_val" bit_val;
         translate_bit64 "offset" offset],
+      [])
+
+| `AArch64MoveSystemRegister (t,sys_op0,sys_op1,sys_op2,sys_crn,sys_crm,read) ->
+    ("MoveSystemRegister",
+      [translate_reg "t" t;
+        translate_integer "sys_op0" sys_op0;
+        translate_integer "sys_op1" sys_op1;
+        translate_integer "sys_op2" sys_op2;
+        translate_integer "sys_crn" sys_crn;
+        translate_integer "sys_crm" sys_crm;
+        translate_boolean "read" read],
+      [])
+
+| `AArch64MoveSystemImmediate (operand,field) ->
+    ("MoveSystemImmediate",
+      [translate_bit4 "operand" operand;
+        translate_pSTATEField "field" field],
       [])

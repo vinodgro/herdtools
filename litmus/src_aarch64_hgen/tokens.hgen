@@ -55,6 +55,8 @@
 %token <AArch64Base.token_PRFUM> PRFUM
 %token <AArch64Base.token_RET> RET
 %token <AArch64Base.token_TST> TST
+%token <AArch64Base.token_MRS> MRS
+%token <AArch64Base.token_MSR> MSR
 
 /*** instructions/operands ***/
 
@@ -66,3 +68,6 @@
 %token <AArch64Base.token_COND> COND
 %token <AArch64Base.token_BARROP> BARROP
 %token <AArch64Base.token_PRFOP> PRFOP
+%token <AArch64Base.token_SYSREG> SYSREG
+%token <AArch64Base.token_PSTATEFIELD> PSTATEFIELD
+

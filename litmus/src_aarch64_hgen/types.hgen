@@ -1,8 +1,27 @@
 type reg_size = Set64 | Set32
 
-type reg_size_int = Big_int.big_int
-let reg_size_int_of_int = Big_int.big_int_of_int
-let eq_reg_size_int = Big_int.eq_big_int
+type reg_size_bits = R32Bits of int | R64Bits of Nat_big_num.num
+let reg_size_bits_R32_of_int value = R32Bits value
+let reg_size_bits_R64_of_int value = R64Bits (Nat_big_num.of_int value)
+let reg_size_bits_R32_of_big_int value = R32Bits (Nat_big_num.to_int value)
+let reg_size_bits_R64_of_big_int value = R64Bits value
+let eq_reg_size_bits = function
+  | (R32Bits lhs, R32Bits rhs) -> lhs = rhs
+  | (R64Bits lhs, R64Bits rhs) -> Nat_big_num.equal lhs rhs
+let reg_size_bits_extract_int value offset n =
+  match value with
+  | R32Bits value ->
+      let value = value lsr offset in
+      R32Bits (value land ((1 lsl n) - 1))
+  | R64Bits value -> R64Bits (Nat_big_num.extract_num value offset n)
+let reg_size_bits_shift_right value n =
+  match value with
+  | R32Bits value -> R32Bits (value lsr n)
+  | R64Bits value -> R64Bits (Nat_big_num.shift_right value n)
+let reg_size_bits_to_int value =
+  match value with
+  | R32Bits value -> value
+  | R64Bits value -> Nat_big_num.to_int value
 
 type data_size = DataSize64 | DataSize32 | DataSize16 | DataSize8
 
@@ -14,9 +33,9 @@ type range0_7 = int
 
 type range0_63 = int
 
-type bit64 = Big_int.big_int
-let bit64_of_int = Big_int.big_int_of_int
-let eq_bit64 = Big_int.eq_big_int
+type bit64 = Nat_big_num.num
+let bit64_of_int = Nat_big_num.of_int
+let eq_bit64 = Nat_big_num.equal
 
 type bit4 = int
 
@@ -49,7 +68,7 @@ type mBReqDomain = MBReqDomain_Nonshareable | MBReqDomain_InnerShareable |
 type mBReqTypes = MBReqTypes_Reads | MBReqTypes_Writes | MBReqTypes_All
 
 type systemHintOp = SystemHintOp_NOP | SystemHintOp_YIELD |
-                    SystemHintOp_WFE | SystemHintOp_WFI |
+                    SystemHintOp_WFE | SystemHintOp_WFI   |
                     SystemHintOp_SEV | SystemHintOp_SEVL
 
 type accType = AccType_NORMAL    | AccType_VEC    | AccType_STREAM |
@@ -62,3 +81,6 @@ type memOp = MemOp_LOAD | MemOp_STORE | MemOp_PREFETCH
 type moveWideOp = MoveWideOp_N | MoveWideOp_Z | MoveWideOp_K
 
 type revOp = RevOp_RBIT | RevOp_REV16 | RevOp_REV32 | RevOp_REV64
+
+type pSTATEField = PSTATEField_DAIFSet | PSTATEField_DAIFClr |
+                   PSTATEField_SP

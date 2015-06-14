@@ -19,42 +19,30 @@ let arch = `AArch64
 
 (* #include "./src_aarch64_hgen/types.hgen" *)
 
-let big_in_range (n : Big_int.big_int) (min : int) (max : int) =
-  let big_min = Big_int.big_int_of_int min in
-  let big_max = Big_int.big_int_of_int max in
-  (Big_int.le_big_int big_min n) && (Big_int.le_big_int n big_max)
+let big_in_range (n : Nat_big_num.num) (min : int) (max : int) =
+  let big_min = Nat_big_num.of_int min in
+  let big_max = Nat_big_num.of_int max in
+  (Nat_big_num.less_equal big_min n) && (Nat_big_num.less_equal n big_max)
   
 (*************)
 (* Registers *)
 (*************)
 
 type ireg =
-  | GPR0 | GPR1 | GPR2 | GPR3
-  | GPR4 | GPR5 | GPR6 | GPR7
-  | GPR8 | GPR9 | GPR10 | GPR11
-  | GPR12 | GPR13 | GPR14 | GPR15
-  | GPR16 | GPR17 | GPR18 | GPR19
-  | GPR20 | GPR21 | GPR22 | GPR23
-  | GPR24 | GPR25 | GPR26 | GPR27
-  | GPR28 | GPR29 | GPR30
-
-(*type reg =
-  | Xreg of ireg (* 64bit general purpose registers *)
-  | XZR          (* 64bit zero register *)
-  | SP           (* 64bit stack pointer *)
-  | Wreg of ireg (* 32bit general purpose registers (lower half of xreg) *)
-  | WZR          (* 32bit zero register *)
-  | WSP          (* 32bit stack pointer (lower half of SP) *)
-(*   | PC (* FIXME: do we need this *) *)
-  | Symbolic_reg of string
-(* Internal regs *)
-  | Internal of int*)
+  | R0 | R1 | R2 | R3
+  | R4 | R5 | R6 | R7
+  | R8 | R9 | R10 | R11
+  | R12 | R13 | R14 | R15
+  | R16 | R17 | R18 | R19
+  | R20 | R21 | R22 | R23
+  | R24 | R25 | R26 | R27
+  | R28 | R29 | R30
 
 type reg =
+  | PC
   | Ireg of ireg
   | ZR
   | SP
-(*   | PC (* FIXME: do we need this *) *)
   | Symbolic_reg of string
 (* Internal regs *)
   | Internal of int
@@ -70,74 +58,53 @@ and idx = Internal 2
 and ephemeral = Internal 3
 let loop_idx = Internal 4
 
-(* let pc = PC	   *)
-
-(*let regs =
+let xregs =
   [
-   Xreg GPR0,  "X0"  ; Xreg GPR1,  "X1"  ; Xreg GPR2,  "X2"  ; Xreg GPR3,  "X3"  ;
-   Xreg GPR4,  "X4"  ; Xreg GPR5,  "X5"  ; Xreg GPR6,  "X6"  ; Xreg GPR7,  "X7"  ;
-   Xreg GPR8,  "X8"  ; Xreg GPR9,  "X9"  ; Xreg GPR10, "X10" ; Xreg GPR11, "X11" ;
-   Xreg GPR12, "X12" ; Xreg GPR13, "X13" ; Xreg GPR14, "X14" ; Xreg GPR15, "X15" ;
-   Xreg GPR16, "X16" ; Xreg GPR17, "X17" ; Xreg GPR18, "X18" ; Xreg GPR19, "X19" ;
-   Xreg GPR20, "X20" ; Xreg GPR21, "X21" ; Xreg GPR22, "X22" ; Xreg GPR23, "X23" ;
-   Xreg GPR24, "X24" ; Xreg GPR25, "X25" ; Xreg GPR26, "X26" ; Xreg GPR27, "X27" ;
-   Xreg GPR28, "X28" ; Xreg GPR29, "X29" ; Xreg GPR30, "X30" ;
-   XZR, "XZR" ; SP, "SP" ;
-   Wreg GPR0,  "X0"  ; Wreg GPR1,  "X1"  ; Wreg GPR2,  "X2"  ; Wreg GPR3,  "X3"  ;
-   Wreg GPR4,  "X4"  ; Wreg GPR5,  "X5"  ; Wreg GPR6,  "X6"  ; Wreg GPR7,  "X7"  ;
-   Wreg GPR8,  "X8"  ; Wreg GPR9,  "X9"  ; Wreg GPR10, "X10" ; Wreg GPR11, "X11" ;
-   Wreg GPR12, "X12" ; Wreg GPR13, "X13" ; Wreg GPR14, "X14" ; Wreg GPR15, "X15" ;
-   Wreg GPR16, "X16" ; Wreg GPR17, "X17" ; Wreg GPR18, "X18" ; Wreg GPR19, "X19" ;
-   Wreg GPR20, "X20" ; Wreg GPR21, "X21" ; Wreg GPR22, "X22" ; Wreg GPR23, "X23" ;
-   Wreg GPR24, "X24" ; Wreg GPR25, "X25" ; Wreg GPR26, "X26" ; Wreg GPR27, "X27" ;
-   Wreg GPR28, "X28" ; Wreg GPR29, "X29" ; Wreg GPR30, "X30" ;
-   WZR, "WZR" ; WSP, "WSP" ;
- ]*)
-let regs =
-  [
-    Ireg GPR0,  "X0"  ; Ireg GPR1,  "X1"  ; Ireg GPR2,  "X2"  ; Ireg GPR3,  "X3"  ;
-    Ireg GPR4,  "X4"  ; Ireg GPR5,  "X5"  ; Ireg GPR6,  "X6"  ; Ireg GPR7,  "X7"  ;
-    Ireg GPR8,  "X8"  ; Ireg GPR9,  "X9"  ; Ireg GPR10, "X10" ; Ireg GPR11, "X11" ;
-    Ireg GPR12, "X12" ; Ireg GPR13, "X13" ; Ireg GPR14, "X14" ; Ireg GPR15, "X15" ;
-    Ireg GPR16, "X16" ; Ireg GPR17, "X17" ; Ireg GPR18, "X18" ; Ireg GPR19, "X19" ;
-    Ireg GPR20, "X20" ; Ireg GPR21, "X21" ; Ireg GPR22, "X22" ; Ireg GPR23, "X23" ;
-    Ireg GPR24, "X24" ; Ireg GPR25, "X25" ; Ireg GPR26, "X26" ; Ireg GPR27, "X27" ;
-    Ireg GPR28, "X28" ; Ireg GPR29, "X29" ; Ireg GPR30, "X30" ;
-    ZR, "XZR" ; SP, "SP" ;
+    Ireg R0,  "X0"  ; Ireg R1,  "X1"  ; Ireg R2,  "X2"  ; Ireg R3,  "X3"  ;
+    Ireg R4,  "X4"  ; Ireg R5,  "X5"  ; Ireg R6,  "X6"  ; Ireg R7,  "X7"  ;
+    Ireg R8,  "X8"  ; Ireg R9,  "X9"  ; Ireg R10, "X10" ; Ireg R11, "X11" ;
+    Ireg R12, "X12" ; Ireg R13, "X13" ; Ireg R14, "X14" ; Ireg R15, "X15" ;
+    Ireg R16, "X16" ; Ireg R17, "X17" ; Ireg R18, "X18" ; Ireg R19, "X19" ;
+    Ireg R20, "X20" ; Ireg R21, "X21" ; Ireg R22, "X22" ; Ireg R23, "X23" ;
+    Ireg R24, "X24" ; Ireg R25, "X25" ; Ireg R26, "X26" ; Ireg R27, "X27" ;
+    Ireg R28, "X28" ; Ireg R29, "X29" ; Ireg R30, "X30" ;
+    ZR, "XZR" ;
   ]
 
 let wregs =
   [
-    Ireg GPR0,  "W0"  ; Ireg GPR1,  "W1"  ; Ireg GPR2,  "W2"  ; Ireg GPR3,  "W3"  ;
-    Ireg GPR4,  "W4"  ; Ireg GPR5,  "W5"  ; Ireg GPR6,  "W6"  ; Ireg GPR7,  "W7"  ;
-    Ireg GPR8,  "W8"  ; Ireg GPR9,  "W9"  ; Ireg GPR10, "W10" ; Ireg GPR11, "W11" ;
-    Ireg GPR12, "W12" ; Ireg GPR13, "W13" ; Ireg GPR14, "W14" ; Ireg GPR15, "W15" ;
-    Ireg GPR16, "W16" ; Ireg GPR17, "W17" ; Ireg GPR18, "W18" ; Ireg GPR19, "W19" ;
-    Ireg GPR20, "W20" ; Ireg GPR21, "W21" ; Ireg GPR22, "W22" ; Ireg GPR23, "W23" ;
-    Ireg GPR24, "W24" ; Ireg GPR25, "W25" ; Ireg GPR26, "W26" ; Ireg GPR27, "W27" ;
-    Ireg GPR28, "W28" ; Ireg GPR29, "W29" ; Ireg GPR30, "W30" ;
+    Ireg R0,  "W0"  ; Ireg R1,  "W1"  ; Ireg R2,  "W2"  ; Ireg R3,  "W3"  ;
+    Ireg R4,  "W4"  ; Ireg R5,  "W5"  ; Ireg R6,  "W6"  ; Ireg R7,  "W7"  ;
+    Ireg R8,  "W8"  ; Ireg R9,  "W9"  ; Ireg R10, "W10" ; Ireg R11, "W11" ;
+    Ireg R12, "W12" ; Ireg R13, "W13" ; Ireg R14, "W14" ; Ireg R15, "W15" ;
+    Ireg R16, "W16" ; Ireg R17, "W17" ; Ireg R18, "W18" ; Ireg R19, "W19" ;
+    Ireg R20, "W20" ; Ireg R21, "W21" ; Ireg R22, "W22" ; Ireg R23, "W23" ;
+    Ireg R24, "W24" ; Ireg R25, "W25" ; Ireg R26, "W26" ; Ireg R27, "W27" ;
+    Ireg R28, "W28" ; Ireg R29, "W29" ; Ireg R30, "W30" ;
     ZR, "WZR" ; SP, "WSP" ;
   ]
 
-let parse_list =
-  List.map (fun (r,s) -> s,r) regs
+let parse_xlist =
+  List.map (fun (r,s) -> s,r) xregs
 
 let parse_wlist =
   List.map (fun (r,s) -> s,r) wregs
 
-let parse_reg s =
-  try Some (List.assoc s parse_list)
+let parse_xreg s =
+  try Some (List.assoc s parse_xlist)
   with Not_found -> None
 
 let parse_wreg s =
   try Some (List.assoc s parse_wlist)
   with Not_found -> None
 
+let parse_reg = parse_xreg
+
 let pp_reg r =
   match r with
   | Symbolic_reg r -> "%" ^ r
   | Internal i -> Printf.sprintf "i%i" i
-  | _ -> try List.assoc r regs with Not_found -> assert false
+  | _ -> try List.assoc r xregs with Not_found -> assert false
 
 
 let reg_compare = Pervasives.compare
@@ -147,31 +114,23 @@ let is_sp_reg r = (r = X SP || r = W SP)
 
 let ireg_to_int r =
   match r with
-  | GPR0 -> 0   | GPR1 -> 1   | GPR2 -> 2   | GPR3 -> 3   | GPR4 -> 4   | GPR5 -> 5   | GPR6 -> 6   | GPR7 -> 7
-  | GPR8 -> 8   | GPR9 -> 9   | GPR10 -> 10 | GPR11 -> 11 | GPR12 -> 12 | GPR13 -> 13 | GPR14 -> 14 | GPR15 -> 15
-  | GPR16 -> 16 | GPR17 -> 17 | GPR18 -> 18 | GPR19 -> 19 | GPR20 -> 20 | GPR21 -> 21 | GPR22 -> 22 | GPR23 -> 23
-  | GPR24 -> 24 | GPR25 -> 25 | GPR26 -> 26 | GPR27 -> 27 | GPR28 -> 28 | GPR29 -> 29 | GPR30 -> 30
+  | R0 -> 0   | R1 -> 1   | R2 -> 2   | R3 -> 3   | R4 -> 4   | R5 -> 5   | R6 -> 6   | R7 -> 7
+  | R8 -> 8   | R9 -> 9   | R10 -> 10 | R11 -> 11 | R12 -> 12 | R13 -> 13 | R14 -> 14 | R15 -> 15
+  | R16 -> 16 | R17 -> 17 | R18 -> 18 | R19 -> 19 | R20 -> 20 | R21 -> 21 | R22 -> 22 | R23 -> 23
+  | R24 -> 24 | R25 -> 25 | R26 -> 26 | R27 -> 27 | R28 -> 28 | R29 -> 29 | R30 -> 30
 
 let ireg_of_int i =
   match i with
-  | 0 -> GPR0   | 1 -> GPR1   | 2 -> GPR2   | 3 -> GPR3   | 4 -> GPR4   | 5 -> GPR5   | 6 -> GPR6   | 7 -> GPR7
-  | 8 -> GPR8   | 9 -> GPR9   | 10 -> GPR10 | 11 -> GPR11 | 12 -> GPR12 | 13 -> GPR13 | 14 -> GPR14 | 15 -> GPR15
-  | 16 -> GPR16 | 17 -> GPR17 | 18 -> GPR18 | 19 -> GPR19 | 20 -> GPR20 | 21 -> GPR21 | 22 -> GPR22 | 23 -> GPR23
-  | 24 -> GPR24 | 25 -> GPR25 | 26 -> GPR26 | 27 -> GPR27 | 28 -> GPR28 | 29 -> GPR29 | 30 -> GPR30
+  | 0 -> R0   | 1 -> R1   | 2 -> R2   | 3 -> R3   | 4 -> R4   | 5 -> R5   | 6 -> R6   | 7 -> R7
+  | 8 -> R8   | 9 -> R9   | 10 -> R10 | 11 -> R11 | 12 -> R12 | 13 -> R13 | 14 -> R14 | 15 -> R15
+  | 16 -> R16 | 17 -> R17 | 18 -> R18 | 19 -> R19 | 20 -> R20 | 21 -> R21 | 22 -> R22 | 23 -> R23
+  | 24 -> R24 | 25 -> R25 | 26 -> R26 | 27 -> R27 | 28 -> R28 | 29 -> R29 | 30 -> R30
 
 let inst_reg_to_int r =
   match r with
   | X (Ireg r') | W (Ireg r') -> ireg_to_int r'
   | X ZR | X SP | W ZR | W SP -> 31
   (* TODO: do we need to handle the other regs? *)
-
-(*let xreg_of_int i =
-  match i with
-  | 0 -> Xreg GPR0   | 1 -> Xreg GPR1   | 2 -> Xreg GPR2   | 3 -> Xreg GPR3   | 4 -> Xreg GPR4   | 5 -> Xreg GPR5   | 6 -> Xreg GPR6   | 7 -> Xreg GPR7
-  | 8 -> Xreg GPR8   | 9 -> Xreg GPR9   | 10 -> Xreg GPR10 | 11 -> Xreg GPR11 | 12 -> Xreg GPR12 | 13 -> Xreg GPR13 | 14 -> Xreg GPR14 | 15 -> Xreg GPR15
-  | 16 -> Xreg GPR16 | 17 -> Xreg GPR17 | 18 -> Xreg GPR18 | 19 -> Xreg GPR19 | 20 -> Xreg GPR20 | 21 -> Xreg GPR21 | 22 -> Xreg GPR22 | 23 -> Xreg GPR23
-  | 24 -> Xreg GPR24 | 25 -> Xreg GPR25 | 26 -> Xreg GPR26 | 27 -> Xreg GPR27 | 28 -> Xreg GPR28 | 29 -> Xreg GPR29 | 30 -> Xreg GPR30*)
-
 
 
 (************)
@@ -225,13 +184,14 @@ type label = Label.t
 
 type instruction =
   [
-    (* FIXME: the following line should import the ast generated by sail *)
     (* #include "./src_aarch64_hgen/ast.hgen" *)
 
     (* Branch *)
     (* these instructions take a 'label' instead of offset (bit64) *)
     | `AArch64BranchImmediate_label of branchType*label (* _branch_type,offset *)
     | `AArch64BranchConditional_label of label*bit4 (* offset,condition *)
+    | `AArch64CompareAndBranch_label of inst_reg*reg_size*boolean*label (* t,datasize,iszero,offset *)
+    | `AArch64TestBitAndBranch_label of inst_reg*reg_size*integer*bit*label (* t,datasize,bit_pos,bit_val,offset *)
   ]
 
 
@@ -239,7 +199,12 @@ type instruction =
 (*** pretty aux functions ***)
 
 let pp_imm imm = sprintf "#%d" imm
-let pp_big_imm = Big_int.string_of_big_int
+let pp_big_imm = Nat_big_num.to_string
+
+let pp_reg_size_imm imm =
+  match imm with
+  | R32Bits imm -> pp_imm imm
+  | R64Bits imm -> pp_big_imm imm
 
 let pp_label page offset = pp_big_imm offset (* FIXME: make this right *)
 
@@ -265,9 +230,9 @@ let pp_regsp sf r = (*pp_reg r*)
   | W (Ireg i) -> sprintf "W%d" (ireg_to_int i)
   | W (Symbolic_reg s) -> "W" ^ s
 
-let pp_regzrbyext extend_type r = (*pp_reg r*)
+let pp_regzrbyext sf extend_type r = (*pp_reg r*)
   (*match extend_type with
-  | ExtendType_UXTX | ExtendType_SXTX -> pp_regzr Set64 r
+  | ExtendType_UXTX | ExtendType_SXTX -> pp_regzr sf r
   | _ -> pp_regzr Set32 r*)
   match r with
   | X ZR -> "XZR"
@@ -287,6 +252,17 @@ let pp_regext ext =
   | ExtendType_SXTH -> "SXTH"
   | ExtendType_SXTW -> "SXTW"
   | ExtendType_SXTX -> "SXTX"
+
+let pp_sysreg (sys_op0,sys_op1,sys_op2,sys_crn,sys_crm) =
+  match (sys_op0,sys_op1,sys_op2,sys_crn,sys_crm) with
+  | (0b11,0b011,0b000,0b0100,0b0010) -> "NZCV"
+  | (0b11,0b011,0b001,0b0100,0b0010) -> "DAIF"
+
+let pp_pstatefield field =
+  match field with
+  | PSTATEField_DAIFSet -> "DAIFSet"
+  | PSTATEField_DAIFClr -> "DAIFClr"
+  | PSTATEField_SP      -> "SPSel"
 
 let pp_shift shift =
   match shift with
@@ -358,15 +334,15 @@ let pp_countop opcode =
   | CountOp_CLS -> "CLS"
   | CountOp_CLZ -> "CLZ"
 
-let pp_crc sz crc32c =
-  let size =
-    match sz with
-    | 0b00 -> "B"
-    | 0b01 -> "H"
-    | 0b10 -> "W"
-    | 0b11 -> "X"
+let pp_crc size crc32c =
+  let sz =
+    match size with
+    | DataSize8  -> "B"
+    | DataSize16 -> "H"
+    | DataSize32 -> "W"
+    | DataSize64 -> "X"
     in
-  "CRC" ^ (if crc32c then "C" else "") ^ size
+  "CRC" ^ (if crc32c then "C" else "") ^ sz
 
 let pp_csel else_inv else_inc =
   match (else_inv,else_inc) with
@@ -406,9 +382,9 @@ let pp_ldaxstlxp memop acctype excl pair datasize =
   ^
   (if pair then "P" else
   match datasize with
-  | 32 | 64 -> "R"
-  | 8 ->       "RB"
-  | 16 ->      "RH")
+  | DataSize32 | DataSize64 -> "R"
+  | DataSize8 ->               "RB"
+  | DataSize16 ->              "RH")
 
 let pp_movwide opcode =
   match opcode with
@@ -458,6 +434,10 @@ let pp_reverse sf op =
 let do_pp_instruction i =
   match i with
   (* #include "./src_aarch64_hgen/pretty.hgen" *)
+  | `AArch64BranchConditional_label (label,condition) ->
+        sprintf "B.%s %s" (pp_cond condition) label
+  | `AArch64BranchImmediate_label (_branch_type,label) ->
+        sprintf "%s %s" (pp_branchimmediate _branch_type) label
   | _ -> failwith "unrecognised instruction"
 
 
@@ -470,31 +450,31 @@ let dump_instruction = do_pp_instruction
 (****************************)
 
 (*let allowed_for_symb =
-  [ Xreg GPR0  ; Xreg GPR1  ; Xreg GPR2  ; Xreg GPR3  ;
-    Xreg GPR4  ; Xreg GPR5  ; Xreg GPR6  ; Xreg GPR7  ;
-    Xreg GPR8  ; Xreg GPR9  ; Xreg GPR10 ; Xreg GPR11 ;
-    Xreg GPR12 ; Xreg GPR13 ; Xreg GPR14 ; Xreg GPR15 ;
-    Xreg GPR16 ; Xreg GPR17 ; Xreg GPR18 ; Xreg GPR19 ;
-    Xreg GPR20 ; Xreg GPR21 ; Xreg GPR22 ; Xreg GPR23 ;
-    Xreg GPR24 ; Xreg GPR25 ; Xreg GPR26 ; Xreg GPR27 ;
-    Xreg GPR28 ; Xreg GPR29 ; Xreg GPR30 ;
-    Wreg GPR0  ; Wreg GPR1  ; Wreg GPR2  ; Wreg GPR3  ;
-    Wreg GPR4  ; Wreg GPR5  ; Wreg GPR6  ; Wreg GPR7  ;
-    Wreg GPR8  ; Wreg GPR9  ; Wreg GPR10 ; Wreg GPR11 ;
-    Wreg GPR12 ; Wreg GPR13 ; Wreg GPR14 ; Wreg GPR15 ;
-    Wreg GPR16 ; Wreg GPR17 ; Wreg GPR18 ; Wreg GPR19 ;
-    Wreg GPR20 ; Wreg GPR21 ; Wreg GPR22 ; Wreg GPR23 ;
-    Wreg GPR24 ; Wreg GPR25 ; Wreg GPR26 ; Wreg GPR27 ;
-    Wreg GPR28 ; Wreg GPR29 ; Wreg GPR30 ]*)
+  [ Xreg R0  ; Xreg R1  ; Xreg R2  ; Xreg R3  ;
+    Xreg R4  ; Xreg R5  ; Xreg R6  ; Xreg R7  ;
+    Xreg R8  ; Xreg R9  ; Xreg R10 ; Xreg R11 ;
+    Xreg R12 ; Xreg R13 ; Xreg R14 ; Xreg R15 ;
+    Xreg R16 ; Xreg R17 ; Xreg R18 ; Xreg R19 ;
+    Xreg R20 ; Xreg R21 ; Xreg R22 ; Xreg R23 ;
+    Xreg R24 ; Xreg R25 ; Xreg R26 ; Xreg R27 ;
+    Xreg R28 ; Xreg R29 ; Xreg R30 ;
+    Wreg R0  ; Wreg R1  ; Wreg R2  ; Wreg R3  ;
+    Wreg R4  ; Wreg R5  ; Wreg R6  ; Wreg R7  ;
+    Wreg R8  ; Wreg R9  ; Wreg R10 ; Wreg R11 ;
+    Wreg R12 ; Wreg R13 ; Wreg R14 ; Wreg R15 ;
+    Wreg R16 ; Wreg R17 ; Wreg R18 ; Wreg R19 ;
+    Wreg R20 ; Wreg R21 ; Wreg R22 ; Wreg R23 ;
+    Wreg R24 ; Wreg R25 ; Wreg R26 ; Wreg R27 ;
+    Wreg R28 ; Wreg R29 ; Wreg R30 ]*)
 let allowed_for_symb =
-  [ Ireg GPR0  ; Ireg GPR1  ; Ireg GPR2  ; Ireg GPR3  ;
-    Ireg GPR4  ; Ireg GPR5  ; Ireg GPR6  ; Ireg GPR7  ;
-    Ireg GPR8  ; Ireg GPR9  ; Ireg GPR10 ; Ireg GPR11 ;
-    Ireg GPR12 ; Ireg GPR13 ; Ireg GPR14 ; Ireg GPR15 ;
-    Ireg GPR16 ; Ireg GPR17 ; Ireg GPR18 ; Ireg GPR19 ;
-    Ireg GPR20 ; Ireg GPR21 ; Ireg GPR22 ; Ireg GPR23 ;
-    Ireg GPR24 ; Ireg GPR25 ; Ireg GPR26 ; Ireg GPR27 ;
-    Ireg GPR28 ; Ireg GPR29 ; Ireg GPR30 ]
+  [ Ireg R0  ; Ireg R1  ; Ireg R2  ; Ireg R3  ;
+    Ireg R4  ; Ireg R5  ; Ireg R6  ; Ireg R7  ;
+    Ireg R8  ; Ireg R9  ; Ireg R10 ; Ireg R11 ;
+    Ireg R12 ; Ireg R13 ; Ireg R14 ; Ireg R15 ;
+    Ireg R16 ; Ireg R17 ; Ireg R18 ; Ireg R19 ;
+    Ireg R20 ; Ireg R21 ; Ireg R22 ; Ireg R23 ;
+    Ireg R24 ; Ireg R25 ; Ireg R26 ; Ireg R27 ;
+    Ireg R28 ; Ireg R29 ; Ireg R30 ]
 
 let fold_regs (f_reg,f_sreg) =
   (* Let us have a functional style... *)
@@ -566,10 +546,10 @@ let get_macro _name = raise Not_found
 
 (* check_bits: returns true iff any bit that is not between lsb and
                lsb+count-1 has the value 0 *)
-let check_bits (n : Big_int.big_int) (lsb : int) (count : int) =
-  Big_int.eq_big_int
+let check_bits (n : Nat_big_num.num) (lsb : int) (count : int) =
+  Nat_big_num.equal
     n
-    (Big_int.shift_left_big_int (Big_int.extract_big_int n lsb count) lsb)
+    (Nat_big_num.shift_left (Nat_big_num.extract_num n lsb count) lsb)
 
 let iskbituimm k imm = 0 <= imm && imm < (1 lsl k)
 let big_iskbituimm k imm = check_bits imm 0 k
@@ -613,57 +593,56 @@ let decodeBitMasks regSize (immN : int) (imms : int) (immr : int) (immediate : b
   let esize : int = 1 lsl len in
 
   let d : int = diff land levels in
-  let welem : Big_int.big_int = Big_int.pred_big_int (Big_int.shift_left_big_int Big_int.unit_big_int (_S+1)) in
-  let telem : Big_int.big_int = Big_int.pred_big_int (Big_int.shift_left_big_int Big_int.unit_big_int (d+1)) in
+  let welem : Nat_big_num.num = Nat_big_num.pred (Nat_big_num.shift_left (Nat_big_num.of_int 1) (_S+1)) in
+  let telem : Nat_big_num.num = Nat_big_num.pred (Nat_big_num.shift_left (Nat_big_num.of_int 1) (d+1)) in
 
-  let ror (n : Big_int.big_int) (k : int) =
+  let ror (n : Nat_big_num.num) (k : int) =
     let k = k mod esize in
     if k = 0 then n else
-    let d = Big_int.extract_big_int n 0 k in
-    Big_int.or_big_int
-      (Big_int.shift_left_big_int d (esize-k))
-      (Big_int.shift_right_big_int n k) in
+    let d = Nat_big_num.extract_num n 0 k in
+    Nat_big_num.bitwise_or
+      (Nat_big_num.shift_left d (esize-k))
+      (Nat_big_num.shift_right n k) in
 
-  let rec replicate (n : Big_int.big_int) k =
+  let rec replicate (n : Nat_big_num.num) k =
     if k = 1 then n else
     let d = replicate n (k-1) in
-    Big_int.or_big_int n (Big_int.shift_left_big_int d esize) in
+    Nat_big_num.bitwise_or n (Nat_big_num.shift_left d esize) in
 
-  let wmask : Big_int.big_int = replicate (ror welem _R) (regSize / esize) in
-  let tmask : Big_int.big_int = replicate telem (regSize / esize) in
+  let wmask : Nat_big_num.num = replicate (ror welem _R) (regSize / esize) in
+  let tmask : Nat_big_num.num = replicate telem (regSize / esize) in
   (wmask, tmask)
 
 (* encodeBitMasks: return Some (N,imms,immr) if exist such values that
                    decode to 'imm' for 'regSize' (32/64) bits datasize. Otherwise
                    return None. *)
-(*** FIXME: ocaml int is 31/63bit, what do we use instead? ***)
-let encodeBitMasks regSize (imm : Big_int.big_int) =
-  if imm = Big_int.zero_big_int then None
-  else if imm = Big_int.pred_big_int (Big_int.shift_left_big_int Big_int.unit_big_int regSize) then None
+let encodeBitMasks regSize (imm : Nat_big_num.num) =
+  if Nat_big_num.equal imm (Nat_big_num.of_int 0) then None
+  else if Nat_big_num.equal imm (Nat_big_num.pred (Nat_big_num.shift_left (Nat_big_num.of_int 1) regSize)) then None
   else
 
-  let ror (n : Big_int.big_int) (k : int) =
+  let ror (n : Nat_big_num.num) (k : int) =
     let k = k mod regSize in
     if k = 0 then n else
-    let d = Big_int.extract_big_int n 0 k in
-    Big_int.or_big_int
-      (Big_int.shift_left_big_int d (regSize-k))
-      (Big_int.shift_right_big_int n k) in
+    let d = Nat_big_num.extract_num n 0 k in
+    Nat_big_num.bitwise_or
+      (Nat_big_num.shift_left d (regSize-k))
+      (Nat_big_num.shift_right n k) in
 
   let rec next b n =
-    if Big_int.extract_big_int n 0 1 = b then 0
-    else 1 + next b (Big_int.shift_right_big_int n 1) in
+    if Nat_big_num.extract_num n 0 1 = b then 0
+    else 1 + next b (Nat_big_num.shift_right n 1) in
 
-  let pref0 = next Big_int.unit_big_int imm in (* the length of 0s prefix of imm *)
+  let pref0 = next (Nat_big_num.of_int 1) imm in (* the length of 0s prefix of imm *)
   let (e,ones,rotate) =
     if pref0 = 0 then
-      let pref1 = next Big_int.zero_big_int imm in (* the length of 1s prefix of imm *)
-      let run0 = next Big_int.unit_big_int (ror imm pref1) in (* the length of the first 0s run *)
-      let run1 = next Big_int.zero_big_int (ror imm (pref1 + run0)) in  (* the length of the first non-prefix 1s run *)
+      let pref1 = next (Nat_big_num.of_int 0) imm in (* the length of 1s prefix of imm *)
+      let run0 = next (Nat_big_num.of_int 1) (ror imm pref1) in (* the length of the first 0s run *)
+      let run1 = next (Nat_big_num.of_int 0) (ror imm (pref1 + run0)) in  (* the length of the first non-prefix 1s run *)
       (run0+run1, run1, run1-pref1)
     else
-      let run1 = next Big_int.zero_big_int (ror imm pref0) in (* the length of the first 1s run *)
-      let run0 = next Big_int.unit_big_int (ror imm (pref0 + run1)) in  (* the length of the first non-prefix 0s run *)
+      let run1 = next (Nat_big_num.of_int 0) (ror imm pref0) in (* the length of the first 1s run *)
+      let run0 = next (Nat_big_num.of_int 1) (ror imm (pref0 + run1)) in  (* the length of the first non-prefix 0s run *)
       (run0+run1, run1, run0+run1-pref0) in
 
   let (_N,imms,immr) =
@@ -671,7 +650,7 @@ let encodeBitMasks regSize (imm : Big_int.big_int) =
     else (0, (lnot (e*2 - 1)) lor (ones-1), rotate) in
 
   match decodeBitMasks regSize _N imms immr true with
-  | (wmask,_) when wmask = imm -> Some (_N,imms,immr)
+  | (wmask,_) when Nat_big_num.equal wmask imm -> Some (_N,imms,immr)
   | _ -> None
 
 

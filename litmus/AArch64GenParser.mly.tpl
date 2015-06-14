@@ -33,7 +33,7 @@ let error_not_instruction txt = failwith "%s is not an instruction" txt
 %token <AArch64GenBase.inst_reg> SYMB_XREG
 %token <AArch64GenBase.inst_reg> SYMB_WREG
 %token <int> NUM
-%token <Big_int.big_int> BIG_NUM
+%token <Nat_big_num.num> BIG_NUM
 %token <string> NAME
 %token <int> PROC
 
@@ -77,8 +77,26 @@ instr:
 /* instructions */
 | B NAME
     { `AArch64BranchImmediate_label ($1._branch_type,$2) }
+
 | BCOND NAME
     { `AArch64BranchConditional_label ($2,$1.condition) }
+
+| CBZ wreg COMMA NAME
+    { if not (isregzr $2) then error_registers "expected %s <Wt>, <label>" $1.txt
+      else `AArch64CompareAndBranch_label($2,Set32,$1.iszero,$4) }
+| CBZ xreg COMMA NAME
+    { if not (isregzr $2) then error_registers "expected %s <Xt>, <label>" $1.txt
+      else `AArch64CompareAndBranch_label($2,Set64,$1.iszero,$4) }
+
+| TBZ wreg COMMA imm COMMA NAME
+    { if not (isregzr $2) then error_registers "expected %s <R><t>, #<imm>, <label>" $1.txt
+      else if not (0 <= $4 && $4 <= 31) then error_arg "<imm> must be in the range 0 to 31"
+      else `AArch64TestBitAndBranch_label($2,Set32,$4,$1.bit_val,$6) }
+| TBZ xreg COMMA imm COMMA NAME
+    { if not (isregzr $2) then error_registers "expected %s <R><t>, #<imm>, <label>" $1.txt
+      else if not (0 <= $4 && $4 <= 63) then error_arg "<imm> must be in the range 0 to 63"
+      else `AArch64TestBitAndBranch_label($2,Set64,$4,$1.bit_val,$6) }
+
 
 wreg:
 | ARCH_WREG { $1 }
@@ -92,6 +110,6 @@ imm:
 | NUM { $1 }
 
 big_imm:
-| imm { Big_int.big_int_of_int $1 }
+| imm { Nat_big_num.of_int $1 }
 | BIG_NUM { $1 }
 
