@@ -224,8 +224,8 @@
           let (wmask,tmask) = decodeBitMasks 64 1 63 $6 false in
           `AArch64BitfieldMove($2,$4,Set64,true,true,$6,63,reg_size_bits_R64_of_big_int wmask,reg_size_bits_R64_of_big_int tmask)
       | ShiftType_LSL ->
-          let (wmask,tmask) = decodeBitMasks 64 1 (63-$6) (-$6 mod 64) false in
-          `AArch64BitfieldMove($2,$4,Set64,true,false,-$6 mod 64,63-$6,reg_size_bits_R64_of_big_int wmask,reg_size_bits_R64_of_big_int tmask)
+          let (wmask,tmask) = decodeBitMasks 64 1 (63-$6) ((64-$6) mod 64) false in
+          `AArch64BitfieldMove($2,$4,Set64,true,false,(64-$6) mod 64,63-$6,reg_size_bits_R64_of_big_int wmask,reg_size_bits_R64_of_big_int tmask)
       | ShiftType_LSR ->
           let (wmask,tmask) = decodeBitMasks 64 1 63 $6 false in
           `AArch64BitfieldMove($2,$4,Set64,true,false,$6,63,reg_size_bits_R64_of_big_int wmask,reg_size_bits_R64_of_big_int tmask)
@@ -824,27 +824,27 @@
       | Some var32 ->
           if not (isregzr $2 && isregsp $5 && isregzr $7) then error_registers "expected %s <Wt>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
           else if not ($9._type = ExtendType_UXTW || $9._type = ExtendType_SXTW) then error_arg "<extend> must be one of UXTW,SXTW"
-          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,MemOp_LOAD,$1.signed,false,false,$9._type,0,Set32,var32.datasize) }
+          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,$1.memop,$1.signed,false,false,$9._type,0,Set32,var32.datasize) }
   | LDSTR wreg COMMA LBRK xreg COMMA xreg RBRK
     { match $1.var32 with
       | None -> error_registers "expected %s <Xt>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
       | Some var32 ->
           if not (isregzr $2 && isregsp $5 && isregzr $7) then error_registers "expected %s <Wt>, [<Xn|SP>, <R><m>]" $1.txt
-          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,MemOp_LOAD,$1.signed,false,false,ExtendType_UXTX,0,Set32,var32.datasize) }
+          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,$1.memop,$1.signed,false,false,ExtendType_UXTX,0,Set32,var32.datasize) }
   | LDSTR wreg COMMA LBRK xreg COMMA xreg COMMA EXTEND RBRK
     { match $1.var32 with
       | None -> error_registers "expected %s <Xt>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
       | Some var32 ->
           if not (isregzr $2 && isregsp $5 && isregzr $7) then error_registers "expected %s <Wt>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
           else if not ($9._type = ExtendType_SXTX) then error_arg "<extend> must be one of LSL,SXTX"
-          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,MemOp_LOAD,$1.signed,false,false,$9._type,0,Set32,var32.datasize) }
+          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,$1.memop,$1.signed,false,false,$9._type,0,Set32,var32.datasize) }
   | LDSTR wreg COMMA LBRK xreg COMMA xreg COMMA SHIFT RBRK
     { match $1.var32 with
       | None -> error_registers "expected %s <Xt>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
       | Some var32 ->
           if not (isregzr $2 && isregsp $5 && isregzr $7) then error_registers "expected %s <Wt>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
           else if not ($9.shift_type = ShiftType_LSL) then error_arg "<extend> must be one of LSL,SXTX"
-          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,MemOp_LOAD,$1.signed,false,false,ExtendType_UXTX,0,Set32,var32.datasize) }
+          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,$1.memop,$1.signed,false,false,ExtendType_UXTX,0,Set32,var32.datasize) }
   | LDSTR wreg COMMA LBRK xreg COMMA xreg COMMA SHIFT imm RBRK
     { match $1.var32 with
       | None -> error_registers "expected %s <Xt>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
@@ -854,7 +854,7 @@
           else if var32.datasize = DataSize8 && not ($10 = 0) then error_arg "<amount> must be 0"
           else if var32.datasize = DataSize16 && not ($10 = 0 || $10 = 1) then error_arg "<amount> must be one of 0,1"
           else if var32.datasize = DataSize32 && not ($10 = 0 || $10 = 2) then error_arg "<amount> must be one of 0,2"
-          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,MemOp_LOAD,$1.signed,false,false,ExtendType_UXTX,$10,Set32,var32.datasize) }
+          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,$1.memop,$1.signed,false,false,ExtendType_UXTX,$10,Set32,var32.datasize) }
 
   | LDSTR xreg COMMA LBRK xreg COMMA wreg COMMA EXTEND RBRK
     { match $1.var64 with
@@ -862,27 +862,27 @@
       | Some var64 ->
           if not (isregzr $2 && isregsp $5 && isregzr $7) then error_registers "expected %s <Xt>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
           else if not ($9._type = ExtendType_UXTW || $9._type = ExtendType_SXTW) then error_arg "<extend> must be one of UXTW,SXTW"
-          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,MemOp_LOAD,$1.signed,false,false,$9._type,0,Set64,var64.datasize) }
+          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,$1.memop,$1.signed,false,false,$9._type,0,Set64,var64.datasize) }
   | LDSTR xreg COMMA LBRK xreg COMMA xreg RBRK
     { match $1.var64 with
       | None -> error_registers "expected %s <Wt>, [<Xn|SP>, <R><m>]" $1.txt
       | Some var64 ->
           if not (isregzr $2 && isregsp $5 && isregzr $7) then error_registers "expected %s <Xt>, [<Xn|SP>, <R><m>]" $1.txt
-          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,MemOp_LOAD,$1.signed,false,false,ExtendType_UXTX,0,Set64,var64.datasize) }
+          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,$1.memop,$1.signed,false,false,ExtendType_UXTX,0,Set64,var64.datasize) }
   | LDSTR xreg COMMA LBRK xreg COMMA xreg COMMA EXTEND RBRK
     { match $1.var64 with
       | None -> error_registers "expected %s <Wt>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
       | Some var64 ->
           if not (isregzr $2 && isregsp $5 && isregzr $7) then error_registers "expected %s <Xt>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
           else if not ($9._type = ExtendType_SXTX) then error_arg "<extend> must be one of LSL,SXTX"
-          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,MemOp_LOAD,$1.signed,false,false,$9._type,0,Set64,var64.datasize) }
+          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,$1.memop,$1.signed,false,false,$9._type,0,Set64,var64.datasize) }
   | LDSTR xreg COMMA LBRK xreg COMMA xreg COMMA SHIFT RBRK
     { match $1.var64 with
       | None -> error_registers "expected %s <Wt>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
       | Some var64 ->
           if not (isregzr $2 && isregsp $5 && isregzr $7) then error_registers "expected %s <Xt>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
           else if not ($9.shift_type = ShiftType_LSL) then error_arg "<extend> must be one of LSL,SXTX"
-          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,MemOp_LOAD,$1.signed,false,false,ExtendType_UXTX,0,Set64,var64.datasize) }
+          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,$1.memop,$1.signed,false,false,ExtendType_UXTX,0,Set64,var64.datasize) }
   | LDSTR xreg COMMA LBRK xreg COMMA xreg COMMA SHIFT imm RBRK
     { match $1.var64 with
       | None -> error_registers "expected %s <Wt>, [<Xn|SP>, <R><m>{, <extend> {<amount>}}]" $1.txt
@@ -893,7 +893,7 @@
           else if var64.datasize = DataSize16 && not ($10 = 0 || $10 = 1) then error_arg "<amount> must be one of 0,1"
           else if var64.datasize = DataSize32 && not ($10 = 0 || $10 = 2) then error_arg "<amount> must be one of 0,2"
           else if var64.datasize = DataSize64 && not ($10 = 0 || $10 = 3) then error_arg "<amount> must be one of 0,3"
-          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,MemOp_LOAD,$1.signed,false,false,ExtendType_UXTX,$10,Set64,var64.datasize) }
+          else `AArch64LoadRegister($5,$2,$7,AccType_NORMAL,$1.memop,$1.signed,false,false,ExtendType_UXTX,$10,Set64,var64.datasize) }
 
   /* LDTR/LDTRB/LDTRH/LDTRSB/LDTRSH/LDTRSW
      LDUR/LDURB/LDURH/LDURSB/LDURSH/LDURSW

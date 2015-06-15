@@ -15,7 +15,7 @@
           sprintf "%s %s, %s, %s%s" (pp_addsub sub_op setflags) (output_reg datasize 0) (input_reg datasize 0) (pp_imm imm12) (if shift = 0 then "" else ", LSL #12")
       end ;
       inputs=[n'];
-      outputs=[d']; }::k
+      outputs=[d']; }
 
 | `AArch64LogicalImmediate ((X d' as d),(X n' as n),datasize,setflags,op,imm)
 | `AArch64LogicalImmediate ((W d' as d),(W n' as n),datasize,setflags,op,imm) ->
@@ -28,7 +28,7 @@
         else sprintf "%s %s, %s, %s" (pp_logop op setflags false) (output_reg datasize 0) (input_reg datasize 0) (pp_reg_size_imm imm)
       end ;
       inputs=[n'];
-      outputs=[d']; }::k
+      outputs=[d']; }
 
 | `AArch64LogicalShiftedRegister ((X d' as d),(X n' as n),(X m' as m),datasize,setflags,op,shift_type,shift_amount,invert)
 | `AArch64LogicalShiftedRegister ((W d' as d),(W n' as n),(W m' as m),datasize,setflags,op,shift_type,shift_amount,invert) ->
@@ -59,7 +59,7 @@
         end
       end ;
       inputs=[n'; m'];
-      outputs=[d']; }::k
+      outputs=[d']; }
 
 | `AArch64MoveWide ((X d' as d),datasize,imm,pos,opcode)
 | `AArch64MoveWide ((W d' as d),datasize,imm,pos,opcode) ->
@@ -77,7 +77,7 @@
           sprintf "%s %s, %s, LSL %s" (pp_movwide opcode) (output_reg datasize 0) (pp_imm imm) (pp_imm pos)
       end ;
       inputs=if opcode = MoveWideOp_K then [d'] else [];
-      outputs=[d']; }::k
+      outputs=[d']; }
 
 
 | `AArch64LoadImmediate ((X n' as n),(X t' as t),acctype,MemOp_STORE,signed,false,postindex,offset,regsize,datasize)
@@ -104,7 +104,7 @@
             sprintf "%s %s, [%s, %s]" inst (input_reg regsize 1) (input_reg Set64 0) (pp_big_imm offset)
       end ;
       inputs=[n'; t'];
-      outputs=[]; }::k
+      outputs=[]; }
 
 | `AArch64LoadImmediate ((X n' as n),(X t' as t),acctype,MemOp_LOAD,signed,false,postindex,offset,regsize,datasize)
 | `AArch64LoadImmediate ((X n' as n),(W t' as t),acctype,MemOp_LOAD,signed,false,postindex,offset,regsize,datasize) ->
@@ -130,4 +130,96 @@
           sprintf "%s %s, [%s, %s]" inst (output_reg regsize 0) (input_reg Set64 0) (pp_big_imm offset)
       end ;
       inputs=[n'];
-      outputs=[t']; }::k
+      outputs=[t']; }
+(*
+| `AArch64LoadRegister ((X n' as n),(X t' as t),(X m' as m),acctype,MemOp_STORE,signed,false,postindex,extend_type,shift,regsize,datasize)
+| `AArch64LoadRegister ((X n' as n),(X t' as t),(W m' as m),acctype,MemOp_STORE,signed,false,postindex,extend_type,shift,regsize,datasize)
+| `AArch64LoadRegister ((X n' as n),(W t' as t),(X m' as m),acctype,MemOp_STORE,signed,false,postindex,extend_type,shift,regsize,datasize)
+| `AArch64LoadRegister ((X n' as n),(W t' as t),(W m' as m),acctype,MemOp_STORE,signed,false,postindex,extend_type,shift,regsize,datasize) ->
+  { empty_ins with
+    memo =
+      begin
+        let inst =
+          "STR" ^
+          (if signed then "S" else "") ^
+          (match datasize with
+          | DataSize8 -> "B"
+          | DataSize16 -> "H"
+          | DataSize32 -> if regsize = Set32 then "" else "W"
+          | DataSize64 -> "") in
+        if extend_type = ExtendType_UXTX && shift = 0 then
+          sprintf "%s %s, [%s, %s]" inst (input_reg regsize 1) (input_reg Set64 0) (input_regzrbyext Set64 extend_type 2)
+        else if extend_type = ExtendType_UXTX (* && shift <> 0 *) then
+          sprintf "%s %s, [%s, %s, LSL %s]" inst (input_reg regsize 1) (input_reg Set64 0) (input_regzrbyext Set64 extend_type 2) (pp_imm shift)
+        else
+          sprintf "%s %s, [%s, %s, %s]" inst (input_reg regsize 1) (input_reg Set64 0) (input_regzrbyext Set64 extend_type 2) (pp_regext extend_type)
+      end;
+    inputs=[n'; t'; m'];
+    outputs=[];
+  }
+
+| `AArch64LoadRegister ((X n' as n),(X t' as t),(X m' as m),acctype,MemOp_LOAD,signed,false,postindex,extend_type,shift,regsize,datasize)
+| `AArch64LoadRegister ((X n' as n),(X t' as t),(W m' as m),acctype,MemOp_LOAD,signed,false,postindex,extend_type,shift,regsize,datasize)
+| `AArch64LoadRegister ((X n' as n),(W t' as t),(X m' as m),acctype,MemOp_LOAD,signed,false,postindex,extend_type,shift,regsize,datasize)
+| `AArch64LoadRegister ((X n' as n),(W t' as t),(W m' as m),acctype,MemOp_LOAD,signed,false,postindex,extend_type,shift,regsize,datasize) ->
+  { empty_ins with
+    memo =
+      begin
+        let inst =
+          "LDR" ^
+          (if signed then "S" else "") ^
+          (match datasize with
+          | DataSize8 -> "B"
+          | DataSize16 -> "H"
+          | DataSize32 -> if regsize = Set32 then "" else "W"
+          | DataSize64 -> "") in
+        if extend_type = ExtendType_UXTX && shift = 0 then
+          sprintf "%s %s, [%s, %s]" inst (output_reg regsize 0) (input_reg Set64 0) (input_regzrbyext Set64 extend_type 1)
+        else if extend_type = ExtendType_UXTX (* && shift <> 0 *) then
+          sprintf "%s %s, [%s, %s, LSL %s]" inst (output_reg regsize 0) (input_reg Set64 0) (input_regzrbyext Set64 extend_type 1) (pp_imm shift)
+        else
+          sprintf "%s %s, [%s, %s, %s]" inst (output_reg regsize 0) (input_reg Set64 0) (input_regzrbyext Set64 extend_type 1) (pp_regext extend_type)
+      end;
+    inputs=[n'; m'];
+    outputs=[t'];
+  }*)
+
+| `AArch64LoadRegister (n,t,m,acctype,memop,signed,wback,postindex,extend_type,shift,regsize,datasize) ->
+  let (outputs, inputs) =
+    begin match memop with
+    | MemOp_STORE -> if wback then ([t], [n; m]) else ([], [n; t; m])
+    | MemOp_LOAD ->  ([t], [n; m])
+    end
+  in
+  let (pp_regzr, pp_regsp, pp_regzrbyext) = get_pps inputs outputs in
+  { empty_ins with
+    memo =
+      begin
+        if memop = MemOp_PREFETCH then
+        begin
+          if extend_type = ExtendType_UXTX && shift = 0 then
+            sprintf "PRFM %s, [%s, %s]" (pp_prfop (inst_reg_to_int t)) (pp_regsp Set64 n) (pp_regzrbyext Set64 extend_type m)
+          else if extend_type = ExtendType_UXTX (* && shift <> 0 *) then
+            sprintf "PRFM %s, [%s, %s, LSL %s]" (pp_prfop (inst_reg_to_int t)) (pp_regsp Set64 n) (pp_regzrbyext Set64 extend_type m) (pp_imm shift)
+          else
+            sprintf "PRFM %s, [%s, %s, %s]" (pp_prfop (inst_reg_to_int t)) (pp_regsp Set64 n) (pp_regzrbyext Set64 extend_type m) (pp_regext extend_type)
+        end
+        else
+        let inst =
+          (if memop = MemOp_LOAD then "LDR" else "STR") ^
+          (if signed then "S" else "") ^
+          (match datasize with
+          | DataSize8 -> "B"
+          | DataSize16 -> "H"
+          | DataSize32 -> if regsize = Set32 then "" else "W"
+          | DataSize64 -> "") in
+        if extend_type = ExtendType_UXTX && shift = 0 then
+          sprintf "%s %s, [%s, %s]" inst (pp_regzr regsize t) (pp_regsp Set64 n) (pp_regzrbyext Set64 extend_type m)
+        else if extend_type = ExtendType_UXTX (* && shift <> 0 *) then
+          sprintf "%s %s, [%s, %s, LSL %s]" inst (pp_regzr regsize t) (pp_regsp Set64 n) (pp_regzrbyext Set64 extend_type m) (pp_imm shift)
+        else
+          sprintf "%s %s, [%s, %s, %s]" inst (pp_regzr regsize t) (pp_regsp Set64 n) (pp_regzrbyext Set64 extend_type m) (pp_regext extend_type)
+      end;
+    inputs = inst_regs_to_regs inputs;
+    outputs = inst_regs_to_regs outputs;
+  }

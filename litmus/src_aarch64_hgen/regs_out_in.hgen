@@ -1,0 +1,147 @@
+| `AArch64AddSubCarry (d,n,m,_datasize,_sub_op,_setflags) ->
+      ([d], [n; m])
+
+| `AArch64AddSubExtendRegister (d,n,m,_datasize,_sub_op,_setflags,_extend_type,_shift) ->
+      ([d], [n; m])
+
+| `AArch64AddSubShiftedRegister (d,n,m,_datasize,_sub_op,_setflags,_shift_type,_shift_amount) ->
+      ([d], [n; m])
+
+| `AArch64AddSubImmediate (d,n,_datasize,_sub_op,_setflags,_imm) ->
+      ([d], [n])
+
+| `AArch64Address (d,_page,_imm) ->
+      ([d], [])
+
+| `AArch64LogicalImmediate (d,n,_datasize,_setflags,_op,_imm) ->
+      ([d], [n])
+
+| `AArch64LogicalShiftedRegister (d,n,m,_datasize,_setflags,_op,_shift_type,_shift_amount,_invert) ->
+      ([d], [n; m])
+
+| `AArch64Shift (d,n,m,_datasize,_shift_type) ->
+      ([d], [n; m])
+
+| `AArch64BranchConditional (__offset,_condition) ->
+      ([], [])
+
+| `AArch64BranchImmediate (_branch_type,__offset) ->
+      ([], [])
+
+| `AArch64BitfieldMove (d,n,_datasize,_inzero,_extend,_R,_S,_wmask,_tmask) ->
+      ([d], [n])
+
+| `AArch64BranchRegister (n,_branch_type) ->
+      ([], [n])
+
+| `AArch64CompareAndBranch (t,_datasize,_iszero,__offset) ->
+      ([], [t])
+
+| `AArch64ConditionalCompareImmediate (n,_datasize,_sub_op,_condition,_flags,_imm) ->
+      ([], [n])
+
+| `AArch64ConditionalCompareRegister (n,m,_datasize,_sub_op,_condition,_flags) ->
+      ([], [n; m])
+
+| `AArch64ClearExclusiveMonitor (_imm) ->
+      ([], [])
+
+| `AArch64CountLeading (d,n,_datasize,__opcode) ->
+      ([d], [n])
+
+| `AArch64CRC (d,n,m,_size,_crc32c) ->
+      ([d], [n; m])
+
+| `AArch64ConditionalSelect (d,n,m,_datasize,_condition,_else_inv,_else_inc) ->
+      ([d], [n; m])
+
+| `AArch64Barrier (_op,_domain,_types) ->
+      ([], [])
+
+| `AArch64ExtractRegister (d,n,m,_datasize,_lsb) ->
+      ([d], [n; m])
+
+| `AArch64Hint (_op) ->
+      ([], [])
+
+| `AArch64LoadStoreAcqExc (n,t,t2,s,_acctype,false,false,MemOp_STORE,_elsize,_regsize,_datasize) ->
+      ([], [t; n])
+| `AArch64LoadStoreAcqExc (n,t,t2,s,_acctype,true,false,MemOp_STORE,_elsize,_regsize,_datasize) ->
+      ([s], [t; n])
+| `AArch64LoadStoreAcqExc (n,t,t2,s,_acctype,true,true,MemOp_STORE,_elsize,_regsize,_datasize) ->
+      ([s], [t; t2; n])
+
+| `AArch64LoadStoreAcqExc (n,t,t2,s,_acctype,false,false,MemOp_LOAD,_elsize,_regsize,_datasize) ->
+      ([t], [n])
+| `AArch64LoadStoreAcqExc (n,t,t2,s,_acctype,true,false,MemOp_LOAD,_elsize,_regsize,_datasize) ->
+      ([t], [n])
+| `AArch64LoadStoreAcqExc (n,t,t2,s,_acctype,true,true,MemOp_LOAD,_elsize,_regsize,_datasize) ->
+      ([t; t2], [n])
+
+| `AArch64LoadStorePair (false,_postindex,n,t,t2,_acctype,MemOp_STORE,_signed,_scale,_datasize,_offset) ->
+      ([], [n; t; t2])
+| `AArch64LoadStorePair (true,_postindex,n,t,t2,_acctype,MemOp_STORE,_signed,_scale,_datasize,_offset) ->
+      ([n], [t; t2])
+
+| `AArch64LoadStorePair (false,_postindex,n,t,t2,_acctype,MemOp_LOAD,_signed,_scale,_datasize,_offset) ->
+      ([t; t2], [n])
+| `AArch64LoadStorePair (true,_postindex,n,t,t2,_acctype,MemOp_LOAD,_signed,_scale,_datasize,_offset) ->
+      ([t; t2; n], [])
+
+| `AArch64LoadImmediate (n,t,_acctype,MemOp_STORE,_signed,false,_postindex,_offset,_regsize,_datasize) ->
+      ([], [n; t])
+| `AArch64LoadImmediate (n,t,_acctype,MemOp_STORE,_signed,true,_postindex,_offset,_regsize,_datasize) ->
+      ([n], [t])
+
+| `AArch64LoadImmediate (n,t,_acctype,MemOp_LOAD,_signed,false,_postindex,_offset,_regsize,_datasize) ->
+      ([t], [n])
+| `AArch64LoadImmediate (n,t,_acctype,MemOp_LOAD,_signed,true,_postindex,_offset,_regsize,_datasize) ->
+      ([t; n], [])
+
+| `AArch64LoadLiteral (t,MemOp_STORE,_signed,_size,_offset,_datasize) ->
+      ([], [t])
+
+| `AArch64LoadLiteral (t,MemOp_LOAD,_signed,_size,_offset,_datasize) ->
+      ([t], [])
+
+| `AArch64LoadRegister (n,t,m,_acctype,MemOp_STORE,_signed,false,_postindex,_extend_type,_shift,_regsize,_datasize) ->
+    ([], [n; t; m])
+| `AArch64LoadRegister (n,t,m,_acctype,MemOp_STORE,_signed,true,_postindex,_extend_type,_shift,_regsize,_datasize) ->
+    ([n], [t; m])
+
+| `AArch64LoadRegister (n,t,m,_acctype,MemOp_LOAD,_signed,false,_postindex,_extend_type,_shift,_regsize,_datasize) ->
+    ([t], [n; m])
+| `AArch64LoadRegister (n,t,m,_acctype,MemOp_LOAD,_signed,true,_postindex,_extend_type,_shift,_regsize,_datasize) ->
+    ([t; n], [m])
+
+| `AArch64LoadRegister (n,t,m,_acctype,MemOp_PREFETCH,_signed,_wback,_postindex,_extend_type,_shift,_regsize,_datasize) ->
+    ([], [n; m])
+
+| `AArch64MultiplyAddSub (d,n,m,a,_destsize,_datasize,_sub_op) ->
+      ([d], [n; m; a])
+
+| `AArch64MoveWide (d,_datasize,_imm,_pos,_opcode) ->
+      ([d], [])
+
+| `AArch64Reverse (d,n,_datasize,_op) ->
+      ([d], [n])
+
+| `AArch64Division (d,n,m,_datasize,_unsigned) ->
+      ([d], [n; m])
+
+| `AArch64MultiplyAddSubLong (d,n,m,a,_destsize,_datasize,_sub_op,_unsigned) ->
+      ([d], [n; m; a])
+
+| `AArch64MultiplyHigh (d,n,m,a,_destsize,_datasize,_unsigned) ->
+      ([d], [n; m; a])
+
+| `AArch64TestBitAndBranch (t,_datasize,_bit_pos,_bit_val,_offset) ->
+      ([], [t])
+
+| `AArch64MoveSystemRegister (t,_sys_op0,_sys_op1,_sys_op2,_sys_crn,_sys_crm,true) ->
+      ([t], [])
+| `AArch64MoveSystemRegister (t,_sys_op0,_sys_op1,_sys_op2,_sys_crn,_sys_crm,false) ->
+      ([], [t])
+
+| `AArch64MoveSystemImmediate (_operand,_field) ->
+      ([], [])
