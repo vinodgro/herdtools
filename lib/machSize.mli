@@ -12,3 +12,5 @@
 type sz = Byte | Short | Word | Quad
 
 val pp : sz -> string
+
+val nbytes : sz -> int

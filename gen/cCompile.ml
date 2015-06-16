@@ -17,7 +17,10 @@ open Code
 
 module type Config = sig
   include Top.Config
-  include Cycle.Config
+  val coherence_decreasing : bool
+  val same_loc : bool
+  val verbose : int
+  val allow_back : bool
   val list_edges : bool
   val typ : TypBase.t
   val cpp : bool
@@ -52,7 +55,11 @@ module Make(O:Config) : Builder.S
         end
 
       module R = Relax.Make(A)(E)
-      module C = Cycle.Make(O)(E)
+      module ConfWithSize = struct
+        include O
+        let naturalsize = TypBase.get_size O.typ
+      end
+      module C = Cycle.Make(ConfWithSize)(E)
 
       module AR = struct
         module A = A

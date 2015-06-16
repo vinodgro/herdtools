@@ -27,6 +27,7 @@ module type Config = sig
   val optcoherence : bool
   val docheck : bool
   val typ : TypBase.t
+  val hexa : bool
 end
 
 module Make (O:Config) (Comp:XXXCompile.S) : Builder.S 
@@ -573,12 +574,14 @@ let get_proc = function
   | A.Loc _ -> -1
   | A.Reg (p,_) -> p
 
+(*
 let pp_pointer t =
   let open TypBase in
   let open MachSize in
   match t with
   | Int|Std (Signed,Word) -> ""
   | _ -> sprintf "%s* " (TypBase.pp t)
+*)
 
 let dump_init chan inits env =
   fprintf chan "{" ;
@@ -601,7 +604,7 @@ let dump_init chan inits env =
     | (left,loc)::rem ->
         let p = get_proc left in
         if p <> q then fprintf chan "\n" else fprintf chan " " ;
-        fprintf chan "%s%s=%s;" (pp_pointer O.typ) (A.pp_location left) loc ;
+        fprintf chan "%s=%s;" (A.pp_location left) loc ;
         p_rec p rem in
   p_rec (-1) inits
 

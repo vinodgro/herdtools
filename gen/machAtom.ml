@@ -52,4 +52,14 @@ module Make(C:Config) = struct
   | None| Some (Atomic|Reserve) -> v
   | Some (Mixed (sz,_)) -> Mixed.tr_value sz v
 
+  let overwrite_value v ao w = match ao with
+  | None| Some (Atomic|Reserve) -> w (* total overwrite *)
+  | Some (Mixed (sz,o)) ->
+      let sz_bits =  MachSize.nbytes sz * 8 in
+      let nshift =  o * 8 in
+      let wshifted = w lsl nshift in
+      let mask = lnot (((1 lsl sz_bits) - 1) lsl nshift) in
+      (v land mask) lor wshifted
+
+
 end

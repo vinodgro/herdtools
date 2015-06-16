@@ -75,6 +75,8 @@ module type Config = sig
   val verbose : int
 (* allow threads s.t start -> end is against com+ *)
   val allow_back : bool
+  val naturalsize : MachSize.sz
+  val hexa : bool
 end
 
 module Make (O:Config) (E:Edge.S) :
@@ -125,7 +127,10 @@ module Make (O:Config) (E:Edge.S) :
     match a with None -> "" | Some a -> E.pp_atom a
 
   let debug_evt e =
-    sprintf "%s%s %s %i" (debug_dir e.dir) (debug_atom e.atom) e.loc e.v
+    if O.hexa then
+      sprintf "%s%s %s 0x%x" (debug_dir e.dir) (debug_atom e.atom) e.loc e.v
+    else
+      sprintf "%s%s %s %i" (debug_dir e.dir) (debug_atom e.atom) e.loc e.v
 
 let debug_edge = E.pp_edge
 
@@ -503,11 +508,13 @@ let set_same_loc st n0 =
   
 
 (* TODO: this is wrong for Store CR's: consider Rfi Store PosRR *)
+
 let do_set_read_v =
 
-  let next n = match n.edge.E.edge with
+  let next old n = match n.edge.E.edge with
   | E.Detour _ -> next_co n.evt.v
-  | _ -> n.evt.v in
+  | _ ->
+      E.overwrite_value old n.evt.atom n.evt.v in
 
   let rec do_rec v = function
     | [] -> ()
@@ -518,9 +525,9 @@ let do_set_read_v =
         match n.evt.dir with
         | R ->
             n.evt <- { n.evt with v=v; } ;
-            do_rec (next n) ns
+            do_rec v ns
         | W ->
-            do_rec (next n) ns in
+            do_rec (next v n) ns in
   do_rec 0
 
 let set_read_v nss = List.iter do_set_read_v nss

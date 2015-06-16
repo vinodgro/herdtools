@@ -16,3 +16,9 @@ let pp = function
   | Short -> "h"
   | Word -> "w"
   | Quad -> "q"
+
+let nbytes = function
+  | Byte -> 1
+  | Short -> 2
+  | Word -> 4
+  | Quad -> 8

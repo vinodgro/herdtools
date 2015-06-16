@@ -194,6 +194,7 @@ let () =
     let cpp = cpp
     let docheck = !Config.docheck
     let typ = !Config.typ
+    let hexa = !Config.hexa
  end in
   let module C = struct
     let verbose = !Config.verbose
@@ -207,6 +208,7 @@ let () =
     | Sc|Critical|Thin -> false
     | _ -> true
     let typ = !Config.typ
+    let hexa = !Config.hexa
   end in
   let module T = Top.Make(Co) in
   let f = match !Config.arch with

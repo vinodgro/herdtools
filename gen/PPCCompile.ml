@@ -11,10 +11,14 @@
 open Printf
 open Code
 
-module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
+module Make(O:CompileCommon.Config)(C:sig val eieio : bool end) : XXXCompile.S =
   struct
 
-    module PPC = PPCArch.Make(C) 
+    let naturalsize = TypBase.get_size O.typ
+    module PPC =
+      PPCArch.Make
+        (struct include C let naturalsize = naturalsize end)
+
     include CompileCommon.Make(O)(PPC)
 
     let r0 = PPC.Ireg PPC.GPR0
@@ -22,6 +26,7 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
 (* PPO *)
     open E
     open R
+
     let as_opt = function Some x -> x | None -> assert false
 
     let dprd = as_opt PPC.ddr_default
@@ -97,6 +102,9 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
             r,(PPC.Reg (p,r),loc)::init,st in
       find_rec init
 
+    let next_const st p init v =
+      let r,st = next_reg st in
+      r,(PPC.Reg (p,r),sprintf "0x%x" v)::init,st
 
     let pseudo = List.map (fun i -> PPC.Instruction i)
 
@@ -160,28 +168,34 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
 
 (* STORE *)
 
-    let emit_store_reg st p init x rA =
-      let rB,init,st = next_init st p init x in
-      init,[PPC.Instruction (PPC.Pstw (rA,0,rB))],st
-
     let emit_store_reg_mixed sz o st p init x rA =
       let rB,init,st = next_init st p init x in
       init,[PPC.Instruction (PPC.Pstore (sz,rA,o,rB))],st
+
+    let emit_store_reg st p init x rA =
+      emit_store_reg_mixed naturalsize 0 st p init x rA
+
 
     let emit_store_idx_reg  st p init x idx rA =
       let rB,init,st = next_init st p init x in
       init,[PPC.Instruction (PPC.Pstwx (rA,idx,rB))],st
 
-    let emit_store st p init x v =
-      let rA,st = next_reg st in
-      let init,cs,st = emit_store_reg st p init x rA in
-      init,PPC.Instruction (PPC.Pli (rA,v))::cs,st
+
+    let emit_li st p init v =
+      if v < 0x7fff then
+        let rA,st = next_reg st in
+        rA,init,[PPC.Instruction (PPC.Pli (rA,v))],st
+      else
+        let rA,init,st = next_const st p init v in
+        rA,init,[],st
 
     let emit_store_mixed sz o st p init x v =
-      let rA,st = next_reg st in
+      let rA,init,csi,st = emit_li st p init v in
       let init,cs,st = emit_store_reg_mixed sz o st p init x rA in
-      init,PPC.Instruction (PPC.Pli (rA,v))::cs,st
+      init,csi@cs,st
 
+    let emit_store st p init x v =
+      emit_store_mixed naturalsize 0 st p init x v
 
     let emit_store_idx st p init x idx v =
       let rA,st = next_reg st in
@@ -200,15 +214,12 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
 
 (* Load *)
 
-    let emit_load st p init x =
-      let rA,st = next_reg st in
-      let rB,init,st = next_init st p init x in
-      rA,init,pseudo [PPC.Plwz (rA,0,rB)],st
-
     let emit_load_mixed sz o st p init x =
       let rA,st = next_reg st in
       let rB,init,st = next_init st p init x in
       rA,init,pseudo [PPC.Pload (sz,rA,o,rB)],st
+
+    let emit_load st p init x = emit_load_mixed naturalsize 0 st p init x
 
     let emit_load_not_zero st p init x =
       let rA,st = next_reg st in
@@ -258,7 +269,7 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
     let emit_load_idx st p init x idx =
       let rA,st = next_reg st in
       let rB,init,st = next_init st p init x in
-      rA,init,pseudo [PPC.Plwzx (rA,idx,rB)],st
+      rA,init,pseudo [PPC.Ploadx (naturalsize,rA,idx,rB)],st
 
     let emit_lwarx_idx st p init x idx =
       let rA,st = next_reg st in
@@ -336,6 +347,8 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
           Some r,init,PPC.Instruction c::cs,st
       | W,Some PPC.Reserve ->
           Warn.fatal "No store with reservation"        
+      | _,Some (PPC.Mixed _) ->
+          Warn.fatal "addr dep with mixed"
 
     let emit_exch_dep_addr st  p init er ew rd =
       let idx,st = next_reg st in
@@ -360,6 +373,9 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
             | Some PPC.Atomic ->
                 let r,init,cs,st = emit_sta_reg st p init e.loc rW in
                 Some r,init,cs,st
+            | Some (PPC.Mixed (sz,o)) ->
+                let init,cs,st = emit_store_reg_mixed sz o st p init e.loc rW in
+                None,init,cs,st
             | Some PPC.Reserve -> Warn.fatal "No store with reservation" in
           ro,init,cs2@cs,st
 
@@ -375,6 +391,7 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
       | R ->
           let emit = match e.atom with
           | None -> emit_load
+          | Some (PPC.Mixed (sz,o)) -> emit_load_mixed sz o
           | Some PPC.Reserve ->emit_lwarx
           | Some PPC.Atomic -> emit_lda in
           let r,init,cs,st = emit st p init e.loc in
@@ -384,6 +401,9 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
             match e.atom with
             | None ->
                 let init,cs,st = emit_store st p init e.loc e.v in
+                None,init,cs,st
+            | Some (PPC.Mixed (sz,o)) ->
+                let init,cs,st = emit_store_mixed sz o st p init e.loc e.v in
                 None,init,cs,st
             | Some PPC.Reserve -> Warn.fatal "No store with reservation"
             | Some PPC.Atomic ->

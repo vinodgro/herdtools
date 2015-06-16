@@ -50,6 +50,12 @@ let pp = function
 
 
 let default = Int
+
 let is_default = function
   | Int -> true
   | _ -> false
+
+let get_size = function
+  | Int -> Word
+  | Std (_,sz) -> sz
+

@@ -38,6 +38,7 @@ let fold_atom f k = f Atomic k
 let worth_final _ = true
 
 let tr_value _ v = v
+let overwrite_value _ _ v = v
 
 (**********)
 (* Fences *)

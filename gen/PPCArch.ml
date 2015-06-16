@@ -10,16 +10,21 @@
 
 module type Config = sig
   val eieio : bool
+  val naturalsize : MachSize.sz
 end
 
-(* Default: know about eieio *)
+(* Default: know about eieio and word size *)
 
-module Config = struct let eieio = true end
+module Config =
+  struct
+    let eieio = true
+    let naturalsize = MachSize.Word
+  end
 
 module Make(C:Config)  =
   struct
     include PPCBase
-    include MachAtom.Make(struct let naturalsize = Some MachSize.Word end)
+    include MachAtom.Make(struct let naturalsize = Some C.naturalsize end)
 
 (**********)
 (* Fences *)

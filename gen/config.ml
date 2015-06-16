@@ -17,6 +17,7 @@ let size = ref 6
 let one = ref false 
 let arch = ref PPC
 let typ = ref TypBase.default
+let hexa = ref false
 let tarfile = ref None
 let prefix = ref None
 let safes = ref None 
@@ -115,6 +116,7 @@ let common_specs =
     | Some a -> typ := a ; true)
     TypBase.tags
     (sprintf "specify base type, default %s" (TypBase.pp !typ))::
+  ("-hexa", Arg.Unit (fun () -> hexa := true),"hexadecimal output")::
    ("-o", Arg.String (fun s -> tarfile := Some s),
     "<name.tar> output litmus tests in archive <name.tar> (default, output in curent directory)")::
   ("-c", Arg.Bool (fun b ->  canonical_only := b),

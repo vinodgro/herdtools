@@ -17,6 +17,7 @@ module type Config = sig
   val unrollatomic : int option
   val allow_back : bool
   val typ : TypBase.t
+  val hexa : bool
 end
 
 module type S = sig
@@ -58,6 +59,10 @@ struct
 
 
   module R = Relax.Make(A) (E)
-  module C = Cycle.Make(C)(E)
+  module Conf = struct
+    include C
+    let naturalsize = TypBase.get_size C.typ
+  end
+  module C = Cycle.Make(Conf)(E)
 end
 

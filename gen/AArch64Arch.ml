@@ -56,6 +56,7 @@ let worth_final = function
   | Acq|Rel -> false
 
 let tr_value _ v = v
+let overwrite_value _ _ v = v
 
 (* End of atoms *)
 

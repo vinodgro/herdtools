@@ -23,3 +23,4 @@ val pp : t -> string
 
 val default : t
 val is_default : t -> bool
+val get_size : t -> MachSize.sz

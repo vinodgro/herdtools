@@ -172,6 +172,7 @@ let () =
     let nprocs = !Config.nprocs
     let neg = !Config.neg
     let typ = !Config.typ
+    let hexa = !Config.hexa
 (* Specific *)
     let norm = !norm
     let cpp = cpp
@@ -190,6 +191,7 @@ let () =
     let unrollatomic = !Config.unrollatomic
     let allow_back = true
     let typ = !Config.typ
+    let hexa = !Config.hexa
   end in
   (match !Config.arch with
   | X86 ->
