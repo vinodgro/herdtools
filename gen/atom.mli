@@ -19,4 +19,5 @@ module type S = sig
   val pp_atom : atom -> string
   val fold_atom : (atom -> 'a -> 'a) -> 'a -> 'a
   val worth_final : atom -> bool
+  val tr_value : atom option -> Code.v -> Code.v
 end

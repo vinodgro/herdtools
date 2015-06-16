@@ -206,6 +206,7 @@ let () =
       let nprocs = !Config.nprocs
       let neg = !Config.neg
       let allow_back = false
+      let typ = !Config.typ
       let cpp = match !Config.arch with Archs.CPP -> true | _ -> false
     end in
     let open Archs in

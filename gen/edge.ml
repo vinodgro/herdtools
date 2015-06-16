@@ -20,6 +20,7 @@ module type S = sig
   type atom
 
   val pp_atom : atom -> string
+  val tr_value : atom option -> Code.v -> Code.v
 
   val strong : fence
   val pp_fence : fence -> string
@@ -116,7 +117,7 @@ and type atom = F.atom = struct
   type atom = F.atom
 
   let pp_atom = F.pp_atom
-
+  let tr_value = F.tr_value
   let pp_fence = F.pp_fence
 
   let strong = F.strong

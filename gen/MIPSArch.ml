@@ -10,7 +10,7 @@
 
 
 include MIPSBase
-include MachAtom
+include MachAtom.Make(struct let naturalsize=None end)
 
 (**********)
 (* Fences *)

@@ -9,16 +9,10 @@
 (*********************************************************************)
 
 (* Atomicity of events *)
-type atom = Atomic | Reserve
-include Atom.S with type atom := atom
-(*
-val default_atom : atom
-val sig_of_atom : atom -> char
-val applies_atom : atom -> Code.dir -> bool
+module type Config = MachMixed.Config
 
-val pp_as_a : atom option
-val pp_atom : atom -> string
-val compare_atom : atom -> atom -> int
-
-val fold_atom : (atom -> 'a -> 'a) -> 'a -> 'a
-*)
+module Make : functor (C:Config) ->
+  sig
+    type hidden_atom = Atomic | Reserve | Mixed of MachMixed.t
+    include Atom.S with type atom = hidden_atom
+  end

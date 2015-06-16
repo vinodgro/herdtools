@@ -9,32 +9,47 @@
 (*********************************************************************)
 
 (* Atomicity of events *)
+module type Config = MachMixed.Config
 
-type atom = Atomic | Reserve
+module Make(C:Config) = struct
 
-let default_atom = Atomic
+  module Mixed = MachMixed.Make(C)
+  type hidden_atom = Atomic | Reserve | Mixed of MachMixed.t
+  type atom = hidden_atom
 
-open Code
+  let default_atom = Atomic
 
-let applies_atom a d = match a,d with
-| Reserve,W -> false
-| _,_ -> true
+  open Code
 
-let applies_atom_rmw ar aw = match ar,aw with
-| None,None -> true
-| _,_ -> false
+  let applies_atom a d = match a,d with
+  | Reserve,W -> false
+  | _,_ -> true
 
-let pp_plain = Code.plain
-let pp_as_a = None
+  let applies_atom_rmw ar aw = match ar,aw with
+  | None,None -> true
+  | _,_ -> false
 
-let pp_atom = function
-  | Atomic -> "A"
-  | Reserve -> "R"
+  let pp_plain = Code.plain
+  let pp_as_a = None
 
-let compare_atom = Pervasives.compare
+  let pp_atom = function
+    | Atomic -> "A"
+    | Reserve -> "R"
+    | Mixed mix -> Mixed.pp_mixed mix
 
-let fold_atom f r = f Reserve (f Atomic r)
+  let compare_atom = Pervasives.compare
 
-let worth_final = function
-  | Atomic -> true
-  | Reserve -> false
+  let fold_atom f r =
+    let r = Mixed.fold_mixed (fun mix r -> f (Mixed mix) r) r in
+    f Reserve (f Atomic r)
+
+  let worth_final = function
+    | Atomic -> true
+    | Reserve -> false
+    | Mixed _ -> false
+
+  let tr_value ao v = match ao with
+  | None| Some (Atomic|Reserve) -> v
+  | Some (Mixed (sz,_)) -> Mixed.tr_value sz v
+
+end

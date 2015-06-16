@@ -97,6 +97,7 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
             r,(PPC.Reg (p,r),loc)::init,st in
       find_rec init
 
+
     let pseudo = List.map (fun i -> PPC.Instruction i)
 
     let emit_loop_pair _p r1 r2 idx addr =
@@ -163,6 +164,10 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
       let rB,init,st = next_init st p init x in
       init,[PPC.Instruction (PPC.Pstw (rA,0,rB))],st
 
+    let emit_store_reg_mixed sz o st p init x rA =
+      let rB,init,st = next_init st p init x in
+      init,[PPC.Instruction (PPC.Pstore (sz,rA,o,rB))],st
+
     let emit_store_idx_reg  st p init x idx rA =
       let rB,init,st = next_init st p init x in
       init,[PPC.Instruction (PPC.Pstwx (rA,idx,rB))],st
@@ -171,6 +176,12 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
       let rA,st = next_reg st in
       let init,cs,st = emit_store_reg st p init x rA in
       init,PPC.Instruction (PPC.Pli (rA,v))::cs,st
+
+    let emit_store_mixed sz o st p init x v =
+      let rA,st = next_reg st in
+      let init,cs,st = emit_store_reg_mixed sz o st p init x rA in
+      init,PPC.Instruction (PPC.Pli (rA,v))::cs,st
+
 
     let emit_store_idx st p init x idx v =
       let rA,st = next_reg st in
@@ -193,6 +204,11 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
       let rA,st = next_reg st in
       let rB,init,st = next_init st p init x in
       rA,init,pseudo [PPC.Plwz (rA,0,rB)],st
+
+    let emit_load_mixed sz o st p init x =
+      let rA,st = next_reg st in
+      let rB,init,st = next_init st p init x in
+      rA,init,pseudo [PPC.Pload (sz,rA,o,rB)],st
 
     let emit_load_not_zero st p init x =
       let rA,st = next_reg st in
@@ -281,6 +297,12 @@ module Make(O:CompileCommon.Config)(C:PPCArch.Config) : XXXCompile.S =
         Some r,init,cs,st
     | W,Some PPC.Reserve ->
         Warn.fatal "No store with reservation"
+    | R,Some (PPC.Mixed (sz,o)) ->
+        let r,init,cs,st = emit_load_mixed sz o st p init e.loc  in
+        Some r,init,cs,st
+    | W,Some (PPC.Mixed (sz,o)) ->
+        let init,cs,st = emit_store_mixed sz o st p init e.loc e.v in
+        None,init,cs,st
 
     let emit_exch_idx st p init er ew idx =
       let rA,init,st = next_init st p init er.loc in

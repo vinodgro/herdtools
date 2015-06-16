@@ -19,7 +19,7 @@ module Config = struct let eieio = true end
 module Make(C:Config)  =
   struct
     include PPCBase
-    include MachAtom
+    include MachAtom.Make(struct let naturalsize = Some MachSize.Word end)
 
 (**********)
 (* Fences *)

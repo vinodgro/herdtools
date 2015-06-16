@@ -16,6 +16,7 @@ module type Config = sig
   val same_loc : bool
   val unrollatomic : int option
   val allow_back : bool
+  val typ : TypBase.t
 end
 
 module type S = sig

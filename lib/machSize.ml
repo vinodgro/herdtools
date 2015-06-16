@@ -10,3 +10,9 @@
 (*********************************************************************)
 
 type sz = Byte | Short | Word | Quad
+
+let pp = function
+  | Byte -> "b"
+  | Short -> "h"
+  | Word -> "w"
+  | Quad -> "q"

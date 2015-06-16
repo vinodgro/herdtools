@@ -55,6 +55,8 @@ let worth_final = function
   | Atomic _ -> true
   | Acq|Rel -> false
 
+let tr_value _ v = v
+
 (* End of atoms *)
 
 (**********)

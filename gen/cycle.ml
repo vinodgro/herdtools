@@ -441,6 +441,8 @@ let set_same_loc st n0 =
       else do_rec m.next in
     [do_rec n]
 
+  let tr_value e v = E.tr_value e.atom v
+
 
   let rec do_set_write_val next = function
     | [] -> ()
@@ -449,7 +451,7 @@ let set_same_loc st n0 =
           let st = n.store in
           if st == nil then next
           else begin
-            st.evt <- { st.evt with v=next; } ;
+            st.evt <- { st.evt with v=tr_value st.evt next; } ;
             next_co next
           end in
         if E.is_detour n.edge then begin
@@ -457,16 +459,16 @@ let set_same_loc st n0 =
           let v =  match n.evt.dir with
           | R -> next
           | W -> next_co next in
-          m.evt <- { m.evt with dir=W; loc=n.evt.loc; v=v ;};              
+          m.evt <- { m.evt with dir=W; loc=n.evt.loc; v=tr_value m.evt v ;};
           begin match n.evt.dir with
           | W ->
-              n.evt <- { n.evt with v = next; } ;
+              n.evt <- { n.evt with v = tr_value n.evt next; } ;
               do_set_write_val (next_co (next_co next)) ns
           | R ->  do_set_write_val (next_co next) ns
           end
         end else begin match n.evt.dir with
         | W ->
-            n.evt <- { n.evt with v = next; } ;
+            n.evt <- { n.evt with v = tr_value n.evt next; } ;
             do_set_write_val (next_co next) ns
         | R ->  do_set_write_val next ns
         end

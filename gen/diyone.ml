@@ -171,6 +171,7 @@ let () =
     let eprocs = !Config.eprocs
     let nprocs = !Config.nprocs
     let neg = !Config.neg
+    let typ = !Config.typ
 (* Specific *)
     let norm = !norm
     let cpp = cpp
@@ -188,6 +189,7 @@ let () =
       | _ -> false)
     let unrollatomic = !Config.unrollatomic
     let allow_back = true
+    let typ = !Config.typ
   end in
   (match !Config.arch with
   | X86 ->

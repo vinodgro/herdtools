@@ -10,7 +10,9 @@
 
 open Printf
 include ARMBase
-include MachAtom
+include MachAtom.Make(struct let naturalsize=None end)
+
+let x = default_atom
 
 (**********)
 (* Fences *)
