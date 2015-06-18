@@ -23,6 +23,7 @@ module Make(V:Constant.S)(C:Config) =
     module A = AArch64GenArch.Make(C)(V)
     open A
     open A.Out
+    open CType
     open Printf
 
 (* No addresses in code *)
@@ -41,7 +42,7 @@ module Make(V:Constant.S)(C:Config) =
               | X _ | W _ -> true)
           regs
 
-    let inst_regs_to_regs regs = List.map (function | X reg -> reg | W reg -> reg) regs
+    let inst_reg_to_reg = function | X reg -> reg | W reg -> reg
 
     let pp_input reg i =
       begin match reg with
@@ -55,7 +56,7 @@ module Make(V:Constant.S)(C:Config) =
       | W (Ireg _) -> sprintf "^wo%d" i
       end
 
-    let get_pps inputs outputs =
+    let get_pps tr_lab inputs outputs =
       let rec find_index p l e =
         begin match l with
         | [] -> None
@@ -79,62 +80,56 @@ module Make(V:Constant.S)(C:Config) =
                 begin match find_input reg with
                 | Some i -> pp_input reg i
                 | None ->
-                  Printf.printf "\ninputs: ";
+                  (*Printf.printf "\ninputs: ";
                   List.iter (fun reg -> Printf.printf ", %s" (AArch64GenBase.pp_regzr Set64 reg)) inputs;
                   Printf.printf "\noutputs: ";
                   List.iter (fun reg -> Printf.printf ", %s" (AArch64GenBase.pp_regzr Set64 reg)) inputs;
-                  Printf.printf "\n*** %s ***\n" (AArch64GenBase.pp_regzr Set64 reg);
+                  Printf.printf "\n*** %s ***\n" (AArch64GenBase.pp_regzr Set64 reg);*)
                   assert false
                 end
             end
         end
       in
 
-      (pp_reg, pp_reg, fun sf _ -> pp_reg sf)
+      let pp_label label = A.Out.dump_label (tr_lab label) in
 
+      (pp_reg, pp_reg, (fun sf _ -> (pp_reg sf)), pp_label)
 
-(*    let input_reg sf i =
-      match sf with
-      | Set32 -> sprintf "^wi%d" i 
-      | Set64 -> sprintf "^i%d" i
-
-    let input_regzrbyext sf extend_type i =
-      match extend_type with
-      | ExtendType_UXTX | ExtendType_SXTX -> input_reg sf i
-      | _ -> input_reg Set32 i
-
-    let output_reg sf i =
-      match sf with
-      | Set32 -> sprintf "^wo%d" i
-      | Set64 -> sprintf "^o%d" i*)
-
+    let get_reg_env voidstars outputs inputs =
+      (* assuming outputs and inputs are disjoint *)
+      let simple_regs = List.filter (fun e -> not (List.mem e voidstars)) (outputs @ inputs) in
+      (List.map (fun reg -> (inst_reg_to_reg reg, voidstar)) voidstars) @
+      (List.map (function X reg -> (reg, quad) | W reg -> (reg, word)) simple_regs)
 
     let do_compile_ins tr_lab (ins : A.instruction) k =
-      let (outputs, inputs) =
+      let (outputs, inputs, voidstars, branch) =
         begin match ins with
         (* #include "src_aarch64_hgen/regs_out_in.hgen" *)
+        | `AArch64BranchImmediate_label (_branch_type, label) ->
+            ([], [], [], [Branch label])
+        | `AArch64BranchConditional_label (label, _condition) ->
+            ([], [], [], [Next; Branch label])
+        | `AArch64CompareAndBranch_label (t, _datasize, _iszero, label) ->
+            ([], [t], [], [Next; Branch label])
+        | `AArch64TestBitAndBranch_label (t, _datasize, _bit_pos, _bit_val, label) ->
+            ([], [t], [], [Next; Branch label])
         end
       in
       let outputs = remove_zrsp outputs in
       let inputs = remove_zrsp inputs in
-      let (pp_regzr, pp_regsp, pp_regzrbyext) = get_pps inputs outputs in
+      let voidstars = remove_zrsp voidstars in
+      let (pp_regzr, pp_regsp, pp_regzrbyext, pp_label) = get_pps tr_lab inputs outputs in
 
       let c_ins =
         { empty_ins with
-          memo = instruction_printer pp_regzr pp_regsp pp_regzrbyext ins;
-          inputs = inst_regs_to_regs inputs;
-          outputs = inst_regs_to_regs outputs;
+          memo = instruction_printer pp_regzr pp_regsp pp_regzrbyext pp_label ins;
+          inputs = List.map inst_reg_to_reg inputs;
+          outputs = List.map inst_reg_to_reg outputs;
+          reg_env = get_reg_env voidstars outputs inputs;
+          branch = branch;
         }
       in
       c_ins::k
-
-(*      let c_ins =
-        begin match ins with
-        (* Generated fix-point instructions *)
-        (* #include "src_aarch64_hgen/compile.hgen" *)
-        end
-      in
-      c_ins::k*)
 
     let compile_ins tr_lab ins = do_compile_ins tr_lab ins
 

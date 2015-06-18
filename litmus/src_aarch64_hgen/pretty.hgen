@@ -65,7 +65,7 @@
         sprintf "%s %s, %s, %s, %s %s" (pp_addsub sub_op setflags) (pp_regzr datasize d) (pp_regzr datasize n) (pp_regzr datasize m) (pp_shift shift_type) (pp_imm shift_amount)
 
 | `AArch64Address (d,page,imm) ->
-      sprintf "%s %s, %s" (if page then "ADRP" else "ADR") (pp_regzr Set64 d) (pp_label page imm)
+      sprintf "%s %s, %s" (if page then "ADRP" else "ADR") (pp_regzr Set64 d) (pp_offset page imm)
 
 | `AArch64LogicalImmediate (d,n,datasize,setflags,op,imm) ->
       if op = LogicalOp_AND && setflags && is_zero_reg d then
@@ -103,10 +103,10 @@
       sprintf "%s %s, %s, %s" (pp_shiftop shift_type) (pp_regzr datasize d) (pp_regzr datasize n) (pp_regzr datasize m)
 
 | `AArch64BranchConditional (offset,condition) ->
-      sprintf "B.%s %s" (pp_cond condition) (pp_label false offset)
+      sprintf "B.%s %s" (pp_cond condition) (pp_offset false offset)
 
 | `AArch64BranchImmediate (_branch_type,offset) ->
-      sprintf "%s %s" (pp_branchimmediate _branch_type) (pp_label false offset)
+      sprintf "%s %s" (pp_branchimmediate _branch_type) (pp_offset false offset)
 
 | `AArch64BitfieldMove (d,n,datasize,inzero,extend,_R,_S,wmask,tmask) ->
       if (inzero,extend) = (false,false) && _S < _R then
@@ -141,7 +141,7 @@
         sprintf "%s %s" (pp_branchregister _branch_type) (pp_regzr Set64 n)
 
 | `AArch64CompareAndBranch (t,datasize,iszero,offset) ->
-      sprintf "%s %s, %s" (if iszero then "CBZ" else "CBNZ") (pp_regzr datasize t) (pp_label false offset)
+      sprintf "%s %s, %s" (if iszero then "CBZ" else "CBNZ") (pp_regzr datasize t) (pp_offset false offset)
 
 | `AArch64ConditionalCompareImmediate (n,datasize,sub_op,condition,flags,imm) ->
       sprintf "%s %s, %s, %s, %s" (if sub_op then "CCMP" else "CCMN") (pp_regzr datasize n) (pp_reg_size_imm imm) (pp_imm flags) (pp_cond condition)
@@ -270,7 +270,7 @@
 
 | `AArch64LoadLiteral (t,memop,signed,size,offset,datasize) ->
       if memop = MemOp_PREFETCH then
-        sprintf "PRFM %s, %s" (pp_prfop (inst_reg_to_int t)) (pp_label false offset)
+        sprintf "PRFM %s, %s" (pp_prfop (inst_reg_to_int t)) (pp_offset false offset)
       else
         let datasize =
           if signed then Set64
@@ -279,7 +279,7 @@
             | DataSize64 -> Set64
             | DataSize32 -> Set32
           end in
-        sprintf "%s %s, %s" (if signed then "LDRSW" else "LDR") (pp_regzr datasize t) (pp_label false offset)
+        sprintf "%s %s, %s" (if signed then "LDRSW" else "LDR") (pp_regzr datasize t) (pp_offset false offset)
 
 | `AArch64LoadRegister (n,t,m,acctype,memop,signed,wback,postindex,extend_type,shift,regsize,datasize) ->
   begin
@@ -345,7 +345,7 @@
       sprintf "%s %s, %s, %s" (if unsigned then "UMULH" else "SMULH") (pp_regzr Set64 d) (pp_regzr Set64 n) (pp_regzr Set64 m)
 
 | `AArch64TestBitAndBranch (t,datasize,bit_pos,bit_val,offset) ->
-      sprintf "%s %s, %s, %s" (if bit_pos = 1 then "TBNZ" else "TBZ") (pp_regzr (if bit_pos > 31 then Set64 else Set32) t) (pp_imm bit_pos) (pp_label false offset)
+      sprintf "%s %s, %s, %s" (if bit_pos = 1 then "TBNZ" else "TBZ") (pp_regzr (if bit_pos > 31 then Set64 else Set32) t) (pp_imm bit_pos) (pp_offset false offset)
 
 | `AArch64MoveSystemRegister (t,sys_op0,sys_op1,sys_op2,sys_crn,sys_crm,read) ->
       if read then

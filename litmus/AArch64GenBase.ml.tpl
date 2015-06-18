@@ -206,7 +206,9 @@ let pp_reg_size_imm imm =
   | R32Bits imm -> pp_imm imm
   | R64Bits imm -> pp_big_imm imm
 
-let pp_label page offset = pp_big_imm offset (* FIXME: make this right *)
+let pp_offset page offset = pp_big_imm offset (* FIXME: make this right *)
+
+let pp_label label = label
 
 let pp_withflags inst setflags =
   if setflags then (inst ^ "S")
@@ -431,16 +433,20 @@ let pp_reverse sf op =
 
 (*** TODO: end ***)
 
-let instruction_printer (pp_regzr : reg_size -> inst_reg -> string) (pp_regsp : reg_size -> inst_reg -> string) (pp_regzrbyext : reg_size -> extendType -> inst_reg -> string) (instruction : instruction) : string  =
+let instruction_printer (pp_regzr : reg_size -> inst_reg -> string) (pp_regsp : reg_size -> inst_reg -> string) (pp_regzrbyext : reg_size -> extendType -> inst_reg -> string) (pp_label : string -> string) (instruction : instruction) : string  =
   match instruction with
   (* #include "./src_aarch64_hgen/pretty.hgen" *)
   | `AArch64BranchConditional_label (label,condition) ->
-        sprintf "B.%s %s" (pp_cond condition) label
+        sprintf "B.%s %s" (pp_cond condition) (pp_label label)
   | `AArch64BranchImmediate_label (_branch_type,label) ->
-        sprintf "%s %s" (pp_branchimmediate _branch_type) label
+        sprintf "%s %s" (pp_branchimmediate _branch_type) (pp_label label)
+  | `AArch64CompareAndBranch_label (t, datasize, iszero, label) ->
+        sprintf "%s %s, %s" (if iszero then "CBZ" else "CBNZ") (pp_regzr datasize t) (pp_label label)
+  | `AArch64TestBitAndBranch_label (t, datasize, bit_pos, bit_val, label) ->
+        sprintf "%s %s, %s, %s" (if bit_pos = 1 then "TBNZ" else "TBZ") (pp_regzr (if bit_pos > 31 then Set64 else Set32) t) (pp_imm bit_pos) (pp_label label)
   | _ -> failwith "unrecognised instruction"
 
-let do_pp_instruction = instruction_printer pp_regzr pp_regsp pp_regzrbyext
+let do_pp_instruction = instruction_printer pp_regzr pp_regsp pp_regzrbyext pp_label
 
 
 let pp_instruction _m i = do_pp_instruction i
