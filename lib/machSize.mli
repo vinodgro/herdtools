@@ -9,8 +9,13 @@
 (*  General Public License.                                          *)
 (*********************************************************************)
 
+type endian = Little | Big
+
 type sz = Byte | Short | Word | Quad
 
 val pp : sz -> string
 
 val nbytes : sz -> int
+val nbits : sz -> int
+
+val tr_endian : sz -> int -> int

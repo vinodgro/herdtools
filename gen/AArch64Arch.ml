@@ -13,6 +13,9 @@ open Printf
 
 include AArch64Base
 
+(* Little endian *)
+let tr_endian = Misc.identity
+
 (* AArch64 has more atoms that others *)
 type atom_rw =  PP | PL | AP | AL
 type atom = Acq | Rel | Atomic of atom_rw
@@ -55,8 +58,7 @@ let worth_final = function
   | Atomic _ -> true
   | Acq|Rel -> false
 
-let tr_value _ v = v
-let overwrite_value _ _ v = v
+include NoMixed
 
 (* End of atoms *)
 

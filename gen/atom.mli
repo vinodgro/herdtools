@@ -22,4 +22,5 @@ module type S = sig
 (* Value computation, for mixed size *)
   val tr_value : atom option -> Code.v -> Code.v
   val overwrite_value : Code. v -> atom option -> Code.v -> Code.v
+  val extract_value : Code. v -> atom option -> Code.v
 end

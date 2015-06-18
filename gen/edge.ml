@@ -22,6 +22,8 @@ module type S = sig
   val pp_atom : atom -> string
   val tr_value : atom option -> Code.v -> Code.v
   val overwrite_value : Code.v -> atom option -> Code.v -> Code.v
+  val extract_value : Code.v -> atom option -> Code.v
+
   val strong : fence
   val pp_fence : fence -> string
 
@@ -119,10 +121,13 @@ and type atom = F.atom = struct
   let pp_atom = F.pp_atom
   let tr_value = F.tr_value
   let overwrite_value = F.overwrite_value
+  let extract_value = F.extract_value
 
-  let pp_fence = F.pp_fence
+
 
   let strong = F.strong
+  let pp_fence = F.pp_fence
+
 
 (* edge proper *)
   type tedge =

@@ -65,7 +65,7 @@ rule token = parse
 | "divw" { DIV }
 | "divw." { DIVDOT }
 | "lbz" { LBZ }
-| "lhz" { LBZ }
+| "lhz" { LHZ }
 | "lwz" { LWZ }
 | "lwzu" { LWZU }
 | "lwzx" { LWZX }

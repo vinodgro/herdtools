@@ -15,7 +15,6 @@ module Make(Cfg:CompileCommon.Config) : XXXCompile.S =
   struct
 
     module MIPS = MIPSArch
-
     include CompileCommon.Make(Cfg)(MIPS)
 
 

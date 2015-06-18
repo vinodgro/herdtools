@@ -10,6 +10,7 @@
 
 open Code
 include X86Base
+let tr_endian = Misc.identity
 
 type atom = Atomic
 let default_atom = Atomic
@@ -37,8 +38,7 @@ let fold_atom f k = f Atomic k
 
 let worth_final _ = true
 
-let tr_value _ v = v
-let overwrite_value _ _ v = v
+include NoMixed
 
 (**********)
 (* Fences *)

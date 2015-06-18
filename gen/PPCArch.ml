@@ -24,7 +24,13 @@ module Config =
 module Make(C:Config)  =
   struct
     include PPCBase
-    include MachAtom.Make(struct let naturalsize = Some C.naturalsize end)
+    let tr_endian x = MachSize.tr_endian C.naturalsize x
+    include MachAtom.Make
+        (struct
+          let naturalsize = Some C.naturalsize
+          let endian = MachSize.Big
+        end)
+
 
 (**********)
 (* Fences *)

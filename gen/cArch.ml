@@ -46,8 +46,7 @@ let fold_atom f k =
 
 let worth_final _ = false
 
-let tr_value _ v = v
-let overwrite_value _ _ v = v
+include NoMixed
 
 (* Fences, to be completed *)
 type fence = MemOrder.t
