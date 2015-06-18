@@ -658,7 +658,7 @@ let _dump_test ({ name = name; _ } as t) =
 
 let test_of_cycle name ?com ?(info=[]) ?(check=(fun _ -> true)) es c =
   let com = match com with None -> pp_edges es | Some com -> com in
-  let(init,prog,final,env),(prf,coms) = compile_cycle check c in
+  let (init,prog,final,env),(prf,coms) = compile_cycle check c in
   let coms = String.concat " " coms in
   let info = info@["Prefetch",prf ; "Com",coms; "Orig",com; ] in
   { name=name ; info=info; com=com ;  edges = es ;

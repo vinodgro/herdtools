@@ -74,12 +74,14 @@ module Make(C:Config) = struct
   let overwrite_value v ao w = match ao with
   | None| Some (Atomic|Reserve) -> w (* total overwrite *)
   | Some (Mixed (sz,o)) ->
-      let o = correct_offset sz o in
-      let sz_bits =  MachSize.nbits sz in
-      let nshift =  o * 8 in
-      let wshifted = w lsl nshift in
-      let mask = lnot (((1 lsl sz_bits) - 1) lsl nshift) in
-      (v land mask) lor wshifted
+      if sz = Misc.as_some C.naturalsize then w
+      else
+        let o = correct_offset sz o in
+        let sz_bits =  MachSize.nbits sz in
+        let nshift =  o * 8 in
+        let wshifted = w lsl nshift in
+        let mask = lnot (((1 lsl sz_bits) - 1) lsl nshift) in
+        (v land mask) lor wshifted
 
   let extract_value v ao = match ao with
   | None| Some (Atomic|Reserve) -> v
@@ -87,7 +89,10 @@ module Make(C:Config) = struct
       let sz_bits =  MachSize.nbits sz in
       let o = correct_offset sz o in
       let nshift =  o * 8 in
-      let mask = (1 lsl sz_bits) - 1 in
+      let mask =
+        match sz with
+        | Quad -> -1
+        | _ -> (1 lsl sz_bits) - 1 in
       let r = (v lsr nshift) land mask in
 (*      Printf.eprintf "EXTRACT (%s,%i)[0x%x]: 0x%x -> 0x%x\n"
         (MachSize.pp sz) o mask v r ; *)

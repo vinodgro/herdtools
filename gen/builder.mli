@@ -34,7 +34,7 @@ module type S = sig
 (* Build test from cycle *)
   val test_of_cycle :
       string -> ?com:string -> ?info:Code.info -> ?check:check -> edge list ->
-       node -> test  
+       node -> test
 (* Dump the given test *)
 (*  val dump_test : test -> unit *)
   val dump_test_channel : out_channel -> test -> unit

@@ -522,8 +522,11 @@ let set_same_loc st n0 =
 (* TODO: this is wrong for Store CR's: consider Rfi Store PosRR *)
 let set_read_v n cell =
   let e = n.evt in
-  let e = { e with v=E.extract_value cell e.atom; } in
+  let v = E.extract_value cell e.atom in
+(*  eprintf "SET READ: cell=0x%x, v=0x%x\n" cell v ; *)
+  let e = { e with v=v; } in
   n.evt <- e
+(*  eprintf "AFTER %a\n" debug_node n *)
 
 let do_set_read_v =
 
@@ -613,7 +616,7 @@ let resolve_edges = function
 
 let make es =
   let es,c = resolve_edges es in
-  finish c ;
+  let () = finish c in
   es,c
 
 (*************************)

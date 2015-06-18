@@ -1126,7 +1126,8 @@ module Make(O:Config) : Builder.S
         else dump_c_test
 *)
 
-      let test_of_cycle name ?com ?(info=[]) ?(check=(fun _ -> true)) es c =
+      let test_of_cycle name ?com ?(info=[]) ?(check=(fun _ -> true))
+          es c =
         let com = match com with None -> E.pp_edges es | Some com -> com in
         let (prog,final),(prf,coms),env = compile_cycle check c in
         let coms = String.concat " " coms in
