@@ -9,7 +9,7 @@
 (*********************************************************************)
 
 (* Do nothing for mixed values, which should not appear *)
-
+val fold_mixed : ('a -> 'b -> 'b) -> 'b -> 'b
 val tr_value : 'a option -> Code.v -> Code.v
 val overwrite_value : Code. v -> 'a option -> Code.v -> Code.v
 val extract_value : Code. v -> 'a option -> Code.v

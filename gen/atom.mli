@@ -18,6 +18,7 @@ module type S = sig
   val pp_as_a : atom option
   val pp_atom : atom -> string
   val fold_atom : (atom -> 'a -> 'a) -> 'a -> 'a
+  val fold_mixed : (atom -> 'a -> 'a) -> 'a -> 'a
   val worth_final : atom -> bool
 (* Value computation, for mixed size *)
   val tr_value : atom option -> Code.v -> Code.v

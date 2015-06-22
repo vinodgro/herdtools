@@ -351,13 +351,7 @@ and type edge = E.edge
               | "someRW" -> someR Diff W
               | "someWR" -> someW Diff R
               | "someWW" -> someW Diff W
-              | _ ->
-                  match parse_atoms s with
-                  | None ->  [do_parse_relax s]
-                  | Some r ->
-                      let module V = VarAtomic.Make(E)  in
-                      let es = V.var_both r in
-                      List.map (fun r -> ERS [r]) es
+              | _ ->  [do_parse_relax s]
               end
           | Seq [] -> Warn.fatal "Empty relaxation"
           | Seq es -> [ERS (List.map E.parse_edge es)]

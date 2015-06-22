@@ -12,7 +12,7 @@ open Misc
 open Printf
 
 (* Configuration *)
-let varatom = ref false
+let varatom = ref None
 let use_eieio = ref true
 let norm = ref false
 
@@ -24,8 +24,8 @@ let opts =
   Config.common_specs @
   ("-num", Arg.Bool (fun b -> Config.numeric := b),
    sprintf "<bool> use numeric names, default %b" !Config.numeric)::
-  ("-varatom", Arg.Unit (fun () ->  varatom := true),
-   " include all atomic variations of relaxations")::
+  ("-varatom", Arg.String (fun s ->  varatom := Some s),
+   " <string> include atomic variations of relaxations")::
   ("-noeieio", Arg.Clear use_eieio,
    " ignore eieio fence (backward compatibility)")::[]
 
@@ -34,7 +34,7 @@ let opts =
 
 module type Config = sig  
   include DumpAll.Config
-  val varatom : bool
+  val varatom : string option
   val unrollatomic : int option
 end
 
@@ -95,19 +95,6 @@ module Make (Config:Config) (M:Builder.S) =
       er (Po (sd,Dir W,Dir d))::
       (all_fences sd W d [])      
 
-    let atoms_key = "atoms"
-    let atoms_length = String.length atoms_key
-
-    let parse_atoms s =
-      if
-        String.length s >= atoms_length &&
-        String.sub s 0 atoms_length = atoms_key
-      then
-        let suf = String.sub s atoms_length (String.length s - atoms_length) in
-        try Some (M.E.parse_edge suf)
-        with _ -> None
-      else None
-
     let parse_relaxs s = match s with
     | "allRR" -> allR Diff R
     | "allRW" -> allR Diff W
@@ -118,15 +105,8 @@ module Make (Config:Config) (M:Builder.S) =
     | "someWR" -> someW Diff R
     | "someWW" -> someW Diff W
     | _ ->
-        match parse_atoms s with
-        | Some r ->
-            let module V = VarAtomic.Make(M.E)  in
-            let es = V.var_both r in
-            List.map (fun r -> M.R.ERS [r]) es
-            
-        | None ->
-            let es = LexUtil.split s in
-            List.map M.R.parse_relax es
+        let es = LexUtil.split s in
+        List.map M.R.parse_relax es
 
     let parse_edges s =
 (*      let rs = parse_relaxs s in *)
@@ -135,12 +115,23 @@ module Make (Config:Config) (M:Builder.S) =
 
 
 
-    let varatom_ess =
-      if Config.varatom then
-        let module V = VarAtomic.Make(M.E)  in
+    let varatom_ess = match Config.varatom with
+    | None -> fun ess -> ess
+    | Some "all" ->
+        let module Fold = struct
+          type atom = M.E.atom
+          let fold = M.E.fold_atomo
+        end in
+        let module V = VarAtomic.Make(M.E)(Fold)  in
         List.map V.varatom_es
-      else
-        fun ess -> ess
+    | Some atoms ->
+        let atoms = M.E.parse_atoms atoms in
+        let module Fold = struct
+          type atom = M.E.atom
+          let fold f k = M.E.fold_atomo_list atoms f k
+        end in
+        let module V = VarAtomic.Make(M.E)(Fold)  in
+        List.map V.varatom_es
 
     let expand_edge es = M.E.expand_edges es Misc.cons
     let expand_edges ess =
@@ -187,6 +178,7 @@ let () =
       let lowercase = !Config.lowercase
 (* Specific *)
       let varatom = !varatom
+
       let coherence_decreasing = !Config.coherence_decreasing
       let same_loc =
          !Config.same_loc ||
@@ -205,7 +197,7 @@ let () =
       let eprocs = !Config.eprocs
       let nprocs = !Config.nprocs
       let neg = !Config.neg
-      let allow_back = false
+      let allow_back = true
       let typ = !Config.typ
       let hexa = !Config.hexa
       let cpp = match !Config.arch with Archs.CPP -> true | _ -> false

@@ -9,7 +9,7 @@
 (*********************************************************************)
 
 (* Do nothing for mixed values, which should not appear *)
-
+let fold_mixed _ k = k
 let tr_value _ v = v
 let overwrite_value _ _ v = v
 let extract_value v _ = v

@@ -77,7 +77,8 @@ let parse_mode s =
     | "ppo" -> Ppo
     | "transitive"|"trans" -> Transitive
     | "total" -> Total
-    | _ -> failwith "Wrong mode, choose sc,thin,uni,critical,free,ppo,total"
+    | "mixed" -> MixedCheck
+    | _ -> failwith "Wrong mode, choose sc,thin,uni,critical,free,ppo,total,mixed"
 
 let parse_do_observers s = match s with
 | "avoid"|"false" -> Avoid

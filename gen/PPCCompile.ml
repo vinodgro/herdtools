@@ -181,12 +181,18 @@ module Make(O:CompileCommon.Config)(C:sig val eieio : bool end) : XXXCompile.S =
       init,[PPC.Instruction (PPC.Pstwx (rA,idx,rB))],st
 
 
-    let emit_li st p init v =
-      if v < 0x7fff then
-        let rA,st = next_reg st in
-        rA,init,[PPC.Instruction (PPC.Pli (rA,v))],st
+    let emit_const st p init v =
+      if 0 <= v && v < 0xffff then
+        None,init,st
       else
         let rA,init,st = next_const st p init v in
+        Some rA,init,st
+
+    let emit_li st p init v = match emit_const st p init v with
+    | None,init,st ->
+        let rA,st = next_reg st in
+        rA,init,[PPC.Instruction (PPC.Pli (rA,v))],st
+    | Some rA,init,st ->
         rA,init,[],st
 
     let emit_store_mixed sz o st p init x v =
@@ -362,9 +368,14 @@ module Make(O:CompileCommon.Config)(C:sig val eieio : bool end) : XXXCompile.S =
       | R ->Warn.fatal "data dependency to load"
       | W ->
           let rW,st = next_reg st in
-          let cs2 =
-            [PPC.Instruction (PPC.Pxor(PPC.DontSetCR0,rW,r1,r1)) ;
-             PPC.Instruction (PPC.Paddi (rW,rW,e.v)) ; ] in
+          let ro,init,st = emit_const st p init e.v in
+          let cs2 = match ro with
+          | None ->
+              [PPC.Instruction (PPC.Pxor(PPC.DontSetCR0,rW,r1,r1)) ;
+               PPC.Instruction (PPC.Paddi (rW,rW,e.v)) ; ]
+          | Some rC ->
+               [PPC.Instruction (PPC.Pxor(PPC.DontSetCR0,rW,r1,r1)) ;
+               PPC.Instruction (PPC.Padd (PPC.DontSetCR0,rW,rW,rC)) ; ] in
           let ro,init,cs,st =
             match e.atom with
             | None ->
