@@ -739,8 +739,8 @@ let user2_barrier_def () =
          (A.Out.dump_out_reg proc reg))
      test
 
-  let fmt_outcome locs env =
-    U.fmt_outcome
+  let fmt_outcome test locs env =
+    U.fmt_outcome test
       (fun t -> match Compile.get_fmt Cfg.hexa t with
       | CType.Direct fmt ->
           if Cfg.hexa then "0x%" ^ fmt else "%" ^ fmt
@@ -933,7 +933,7 @@ let user2_barrier_def () =
 (* Dumping *)
     O.o
       "static void do_dump_outcome(FILE *fhist, intmax_t *o, count_t c, int show) {" ;
-    let fmt_var = fmt_outcome outs env in
+    let fmt_var = fmt_outcome test outs env in
     let fmt ="\"%-6\"PCTR\"%c>" ^ fmt_var ^ "\\n\"" in
     let args =
       String.concat ","
