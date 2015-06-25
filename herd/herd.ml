@@ -155,7 +155,7 @@ let options = [
     | None -> false
     | Some _ as m -> model :=  m ; true)
     Model.tags
-    (sprintf " select model, defaults X86=%s, PPC=%s, ARM=%s"
+    (sprintf " select model, defaults X86=%s, PPC=%s"
        (Model.pp (Model.get_default_model x86))
        (Model.pp (Model.get_default_model ppc))) ;
   parse_tag

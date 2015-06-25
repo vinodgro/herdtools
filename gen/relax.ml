@@ -325,21 +325,6 @@ and type edge = E.edge
           er (E.Po (sd,Dir W,Dir d))::
           (all_fences sd W d [])      
 
-        let atoms_key = "atoms"
-
-        let atoms_length = String.length atoms_key
-
-        let parse_atoms s =
-          if
-            String.length s >= atoms_length &&
-            String.sub s 0 atoms_length = atoms_key
-          then
-            let suf =
-              String.sub s atoms_length (String.length s - atoms_length) in
-            try Some (E.parse_edge suf)
-            with _ -> None
-          else None
-
         let expand_relax_macro = function
           | One s ->
               begin match s with

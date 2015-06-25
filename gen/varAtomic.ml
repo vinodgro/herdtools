@@ -62,7 +62,7 @@ with type edge = E.edge = struct
         []
   | _,_ -> [e1::e2::es]
 
-  let var_both e = match e.E.edge with
+  let _var_both e = match e.E.edge with
   | E.Rmw -> begin match e.E.a1,e.E.a2 with
     | None,None -> (* RMW have identical atomic specs for source and targets *)
         F.fold
