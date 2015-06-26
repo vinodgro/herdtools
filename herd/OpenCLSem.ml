@@ -91,14 +91,14 @@ module Make (C:Sem.Config)(V:Value.S)
        (* Obtain location of object *)
         build_semantics_expr obj ii >>= fun loc_obj ->
        (* Non-atomically read the value at "expected" location *)
-        read_mem false false OpenCL.S_all_svm_devices OpenCL.NA loc_exp ii >>*= fun v_exp ->
+        read_mem false false OpenCL.S_device OpenCL.NA loc_exp ii >>*= fun v_exp ->
  (* Non-deterministic choice *)
         M.altT
            (read_mem true rem ms failure loc_obj ii >>*= fun v_obj ->
            (* For "strong" cas: fail only when v_obj != v_exp *)
            (if strong then M.neqT v_obj v_exp else M.unitT ()) (* >>= fun () -> 
            (* Non-atomically write that value into the "expected" location *)
-           write_mem OpenCL.S_all_svm_devices OpenCL.NA loc_exp v_obj ii *) >>!
+           write_mem OpenCL.S_device OpenCL.NA loc_exp v_obj ii *) >>!
            V.intToV 0)
           (* Obtain "desired" value *)
           (build_semantics_expr des ii >>= fun v_des -> 

@@ -134,45 +134,45 @@ postfix_expression:
 | primary_expression 
   { $1 }
 | rem_ST LPAR assignment_expression COMMA assignment_expression RPAR
-  { Estore ($3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices, $1) }
+  { Estore ($3, $5, OpenCLBase.SC, OpenCLBase.S_device, $1) }
 | rem_ST_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
-  { Estore ($3, $5, $7, OpenCLBase.S_all_svm_devices, $1) }
+  { Estore ($3, $5, $7, OpenCLBase.S_device, $1) }
 | rem_ST_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Estore ($3, $5, $7, $9, $1) }
 | rem_EXC LPAR assignment_expression COMMA assignment_expression RPAR
-  { Eexchange ($3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices, $1) }
+  { Eexchange ($3, $5, OpenCLBase.SC, OpenCLBase.S_device, $1) }
 | rem_EXC_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
-  { Eexchange ($3, $5, $7, OpenCLBase.S_all_svm_devices, $1) }
+  { Eexchange ($3, $5, $7, OpenCLBase.S_device, $1) }
 | rem_EXC_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Eexchange ($3, $5, $7, $9, $1) }
 | ATOMIC_FETCH LPAR assignment_expression COMMA assignment_expression RPAR
-  { Efetch ($1, $3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices, false) }
+  { Efetch ($1, $3, $5, OpenCLBase.SC, OpenCLBase.S_device, false) }
 | ATOMIC_FETCH_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
-  { Efetch ($1, $3, $5, $7, OpenCLBase.S_all_svm_devices, false) }
+  { Efetch ($1, $3, $5, $7, OpenCLBase.S_device, false) }
 | ATOMIC_FETCH_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Efetch ($1, $3, $5, $7, $9, false) }
 | ATOMIC_FETCH_REMOTE LPAR assignment_expression COMMA assignment_expression RPAR
-  { Efetch ($1, $3, $5, OpenCLBase.SC, OpenCLBase.S_all_svm_devices, true) }
+  { Efetch ($1, $3, $5, OpenCLBase.SC, OpenCLBase.S_device, true) }
 | ATOMIC_FETCH_EXPLICIT_REMOTE LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER RPAR
-  { Efetch ($1, $3, $5, $7, OpenCLBase.S_all_svm_devices, true) }
+  { Efetch ($1, $3, $5, $7, OpenCLBase.S_device, true) }
 | ATOMIC_FETCH_EXPLICIT_REMOTE LPAR assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Efetch ($1, $3, $5, $7, $9, true) }
 | rem_LD LPAR assignment_expression RPAR
-  { Eload ($3, OpenCLBase.SC, OpenCLBase.S_all_svm_devices, $1) }
+  { Eload ($3, OpenCLBase.SC, OpenCLBase.S_device, $1) }
 | rem_LD_EXPLICIT LPAR assignment_expression COMMA MEMORDER RPAR
-  { Eload ($3, $5, OpenCLBase.S_all_svm_devices, $1) }
+  { Eload ($3, $5, OpenCLBase.S_device, $1) }
 | rem_LD_EXPLICIT LPAR assignment_expression COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Eload ($3, $5, $7, $1) }
 | rem_FENCE LPAR fence_flags COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Efence ($3,$5,$7, $1) }
 | rem_WCAS LPAR assignment_expression COMMA assignment_expression COMMA assignment_expression RPAR
-  { Ecas ($3,$5,$7,OpenCLBase.SC,OpenCLBase.SC,OpenCLBase.S_all_svm_devices,false, $1) }
+  { Ecas ($3,$5,$7,OpenCLBase.SC,OpenCLBase.SC,OpenCLBase.S_device,false, $1) }
 | rem_SCAS LPAR assignment_expression COMMA  assignment_expression COMMA assignment_expression RPAR
-  { Ecas ($3,$5,$7,OpenCLBase.SC,OpenCLBase.SC,OpenCLBase.S_all_svm_devices,true, $1) }
+  { Ecas ($3,$5,$7,OpenCLBase.SC,OpenCLBase.SC,OpenCLBase.S_device,true, $1) }
 | rem_WCAS_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
-  { Ecas ($3,$5,$7,$9,$11,OpenCLBase.S_all_svm_devices,false, $1) }
+  { Ecas ($3,$5,$7,$9,$11,OpenCLBase.S_device,false, $1) }
 | rem_SCAS_EXPLICIT LPAR assignment_expression COMMA  assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER RPAR
-  { Ecas ($3,$5,$7,$9,$11,OpenCLBase.S_all_svm_devices,true, $1) }
+  { Ecas ($3,$5,$7,$9,$11,OpenCLBase.S_device,true, $1) }
 | rem_WCAS_EXPLICIT LPAR assignment_expression COMMA assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER COMMA MEMSCOPE RPAR
   { Ecas ($3,$5,$7,$9,$11,$13,false, $1) }
 | rem_SCAS_EXPLICIT LPAR assignment_expression COMMA  assignment_expression COMMA assignment_expression COMMA MEMORDER COMMA MEMORDER COMMA MEMSCOPE RPAR
