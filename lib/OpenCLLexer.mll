@@ -157,6 +157,7 @@ rule token deep = parse
 | "CLK_GLOBAL_MEM_FENCE" { MEMREGION (OpenCLBase.GlobalMem) }
 | "CLK_LOCAL_MEM_FENCE"  { MEMREGION (OpenCLBase.LocalMem) }
 | "__global" | "global"  { GLOBAL }
+| "__global_fga" | "global_fga" { GLOBAL_FGA }
 | "__local" | "local"    { LOCAL }
 | "scopeTree" | "ScopeTree" { SCOPETREE }
 | "kernel"                  { KERNEL }

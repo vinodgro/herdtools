@@ -24,6 +24,7 @@ type t =
 (** OpenCL *)
   | Global of t
   | Local of t
+  | FGA of t (* OpenCL fine-grained atomic buffer *)
 
 val voidstar : t
 val word : t
@@ -39,6 +40,7 @@ val is_ptr : t -> bool
 val is_array : t -> bool
 val is_atomic : t -> bool
 val is_global : t -> bool
+val is_fga : t -> bool
 val is_local : t -> bool
 val is_private : t -> bool
 val strip_atomic : t -> t
@@ -48,6 +50,7 @@ val strip_attributes : t -> t
 
 val is_ptr_to_atomic : t -> bool
 val is_ptr_to_global : t -> bool
+val is_ptr_to_fga : t -> bool
 val is_ptr_to_local : t -> bool
 val is_ptr_to_private : t -> bool
 val is_mutex : t -> bool

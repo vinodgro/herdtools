@@ -45,7 +45,7 @@ open CType
 %token <OpenCLBase.mem_order> MEMORDER
 %token <OpenCLBase.mem_scope> MEMSCOPE
 %token <MemSpaceMap.gpu_memory_space> MEMREGION
-%token GLOBAL LOCAL
+%token GLOBAL LOCAL GLOBAL_FGA
 %token SCOPETREE DEVICE KERNEL CTA WARP THREAD
 %token LD LD_EXPLICIT ST ST_EXPLICIT EXC EXC_EXPLICIT FENCE
 %token LD_REMOTE LD_EXPLICIT_REMOTE ST_REMOTE ST_EXPLICIT_REMOTE EXC_REMOTE EXC_EXPLICIT_REMOTE FENCE_REMOTE
@@ -77,6 +77,7 @@ typ:
 | ATOMIC base { Atomic $2 }
 | VOLATILE base0 { Volatile $2 }
 | GLOBAL base { Global $2 }
+| GLOBAL_FGA base { FGA $2 }
 | LOCAL base { Local $2 }
 | base { $1 }
 
